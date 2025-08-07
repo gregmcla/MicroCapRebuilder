@@ -40,7 +40,7 @@ def main():
         if df.empty:
             print(f"[warn] no data for {ticker}, skipping")
             continue
-        price = float(df["Close"].iloc[-1])
+        price = df["Close"].iloc[-1].item()
         # compute how many shares we can buy with risk_capital
         shares = int(risk_capital // price)
         if shares < 1:
