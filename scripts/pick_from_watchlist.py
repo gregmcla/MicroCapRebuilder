@@ -74,6 +74,8 @@ def main():
         pu = Path(__file__).parent.parent / "data" / "portfolio_update.csv"
         df_pu = pd.read_csv(pu)
 
+        val_col = "Total Value" if "Total Value" in df_pu.columns else "Value"
+
         # drop old TOTAL
         df_pu = df_pu[df_pu["Ticker"].str.upper() != "TOTAL"]
 
@@ -86,7 +88,7 @@ def main():
                 "Cost Basis": "",
                 "Stop Loss": "",
                 "Current Price": round(p, 2),
-                "Total Value": round(s * p, 2),
+                val_col: round(s * p, 2),
                 "PnL": "",
                 "Cash Balance": "",
                 "Total Equity": ""
@@ -94,7 +96,7 @@ def main():
 
         # re-compute TOTAL row for today
         pos = df_pu[df_pu["Ticker"].str.upper() != "TOTAL"]
-        total_val = pos["Total Value"].sum()
+        total_val = pos[val_col].sum()
         df_pu.loc[len(df_pu)] = {
             "Date": today,
             "Ticker": "TOTAL",
@@ -102,7 +104,7 @@ def main():
             "Cost Basis": "",
             "Stop Loss": "",
             "Current Price": "",
-            "Total Value": "",
+            val_col: "",
             "PnL": "",
             "Cash Balance": round(cash, 2),
             "Total Equity": round(total_val + cash, 2)
