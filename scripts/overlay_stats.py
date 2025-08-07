@@ -13,7 +13,10 @@ trades = pd.read_csv(args.trades) if args.trades else pd.DataFrame()
 base = json.load(open(args.baseline))
 
 # compute stats
-total_equity = (df["Shares"] * df["Price"]).sum()
+if "Equity" in df.columns:
+    total_equity = df["Equity"].sum()
+else:
+    total_equity = (df["Shares"] * df["Price"]).sum()
 buy_count  = len(trades[trades["Shares Bought"]>0])    if "Shares Bought" in trades else 0
 sell_count = len(trades[trades["Shares Sold"]>0])      if "Shares Sold" in trades else 0
 roi = (total_equity - base["baseline_equity"]) / base["baseline_equity"] * 100

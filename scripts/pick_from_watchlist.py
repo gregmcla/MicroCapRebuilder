@@ -19,11 +19,9 @@ RISK_PER_TRADE = 0.10    # 10% of available cash per trade
 def read_cash_and_positions():
     p = Path(__file__).parent.parent / "data" / "portfolio_update.csv"
     df = pd.read_csv(p)
-    # detect cash column name
-    cash_col = "Cash Balance" if "Cash Balance" in df.columns else "Cash"
-    # get latest TOTAL row
+    # get latest TOTAL row and its cash value
     total_row = df[df["Ticker"].str.upper() == "TOTAL"].iloc[-1]
-    cash = float(total_row[cash_col])
+    cash = float(total_row["Cash"])
     # existing positions (ignore TOTAL)
     pos = df[df["Ticker"].str.upper() != "TOTAL"].copy()
     return cash, pos
@@ -83,29 +81,29 @@ def main():
                 "Date": today,
                 "Ticker": t,
                 "Shares": s,
-                "Cost Basis": "",
-                "Stop Loss": "",
-                "Current Price": round(p, 2),
-                "Total Value": round(s * p, 2),
+                "Cost": "",
+                "Stop": "",
+                "Price": round(p, 2),
+                "Value": round(s * p, 2),
                 "PnL": "",
-                "Cash Balance": "",
-                "Total Equity": ""
+                "Cash": "",
+                "Equity": ""
             }
 
         # re-compute TOTAL row for today
         pos = df_pu[df_pu["Ticker"].str.upper() != "TOTAL"]
-        total_val = pos["Total Value"].sum()
+        total_val = pos["Value"].sum()
         df_pu.loc[len(df_pu)] = {
             "Date": today,
             "Ticker": "TOTAL",
             "Shares": "",
-            "Cost Basis": "",
-            "Stop Loss": "",
-            "Current Price": "",
-            "Total Value": "",
+            "Cost": "",
+            "Stop": "",
+            "Price": "",
+            "Value": "",
             "PnL": "",
-            "Cash Balance": round(cash, 2),
-            "Total Equity": round(total_val + cash, 2)
+            "Cash": round(cash, 2),
+            "Equity": round(total_val + cash, 2)
         }
 
         df_pu.to_csv(pu, index=False)

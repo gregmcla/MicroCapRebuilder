@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 env/
 data/*.csv
+!data/portfolio_update.csv
 data/*.json
 charts/
 backup/
