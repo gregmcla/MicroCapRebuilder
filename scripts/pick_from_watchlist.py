@@ -33,6 +33,7 @@ def main():
     cash, positions = read_cash_and_positions()
     total_val = positions["Total Value"].sum()
     risk_capital = cash * RISK_PER_TRADE
+    total_val = positions["Total Value"].sum()
 
     new_trades = []
     for ticker in TICKERS:
