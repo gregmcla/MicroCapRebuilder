@@ -31,6 +31,7 @@ def read_cash_and_positions():
 # ─── 4) Main logic ─────────────────────────────────────────────────────────────
 def main():
     cash, positions = read_cash_and_positions()
+    total_val = positions["Total Value"].sum()
     risk_capital = cash * RISK_PER_TRADE
 
     new_trades = []
