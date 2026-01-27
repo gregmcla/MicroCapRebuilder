@@ -4,5 +4,8 @@ __pycache__/
 env/
 data/*.csv
 data/*.json
+!data/config.json
+logs/
+reports/
 charts/
 backup/
