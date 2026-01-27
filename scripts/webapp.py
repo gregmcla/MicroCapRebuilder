@@ -17,6 +17,32 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from market_regime import get_regime_analysis, MarketRegime
 
+# ─── Ticker URLs ──────────────────────────────────────────────────────────────
+TICKER_URLS = {
+    "RIOT": "https://www.riotplatforms.com/",
+    "SMR": "https://www.nuscalepower.com/",
+    "TDW": "https://www.teradyne.com/",
+    "BELFB": "https://www.belfuse.com/",
+    "AVAV": "https://www.avinc.com/",
+    "MGY": "https://www.magnoliaoilgas.com/",
+    "GOLF": "https://www.callawaygolf.com/",
+    "BTU": "https://www.peabodyenergy.com/",
+    "TEX": "https://www.terex.com/",
+    "CAKE": "https://www.thecheesecakefactory.com/",
+    "AXSM": "https://www.axsome.com/",
+    "CRC": "https://www.calresources.com/",
+    "LMND": "https://www.lemonade.com/",
+    "PFSI": "https://www.pfsinvestments.com/",
+    "EAT": "https://www.brinker.com/",
+}
+
+def get_ticker_link(ticker):
+    """Return markdown hyperlink for ticker if URL exists, otherwise plain text."""
+    url = TICKER_URLS.get(ticker)
+    if url:
+        return f"[{ticker}]({url})"
+    return ticker
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
 POSITIONS_FILE = DATA_DIR / "positions.csv"
@@ -127,10 +153,16 @@ with h2:
 if not positions_df.empty:
     tape = []
     for _, r in positions_df.iterrows():
+        ticker = r['ticker']
         pnl = r.get("unrealized_pnl_pct", 0)
-        color = "#00ff88" if pnl >= 0 else "#ff4444"
-        tape.append(f":orange[**{r['ticker']}**] :{('green' if pnl >= 0 else 'red')}[{pnl:+.2f}%]")
-    st.markdown(" &nbsp;&nbsp;&nbsp; ".join(tape))
+        pnl_color = "#00ff88" if pnl >= 0 else "#ff4444"
+        url = TICKER_URLS.get(ticker)
+        if url:
+            ticker_html = f'<a href="{url}" target="_blank" style="color:#ffaa00;font-weight:bold;text-decoration:none;">{ticker}</a>'
+        else:
+            ticker_html = f'<span style="color:#ffaa00;font-weight:bold;">{ticker}</span>'
+        tape.append(f'{ticker_html} <span style="color:{pnl_color}">{pnl:+.2f}%</span>')
+    st.markdown(" &nbsp;&nbsp;&nbsp; ".join(tape), unsafe_allow_html=True)
     st.divider()
 
 
@@ -220,6 +252,13 @@ if not positions_df.empty:
     display_df["TARGET"] = display_df["TARGET"].apply(lambda x: f"${x:.2f}")
     display_df["SHARES"] = display_df["SHARES"].astype(int)
 
+    # Build clickable ticker links row
+    ticker_links = []
+    for t in positions_df["ticker"].tolist():
+        url = TICKER_URLS.get(t, f"https://finance.yahoo.com/quote/{t}")
+        ticker_links.append(f'<a href="{url}" target="_blank" style="color:#ffaa00;text-decoration:none;margin-right:16px;">{t}</a>')
+    st.markdown("**Quick Links:** " + " ".join(ticker_links), unsafe_allow_html=True)
+
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     total_unrealized = positions_df["unrealized_pnl"].sum()
@@ -237,6 +276,15 @@ st.markdown("#### :orange[◆ RECENT ACTIVITY]")
 
 if not transactions_df.empty:
     recent = transactions_df.tail(8).iloc[::-1][["date", "action", "ticker", "shares", "price", "total_value", "reason"]].copy()
+
+    # Build clickable ticker links for recent transactions
+    recent_tickers = recent["ticker"].unique().tolist()
+    recent_links = []
+    for t in recent_tickers:
+        url = TICKER_URLS.get(t, f"https://finance.yahoo.com/quote/{t}")
+        recent_links.append(f'<a href="{url}" target="_blank" style="color:#ffaa00;text-decoration:none;margin-right:16px;">{t}</a>')
+    st.markdown("**Quick Links:** " + " ".join(recent_links), unsafe_allow_html=True)
+
     recent.columns = ["DATE", "ACTION", "TICKER", "SHARES", "PRICE", "VALUE", "REASON"]
     recent["SHARES"] = recent["SHARES"].astype(int)
     recent["PRICE"] = recent["PRICE"].apply(lambda x: f"${x:.2f}")
