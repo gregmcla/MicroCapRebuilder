@@ -27,14 +27,10 @@ echo ""
 echo "Step 4: Generating performance chart..."
 scripts/generate_graph.py --days 30 --bench ^RUT --fallback IWM
 
-# 5) Overlay stats on chart (uses legacy files for now)
+# 5) Generate daily report
 echo ""
-echo "Step 5: Overlaying statistics..."
-scripts/overlay_stats.py \
-  --csv    data/portfolio_update.csv \
-  --trades data/trade_log.csv \
-  --baseline data/roi_baseline.json \
-  --img    charts/performance.png
+echo "Step 5: Generating daily report..."
+scripts/generate_report.py
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"
