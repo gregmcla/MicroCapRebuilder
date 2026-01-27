@@ -2,224 +2,261 @@
 
 ## Project Overview
 
-MicroCapRebuilder is a **daily automated portfolio management and trading system** that picks stocks from a microcap watchlist, tracks positions, and generates performance visualizations. The system implements a 10% risk-per-trade strategy with a starting capital of $5,000.
+MicroCapRebuilder is an **intelligent, risk-managed portfolio trading system** for microcap stocks. The system features:
+
+- **Multi-factor stock scoring** (momentum, volatility, volume, relative strength)
+- **Market regime detection** (bull/bear/sideways adaptation)
+- **Automated risk management** (stop losses, take profits, position limits)
+- **Professional analytics** (Sharpe ratio, drawdown, win rate)
+- **Daily reporting** with comprehensive metrics
 
 ## Directory Structure
 
 ```
 MicroCapRebuilder/
 ├── scripts/                    # Python execution scripts
-│   ├── pick_from_watchlist.py  # Daily stock picking logic
-│   ├── fix_total_today.py      # Portfolio reconciliation
+│   ├── pick_from_watchlist.py  # Intelligent stock picker with scoring
+│   ├── execute_sells.py        # Stop loss / take profit execution
+│   ├── update_positions.py     # Position updates with live prices
+│   ├── stock_scorer.py         # Multi-factor scoring module
+│   ├── market_regime.py        # Bull/bear/sideways detection
+│   ├── risk_manager.py         # Risk management module
+│   ├── analytics.py            # Risk-adjusted metrics (Sharpe, etc.)
+│   ├── trade_analyzer.py       # Trade performance analysis
+│   ├── generate_report.py      # Daily text report generation
 │   ├── generate_graph.py       # Performance chart generation
 │   ├── overlay_stats.py        # Statistics overlay on charts
+│   ├── schema.py               # Centralized data schemas
+│   ├── migrate_data.py         # Legacy data migration (one-time)
 │   ├── set_roi_baseline.py     # ROI baseline recording
-│   └── build_watchlist.py      # Watchlist generator (initialization)
-├── data/                       # Data files (gitignored except watchlist)
+│   └── build_watchlist.py      # Watchlist generator
+├── data/                       # Data files
+│   ├── config.json             # Centralized configuration
 │   ├── watchlist.jsonl         # Stock watchlist (66 tickers)
-│   ├── watchlist.txt           # Backup plain-text watchlist
-│   ├── portfolio.csv           # Current holdings
-│   ├── portfolio_update.csv    # Daily portfolio snapshots
-│   ├── trade_log.csv           # Historical trade records
-│   └── roi_baseline.json       # ROI calculation baseline
-├── charts/                     # Generated charts (gitignored)
+│   ├── transactions.csv        # Unified transaction ledger
+│   ├── positions.csv           # Current holdings
+│   └── daily_snapshots.csv     # Daily equity snapshots
+├── reports/                    # Generated reports
+│   └── daily_report.txt        # Daily summary report
+├── charts/                     # Generated charts
+├── backup/                     # Data backups
 ├── run_daily.sh                # Main orchestration script
 ├── requirements.txt            # Python dependencies
 └── .gitignore                  # Version control rules
 ```
 
-## Key Configuration Values
+## Key Configuration (`data/config.json`)
 
-| Parameter | Value | Location |
-|-----------|-------|----------|
-| Risk Per Trade | 10% of available cash | `scripts/pick_from_watchlist.py:16` |
-| Starting Capital | $5,000.00 | `scripts/fix_total_today.py:10` |
-| Chart Window | 30 days | `run_daily.sh:13` |
-| Benchmark | ^RUT (Russell 2000) | `run_daily.sh:13` |
-| Fallback Benchmark | IWM | `run_daily.sh:13` |
+```json
+{
+  "starting_capital": 5000.0,
+  "risk_per_trade_pct": 10.0,
+  "max_position_pct": 15.0,
+  "max_positions": 15,
+  "default_stop_loss_pct": 8.0,
+  "default_take_profit_pct": 20.0,
+  "volatility_lookback_days": 20,
+  "benchmark_symbol": "^RUT",
+  "fallback_benchmark": "IWM",
+  "chart_days": 30
+}
+```
 
-## Scripts Reference
+## Core Scripts
 
-### `pick_from_watchlist.py` - Daily Stock Picker
-**Purpose:** Main trading logic that selects stocks and records trades.
+### Trading Logic
+
+#### `pick_from_watchlist.py` - Intelligent Stock Picker
+Scores and ranks watchlist candidates, then executes buys with risk management.
 
 **Workflow:**
-1. Loads watchlist from `data/watchlist.jsonl`
-2. Fetches current prices via yfinance
-3. Calculates shares to buy based on 10% of available cash
-4. Updates `trade_log.csv` with new trades
-5. Updates `portfolio_update.csv` with new positions and TOTAL row
+1. Check market regime (skip buying in bear markets)
+2. Load current positions and cash
+3. Score all candidates using multi-factor model
+4. Select top picks that pass portfolio limits
+5. Calculate volatility-adjusted position sizes
+6. Set stop loss (-8%) and take profit (+20%) at entry
+7. Record transactions to `transactions.csv`
 
-**Key Functions:**
-- `read_cash_and_positions()` - Reads current cash and positions from portfolio_update.csv
-
-### `fix_total_today.py` - Portfolio Reconciliation
-**Purpose:** Reconciles daily portfolio totals from `portfolio.csv`.
+#### `execute_sells.py` - Automated Sell Execution
+Checks all positions for stop loss and take profit triggers.
 
 **Workflow:**
-1. Reads `portfolio.csv` with current holdings
-2. Validates required columns: Ticker, Shares, Price, Cost
-3. Computes total position value and cash remaining
-4. Appends TOTAL row to `portfolio_update.csv`
+1. Load positions with stop/take profit levels
+2. Fetch current prices
+3. Check for triggered stops or targets
+4. Execute sells and record to `transactions.csv`
+5. Remove sold positions from `positions.csv`
 
-### `generate_graph.py` - Performance Chart
-**Purpose:** Generates equity performance chart with benchmark comparison.
+#### `update_positions.py` - Position Updates
+Updates positions with current prices and records daily snapshot.
 
-**CLI Arguments:**
-- `--days` (required): Number of days to show
-- `--bench` (required): Primary benchmark symbol
-- `--fallback` (required): Fallback benchmark if primary fails
+**Workflow:**
+1. Fetch current prices for all positions
+2. Calculate unrealized P&L
+3. Update `positions.csv` with current values
+4. Append daily snapshot to `daily_snapshots.csv`
 
-**Output:** `charts/performance.png`
+### Scoring & Analysis
 
-### `overlay_stats.py` - Statistics Overlay
-**Purpose:** Overlays trading statistics on the performance chart.
+#### `stock_scorer.py` - Multi-Factor Scoring
+Scores stocks on 5 factors (weights in parentheses):
+- **Momentum (30%)**: 20-day price change
+- **Volatility (20%)**: Lower volatility = higher score
+- **Volume (15%)**: Recent vs average volume (liquidity)
+- **Relative Strength (25%)**: Performance vs Russell 2000
+- **Mean Reversion (10%)**: Distance from 20-day SMA
 
-**CLI Arguments:**
-- `--csv`: Path to portfolio_update.csv
-- `--trades`: Path to trade_log.csv
-- `--baseline`: Path to roi_baseline.json
-- `--img`: Path to chart image
+Also calculates ATR% for volatility-adjusted position sizing.
 
-**Stats Displayed:** Equity, buy count, sell count, ROI%
+#### `market_regime.py` - Market Regime Detection
+Detects market conditions using benchmark moving averages:
+- **BULL**: Above 50-day and 200-day SMA → 100% position size
+- **SIDEWAYS**: Mixed signals → 50% position size
+- **BEAR**: Below both SMAs → No new buys
 
-### `set_roi_baseline.py` - Baseline Recording
-**Purpose:** Records a baseline equity value for ROI calculations.
+#### `risk_manager.py` - Risk Management
+- Stop loss checking
+- Take profit checking
+- Volatility-adjusted position sizing
+- Portfolio concentration limits
 
-**Usage:** `./scripts/set_roi_baseline.py YYYY-MM-DD`
+#### `analytics.py` - Portfolio Analytics
+Calculates professional metrics:
+- Sharpe Ratio, Sortino Ratio
+- Maximum Drawdown, Current Drawdown
+- Calmar Ratio, CAGR
+- Annual Volatility, Exposure %
 
-**Output:** JSON to stdout (redirect to `data/roi_baseline.json`)
+#### `trade_analyzer.py` - Trade Analysis
+Analyzes completed trades:
+- Win rate, Profit factor
+- Average win/loss
+- Best/worst trades
+- Stats by exit reason (stop loss vs take profit)
 
-### `build_watchlist.py` - Watchlist Generator
-**Purpose:** Generates initial watchlist.jsonl (currently hardcoded tickers).
+### Reporting
 
-## Data File Schemas
+#### `generate_report.py` - Daily Report
+Generates comprehensive text report (`reports/daily_report.txt`):
+- Portfolio summary (equity, cash, positions)
+- Today's activity
+- Performance metrics
+- Trade statistics
+- Current positions with stops/targets
+- Recent trade history
 
-### `watchlist.jsonl`
-JSONL format, one JSON object per line:
-```json
-{"ticker": "CRDO"}
-{"ticker": "MOD"}
-```
+## Data Schemas
 
-### `portfolio.csv`
-Required columns: Ticker, Shares, Price, Cost
+### `transactions.csv` (Unified Ledger)
 ```csv
-Ticker,Shares,Price,Cost
-AAPL,6,219.32,1315.95
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason
+d08b2cc8,2026-01-27,CRDO,BUY,1,117.96,117.96,108.52,141.55,SIGNAL
 ```
 
-### `portfolio_update.csv`
-Daily snapshots with TOTAL row:
+Actions: `BUY`, `SELL`
+Reasons: `SIGNAL`, `STOP_LOSS`, `TAKE_PROFIT`, `MANUAL`, `MIGRATION`
+
+### `positions.csv` (Current Holdings)
 ```csv
-Date,Ticker,Shares,Price,Cost,Value,Cash,Equity
-2025-08-07,TOTAL,,,,3729.42,1270.58,5000.0
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
+CRDO,2,118.87,120.50,241.00,4.26,1.80,109.36,142.64,2026-01-27
 ```
 
-### `trade_log.csv`
-Trade records:
+### `daily_snapshots.csv` (Equity Curve)
 ```csv
-Ticker,Shares Bought,Buy Price
-CRDO,1,117.96
+date,cash,positions_value,total_equity,day_pnl,day_pnl_pct,benchmark_value
+2026-01-27,2484.30,2515.50,4999.80,-0.20,-0.00,
 ```
 
-### `roi_baseline.json`
-```json
-{"date": "2025-08-07", "baseline_equity": 5000.0}
-```
+## Daily Workflow
 
-## Development Workflow
-
-### Daily Execution
 Run the orchestration script:
 ```bash
 ./run_daily.sh
 ```
 
-This executes in order:
-1. `pick_from_watchlist.py` - Pick stocks and record trades
-2. `fix_total_today.py` - Reconcile portfolio totals
-3. `generate_graph.py` - Create performance chart
-4. `overlay_stats.py` - Add statistics to chart
+**Execution Order:**
+1. `execute_sells.py` - Check stop loss / take profit triggers
+2. `pick_from_watchlist.py` - Score and buy new positions
+3. `update_positions.py` - Update prices and daily snapshot
+4. `generate_graph.py` - Create performance chart
+5. `overlay_stats.py` - Add statistics to chart
 
-### Setting Up Environment
+## Setup
+
+### Environment Setup
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Setting a New ROI Baseline
+### Initial Migration (One-Time)
+If starting with legacy data:
 ```bash
-./scripts/set_roi_baseline.py 2025-08-07 > data/roi_baseline.json
+python scripts/migrate_data.py
 ```
 
 ## Code Conventions
 
 ### Style
 - Python 3 shebang: `#!/usr/bin/env python3`
-- Imports organized at top of file
-- Section comments use Unicode box-drawing characters: `# ─── Section Name ───`
-- Verbose variable names preferred
-- Print statements with emoji indicators: `✅` for success, `⚠️` for warnings
+- Imports from `schema.py` for consistent column names
+- Section comments: `# ─── Section Name ───`
+- Emoji feedback: `✅` success, `⚠️` warning, `🐂` bull, `🐻` bear
 
 ### Path Handling
 - Use `pathlib.Path` for all file paths
-- Navigate from script location: `Path(__file__).parent.parent / "data" / "file.csv"`
-- Relative paths assume scripts run from project root
+- Navigate from script: `Path(__file__).parent.parent / "data"`
 
-### Data Handling
-- Use pandas for CSV operations
-- Handle column name variations (e.g., "Cash Balance" vs "Cash")
-- Always check for file existence before reading
-- Validate required columns before processing
-
-### Error Handling
-- Use `sys.exit()` for fatal errors with descriptive messages
-- Print warnings with `[warn]` prefix or `⚠️` emoji
-- Handle missing data gracefully (e.g., skip tickers with no price data)
+### Module Imports
+```python
+from schema import TRANSACTION_COLUMNS, Action, Reason
+from risk_manager import RiskManager
+from stock_scorer import StockScorer
+from market_regime import get_market_regime, MarketRegime
+```
 
 ## Important Notes for AI Assistants
 
-### When Modifying Scripts
-1. **Preserve hardcoded parameters** - Risk per trade (10%), starting capital ($5,000) are intentional
-2. **Maintain column flexibility** - Scripts handle multiple column name variations
-3. **Keep relative paths** - Scripts expect to run from project root or use `__file__` navigation
-4. **Test with sample data** - CSV files in `data/` contain real examples
+### Configuration
+- All parameters are in `data/config.json` - don't hardcode
+- Starting capital: $5,000 (configurable)
+- Risk per trade: 10% (configurable)
+- Stop loss: 8%, Take profit: 20% (configurable)
 
-### When Adding Features
-1. Follow the single-responsibility pattern (one script = one task)
-2. Add CLI arguments via argparse for configurability
-3. Output to appropriate directory (data/ for CSVs, charts/ for images)
-4. Use pandas for data manipulation, yfinance for market data
-5. Add appropriate emoji feedback (✅ success, ⚠️ warning)
+### Data Integrity
+- Always use `schema.py` column constants
+- Transactions are the source of truth for positions
+- Cash is calculated from transactions, not stored directly
+
+### Risk Management
+- Stop losses and take profits are set at entry
+- Position sizes are volatility-adjusted
+- Market regime affects position sizing (0-100%)
+- Max 15 positions, max 15% per position
 
 ### Files That Are Gitignored
-- `data/*.csv` and `data/*.json` (except watchlist files)
-- `charts/` directory
-- `.venv/` and `__pycache__/`
-- `backup/` directory
-
-### Common Tasks
-- **Add a ticker to watchlist:** Edit `data/watchlist.jsonl`, add `{"ticker": "SYMBOL"}`
-- **Reset portfolio:** Delete/recreate `portfolio_update.csv` with proper headers
-- **Change benchmark:** Modify `--bench` argument in `run_daily.sh`
-- **Adjust risk:** Change `RISK_PER_TRADE` in `pick_from_watchlist.py`
+- `data/*.csv` (except config.json via `!data/config.json`)
+- `charts/`, `reports/`, `backup/`, `logs/`
+- `.venv/`, `__pycache__/`
 
 ## Dependencies
 
 ```
-yfinance       # Stock price data from Yahoo Finance
-pandas         # Data manipulation and CSV handling
-matplotlib     # Chart generation and image manipulation
-openai         # Available but not actively used
-python-dotenv  # Environment variable management
+yfinance       # Stock price data
+pandas         # Data manipulation
+numpy          # Analytics calculations
+matplotlib     # Chart generation
+python-dotenv  # Environment variables
 ```
 
 ## Testing
 
-No formal test suite exists. Manual testing workflow:
-1. Run `./run_daily.sh` and verify no errors
-2. Check `data/trade_log.csv` for new trades
-3. Check `data/portfolio_update.csv` for updated TOTAL row
-4. Verify `charts/performance.png` is generated with stats overlay
+Manual verification:
+1. Run `./run_daily.sh` and check output
+2. Review `reports/daily_report.txt`
+3. Verify `data/transactions.csv` for new trades
+4. Check `data/positions.csv` for current state
+5. Verify `charts/performance.png` is generated
