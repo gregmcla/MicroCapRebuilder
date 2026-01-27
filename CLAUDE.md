@@ -25,6 +25,7 @@ MicroCapRebuilder/
 │   ├── trade_analyzer.py       # Trade performance analysis
 │   ├── generate_report.py      # Daily text report generation
 │   ├── generate_graph.py       # Performance chart generation
+│   ├── webapp.py               # Streamlit web dashboard
 │   ├── overlay_stats.py        # Statistics overlay on charts
 │   ├── schema.py               # Centralized data schemas
 │   ├── migrate_data.py         # Legacy data migration (one-time)
@@ -49,7 +50,7 @@ MicroCapRebuilder/
 
 ```json
 {
-  "starting_capital": 5000.0,
+  "starting_capital": 50000.0,
   "risk_per_trade_pct": 10.0,
   "max_position_pct": 15.0,
   "max_positions": 15,
@@ -146,6 +147,26 @@ Generates comprehensive text report (`reports/daily_report.txt`):
 - Current positions with stops/targets
 - Recent trade history
 
+### Web Dashboard
+
+#### `webapp.py` - Streamlit Dashboard
+Browser-based dashboard for daily portfolio check-ins.
+
+**Launch:**
+```bash
+streamlit run scripts/webapp.py
+```
+
+**Features:**
+- Portfolio summary metrics (equity, positions value, cash)
+- Market regime display with bull/bear/sideways indicators
+- Performance metrics (Sharpe ratio, max drawdown, total return)
+- Trade statistics (win rate, profit factor, realized P&L)
+- Positions table with color-coded P&L
+- Recent transactions list
+- Equity curve chart
+- Auto-refresh button
+
 ## Data Schemas
 
 ### `transactions.csv` (Unified Ledger)
@@ -222,7 +243,7 @@ from market_regime import get_market_regime, MarketRegime
 
 ### Configuration
 - All parameters are in `data/config.json` - don't hardcode
-- Starting capital: $5,000 (configurable)
+- Starting capital: $50,000 (configurable)
 - Risk per trade: 10% (configurable)
 - Stop loss: 8%, Take profit: 20% (configurable)
 
@@ -250,6 +271,7 @@ pandas         # Data manipulation
 numpy          # Analytics calculations
 matplotlib     # Chart generation
 python-dotenv  # Environment variables
+streamlit      # Web dashboard
 ```
 
 ## Testing
