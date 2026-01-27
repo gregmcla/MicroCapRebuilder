@@ -4,3 +4,4 @@ numpy
 matplotlib
 openai
 python-dotenv
+streamlit
