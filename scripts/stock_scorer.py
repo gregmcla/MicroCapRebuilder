@@ -77,6 +77,9 @@ class StockScorer:
             df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
             if df.empty:
                 return None
+            # Flatten multi-level columns if present (newer yfinance versions)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
             return df
         except Exception:
             return None
@@ -264,7 +267,7 @@ class StockScorer:
             + mean_rev * self.WEIGHTS["mean_reversion"]
         )
 
-        current_price = df["Close"].iloc[-1]
+        current_price = float(df["Close"].iloc[-1])
         atr_pct = self.calculate_atr_percent(df)
 
         return StockScore(

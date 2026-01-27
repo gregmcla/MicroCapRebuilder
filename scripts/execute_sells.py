@@ -36,7 +36,11 @@ def fetch_current_prices(tickers: list) -> dict:
         try:
             df = yf.download(ticker, period="1d", progress=False, auto_adjust=True)
             if not df.empty:
-                prices[ticker] = df["Close"].iloc[-1].item()
+                # Handle multi-level columns from newer yfinance
+                close_col = df["Close"]
+                if isinstance(close_col, pd.DataFrame):
+                    close_col = close_col.iloc[:, 0]
+                prices[ticker] = float(close_col.iloc[-1])
         except Exception as e:
             print(f"  [warn] Failed to fetch {ticker}: {e}")
     return prices
