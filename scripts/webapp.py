@@ -442,17 +442,13 @@ st.markdown(f"""
 
 # ─── Ticker Tape ──────────────────────────────────────────────────────────────
 if not positions_df.empty:
-    ticker_items = ""
+    ticker_items = []
     for _, row in positions_df.iterrows():
         pnl_class = "positive" if row.get("unrealized_pnl_pct", 0) >= 0 else "negative"
         pnl_val = row.get("unrealized_pnl_pct", 0)
-        ticker_items += f"""
-        <span class="ticker-item">
-            <span class="ticker-symbol">{row['ticker']}</span>
-            <span class="{pnl_class}">{pnl_val:+.2f}%</span>
-        </span>
-        """
-    st.markdown(f'<div class="ticker-tape">{ticker_items}</div>', unsafe_allow_html=True)
+        ticker_items.append(f'<span class="ticker-item"><span class="ticker-symbol">{row["ticker"]}</span> <span class="{pnl_class}">{pnl_val:+.2f}%</span></span>')
+    ticker_html = " ".join(ticker_items)
+    st.markdown(f'<div class="ticker-tape">{ticker_html}</div>', unsafe_allow_html=True)
 
 
 # ─── Main Metrics Row ─────────────────────────────────────────────────────────
