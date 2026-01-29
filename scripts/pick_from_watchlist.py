@@ -25,6 +25,7 @@ from risk_manager import RiskManager
 from stock_scorer import StockScorer
 from market_regime import get_market_regime, get_position_size_multiplier, MarketRegime
 from capital_preservation import get_preservation_status
+from explainability import RationaleGenerator, save_rationale
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -94,8 +95,12 @@ def record_buy_transaction(
     price: float,
     stop_loss: float,
     take_profit: float,
+    regime: MarketRegime = None,
+    composite_score: float = 0.0,
+    factor_scores: dict = None,
+    signal_rank: int = 0,
 ) -> dict:
-    """Create a BUY transaction record."""
+    """Create a BUY transaction record with explainability data."""
     return {
         "transaction_id": str(uuid.uuid4())[:8],
         "date": date.today().isoformat(),
@@ -107,6 +112,11 @@ def record_buy_transaction(
         "stop_loss": round(stop_loss, 2),
         "take_profit": round(take_profit, 2),
         "reason": Reason.SIGNAL,
+        # Explainability columns
+        "regime_at_entry": regime.value if regime else "",
+        "composite_score": round(composite_score, 1),
+        "factor_scores": json.dumps(factor_scores) if factor_scores else "",
+        "signal_rank": signal_rank,
     }
 
 
@@ -269,8 +279,10 @@ def main():
     new_transactions = []
     buys_executed = 0
     total_spent = 0
+    rationale_generator = RationaleGenerator()
+    active_weights = scorer.get_active_weights()
 
-    for score in scores:
+    for rank, score in enumerate(scores, 1):
         # Check cash
         if cash < 100:  # Minimum $100 to trade
             print("  Insufficient cash remaining")
@@ -302,15 +314,42 @@ def main():
         stop_loss = rm.calculate_stop_loss_price(score.current_price)
         take_profit = rm.calculate_take_profit_price(score.current_price)
 
-        # Record transaction
+        # Get factor scores for explainability
+        factor_scores = {
+            "momentum": score.momentum_score,
+            "volatility": score.volatility_score,
+            "volume": score.volume_score,
+            "relative_strength": score.relative_strength_score,
+            "mean_reversion": score.mean_reversion_score,
+        }
+
+        # Record transaction with explainability data
         transaction = record_buy_transaction(
             ticker=score.ticker,
             shares=shares,
             price=score.current_price,
             stop_loss=stop_loss,
             take_profit=take_profit,
+            regime=regime,
+            composite_score=score.composite_score,
+            factor_scores=factor_scores,
+            signal_rank=rank,
         )
         new_transactions.append(transaction)
+
+        # Generate and save trade rationale
+        rationale = rationale_generator.generate_buy_rationale(
+            transaction_id=transaction["transaction_id"],
+            ticker=score.ticker,
+            composite_score=score.composite_score,
+            factor_scores=factor_scores,
+            weights=active_weights,
+            regime=regime,
+            signal_rank=rank,
+            stop_loss_pct=config.get("default_stop_loss_pct", 8.0),
+            take_profit_pct=config.get("default_take_profit_pct", 20.0),
+        )
+        save_rationale(rationale)
 
         # Update position
         positions_df = update_position(

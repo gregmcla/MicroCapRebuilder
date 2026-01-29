@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Centralized schema definitions for MicroCapRebuilder.
+Centralized schema definitions for Mommy Bot.
 All scripts should import from here to ensure consistency.
 """
 
@@ -17,7 +17,15 @@ TRANSACTION_COLUMNS = [
     "stop_loss",        # Stop loss price (set at entry for buys)
     "take_profit",      # Take profit price (set at entry for buys)
     "reason",           # SIGNAL, STOP_LOSS, TAKE_PROFIT, MANUAL
+    # Explainability columns (Phase 4)
+    "regime_at_entry",  # BULL/BEAR/SIDEWAYS - market regime when trade was made
+    "composite_score",  # Overall score at entry (0-100)
+    "factor_scores",    # JSON: {momentum: 65, volatility: 72, ...}
+    "signal_rank",      # Rank among candidates (1=top pick)
 ]
+
+# Columns required for backward compatibility (original transactions without explainability)
+TRANSACTION_COLUMNS_BASIC = TRANSACTION_COLUMNS[:10]  # First 10 columns
 
 # ─── Current Positions Schema ─────────────────────────────────────────────────
 # Derived from transactions - represents current holdings
