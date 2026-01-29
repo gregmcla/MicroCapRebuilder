@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Bloomberg-Style Terminal Dashboard for MicroCapRebuilder.
+Mommy Bot - Bloomberg-Style Terminal Dashboard.
 Run with: streamlit run scripts/webapp.py
 """
 
@@ -88,8 +88,8 @@ def calculate_cash():
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MCR Terminal",
-    page_icon="📊",
+    page_title="Mommy Bot",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -144,7 +144,7 @@ exposure_pct = (positions_value / total_equity * 100) if total_equity > 0 else 0
 # ─── Header ───────────────────────────────────────────────────────────────────
 h1, h2 = st.columns([3, 1])
 with h1:
-    st.markdown(f"## :orange[◆ MICROCAP REBUILDER TERMINAL]")
+    st.markdown(f"## :orange[◆ MOMMY BOT]")
 with h2:
     st.markdown(f"<p style='text-align:right; color:#888; padding-top:12px;'>🟢 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} EST</p>", unsafe_allow_html=True)
 
@@ -314,4 +314,4 @@ with col_c:
     if st.button("⟳ REFRESH DATA", use_container_width=True):
         st.rerun()
 
-st.markdown("<p style='text-align:center; color:#555; font-size:0.7rem; margin-top:24px;'>MICROCAP REBUILDER TERMINAL v2.0 | DATA DELAYED | NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#555; font-size:0.7rem; margin-top:24px;'>MOMMY BOT v3.0 | DATA DELAYED | NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)

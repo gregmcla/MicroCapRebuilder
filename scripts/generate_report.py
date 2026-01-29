@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Daily Report Generator for MicroCapRebuilder.
+Daily Report Generator for Mommy Bot.
 
 Generates a comprehensive text report with:
 - Portfolio summary
@@ -104,7 +104,7 @@ def generate_report() -> str:
     # Build report
     lines = []
     lines.append("=" * 60)
-    lines.append(f"  DAILY REPORT: {today}")
+    lines.append(f"  MOMMY BOT - DAILY REPORT: {today}")
     lines.append("=" * 60)
     lines.append("")
 

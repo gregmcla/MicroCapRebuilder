@@ -2,11 +2,49 @@
   "starting_capital": 50000.0,
   "risk_per_trade_pct": 10.0,
   "max_position_pct": 15.0,
-  "max_positions": 15,
+  "max_positions": 999,
   "default_stop_loss_pct": 8.0,
   "default_take_profit_pct": 20.0,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^RUT",
   "fallback_benchmark": "IWM",
-  "chart_days": 30
+  "chart_days": 30,
+
+  "scoring": {
+    "default_weights": {
+      "momentum": 0.30,
+      "volatility": 0.20,
+      "volume": 0.15,
+      "relative_strength": 0.25,
+      "mean_reversion": 0.10
+    },
+    "regime_weights": {
+      "BULL": {
+        "momentum": 0.35,
+        "volatility": 0.15,
+        "volume": 0.15,
+        "relative_strength": 0.25,
+        "mean_reversion": 0.10
+      },
+      "SIDEWAYS": {
+        "momentum": 0.20,
+        "volatility": 0.25,
+        "volume": 0.15,
+        "relative_strength": 0.20,
+        "mean_reversion": 0.20
+      },
+      "BEAR": {
+        "momentum": 0.15,
+        "volatility": 0.30,
+        "volume": 0.15,
+        "relative_strength": 0.15,
+        "mean_reversion": 0.25
+      }
+    },
+    "min_score_threshold": {
+      "BULL": 40.0,
+      "SIDEWAYS": 50.0,
+      "BEAR": 60.0
+    }
+  }
 }

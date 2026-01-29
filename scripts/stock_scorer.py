@@ -1,27 +1,44 @@
 #!/usr/bin/env python3
 """
-Stock Scorer Module for MicroCapRebuilder.
+Stock Scorer Module for Mommy Bot.
 
-Multi-factor scoring system for ranking watchlist candidates:
-- Momentum (30%): 20-day price change
-- Volatility (20%): Lower volatility = higher score
-- Volume (15%): Recent volume vs average (liquidity)
-- Relative Strength (25%): Performance vs benchmark
-- Mean Reversion (10%): Distance from 20-day SMA
+Multi-factor scoring system for ranking watchlist candidates.
+Weights are configurable per market regime (BULL/SIDEWAYS/BEAR).
+
+Factors:
+- Momentum: 20-day price change
+- Volatility: Lower volatility = higher score
+- Volume: Recent volume vs average (liquidity)
+- Relative Strength: Performance vs benchmark
+- Mean Reversion: Distance from 20-day SMA
 
 Usage:
     from stock_scorer import StockScorer
-    scorer = StockScorer()
+    from market_regime import MarketRegime
+
+    scorer = StockScorer(regime=MarketRegime.BULL)
     scores = scorer.score_watchlist(tickers)
 """
 
 import json
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
+
+# Import MarketRegime if available (avoid circular import)
+try:
+    from market_regime import MarketRegime
+except ImportError:
+    # Define a simple enum if market_regime not available
+    class MarketRegime(Enum):
+        BULL = "bull"
+        BEAR = "bear"
+        SIDEWAYS = "sideways"
+        UNKNOWN = "unknown"
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -55,10 +72,10 @@ def load_config() -> dict:
 
 
 class StockScorer:
-    """Multi-factor stock scoring system."""
+    """Multi-factor stock scoring system with regime-aware weights."""
 
-    # Factor weights (must sum to 1.0)
-    WEIGHTS = {
+    # Default weights (used if config doesn't specify)
+    DEFAULT_WEIGHTS = {
         "momentum": 0.30,
         "volatility": 0.20,
         "volume": 0.15,
@@ -66,10 +83,55 @@ class StockScorer:
         "mean_reversion": 0.10,
     }
 
-    def __init__(self, lookback_days: int = 20):
+    def __init__(self, regime: Optional[MarketRegime] = None, lookback_days: int = 20):
+        """
+        Initialize scorer with optional market regime.
+
+        Args:
+            regime: Current market regime (BULL/SIDEWAYS/BEAR) for weight selection
+            lookback_days: Number of days for technical calculations
+        """
         self.config = load_config()
+        self.regime = regime
         self.lookback_days = lookback_days
         self._benchmark_data = None
+        self._weights = self._load_weights()
+
+    def _load_weights(self) -> Dict[str, float]:
+        """Load weights from config based on current regime."""
+        scoring_config = self.config.get("scoring", {})
+
+        # If regime specified and regime weights exist, use those
+        if self.regime is not None:
+            regime_key = self.regime.value.upper()
+            regime_weights = scoring_config.get("regime_weights", {}).get(regime_key)
+            if regime_weights:
+                return regime_weights
+
+        # Fall back to default weights from config
+        default_weights = scoring_config.get("default_weights")
+        if default_weights:
+            return default_weights
+
+        # Final fallback to hardcoded defaults
+        return self.DEFAULT_WEIGHTS
+
+    def get_active_weights(self) -> Dict[str, float]:
+        """Return the currently active weights for transparency."""
+        return self._weights.copy()
+
+    def get_min_score_threshold(self) -> float:
+        """Get minimum score threshold based on regime."""
+        scoring_config = self.config.get("scoring", {})
+        thresholds = scoring_config.get("min_score_threshold", {})
+
+        if self.regime is not None:
+            regime_key = self.regime.value.upper()
+            if regime_key in thresholds:
+                return thresholds[regime_key]
+
+        # Default threshold
+        return 40.0
 
     def _fetch_price_data(self, ticker: str, period: str = "1mo") -> Optional[pd.DataFrame]:
         """Fetch historical price data for a ticker."""
@@ -258,13 +320,14 @@ class StockScorer:
         rel_strength = self.score_relative_strength(df)
         mean_rev = self.score_mean_reversion(df)
 
-        # Weighted composite score
+        # Weighted composite score using regime-aware weights
+        w = self._weights
         composite = (
-            momentum * self.WEIGHTS["momentum"]
-            + volatility * self.WEIGHTS["volatility"]
-            + volume * self.WEIGHTS["volume"]
-            + rel_strength * self.WEIGHTS["relative_strength"]
-            + mean_rev * self.WEIGHTS["mean_reversion"]
+            momentum * w.get("momentum", 0.30)
+            + volatility * w.get("volatility", 0.20)
+            + volume * w.get("volume", 0.15)
+            + rel_strength * w.get("relative_strength", 0.25)
+            + mean_rev * w.get("mean_reversion", 0.10)
         )
 
         current_price = float(df["Close"].iloc[-1])

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Intelligent Stock Picker for MicroCapRebuilder.
+Intelligent Stock Picker for Mommy Bot.
 
 Enhanced picking logic with:
-- Multi-factor scoring (momentum, volatility, volume, relative strength)
+- Multi-factor scoring with regime-adaptive weights
 - Market regime awareness (reduce/skip buying in bear markets)
 - Volatility-adjusted position sizing
 - Stop loss and take profit levels set at entry
@@ -221,8 +221,12 @@ def main():
         print("─" * 40)
         return
 
-    scorer = StockScorer()
-    scores = scorer.get_top_picks(candidates, n=10, min_score=40.0)
+    scorer = StockScorer(regime=regime)
+    min_score = scorer.get_min_score_threshold()
+    scores = scorer.get_top_picks(candidates, n=10, min_score=min_score)
+
+    print(f"  Using {regime.value.upper()} regime weights")
+    print(f"  Minimum score threshold: {min_score}")
 
     if not scores:
         print("  ⚠️  No candidates met minimum score threshold")
