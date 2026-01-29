@@ -46,5 +46,21 @@
       "SIDEWAYS": 50.0,
       "BEAR": 60.0
     }
+  },
+
+  "risk_management": {
+    "capital_preservation": {
+      "enabled": true,
+      "triggers": {
+        "drawdown_threshold_pct": 10.0,
+        "risk_score_threshold": 40,
+        "regime_bear_auto_enable": true
+      },
+      "actions": {
+        "halt_new_buys": true,
+        "tighten_stops_pct": 5.0,
+        "reduce_position_size_multiplier": 0.5
+      }
+    }
   }
 }

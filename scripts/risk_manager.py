@@ -1,22 +1,27 @@
 #!/usr/bin/env python3
 """
-Risk Manager Module for MicroCapRebuilder.
+Risk Manager Module for Mommy Bot.
 
 Provides:
 - Stop loss checking
 - Take profit checking
 - Volatility-adjusted position sizing
 - Portfolio limit enforcement
+- Capital preservation mode integration
 """
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 import pandas as pd
 
 from schema import Action, Reason
+
+# Lazy import to avoid circular dependency
+if TYPE_CHECKING:
+    from capital_preservation import PreservationStatus
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -258,3 +263,83 @@ class RiskManager:
         take_profit_signals = self.check_take_profits(positions_df, current_prices)
 
         return stop_loss_signals + take_profit_signals
+
+    # ─── Capital Preservation Integration ────────────────────────────────────────
+
+    def get_preservation_status(self) -> "PreservationStatus":
+        """Get current capital preservation status."""
+        from capital_preservation import get_preservation_status
+        return get_preservation_status()
+
+    def is_capital_preservation_active(self) -> bool:
+        """Check if capital preservation mode is currently active."""
+        status = self.get_preservation_status()
+        return status.active
+
+    def should_halt_buys(self) -> bool:
+        """Check if new buys should be halted due to capital preservation."""
+        status = self.get_preservation_status()
+        return status.active and status.halt_new_buys
+
+    def get_preservation_position_multiplier(self) -> float:
+        """Get position size multiplier from capital preservation (1.0 = normal)."""
+        status = self.get_preservation_status()
+        if not status.active:
+            return 1.0
+        return status.position_size_multiplier
+
+    def get_adjusted_stop_loss(self, current_price: float, original_stop: float) -> float:
+        """
+        Get stop loss adjusted for capital preservation mode.
+
+        When preservation is active, stops are tightened.
+
+        Args:
+            current_price: Current stock price
+            original_stop: Original stop loss price
+
+        Returns:
+            Adjusted stop loss (may be higher/tighter if preservation active)
+        """
+        status = self.get_preservation_status()
+
+        if not status.active or status.stop_loss_tightening_pct <= 0:
+            return original_stop
+
+        # Calculate tightened stop
+        tighten_pct = status.stop_loss_tightening_pct
+        tightened_stop = current_price * (1 - tighten_pct / 100)
+
+        # Only tighten if it raises the stop (more protective)
+        return max(original_stop, tightened_stop)
+
+    def calculate_position_size_with_preservation(
+        self,
+        price: float,
+        cash: float,
+        volatility: Optional[float] = None,
+        regime_multiplier: float = 1.0,
+    ) -> int:
+        """
+        Calculate position size including capital preservation adjustments.
+
+        Args:
+            price: Current price per share
+            cash: Available cash
+            volatility: Optional volatility measure (ATR as % of price)
+            regime_multiplier: Market regime position size multiplier
+
+        Returns:
+            Number of shares to buy
+        """
+        # Get base position size
+        base_shares = self.calculate_position_size(price, cash, volatility)
+
+        # Apply regime multiplier
+        shares = int(base_shares * regime_multiplier)
+
+        # Apply capital preservation multiplier
+        preservation_multiplier = self.get_preservation_position_multiplier()
+        shares = int(shares * preservation_multiplier)
+
+        return max(0, shares)

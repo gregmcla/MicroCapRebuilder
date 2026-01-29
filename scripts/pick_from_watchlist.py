@@ -24,6 +24,7 @@ from schema import TRANSACTION_COLUMNS, POSITION_COLUMNS, Action, Reason
 from risk_manager import RiskManager
 from stock_scorer import StockScorer
 from market_regime import get_market_regime, get_position_size_multiplier, MarketRegime
+from capital_preservation import get_preservation_status
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -190,6 +191,22 @@ def main():
         print("─" * 40)
         return
 
+    # Step 1b: Check capital preservation mode
+    preservation = get_preservation_status()
+    if preservation.active:
+        print(f"\n  ⚠️  CAPITAL PRESERVATION MODE ACTIVE")
+        for reason in preservation.trigger_reasons:
+            print(f"      - {reason}")
+
+        if preservation.halt_new_buys:
+            print("\n  🛑 New buys halted - protecting capital")
+            print("─" * 40)
+            return
+
+        # Show position size reduction if not halting
+        if preservation.position_size_multiplier < 1.0:
+            print(f"      Position sizes reduced to {preservation.position_size_multiplier:.0%}")
+
     # Step 2: Load current state
     print("\nStep 2: Loading portfolio state...")
     positions_df = get_current_positions()
@@ -240,7 +257,14 @@ def main():
     # Step 4: Execute buys for top picks
     print("\nStep 4: Executing buys...")
     risk_pct = config.get("risk_per_trade_pct", 10.0) / 100
-    risk_capital = cash * risk_pct * regime_multiplier
+
+    # Apply both regime and preservation multipliers
+    preservation_multiplier = preservation.position_size_multiplier if preservation.active else 1.0
+    combined_multiplier = regime_multiplier * preservation_multiplier
+    risk_capital = cash * risk_pct * combined_multiplier
+
+    if combined_multiplier < 1.0:
+        print(f"  Position size adjusted: {combined_multiplier:.0%} of normal")
 
     new_transactions = []
     buys_executed = 0

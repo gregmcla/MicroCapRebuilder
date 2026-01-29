@@ -17,6 +17,7 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from market_regime import get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard
+from capital_preservation import get_preservation_status
 
 # ─── Ticker URLs ──────────────────────────────────────────────────────────────
 TICKER_URLS = {
@@ -148,6 +149,29 @@ with h1:
     st.markdown(f"## :orange[◆ MOMMY BOT]")
 with h2:
     st.markdown(f"<p style='text-align:right; color:#888; padding-top:12px;'>🟢 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} EST</p>", unsafe_allow_html=True)
+
+
+# ─── Capital Preservation Banner ─────────────────────────────────────────────
+try:
+    preservation = get_preservation_status()
+    if preservation.active:
+        st.markdown("""
+        <div style="background-color:#8B0000; border:2px solid #FF4444; padding:10px; margin:10px 0; border-radius:4px;">
+            <span style="color:#FFFFFF; font-weight:bold;">🛡️ CAPITAL PRESERVATION MODE ACTIVE</span>
+        </div>
+        """, unsafe_allow_html=True)
+        with st.expander("View Details", expanded=False):
+            st.markdown("**Trigger Reasons:**")
+            for reason in preservation.trigger_reasons:
+                st.markdown(f"- {reason}")
+            st.markdown("**Actions:**")
+            for action in preservation.actions_taken:
+                st.markdown(f"- {action.name}: {action.description}")
+            st.markdown("**Exit Conditions:**")
+            for condition in preservation.exit_conditions:
+                st.markdown(f"- {condition}")
+except Exception:
+    pass
 
 
 # ─── Ticker Tape ──────────────────────────────────────────────────────────────
