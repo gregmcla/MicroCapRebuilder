@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from market_regime import get_regime_analysis, MarketRegime
+from risk_scoreboard import get_risk_scoreboard
 
 # ─── Ticker URLs ──────────────────────────────────────────────────────────────
 TICKER_URLS = {
@@ -185,8 +186,8 @@ with c5:
 st.markdown("")
 
 
-# ─── Three Panels ─────────────────────────────────────────────────────────────
-col_regime, col_perf, col_trades = st.columns(3)
+# ─── Four Panels ─────────────────────────────────────────────────────────────
+col_regime, col_risk, col_perf, col_trades = st.columns(4)
 
 with col_regime:
     st.markdown("#### :orange[◆ MARKET REGIME]")
@@ -201,6 +202,23 @@ with col_regime:
         st.markdown(f"**200D SMA:** {a200} ${ra.sma_200:,.2f}")
     except:
         st.markdown("_Market data unavailable_")
+
+with col_risk:
+    st.markdown("#### :orange[◆ RISK SCORE]")
+    try:
+        risk = get_risk_scoreboard()
+        # Color code based on risk level
+        risk_colors = {"LOW": "🟢", "MODERATE": "🟡", "ELEVATED": "🟠", "HIGH": "🔴", "CRITICAL": "⚫"}
+        risk_icon = risk_colors.get(risk.risk_level, "⚪")
+        st.markdown(f"**{risk_icon} {risk.overall_score:.0f}/100 ({risk.risk_level})**")
+        # Show component summary
+        for c in risk.components[:3]:  # Top 3 components
+            status_icon = "✓" if c.status == "OK" else ("⚠" if c.status == "WARNING" else "✗")
+            st.markdown(f"**{c.name}:** {status_icon} {c.score:.0f}")
+        if risk.recommended_actions:
+            st.caption(risk.recommended_actions[0][:50] + "..." if len(risk.recommended_actions[0]) > 50 else risk.recommended_actions[0])
+    except Exception as e:
+        st.markdown("_Calculating risk..._")
 
 with col_perf:
     st.markdown("#### :orange[◆ PERFORMANCE]")
@@ -269,6 +287,43 @@ else:
 
 
 st.markdown("")
+
+
+# ─── Risk Assessment Detail ──────────────────────────────────────────────────
+st.markdown("#### :orange[◆ RISK ASSESSMENT]")
+try:
+    risk = get_risk_scoreboard()
+
+    # Risk meter row
+    r1, r2, r3 = st.columns([1, 2, 1])
+    with r1:
+        risk_colors = {"LOW": "green", "MODERATE": "orange", "ELEVATED": "orange", "HIGH": "red", "CRITICAL": "red"}
+        st.metric("RISK SCORE", f"{risk.overall_score:.0f}/100", risk.risk_level)
+    with r2:
+        st.markdown(f"**Assessment:** {risk.narrative}")
+    with r3:
+        pass
+
+    # Component breakdown
+    st.markdown("**Component Scores:**")
+    comp_cols = st.columns(5)
+    for i, c in enumerate(risk.components):
+        with comp_cols[i]:
+            status_color = "green" if c.status == "OK" else ("orange" if c.status == "WARNING" else "red")
+            st.markdown(f":{status_color}[**{c.name}**]")
+            st.markdown(f"{c.score:.0f}/100")
+
+    # Recommendations
+    if risk.recommended_actions:
+        st.markdown("**Recommendations:**")
+        for rec in risk.recommended_actions[:3]:
+            st.markdown(f"- {rec}")
+
+except Exception as e:
+    st.markdown("_Risk assessment loading..._")
+
+st.markdown("")
+st.divider()
 
 
 # ─── Recent Activity ──────────────────────────────────────────────────────────

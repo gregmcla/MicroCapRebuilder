@@ -22,6 +22,7 @@ import pandas as pd
 
 from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
+from risk_scoreboard import get_risk_scoreboard
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -127,6 +128,26 @@ def generate_report() -> str:
         sell_value = today_sells["total_value"].sum() if not today_sells.empty else 0
         lines.append(f"Buys:   {len(today_buys):>3} trades  ${buy_value:>10,.2f}")
         lines.append(f"Sells:  {len(today_sells):>3} trades  ${sell_value:>10,.2f}")
+    lines.append("")
+
+    # Risk Assessment
+    lines.append("RISK ASSESSMENT")
+    lines.append("-" * 40)
+    try:
+        risk = get_risk_scoreboard()
+        lines.append(f"Overall Risk Score: {risk.overall_score:.0f}/100 ({risk.risk_level})")
+        for c in risk.components:
+            status_icon = "✓" if c.status == "OK" else ("⚠" if c.status == "WARNING" else "✗")
+            lines.append(f"  {c.name:<15} {c.score:>5.0f}/100 {status_icon}")
+        lines.append("")
+        lines.append(f"Assessment: {risk.narrative}")
+        if risk.recommended_actions:
+            lines.append("")
+            lines.append("Recommendations:")
+            for rec in risk.recommended_actions[:3]:
+                lines.append(f"  - {rec}")
+    except Exception as e:
+        lines.append("  Risk calculation unavailable")
     lines.append("")
 
     # Risk Metrics
