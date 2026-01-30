@@ -343,3 +343,84 @@ class RiskManager:
         shares = int(shares * preservation_multiplier)
 
         return max(0, shares)
+
+    # ─── Factor Learning Integration ───────────────────────────────────────────────
+
+    def get_confidence_multiplier(
+        self,
+        factor_scores: dict,
+        regime: str = None,
+    ) -> float:
+        """
+        Get confidence multiplier based on factor track record.
+
+        High-confidence setups (factors with good track records) get
+        larger positions. Low-confidence setups get smaller positions.
+
+        Args:
+            factor_scores: Dict of factor scores for the candidate
+            regime: Current market regime
+
+        Returns:
+            Multiplier between 0.5 and 1.5 (1.0 = normal)
+        """
+        learning_config = self.config.get("learning", {})
+
+        # Check if confidence multiplier is enabled
+        if not learning_config.get("confidence_multiplier_enabled", False):
+            return 1.0
+
+        try:
+            from factor_learning import get_confidence_multiplier
+            multiplier = get_confidence_multiplier(factor_scores, regime)
+
+            # Apply config bounds
+            min_mult = learning_config.get("confidence_min", 0.5)
+            max_mult = learning_config.get("confidence_max", 1.5)
+
+            return max(min_mult, min(max_mult, multiplier))
+        except Exception:
+            # If factor learning fails, use default
+            return 1.0
+
+    def calculate_position_size_with_confidence(
+        self,
+        price: float,
+        cash: float,
+        factor_scores: dict = None,
+        volatility: Optional[float] = None,
+        regime: str = None,
+        regime_multiplier: float = 1.0,
+    ) -> int:
+        """
+        Calculate position size including factor confidence adjustments.
+
+        This is the most comprehensive position sizing method, applying:
+        1. Base risk-per-trade sizing
+        2. Volatility adjustment
+        3. Regime multiplier
+        4. Capital preservation multiplier
+        5. Factor confidence multiplier
+
+        Args:
+            price: Current price per share
+            cash: Available cash
+            factor_scores: Dict of factor scores for the candidate
+            volatility: Optional volatility measure (ATR as % of price)
+            regime: Current market regime
+            regime_multiplier: Market regime position size multiplier
+
+        Returns:
+            Number of shares to buy
+        """
+        # Get base position size with preservation
+        shares = self.calculate_position_size_with_preservation(
+            price, cash, volatility, regime_multiplier
+        )
+
+        # Apply confidence multiplier if factor scores provided
+        if factor_scores:
+            confidence_mult = self.get_confidence_multiplier(factor_scores, regime)
+            shares = int(shares * confidence_mult)
+
+        return max(0, shares)

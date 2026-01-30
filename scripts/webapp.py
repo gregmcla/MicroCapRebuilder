@@ -21,6 +21,7 @@ from capital_preservation import get_preservation_status
 from attribution import get_daily_attribution
 from pattern_detector import get_pattern_alerts
 from post_mortem import get_recent_post_mortems
+from factor_learning import FactorLearner, get_weight_suggestions
 
 # ─── Ticker URLs ──────────────────────────────────────────────────────────────
 TICKER_URLS = {
@@ -438,6 +439,55 @@ with col_pm:
             st.markdown("_No closed trades yet - lessons appear after sells_")
     except Exception:
         st.markdown("_Post-mortems loading..._")
+
+st.markdown("")
+
+
+# ─── Factor Learning ─────────────────────────────────────────────────────────
+st.markdown("#### :orange[◆ FACTOR LEARNING]")
+try:
+    learner = FactorLearner()
+    factor_summary = learner.get_factor_summary()
+
+    if factor_summary["status"] == "ok" and factor_summary["factors"]:
+        # Factor performance grid
+        fc1, fc2, fc3, fc4, fc5 = st.columns(5)
+        factor_cols = [fc1, fc2, fc3, fc4, fc5]
+
+        for i, f in enumerate(factor_summary["factors"][:5]):
+            with factor_cols[i]:
+                # Trend icons
+                trend_icon = {"improving": "▲", "stable": "─", "declining": "▼"}.get(f["trend"], "?")
+                trend_color = "green" if f["trend"] == "improving" else ("red" if f["trend"] == "declining" else "orange")
+
+                # Win rate coloring
+                wr_color = "green" if f["win_rate"] >= 55 else ("red" if f["win_rate"] < 45 else "orange")
+
+                st.markdown(f"**{f['factor'].replace('_', ' ').title()}**")
+                st.markdown(f":{wr_color}[{f['win_rate']:.0f}%] win rate")
+                st.markdown(f":{trend_color}[{trend_icon}] {f['trend']}")
+                contrib_color = "green" if f["total_contribution"] >= 0 else "red"
+                st.markdown(f":{contrib_color}[${f['total_contribution']:+,.0f}]")
+
+        # Weight suggestions
+        suggestions = get_weight_suggestions()
+        if suggestions:
+            st.markdown("")
+            st.markdown("**Suggested Weight Adjustments:**")
+            for s in suggestions[:3]:
+                conf_color = "green" if s.confidence == "HIGH" else ("orange" if s.confidence == "MEDIUM" else "gray")
+                change_color = "green" if s.change_pct > 0 else "red"
+                st.markdown(
+                    f"- **{s.factor.replace('_', ' ').title()}**: "
+                    f"{s.current_weight:.0%} → {s.suggested_weight:.0%} "
+                    f"(:{change_color}[{s.change_pct:+.1f}%]) "
+                    f":{conf_color}[[{s.confidence}]]"
+                )
+    else:
+        st.markdown("_Need more closed trades to analyze factor performance_")
+        st.caption("Factor learning becomes active after trades are closed with post-mortems")
+except Exception as e:
+    st.markdown("_Factor learning loading..._")
 
 st.markdown("")
 st.divider()

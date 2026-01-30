@@ -62,5 +62,15 @@
         "reduce_position_size_multiplier": 0.5
       }
     }
+  },
+
+  "learning": {
+    "enabled": true,
+    "review_period_trades": 30,
+    "max_weight_change_pct": 5.0,
+    "min_trades_for_adjustment": 10,
+    "confidence_multiplier_enabled": true,
+    "confidence_min": 0.5,
+    "confidence_max": 1.5
   }
 }
