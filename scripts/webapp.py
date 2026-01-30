@@ -19,6 +19,8 @@ from market_regime import get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard
 from capital_preservation import get_preservation_status
 from attribution import get_daily_attribution
+from pattern_detector import get_pattern_alerts
+from post_mortem import get_recent_post_mortems
 
 # ─── Ticker URLs ──────────────────────────────────────────────────────────────
 TICKER_URLS = {
@@ -395,6 +397,47 @@ try:
         st.markdown("_No performance data for attribution yet_")
 except Exception as e:
     st.markdown("_Attribution loading..._")
+
+st.markdown("")
+
+
+# ─── Pattern Alerts & Learning ───────────────────────────────────────────────
+col_alerts, col_pm = st.columns(2)
+
+with col_alerts:
+    st.markdown("#### :orange[◆ PATTERN ALERTS]")
+    try:
+        alerts = get_pattern_alerts()
+        if alerts:
+            for alert in alerts[:3]:
+                level_colors = {"INFO": "blue", "MEDIUM": "orange", "HIGH": "red", "CRITICAL": "red"}
+                level_icons = {"INFO": "ℹ️", "MEDIUM": "⚠️", "HIGH": "🔴", "CRITICAL": "🚨"}
+                color = level_colors.get(alert.alert_level, "gray")
+                icon = level_icons.get(alert.alert_level, "❓")
+                st.markdown(f"{icon} :{color}[**{alert.title}**]")
+                st.caption(alert.description)
+                if alert.recommendation:
+                    st.markdown(f"_→ {alert.recommendation}_")
+        else:
+            st.markdown("_No concerning patterns detected_")
+    except Exception:
+        st.markdown("_Pattern detection loading..._")
+
+with col_pm:
+    st.markdown("#### :orange[◆ RECENT LESSONS]")
+    try:
+        post_mortems = get_recent_post_mortems(3)
+        if post_mortems:
+            for pm in reversed(post_mortems):
+                pm_color = "green" if pm.pnl >= 0 else "red"
+                st.markdown(f"**{pm.ticker}** :{pm_color}[{pm.pnl_pct:+.1f}%] - {pm.exit_reason}")
+                st.caption(pm.summary)
+                if pm.recommendation:
+                    st.markdown(f"_→ {pm.recommendation}_")
+        else:
+            st.markdown("_No closed trades yet - lessons appear after sells_")
+    except Exception:
+        st.markdown("_Post-mortems loading..._")
 
 st.markdown("")
 st.divider()

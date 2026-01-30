@@ -22,6 +22,8 @@ import yfinance as yf
 
 from schema import TRANSACTION_COLUMNS, POSITION_COLUMNS, Action, Reason
 from risk_manager import RiskManager, SellSignal
+from market_regime import get_market_regime
+from post_mortem import PostMortemAnalyzer, save_post_mortem
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -59,7 +61,27 @@ def record_sell_transaction(signal: SellSignal) -> dict:
         "stop_loss": "",
         "take_profit": "",
         "reason": signal.reason,
+        # Explainability columns (empty for sells - data comes from original buy)
+        "regime_at_entry": "",
+        "composite_score": "",
+        "factor_scores": "",
+        "signal_rank": "",
     }
+
+
+def get_buy_transaction_for_ticker(ticker: str) -> dict:
+    """Find the original BUY transaction for a ticker."""
+    if not TRANSACTIONS_FILE.exists():
+        return {}
+
+    df = pd.read_csv(TRANSACTIONS_FILE)
+    buys = df[(df["ticker"] == ticker) & (df["action"] == "BUY")]
+
+    if buys.empty:
+        return {}
+
+    # Return the most recent buy as a dict
+    return buys.iloc[-1].to_dict()
 
 
 def append_transactions(transactions: list):
@@ -156,11 +178,30 @@ def main():
     print("  Updating positions...")
     update_positions_after_sells(signals)
 
+    # Generate post-mortems for closed trades
+    print("  Generating post-mortems...")
+    try:
+        regime = get_market_regime()
+        analyzer = PostMortemAnalyzer()
+
+        for signal, sell_txn in zip(signals, transactions):
+            buy_txn = get_buy_transaction_for_ticker(signal.ticker)
+            if buy_txn:
+                pm = analyzer.analyze_trade(
+                    sell_txn=sell_txn,
+                    buy_txn=buy_txn,
+                    current_regime=regime.value if regime else "UNKNOWN"
+                )
+                save_post_mortem(pm)
+                print(f"    📝 Post-mortem: {signal.ticker} - {pm.summary}")
+    except Exception as e:
+        print(f"    [warn] Post-mortem generation failed: {e}")
+
     # Summary
     stop_count = sum(1 for s in signals if s.reason == Reason.STOP_LOSS)
     take_count = sum(1 for s in signals if s.reason == Reason.TAKE_PROFIT)
 
-    print("\n─" * 40)
+    print("\n" + "─" * 40)
     print(f"✅ Executed {len(signals)} sell(s)")
     print(f"   Stop losses:  {stop_count}")
     print(f"   Take profits: {take_count}")
