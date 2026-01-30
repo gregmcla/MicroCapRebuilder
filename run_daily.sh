@@ -17,6 +17,11 @@ echo ""
 echo "Step 1: Checking for stop loss / take profit triggers..."
 scripts/execute_sells.py
 
+# 1b) Detect patterns (alert before picking if something is wrong)
+echo ""
+echo "Step 1b: Checking for patterns..."
+python scripts/pattern_detector.py 2>/dev/null || echo "  (Pattern detection skipped)"
+
 # 2) Pick new stocks from watchlist
 echo ""
 echo "Step 2: Picking stocks from watchlist..."
@@ -26,6 +31,11 @@ scripts/pick_from_watchlist.py
 echo ""
 echo "Step 3: Updating positions..."
 scripts/update_positions.py
+
+# 3b) Update factor learning (track which factors are performing)
+echo ""
+echo "Step 3b: Updating factor performance..."
+python scripts/factor_learning.py 2>/dev/null || echo "  (Factor learning skipped - need more trades)"
 
 # 4) Generate performance chart
 echo ""

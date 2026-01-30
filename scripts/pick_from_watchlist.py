@@ -296,11 +296,31 @@ def main():
             print(f"  Skipping {score.ticker}: {reason}")
             continue
 
-        # Calculate position size (volatility-adjusted)
-        shares = rm.calculate_position_size(
+        # RSI hard filter - never buy extremely overbought stocks
+        rsi_config = config.get("scoring", {}).get("rsi", {})
+        rsi_hard_filter = rsi_config.get("hard_filter_above", 85)
+        if score.rsi_value > rsi_hard_filter:
+            print(f"  Skipping {score.ticker}: RSI {score.rsi_value:.0f} > {rsi_hard_filter} (hard filter)")
+            continue
+
+        # Get factor scores for position sizing confidence
+        factor_scores = {
+            "momentum": score.momentum_score,
+            "volatility": score.volatility_score,
+            "volume": score.volume_score,
+            "relative_strength": score.relative_strength_score,
+            "mean_reversion": score.mean_reversion_score,
+            "rsi": score.rsi_score,
+        }
+
+        # Calculate position size with confidence multiplier
+        shares = rm.calculate_position_size_with_confidence(
             price=score.current_price,
             cash=cash,
+            factor_scores=factor_scores,
             volatility=score.atr_pct / 100 if score.atr_pct > 0 else None,
+            regime=regime.value if regime else None,
+            regime_multiplier=combined_multiplier,
         )
 
         if shares < 1:
@@ -314,16 +334,7 @@ def main():
         stop_loss = rm.calculate_stop_loss_price(score.current_price)
         take_profit = rm.calculate_take_profit_price(score.current_price)
 
-        # Get factor scores for explainability
-        factor_scores = {
-            "momentum": score.momentum_score,
-            "volatility": score.volatility_score,
-            "volume": score.volume_score,
-            "relative_strength": score.relative_strength_score,
-            "mean_reversion": score.mean_reversion_score,
-        }
-
-        # Record transaction with explainability data
+        # Record transaction with explainability data (factor_scores defined earlier)
         transaction = record_buy_transaction(
             ticker=score.ticker,
             shares=shares,
