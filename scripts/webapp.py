@@ -18,6 +18,15 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Load .env BEFORE importing modules that need it
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+except ImportError:
+    pass
+
 from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from market_regime import get_regime_analysis, MarketRegime

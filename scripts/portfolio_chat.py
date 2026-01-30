@@ -16,17 +16,31 @@ from dataclasses import dataclass
 import pandas as pd
 
 # Load environment variables - try multiple paths
-try:
-    from dotenv import load_dotenv
-    # Try script-relative path first
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
-    else:
-        # Try current working directory
+def _load_env():
+    """Try multiple paths to find and load .env file."""
+    try:
+        from dotenv import load_dotenv
+
+        # List of paths to try
+        paths_to_try = [
+            Path(__file__).resolve().parent.parent / ".env",  # scripts/../.env
+            Path.cwd() / ".env",  # Current working directory
+            Path.home() / "MicroCapRebuilder" / ".env",  # Home directory
+            Path("/home/user/MicroCapRebuilder/.env"),  # Absolute fallback
+        ]
+
+        for env_path in paths_to_try:
+            if env_path.exists():
+                load_dotenv(env_path, override=True)
+                return str(env_path)
+
+        # Last resort: try default load_dotenv
         load_dotenv(override=True)
-except ImportError:
-    pass
+        return "default"
+    except ImportError:
+        return None
+
+_loaded_from = _load_env()
 
 from data_files import (
     get_positions_file, get_transactions_file, get_daily_snapshots_file,
@@ -237,18 +251,14 @@ User question: {user_message}"""
 def check_setup() -> tuple[bool, str]:
     """Check if chat is properly configured."""
     # Re-load env in case it wasn't loaded at import time
-    try:
-        from dotenv import load_dotenv
-        env_path = Path(__file__).resolve().parent.parent / ".env"
-        if env_path.exists():
-            load_dotenv(env_path, override=True)
-    except ImportError:
-        pass
+    loaded_from = _load_env()
 
     api_key = get_api_key()
 
     if not api_key:
-        return False, "No ANTHROPIC_API_KEY in .env file"
+        # Provide helpful error message
+        expected_path = Path(__file__).resolve().parent.parent / ".env"
+        return False, f"No ANTHROPIC_API_KEY found. Add it to: {expected_path}"
 
     try:
         import anthropic
