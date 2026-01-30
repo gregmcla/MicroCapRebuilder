@@ -67,6 +67,20 @@ def get_daily_snapshots_file() -> Path:
     return DATA_DIR / f"daily_snapshots{suffix}.csv"
 
 
+# Alias for compatibility
+get_snapshots_file = get_daily_snapshots_file
+
+
+def get_config_file() -> Path:
+    """Get the config file path."""
+    return CONFIG_FILE
+
+
+def get_watchlist_file() -> Path:
+    """Get the watchlist file path."""
+    return DATA_DIR / "watchlist.jsonl"
+
+
 def get_all_data_files() -> dict:
     """Get all data file paths for current mode."""
     suffix = get_file_suffix()
