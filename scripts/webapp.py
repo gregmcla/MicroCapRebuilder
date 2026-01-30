@@ -30,9 +30,6 @@ from factor_learning import FactorLearner, get_weight_suggestions
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
 CONFIG_FILE = DATA_DIR / "config.json"
 
 
@@ -43,22 +40,49 @@ def load_config():
     return {"starting_capital": 50000.0}
 
 
+def is_paper_mode():
+    """Check if system is in paper trading mode."""
+    config = load_config()
+    return config.get("mode", "live") == "paper"
+
+
+def set_paper_mode(enabled: bool):
+    """Toggle paper trading mode."""
+    config = load_config()
+    config["mode"] = "paper" if enabled else "live"
+    with open(CONFIG_FILE, "w") as f:
+        json.dump(config, f, indent=2)
+
+
+def get_data_files():
+    """Get the correct data files based on current mode."""
+    suffix = "_paper" if is_paper_mode() else ""
+    return {
+        "positions": DATA_DIR / f"positions{suffix}.csv",
+        "transactions": DATA_DIR / f"transactions{suffix}.csv",
+        "snapshots": DATA_DIR / f"daily_snapshots{suffix}.csv",
+    }
+
+
 def load_positions():
-    if not POSITIONS_FILE.exists():
+    files = get_data_files()
+    if not files["positions"].exists():
         return pd.DataFrame()
-    return pd.read_csv(POSITIONS_FILE)
+    return pd.read_csv(files["positions"])
 
 
 def load_transactions():
-    if not TRANSACTIONS_FILE.exists():
+    files = get_data_files()
+    if not files["transactions"].exists():
         return pd.DataFrame()
-    return pd.read_csv(TRANSACTIONS_FILE)
+    return pd.read_csv(files["transactions"])
 
 
 def load_snapshots():
-    if not DAILY_SNAPSHOTS_FILE.exists():
+    files = get_data_files()
+    if not files["snapshots"].exists():
         return pd.DataFrame()
-    return pd.read_csv(DAILY_SNAPSHOTS_FILE)
+    return pd.read_csv(files["snapshots"])
 
 
 def calculate_cash():
@@ -79,7 +103,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ─── Check Mode ──────────────────────────────────────────────────────────────
+paper_mode = is_paper_mode()
+mode_class = "paper-mode" if paper_mode else "live-mode"
+
 # ─── Cinematic CSS ───────────────────────────────────────────────────────────
+st.markdown(f"""
+<div class="{mode_class}">
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
@@ -566,6 +598,118 @@ hr {
 ::-webkit-scrollbar-track { background: var(--void); }
 ::-webkit-scrollbar-thumb { background: var(--border-visible); }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ─── Mode Badge ─────────────────────────────────────────────────────────── */
+.mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    font-size: 0.65rem;
+    letter-spacing: 0.15rem;
+    text-transform: uppercase;
+    border-radius: 2px;
+    margin-top: 1rem;
+}
+
+.mode-badge.live {
+    background: rgba(0, 255, 157, 0.1);
+    border: 1px solid rgba(0, 255, 157, 0.3);
+    color: var(--pulse-positive);
+}
+
+.mode-badge.paper {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    color: var(--pulse-gold);
+}
+
+.mode-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.mode-dot.live {
+    background: var(--pulse-positive);
+    box-shadow: 0 0 8px var(--pulse-positive);
+}
+
+.mode-dot.paper {
+    background: var(--pulse-gold);
+    box-shadow: 0 0 8px var(--pulse-gold);
+}
+
+/* Paper mode accent override */
+.paper-mode .system-pulse {
+    background: var(--pulse-gold) !important;
+    box-shadow: 0 0 12px var(--pulse-gold) !important;
+}
+
+.paper-mode .system-identity::before {
+    background: radial-gradient(circle, var(--glow-gold) 0%, transparent 70%) !important;
+}
+
+.paper-mode .mind-container::before {
+    background: radial-gradient(ellipse at center, var(--glow-gold) 0%, transparent 60%) !important;
+}
+
+.paper-mode .stTabs [aria-selected="true"] {
+    border-bottom-color: var(--pulse-gold) !important;
+}
+
+.paper-mode .stButton > button:hover {
+    border-color: var(--pulse-gold) !important;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.1) !important;
+}
+
+.paper-mode .stButton > button[kind="primary"] {
+    border-color: var(--pulse-gold) !important;
+    color: var(--pulse-gold) !important;
+}
+
+.paper-mode .stButton > button[kind="primary"]:hover {
+    background: rgba(255, 215, 0, 0.1) !important;
+}
+
+/* ─── Settings Panel ─────────────────────────────────────────────────────── */
+.settings-panel {
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.settings-title {
+    font-size: 0.7rem;
+    letter-spacing: 0.15rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.settings-value {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -589,12 +733,19 @@ day_pct = snapshots_df.iloc[-1].get("day_pnl_pct", 0) if not snapshots_df.empty 
 
 
 # ─── The Identity ─────────────────────────────────────────────────────────────
+mode_text = "PAPER" if paper_mode else "LIVE"
+mode_style = "paper" if paper_mode else "live"
+
 st.markdown(f"""
 <div class="system-identity">
     <h1 class="system-name">M O M M Y</h1>
     <div class="system-status">
         <span class="system-pulse"></span>
         Autonomous Trading Intelligence · {datetime.now().strftime('%Y.%m.%d')}
+    </div>
+    <div class="mode-badge {mode_style}">
+        <span class="mode-dot {mode_style}"></span>
+        {mode_text} MODE
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -968,9 +1119,78 @@ with col3:
                 st.error(f"Discovery error: {e}")
 
 
+# ─── Settings ─────────────────────────────────────────────────────────────────
+with st.expander("SETTINGS", expanded=False):
+    st.markdown('<div class="settings-title">Trading Mode</div>', unsafe_allow_html=True)
+
+    col_info, col_toggle = st.columns([3, 1])
+
+    with col_info:
+        if paper_mode:
+            st.markdown("""
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                <strong style="color: var(--pulse-gold);">Paper Trading Active</strong><br>
+                <span style="color: var(--text-tertiary);">Simulated trades using separate data files. No real money at risk.</span>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                <strong style="color: var(--pulse-positive);">Live Trading Active</strong><br>
+                <span style="color: var(--text-tertiary);">Using real portfolio data. All trades are tracked.</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with col_toggle:
+        if paper_mode:
+            if st.button("GO LIVE", use_container_width=True, type="primary"):
+                set_paper_mode(False)
+                st.rerun()
+        else:
+            if st.button("PAPER MODE", use_container_width=True):
+                set_paper_mode(True)
+                st.rerun()
+
+    # Paper trading stats if in paper mode
+    if paper_mode:
+        st.markdown("---")
+        st.markdown('<div class="settings-title">Paper Portfolio</div>', unsafe_allow_html=True)
+
+        paper_files = get_data_files()
+        paper_transactions = paper_files["transactions"]
+        paper_positions = paper_files["positions"]
+
+        if paper_positions.exists():
+            paper_pos_df = pd.read_csv(paper_positions)
+            paper_pos_count = len(paper_pos_df)
+        else:
+            paper_pos_count = 0
+
+        if paper_transactions.exists():
+            paper_tx_df = pd.read_csv(paper_transactions)
+            paper_tx_count = len(paper_tx_df)
+        else:
+            paper_tx_count = 0
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Positions", paper_pos_count)
+        with col2:
+            st.metric("Transactions", paper_tx_count)
+        with col3:
+            if st.button("RESET PAPER", use_container_width=True):
+                # Clear paper trading files
+                for f in paper_files.values():
+                    if f.exists():
+                        f.unlink()
+                st.success("Paper portfolio reset")
+                st.rerun()
+
+
 # ─── Footer ──────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="footer">
     <div class="footer-text">Autonomous Trading Intelligence · Data Delayed · Not Financial Advice</div>
+</div>
 </div>
 """, unsafe_allow_html=True)
