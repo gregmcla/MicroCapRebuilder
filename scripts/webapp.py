@@ -950,7 +950,7 @@ with col3:
             try:
                 project_root = Path(__file__).parent.parent
                 result = subprocess.run(
-                    ["python", "scripts/stock_discovery.py"],
+                    [sys.executable, "scripts/stock_discovery.py"],
                     cwd=project_root,
                     capture_output=True,
                     text=True,
@@ -962,8 +962,10 @@ with col3:
                         st.code(result.stdout[-2000:])
                 else:
                     st.error("Discovery failed")
-            except:
-                st.error("Discovery error")
+                    with st.expander("Error details"):
+                        st.code(result.stderr or result.stdout)
+            except Exception as e:
+                st.error(f"Discovery error: {e}")
 
 
 # ─── Footer ──────────────────────────────────────────────────────────────────
