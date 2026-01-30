@@ -6,11 +6,12 @@ Multi-factor scoring system for ranking watchlist candidates.
 Weights are configurable per market regime (BULL/SIDEWAYS/BEAR).
 
 Factors:
-- Momentum: 20-day price change
+- Momentum: Multi-timeframe momentum (5/20/60-day with alignment bonus)
 - Volatility: Lower volatility = higher score
 - Volume: Recent volume vs average (liquidity)
 - Relative Strength: Performance vs benchmark
 - Mean Reversion: Distance from 20-day SMA
+- RSI: Relative Strength Index for overbought/oversold awareness
 
 Usage:
     from stock_scorer import StockScorer
@@ -21,11 +22,12 @@ Usage:
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 import yfinance as yf
 
@@ -54,9 +56,16 @@ class StockScore:
     volume_score: float
     relative_strength_score: float
     mean_reversion_score: float
+    rsi_score: float  # RSI-based score
     composite_score: float
     current_price: float
     atr_pct: float  # Average True Range as % of price (for position sizing)
+    # Metadata for explainability
+    rsi_value: float = 0.0  # Raw RSI(14) value
+    momentum_5d: float = 0.0  # 5-day momentum %
+    momentum_20d: float = 0.0  # 20-day momentum %
+    momentum_60d: float = 0.0  # 60-day momentum %
+    momentum_alignment: str = ""  # ALIGNED, MIXED, DIVERGENT
 
 
 def load_config() -> dict:
@@ -75,12 +84,14 @@ class StockScorer:
     """Multi-factor stock scoring system with regime-aware weights."""
 
     # Default weights (used if config doesn't specify)
+    # Now includes RSI as 6th factor
     DEFAULT_WEIGHTS = {
-        "momentum": 0.30,
-        "volatility": 0.20,
-        "volume": 0.15,
-        "relative_strength": 0.25,
+        "momentum": 0.25,
+        "volatility": 0.18,
+        "volume": 0.12,
+        "relative_strength": 0.20,
         "mean_reversion": 0.10,
+        "rsi": 0.15,
     }
 
     def __init__(self, regime: Optional[MarketRegime] = None, lookback_days: int = 20):
@@ -158,9 +169,211 @@ class StockScorer:
                 return df
         return None
 
-    def score_momentum(self, df: pd.DataFrame) -> float:
+    # ─── RSI Calculation ─────────────────────────────────────────────────────────
+
+    def _calculate_rsi(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         """
-        Score based on price momentum (20-day return).
+        Calculate Relative Strength Index (RSI).
+
+        Args:
+            df: DataFrame with Close prices
+            period: RSI period (default 14)
+
+        Returns:
+            Series of RSI values
+        """
+        if df is None or len(df) < period + 1:
+            return pd.Series([50.0])
+
+        close = df["Close"]
+        delta = close.diff()
+
+        gain = delta.where(delta > 0, 0.0)
+        loss = (-delta).where(delta < 0, 0.0)
+
+        # Use exponential moving average for smoothing
+        avg_gain = gain.ewm(span=period, adjust=False).mean()
+        avg_loss = loss.ewm(span=period, adjust=False).mean()
+
+        # Avoid division by zero
+        rs = avg_gain / avg_loss.replace(0, np.inf)
+        rsi = 100 - (100 / (1 + rs))
+
+        return rsi.fillna(50.0)
+
+    def score_rsi(self, df: pd.DataFrame) -> Tuple[float, float]:
+        """
+        Score based on RSI for momentum strategy.
+
+        For momentum: prefer RSI 50-70 (healthy momentum)
+        Avoid: RSI > 80 (overextended) or RSI < 30 (might be broken)
+
+        Args:
+            df: DataFrame with price data
+
+        Returns:
+            Tuple of (score 0-100, raw RSI value)
+        """
+        rsi_config = self.config.get("scoring", {}).get("rsi", {})
+        period = rsi_config.get("period", 14)
+        hard_filter = rsi_config.get("hard_filter_above", 85)
+
+        rsi_series = self._calculate_rsi(df, period)
+        current_rsi = float(rsi_series.iloc[-1])
+
+        # Hard filter: extremely overbought = very low score
+        if current_rsi > hard_filter:
+            return 10.0, current_rsi
+
+        # Scoring zones for momentum strategy
+        if 50 <= current_rsi <= 65:
+            score = 90.0  # Sweet spot for momentum
+        elif 65 < current_rsi <= 72:
+            score = 75.0  # Good momentum but getting extended
+        elif 72 < current_rsi <= 78:
+            score = 55.0  # Overbought warning
+        elif 78 < current_rsi <= 85:
+            score = 35.0  # Significantly overbought
+        elif 45 <= current_rsi < 50:
+            score = 70.0  # Just below momentum zone
+        elif 40 <= current_rsi < 45:
+            score = 55.0  # Neutral-low
+        elif 35 <= current_rsi < 40:
+            score = 45.0  # Getting oversold
+        elif 30 <= current_rsi < 35:
+            score = 40.0  # Oversold zone
+        else:  # < 30
+            score = 30.0  # Extremely oversold (risky for momentum)
+
+        return score, current_rsi
+
+    # ─── Multi-Timeframe Momentum ────────────────────────────────────────────────
+
+    def _calculate_momentum_pct(self, df: pd.DataFrame, days: int) -> float:
+        """Calculate momentum (percent change) over N days."""
+        if df is None or len(df) < days:
+            return 0.0
+
+        lookback = min(days, len(df))
+        start_price = df["Close"].iloc[-lookback]
+        end_price = df["Close"].iloc[-1]
+
+        if start_price <= 0:
+            return 0.0
+
+        return ((end_price - start_price) / start_price) * 100
+
+    def _score_single_momentum(self, pct_change: float) -> float:
+        """Convert a momentum percentage to a 0-100 score."""
+        # Map: -20% = 0, 0% = 50, +20% = 100
+        score = 50 + (pct_change * 2.5)
+        return max(0, min(100, score))
+
+    def _calculate_momentum_alignment(
+        self, mom_5d: float, mom_20d: float, mom_60d: float
+    ) -> Tuple[str, float]:
+        """
+        Calculate alignment across timeframes.
+
+        Returns:
+            Tuple of (alignment label, bonus points)
+        """
+        # Check signs
+        signs = [
+            1 if mom_5d > 0 else -1,
+            1 if mom_20d > 0 else -1,
+            1 if mom_60d > 0 else -1,
+        ]
+
+        alignment_sum = sum(signs)
+
+        if alignment_sum == 3:
+            # All positive - check for acceleration
+            if mom_5d > mom_20d > mom_60d:
+                return "ACCELERATING", 15.0
+            elif mom_5d > mom_20d:
+                return "ALIGNED_STRONG", 10.0
+            else:
+                return "ALIGNED", 5.0
+        elif alignment_sum == -3:
+            return "BEARISH", -10.0
+        elif alignment_sum == 1:
+            return "MIXED_BULLISH", 0.0
+        else:
+            return "MIXED_BEARISH", -5.0
+
+    def score_momentum(self, df: pd.DataFrame) -> Tuple[float, Dict]:
+        """
+        Multi-timeframe momentum score with alignment bonus.
+
+        Analyzes 5-day, 20-day, and 60-day momentum with weighted combination
+        and bonuses for timeframe alignment and acceleration.
+
+        Args:
+            df: DataFrame with price data
+
+        Returns:
+            Tuple of (score 0-100, metadata dict)
+        """
+        if df is None or len(df) < 5:
+            return 50.0, {"mom_5d": 0, "mom_20d": 0, "mom_60d": 0, "alignment": "UNKNOWN"}
+
+        # Get momentum config
+        mom_config = self.config.get("scoring", {}).get("momentum", {})
+        multi_tf_enabled = mom_config.get("multi_timeframe_enabled", True)
+
+        # Calculate momentum for each timeframe
+        mom_5d = self._calculate_momentum_pct(df, 5)
+        mom_20d = self._calculate_momentum_pct(df, 20)
+        mom_60d = self._calculate_momentum_pct(df, min(60, len(df)))
+
+        metadata = {
+            "mom_5d": round(mom_5d, 2),
+            "mom_20d": round(mom_20d, 2),
+            "mom_60d": round(mom_60d, 2),
+        }
+
+        if not multi_tf_enabled:
+            # Fall back to simple 20-day momentum
+            score = self._score_single_momentum(mom_20d)
+            metadata["alignment"] = "SINGLE_TF"
+            return score, metadata
+
+        # Get timeframe weights from config
+        tf_config = mom_config.get("timeframes", {})
+        weight_5d = tf_config.get("short", {}).get("weight", 0.20)
+        weight_20d = tf_config.get("medium", {}).get("weight", 0.50)
+        weight_60d = tf_config.get("long", {}).get("weight", 0.30)
+
+        # Score each timeframe
+        score_5d = self._score_single_momentum(mom_5d)
+        score_20d = self._score_single_momentum(mom_20d)
+        score_60d = self._score_single_momentum(mom_60d)
+
+        # Weighted base score
+        base_score = (
+            score_5d * weight_5d +
+            score_20d * weight_20d +
+            score_60d * weight_60d
+        )
+
+        # Calculate alignment bonus
+        alignment_label, alignment_bonus = self._calculate_momentum_alignment(
+            mom_5d, mom_20d, mom_60d
+        )
+        metadata["alignment"] = alignment_label
+
+        # Apply alignment bonus (capped)
+        max_bonus = mom_config.get("alignment_bonus_max", 15)
+        final_bonus = max(-max_bonus, min(max_bonus, alignment_bonus))
+
+        final_score = base_score + final_bonus
+        return max(0, min(100, final_score)), metadata
+
+    def score_momentum_simple(self, df: pd.DataFrame) -> float:
+        """
+        Simple momentum score based on price momentum (20-day return).
+        Legacy method kept for backwards compatibility.
         Returns 0-100 score.
         """
         if df is None or len(df) < 5:
@@ -310,24 +523,28 @@ class StockScorer:
         Calculate composite score for a single stock.
         Returns StockScore object or None if data unavailable.
         """
-        df = self._fetch_price_data(ticker, period="1mo")
+        # Fetch extended data for multi-timeframe analysis
+        df = self._fetch_price_data(ticker, period="3mo")
         if df is None or df.empty:
             return None
 
-        momentum = self.score_momentum(df)
+        # Score all factors
+        momentum, mom_metadata = self.score_momentum(df)
         volatility = self.score_volatility(df)
         volume = self.score_volume(df)
         rel_strength = self.score_relative_strength(df)
         mean_rev = self.score_mean_reversion(df)
+        rsi_score, rsi_value = self.score_rsi(df)
 
         # Weighted composite score using regime-aware weights
         w = self._weights
         composite = (
-            momentum * w.get("momentum", 0.30)
-            + volatility * w.get("volatility", 0.20)
-            + volume * w.get("volume", 0.15)
-            + rel_strength * w.get("relative_strength", 0.25)
+            momentum * w.get("momentum", 0.25)
+            + volatility * w.get("volatility", 0.18)
+            + volume * w.get("volume", 0.12)
+            + rel_strength * w.get("relative_strength", 0.20)
             + mean_rev * w.get("mean_reversion", 0.10)
+            + rsi_score * w.get("rsi", 0.15)
         )
 
         current_price = float(df["Close"].iloc[-1])
@@ -340,9 +557,15 @@ class StockScorer:
             volume_score=round(volume, 1),
             relative_strength_score=round(rel_strength, 1),
             mean_reversion_score=round(mean_rev, 1),
+            rsi_score=round(rsi_score, 1),
             composite_score=round(composite, 1),
             current_price=round(current_price, 2),
             atr_pct=atr_pct,
+            rsi_value=round(rsi_value, 1),
+            momentum_5d=mom_metadata.get("mom_5d", 0.0),
+            momentum_20d=mom_metadata.get("mom_20d", 0.0),
+            momentum_60d=mom_metadata.get("mom_60d", 0.0),
+            momentum_alignment=mom_metadata.get("alignment", ""),
         )
 
     def score_watchlist(self, tickers: List[str]) -> List[StockScore]:

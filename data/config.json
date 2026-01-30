@@ -12,39 +12,63 @@
 
   "scoring": {
     "default_weights": {
-      "momentum": 0.30,
-      "volatility": 0.20,
-      "volume": 0.15,
-      "relative_strength": 0.25,
-      "mean_reversion": 0.10
+      "momentum": 0.25,
+      "volatility": 0.18,
+      "volume": 0.12,
+      "relative_strength": 0.20,
+      "mean_reversion": 0.10,
+      "rsi": 0.15
     },
     "regime_weights": {
       "BULL": {
-        "momentum": 0.35,
-        "volatility": 0.15,
-        "volume": 0.15,
-        "relative_strength": 0.25,
-        "mean_reversion": 0.10
+        "momentum": 0.28,
+        "volatility": 0.12,
+        "volume": 0.12,
+        "relative_strength": 0.23,
+        "mean_reversion": 0.08,
+        "rsi": 0.17
       },
       "SIDEWAYS": {
-        "momentum": 0.20,
-        "volatility": 0.25,
-        "volume": 0.15,
-        "relative_strength": 0.20,
-        "mean_reversion": 0.20
+        "momentum": 0.18,
+        "volatility": 0.22,
+        "volume": 0.12,
+        "relative_strength": 0.18,
+        "mean_reversion": 0.15,
+        "rsi": 0.15
       },
       "BEAR": {
-        "momentum": 0.15,
-        "volatility": 0.30,
-        "volume": 0.15,
-        "relative_strength": 0.15,
-        "mean_reversion": 0.25
+        "momentum": 0.12,
+        "volatility": 0.25,
+        "volume": 0.12,
+        "relative_strength": 0.13,
+        "mean_reversion": 0.20,
+        "rsi": 0.18
       }
     },
     "min_score_threshold": {
       "BULL": 40.0,
       "SIDEWAYS": 50.0,
       "BEAR": 60.0
+    },
+    "momentum": {
+      "multi_timeframe_enabled": true,
+      "timeframes": {
+        "short": {"days": 5, "weight": 0.20},
+        "medium": {"days": 20, "weight": 0.50},
+        "long": {"days": 60, "weight": 0.30}
+      },
+      "alignment_bonus_max": 15,
+      "acceleration_bonus": 10
+    },
+    "rsi": {
+      "enabled": true,
+      "period": 14,
+      "thresholds": {
+        "oversold": 30,
+        "overbought": 70,
+        "extreme_overbought": 80
+      },
+      "hard_filter_above": 85
     }
   },
 
@@ -72,5 +96,28 @@
     "confidence_multiplier_enabled": true,
     "confidence_min": 0.5,
     "confidence_max": 1.5
+  },
+
+  "discovery": {
+    "enabled": true,
+    "run_frequency": "weekly",
+    "scan_types": {
+      "momentum_breakouts": true,
+      "oversold_bounces": true,
+      "sector_leaders": true,
+      "volume_anomalies": false
+    },
+    "filters": {
+      "min_market_cap_m": 300,
+      "max_market_cap_m": 5000,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 500.0
+    },
+    "watchlist": {
+      "max_tickers": 150,
+      "stale_days_threshold": 30,
+      "core_tickers_file": "data/core_watchlist.jsonl"
+    }
   }
 }
