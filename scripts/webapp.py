@@ -86,23 +86,23 @@ st.markdown("""
 
 :root {
     --void: #000000;
-    --abyss: #050508;
-    --deep: #0a0a0f;
-    --surface: #12121a;
-    --elevated: #1a1a24;
-    --border-subtle: rgba(255, 255, 255, 0.03);
-    --border-visible: rgba(255, 255, 255, 0.06);
-    --text-primary: rgba(255, 255, 255, 0.92);
-    --text-secondary: rgba(255, 255, 255, 0.55);
-    --text-tertiary: rgba(255, 255, 255, 0.25);
-    --text-ghost: rgba(255, 255, 255, 0.12);
+    --abyss: #08080c;
+    --deep: #0c0c12;
+    --surface: #161620;
+    --elevated: #1e1e2a;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-visible: rgba(255, 255, 255, 0.15);
+    --text-primary: rgba(255, 255, 255, 1);
+    --text-secondary: rgba(255, 255, 255, 0.75);
+    --text-tertiary: rgba(255, 255, 255, 0.50);
+    --text-ghost: rgba(255, 255, 255, 0.30);
     --pulse-cyan: #00d4ff;
     --pulse-gold: #ffd700;
     --pulse-positive: #00ff9d;
     --pulse-negative: #ff3366;
     --pulse-warning: #ffaa00;
-    --glow-cyan: rgba(0, 212, 255, 0.15);
-    --glow-gold: rgba(255, 215, 0, 0.1);
+    --glow-cyan: rgba(0, 212, 255, 0.20);
+    --glow-gold: rgba(255, 215, 0, 0.15);
 }
 
 /* ─── Base Reset ─────────────────────────────────────────────────────────── */
@@ -162,9 +162,9 @@ code, pre, [data-testid="stCode"] * {
 }
 
 .system-status {
-    font-size: 0.7rem;
-    letter-spacing: 0.4rem;
-    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    letter-spacing: 0.3rem;
+    color: var(--text-secondary);
     margin-top: 0.8rem;
     text-transform: uppercase;
 }
@@ -213,9 +213,9 @@ code, pre, [data-testid="stCode"] * {
 }
 
 .mind-label {
-    font-size: 0.65rem;
-    letter-spacing: 0.5rem;
-    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    letter-spacing: 0.4rem;
+    color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 2rem;
 }
@@ -261,9 +261,9 @@ code, pre, [data-testid="stCode"] * {
 }
 
 .metric-label {
-    font-size: 0.6rem;
-    letter-spacing: 0.25rem;
-    color: var(--text-tertiary);
+    font-size: 0.7rem;
+    letter-spacing: 0.2rem;
+    color: var(--text-secondary);
     text-transform: uppercase;
 }
 
@@ -294,9 +294,9 @@ code, pre, [data-testid="stCode"] * {
 }
 
 .signal-title {
-    font-size: 0.6rem;
-    letter-spacing: 0.2rem;
-    color: var(--text-tertiary);
+    font-size: 0.7rem;
+    letter-spacing: 0.15rem;
+    color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 1rem;
 }
@@ -358,13 +358,13 @@ code, pre, [data-testid="stCode"] * {
 }
 
 .section-header {
-    font-size: 0.6rem;
-    letter-spacing: 0.3rem;
-    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    letter-spacing: 0.2rem;
+    color: var(--text-secondary);
     text-transform: uppercase;
     margin-bottom: 1.5rem;
     padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-visible);
 }
 
 [data-testid="stDataFrame"] {
