@@ -24,43 +24,42 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from risk_scoreboard import get_risk_scoreboard
 from attribution import get_daily_attribution
+from data_files import (
+    get_positions_file, get_transactions_file, get_daily_snapshots_file,
+    load_config as load_base_config, is_paper_mode, DATA_DIR, CONFIG_FILE
+)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
-CONFIG_FILE = DATA_DIR / "config.json"
 
 
 def load_config() -> dict:
     """Load configuration."""
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return {"starting_capital": 5000.0}
+    return load_base_config()
 
 
 def load_positions() -> pd.DataFrame:
     """Load current positions."""
-    if not POSITIONS_FILE.exists():
+    positions_file = get_positions_file()
+    if not positions_file.exists():
         return pd.DataFrame()
-    return pd.read_csv(POSITIONS_FILE)
+    return pd.read_csv(positions_file)
 
 
 def load_transactions() -> pd.DataFrame:
     """Load all transactions."""
-    if not TRANSACTIONS_FILE.exists():
+    transactions_file = get_transactions_file()
+    if not transactions_file.exists():
         return pd.DataFrame()
-    return pd.read_csv(TRANSACTIONS_FILE)
+    return pd.read_csv(transactions_file)
 
 
 def load_snapshots() -> pd.DataFrame:
     """Load daily snapshots."""
-    if not DAILY_SNAPSHOTS_FILE.exists():
+    snapshots_file = get_daily_snapshots_file()
+    if not snapshots_file.exists():
         return pd.DataFrame()
-    return pd.read_csv(DAILY_SNAPSHOTS_FILE)
+    return pd.read_csv(snapshots_file)
 
 
 def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:

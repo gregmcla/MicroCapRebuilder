@@ -17,19 +17,15 @@ import pandas as pd
 import numpy as np
 
 from market_regime import get_market_regime, MarketRegime
-
-# ─── Paths ───
-SCRIPT_DIR = Path(__file__).parent
-DATA_DIR = SCRIPT_DIR.parent / "data"
-CONFIG_PATH = DATA_DIR / "config.json"
-POSITIONS_PATH = DATA_DIR / "positions.csv"
-SNAPSHOTS_PATH = DATA_DIR / "daily_snapshots.csv"
+from data_files import (
+    get_positions_file, get_daily_snapshots_file,
+    load_config as load_base_config, CONFIG_FILE
+)
 
 
 def load_config() -> dict:
     """Load configuration from config.json."""
-    with open(CONFIG_PATH) as f:
-        return json.load(f)
+    return load_base_config()
 
 
 # ─── Risk Levels ───
@@ -151,15 +147,17 @@ class RiskScoreboardCalculator:
 
     def _load_positions(self) -> pd.DataFrame:
         """Load current positions."""
-        if not POSITIONS_PATH.exists():
+        positions_file = get_positions_file()
+        if not positions_file.exists():
             return pd.DataFrame()
-        return pd.read_csv(POSITIONS_PATH)
+        return pd.read_csv(positions_file)
 
     def _load_snapshots(self) -> pd.DataFrame:
         """Load daily snapshots."""
-        if not SNAPSHOTS_PATH.exists():
+        snapshots_file = get_daily_snapshots_file()
+        if not snapshots_file.exists():
             return pd.DataFrame()
-        df = pd.read_csv(SNAPSHOTS_PATH)
+        df = pd.read_csv(snapshots_file)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
         return df

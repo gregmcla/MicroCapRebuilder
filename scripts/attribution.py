@@ -18,12 +18,11 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 
+from data_files import (
+    get_positions_file, get_transactions_file, get_daily_snapshots_file, DATA_DIR
+)
+
 # ─── Paths ───
-SCRIPT_DIR = Path(__file__).parent
-DATA_DIR = SCRIPT_DIR.parent / "data"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
 RATIONALES_FILE = DATA_DIR / "trade_rationales.jsonl"
 
 
@@ -86,24 +85,27 @@ class PerformanceAttributor:
 
     def _load_transactions(self) -> pd.DataFrame:
         """Load transactions with factor scores."""
-        if not TRANSACTIONS_FILE.exists():
+        transactions_file = get_transactions_file()
+        if not transactions_file.exists():
             return pd.DataFrame()
-        df = pd.read_csv(TRANSACTIONS_FILE)
+        df = pd.read_csv(transactions_file)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
         return df
 
     def _load_positions(self) -> pd.DataFrame:
         """Load current positions."""
-        if not POSITIONS_FILE.exists():
+        positions_file = get_positions_file()
+        if not positions_file.exists():
             return pd.DataFrame()
-        return pd.read_csv(POSITIONS_FILE)
+        return pd.read_csv(positions_file)
 
     def _load_snapshots(self) -> pd.DataFrame:
         """Load daily snapshots."""
-        if not SNAPSHOTS_FILE.exists():
+        snapshots_file = get_daily_snapshots_file()
+        if not snapshots_file.exists():
             return pd.DataFrame()
-        df = pd.read_csv(SNAPSHOTS_FILE)
+        df = pd.read_csv(snapshots_file)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
         return df

@@ -26,14 +26,14 @@ from stock_scorer import StockScorer
 from market_regime import get_market_regime, get_position_size_multiplier, MarketRegime
 from capital_preservation import get_preservation_status
 from explainability import RationaleGenerator, save_rationale
+from data_files import (
+    get_positions_file, get_transactions_file, get_daily_snapshots_file,
+    load_config as load_base_config, is_paper_mode, get_mode_indicator, DATA_DIR
+)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
 WATCHLIST_PATH = DATA_DIR / "watchlist.jsonl"
 CONFIG_PATH = DATA_DIR / "config.json"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
 
 
 def load_config() -> dict:
@@ -61,19 +61,21 @@ def load_watchlist() -> list:
 
 def get_current_positions() -> pd.DataFrame:
     """Load current positions."""
-    if not POSITIONS_FILE.exists():
+    positions_file = get_positions_file()
+    if not positions_file.exists():
         return pd.DataFrame(columns=POSITION_COLUMNS)
-    return pd.read_csv(POSITIONS_FILE)
+    return pd.read_csv(positions_file)
 
 
 def calculate_cash() -> float:
     """Calculate available cash from transactions."""
     config = load_config()
+    transactions_file = get_transactions_file()
 
-    if not TRANSACTIONS_FILE.exists():
+    if not transactions_file.exists():
         return config["starting_capital"]
 
-    df = pd.read_csv(TRANSACTIONS_FILE)
+    df = pd.read_csv(transactions_file)
     if df.empty:
         return config["starting_capital"]
 
@@ -170,19 +172,21 @@ def append_transactions(transactions: list):
     if not transactions:
         return
 
+    transactions_file = get_transactions_file()
     df_new = pd.DataFrame(transactions, columns=TRANSACTION_COLUMNS)
 
-    if TRANSACTIONS_FILE.exists():
-        df_existing = pd.read_csv(TRANSACTIONS_FILE)
+    if transactions_file.exists():
+        df_existing = pd.read_csv(transactions_file)
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new
 
-    df_combined.to_csv(TRANSACTIONS_FILE, index=False)
+    df_combined.to_csv(transactions_file, index=False)
 
 
 def main():
-    print("\n─── Intelligent Stock Picker ───\n")
+    mode_indicator = get_mode_indicator()
+    print(f"\n─── Intelligent Stock Picker {mode_indicator} ───\n")
 
     config = load_config()
     rm = RiskManager()
@@ -382,9 +386,9 @@ def main():
 
     # Step 5: Save changes
     if new_transactions:
-        print("\nStep 5: Saving changes...")
+        print(f"\nStep 5: Saving changes... {get_mode_indicator()}")
         append_transactions(new_transactions)
-        positions_df.to_csv(POSITIONS_FILE, index=False)
+        positions_df.to_csv(get_positions_file(), index=False)
         print(f"  Saved {len(new_transactions)} transactions")
 
     # Summary

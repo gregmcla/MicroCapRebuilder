@@ -24,10 +24,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-# ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
-CONFIG_FILE = DATA_DIR / "config.json"
+from data_files import get_daily_snapshots_file, load_config as load_base_config, CONFIG_FILE
 
 
 @dataclass
@@ -70,10 +67,11 @@ class PortfolioAnalytics:
 
     def load_equity_curve(self) -> pd.DataFrame:
         """Load daily equity snapshots."""
-        if not DAILY_SNAPSHOTS_FILE.exists():
+        snapshots_file = get_daily_snapshots_file()
+        if not snapshots_file.exists():
             return pd.DataFrame()
 
-        df = pd.read_csv(DAILY_SNAPSHOTS_FILE)
+        df = pd.read_csv(snapshots_file)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date")

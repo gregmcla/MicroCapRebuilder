@@ -24,11 +24,9 @@ from schema import TRANSACTION_COLUMNS, POSITION_COLUMNS, Action, Reason
 from risk_manager import RiskManager, SellSignal
 from market_regime import get_market_regime
 from post_mortem import PostMortemAnalyzer, save_post_mortem
-
-# ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
+from data_files import (
+    get_positions_file, get_transactions_file, get_mode_indicator
+)
 
 
 def fetch_current_prices(tickers: list) -> dict:
@@ -71,10 +69,11 @@ def record_sell_transaction(signal: SellSignal) -> dict:
 
 def get_buy_transaction_for_ticker(ticker: str) -> dict:
     """Find the original BUY transaction for a ticker."""
-    if not TRANSACTIONS_FILE.exists():
+    transactions_file = get_transactions_file()
+    if not transactions_file.exists():
         return {}
 
-    df = pd.read_csv(TRANSACTIONS_FILE)
+    df = pd.read_csv(transactions_file)
     buys = df[(df["ticker"] == ticker) & (df["action"] == "BUY")]
 
     if buys.empty:
@@ -89,15 +88,16 @@ def append_transactions(transactions: list):
     if not transactions:
         return
 
+    transactions_file = get_transactions_file()
     df_new = pd.DataFrame(transactions, columns=TRANSACTION_COLUMNS)
 
-    if TRANSACTIONS_FILE.exists():
-        df_existing = pd.read_csv(TRANSACTIONS_FILE)
+    if transactions_file.exists():
+        df_existing = pd.read_csv(transactions_file)
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new
 
-    df_combined.to_csv(TRANSACTIONS_FILE, index=False)
+    df_combined.to_csv(transactions_file, index=False)
 
 
 def update_positions_after_sells(signals: list):
@@ -109,27 +109,30 @@ def update_positions_after_sells(signals: list):
     if not signals:
         return
 
-    if not POSITIONS_FILE.exists():
+    positions_file = get_positions_file()
+    if not positions_file.exists():
         return
 
-    df = pd.read_csv(POSITIONS_FILE)
+    df = pd.read_csv(positions_file)
     sold_tickers = [s.ticker for s in signals]
 
     # Remove sold positions
     df = df[~df["ticker"].isin(sold_tickers)]
-    df.to_csv(POSITIONS_FILE, index=False)
+    df.to_csv(positions_file, index=False)
 
 
 def main():
-    print("\n─── Execute Sells ───\n")
+    mode_indicator = get_mode_indicator()
+    print(f"\n─── Execute Sells {mode_indicator} ───\n")
 
     # Check if positions file exists
-    if not POSITIONS_FILE.exists():
-        print("  No positions.csv found, nothing to check")
+    positions_file = get_positions_file()
+    if not positions_file.exists():
+        print(f"  No {positions_file.name} found, nothing to check")
         return
 
     # Load positions
-    df_positions = pd.read_csv(POSITIONS_FILE)
+    df_positions = pd.read_csv(positions_file)
     if df_positions.empty:
         print("  No positions to check")
         return

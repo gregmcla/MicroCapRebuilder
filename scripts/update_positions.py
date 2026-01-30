@@ -20,12 +20,10 @@ import pandas as pd
 import yfinance as yf
 
 from schema import POSITION_COLUMNS, DAILY_SNAPSHOT_COLUMNS
-
-# ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
-CONFIG_FILE = DATA_DIR / "config.json"
+from data_files import (
+    get_positions_file, get_transactions_file, get_daily_snapshots_file,
+    load_config as load_base_config, get_mode_indicator, DATA_DIR, CONFIG_FILE
+)
 
 
 def load_config():
@@ -68,7 +66,7 @@ def fetch_benchmark_value(config):
 def calculate_cash_from_transactions():
     """Calculate current cash from transaction history."""
     config = load_config()
-    transactions_file = DATA_DIR / "transactions.csv"
+    transactions_file = get_transactions_file()
 
     if not transactions_file.exists():
         return config["starting_capital"]
@@ -93,11 +91,12 @@ def calculate_cash_from_transactions():
 
 def update_positions():
     """Update positions with current prices and calculate P&L."""
-    if not POSITIONS_FILE.exists():
-        print("  No positions.csv found, nothing to update")
+    positions_file = get_positions_file()
+    if not positions_file.exists():
+        print(f"  No {positions_file.name} found, nothing to update")
         return pd.DataFrame(columns=POSITION_COLUMNS), 0
 
-    df = pd.read_csv(POSITIONS_FILE)
+    df = pd.read_csv(positions_file)
     if df.empty:
         print("  No positions to update")
         return df, 0
@@ -131,7 +130,7 @@ def update_positions():
         df.at[idx, "unrealized_pnl_pct"] = round(unrealized_pnl_pct, 2)
 
     # Save updated positions
-    df.to_csv(POSITIONS_FILE, index=False)
+    df.to_csv(positions_file, index=False)
 
     total_value = df["market_value"].sum()
     total_pnl = df["unrealized_pnl"].sum()
@@ -142,10 +141,11 @@ def update_positions():
 
 def get_previous_equity():
     """Get previous day's equity for P&L calculation."""
-    if not DAILY_SNAPSHOTS_FILE.exists():
+    snapshots_file = get_daily_snapshots_file()
+    if not snapshots_file.exists():
         return None
 
-    df = pd.read_csv(DAILY_SNAPSHOTS_FILE)
+    df = pd.read_csv(snapshots_file)
     if df.empty:
         return None
 
@@ -177,8 +177,9 @@ def append_daily_snapshot(positions_value, cash, benchmark_value=None):
     }
 
     # Load or create snapshots file
-    if DAILY_SNAPSHOTS_FILE.exists():
-        df = pd.read_csv(DAILY_SNAPSHOTS_FILE)
+    snapshots_file = get_daily_snapshots_file()
+    if snapshots_file.exists():
+        df = pd.read_csv(snapshots_file)
         # Remove existing entry for today if any
         df = df[df["date"] != today]
     else:
@@ -186,13 +187,14 @@ def append_daily_snapshot(positions_value, cash, benchmark_value=None):
 
     # Append today's snapshot
     df = pd.concat([df, pd.DataFrame([snapshot])], ignore_index=True)
-    df.to_csv(DAILY_SNAPSHOTS_FILE, index=False)
+    df.to_csv(snapshots_file, index=False)
 
     return total_equity, day_pnl
 
 
 def main():
-    print("\n─── Updating Positions ───\n")
+    mode_indicator = get_mode_indicator()
+    print(f"\n─── Updating Positions {mode_indicator} ───\n")
 
     config = load_config()
 
