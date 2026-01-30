@@ -4,8 +4,13 @@ cd "$(dirname "$0")"
 source .venv/bin/activate
 
 echo "═══════════════════════════════════════════════════════════"
-echo "  MicroCapRebuilder Daily Run - $(date +%Y-%m-%d)"
+echo "  MOMMY BOT Daily Run - $(date +%Y-%m-%d)"
 echo "═══════════════════════════════════════════════════════════"
+
+# 0) Run stock discovery (finds new candidates)
+echo ""
+echo "Step 0: Running stock discovery..."
+python scripts/watchlist_manager.py --update 2>/dev/null || echo "  (Discovery skipped - will retry next run)"
 
 # 1) Check and execute sells (stop loss / take profit)
 echo ""

@@ -5,6 +5,7 @@ Run with: streamlit run scripts/webapp.py
 """
 
 import json
+import subprocess
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
@@ -532,8 +533,57 @@ if not snapshots_df.empty and len(snapshots_df) > 1:
 # ─── Footer ───────────────────────────────────────────────────────────────────
 st.markdown("")
 col_l, col_c, col_r = st.columns([1, 1, 1])
-with col_c:
-    if st.button("⟳ REFRESH DATA", use_container_width=True):
+
+with col_l:
+    if st.button("⟳ REFRESH", use_container_width=True):
         st.rerun()
+
+with col_c:
+    if st.button("▶ RUN DAILY", use_container_width=True, type="primary"):
+        with st.spinner("Running daily workflow... (this may take a few minutes)"):
+            try:
+                # Get project root directory
+                project_root = Path(__file__).parent.parent
+                result = subprocess.run(
+                    ["bash", "run_daily.sh"],
+                    cwd=project_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=600  # 10 minute timeout
+                )
+                if result.returncode == 0:
+                    st.success("Daily run complete!")
+                    st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout, language="text")
+                    st.rerun()
+                else:
+                    st.error("Daily run failed!")
+                    st.code(result.stderr[-1000:] if result.stderr else result.stdout[-1000:], language="text")
+            except subprocess.TimeoutExpired:
+                st.error("Daily run timed out (>10 minutes)")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+with col_r:
+    if st.button("🔍 DISCOVER", use_container_width=True):
+        with st.spinner("Discovering new stocks..."):
+            try:
+                project_root = Path(__file__).parent.parent
+                result = subprocess.run(
+                    ["python", "scripts/stock_discovery.py"],
+                    cwd=project_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout
+                )
+                if result.returncode == 0:
+                    st.success("Discovery complete!")
+                    st.code(result.stdout[-3000:] if len(result.stdout) > 3000 else result.stdout, language="text")
+                else:
+                    st.error("Discovery failed!")
+                    st.code(result.stderr[-1000:] if result.stderr else "No error output", language="text")
+            except subprocess.TimeoutExpired:
+                st.error("Discovery timed out (>5 minutes)")
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 st.markdown("<p style='text-align:center; color:#555; font-size:0.7rem; margin-top:24px;'>MOMMY BOT v3.0 | DATA DELAYED | NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
