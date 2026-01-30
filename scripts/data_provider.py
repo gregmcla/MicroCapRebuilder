@@ -39,6 +39,13 @@ import hashlib
 
 import pandas as pd
 
+# Load environment variables from .env file (for API keys)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+except ImportError:
+    pass  # dotenv not installed, will use os.environ directly
+
 # ─── Paths ───────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
@@ -75,25 +82,30 @@ def load_config():
 
 
 def get_api_key(provider: str) -> Optional[str]:
-    """Get API key for a provider from config or environment."""
-    config = load_config()
-    provider_config = config.get("data_provider", {})
+    """Get API key for a provider from environment or config.
 
-    # Check config first
-    key = provider_config.get(f"{provider}_api_key")
-    if key:
-        return key
-
-    # Check environment variables
+    Priority: Environment variables (secure) > config.json (less secure)
+    """
+    # Environment variable mapping
     env_var_map = {
         "alpha_vantage": "ALPHA_VANTAGE_API_KEY",
         "finnhub": "FINNHUB_API_KEY",
         "polygon": "POLYGON_API_KEY",
     }
 
+    # Check environment variables FIRST (more secure)
     env_var = env_var_map.get(provider)
     if env_var:
-        return os.environ.get(env_var)
+        key = os.environ.get(env_var)
+        if key:
+            return key
+
+    # Fallback to config (less secure, but convenient for testing)
+    config = load_config()
+    provider_config = config.get("data_provider", {})
+    key = provider_config.get(f"{provider}_api_key")
+    if key:
+        return key
 
     return None
 

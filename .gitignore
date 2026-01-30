@@ -9,3 +9,9 @@ logs/
 reports/
 charts/
 backup/
+
+# Secrets - NEVER commit these
+.env
+.env.*
+*.secret
+secrets/
