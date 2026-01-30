@@ -43,6 +43,7 @@ from pattern_detector import get_pattern_alerts
 from post_mortem import get_recent_post_mortems
 from factor_learning import FactorLearner, get_weight_suggestions
 from portfolio_chat import chat as ai_chat, check_setup as check_chat_setup
+from portfolio_intelligence import run_intelligence, SAFETY_RAILS
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -989,6 +990,114 @@ with tab_activity:
 # TAB: INTELLIGENCE
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab_intelligence:
+    # AI Portfolio Intelligence Section
+    st.markdown('<div class="section-header">🧠 AI Portfolio Intelligence</div>', unsafe_allow_html=True)
+
+    # Check if API is configured
+    chat_ready, _ = check_chat_setup()
+
+    if not chat_ready:
+        st.markdown("""
+        <div style="background: var(--surface); border: 1px solid var(--border-subtle); padding: 1rem; margin-bottom: 1.5rem;">
+            <div style="color: var(--text-tertiary); font-size: 0.75rem;">
+                AI Intelligence requires ANTHROPIC_API_KEY in .env file
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Run Analysis button
+        if st.button("🔍 Run AI Analysis", use_container_width=True):
+            with st.spinner("🧠 Mommy is thinking..."):
+                try:
+                    result = run_intelligence()
+                    actions = result.get("actions", [])
+
+                    if actions:
+                        st.markdown("""
+                        <div style="margin: 1rem 0;">
+                            <div style="color: var(--text-secondary); font-size: 0.7rem; letter-spacing: 0.1rem; text-transform: uppercase; margin-bottom: 0.75rem;">Recommendations</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        for action in actions:
+                            if "error" in action:
+                                st.error(action["error"])
+                                continue
+
+                            action_type = action.get("action", "")
+                            ticker = action.get("ticker", "-")
+                            reason = action.get("reason", "")
+                            safety = action.get("safety_check", "")
+
+                            # Color based on action type
+                            if action_type == "HOLD":
+                                color = "var(--text-tertiary)"
+                                icon = "⏸️"
+                            elif action_type in ["BUY", "ADD"]:
+                                color = "var(--pulse-positive)"
+                                icon = "📈"
+                            elif action_type in ["SELL", "TRIM"]:
+                                color = "var(--pulse-negative)"
+                                icon = "📉"
+                            else:
+                                color = "var(--pulse-warning)"
+                                icon = "⚙️"
+
+                            blocked = safety == "BLOCKED"
+                            block_style = "opacity: 0.5;" if blocked else ""
+                            block_label = " [BLOCKED]" if blocked else ""
+
+                            st.markdown(f"""
+                            <div style="background: var(--surface); border-left: 3px solid {color}; padding: 1rem; margin-bottom: 0.75rem; {block_style}">
+                                <div style="font-size: 0.85rem; color: var(--text-primary);">
+                                    {icon} <strong>{action_type}</strong> {ticker}{block_label}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    {reason}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            if blocked:
+                                st.markdown(f"""
+                                <div style="font-size: 0.7rem; color: var(--pulse-warning); margin-top: -0.5rem; margin-bottom: 0.75rem; padding-left: 1rem;">
+                                    ⚠️ {action.get('block_reason', 'Safety rail triggered')}
+                                </div>
+                                """, unsafe_allow_html=True)
+                    else:
+                        st.info("No actions recommended at this time")
+
+                except Exception as e:
+                    st.error(f"Intelligence error: {e}")
+
+        # Safety Rails Display
+        with st.expander("⛨ Safety Rails", expanded=False):
+            st.markdown("""
+            <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 1rem;">
+                These limits protect the portfolio from excessive risk
+            </div>
+            """, unsafe_allow_html=True)
+
+            rails_left, rails_right = st.columns(2)
+            with rails_left:
+                st.markdown(f"""
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Max Position: <strong>{SAFETY_RAILS['max_position_pct']}%</strong><br>
+                    Min Cash: <strong>{SAFETY_RAILS['min_cash_pct']}%</strong><br>
+                    Max Sector: <strong>{SAFETY_RAILS['max_sector_pct']}%</strong>
+                </div>
+                """, unsafe_allow_html=True)
+            with rails_right:
+                st.markdown(f"""
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                    Max Daily Buys: <strong>{SAFETY_RAILS['max_daily_buys']}</strong><br>
+                    Max Daily Sells: <strong>{SAFETY_RAILS['max_daily_sells']}</strong><br>
+                    Daily Loss Halt: <strong>{SAFETY_RAILS['daily_loss_halt_pct']}%</strong>
+                </div>
+                """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
     col_left, col_right = st.columns(2)
 
     with col_left:

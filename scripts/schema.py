@@ -74,6 +74,9 @@ LEGACY_COLUMN_MAP = {
 class Action:
     BUY = "BUY"
     SELL = "SELL"
+    TRIM = "TRIM"           # Partial sell (intelligence-driven)
+    ADD = "ADD"             # Add to existing position
+
 
 # ─── Trade Reasons ────────────────────────────────────────────────────────────
 class Reason:
@@ -82,3 +85,6 @@ class Reason:
     TAKE_PROFIT = "TAKE_PROFIT" # Triggered take profit
     MANUAL = "MANUAL"           # Manual intervention
     MIGRATION = "MIGRATION"     # Imported from legacy data
+    INTELLIGENCE = "INTELLIGENCE"  # AI portfolio intelligence decision
+    TRIM_PROFIT = "TRIM_PROFIT"    # Partial profit taking
+    REBALANCE = "REBALANCE"        # Portfolio rebalancing

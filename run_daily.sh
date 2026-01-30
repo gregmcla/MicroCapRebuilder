@@ -3,6 +3,11 @@ set -e
 cd "$(dirname "$0")"
 source .venv/bin/activate
 
+# Load environment variables from .env if present
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 echo "═══════════════════════════════════════════════════════════"
 echo "  MOMMY BOT Daily Run - $(date +%Y-%m-%d)"
 echo "═══════════════════════════════════════════════════════════"
@@ -36,6 +41,15 @@ scripts/update_positions.py
 echo ""
 echo "Step 3b: Updating factor performance..."
 python scripts/factor_learning.py 2>/dev/null || echo "  (Factor learning skipped - need more trades)"
+
+# 3c) Run Portfolio Intelligence (AI-driven analysis and actions)
+echo ""
+echo "Step 3c: Running Portfolio Intelligence..."
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    python scripts/execute_intelligence.py 2>/dev/null || echo "  (Intelligence skipped - check API key)"
+else
+    echo "  (Intelligence skipped - ANTHROPIC_API_KEY not set)"
+fi
 
 # 4) Generate performance chart
 echo ""
