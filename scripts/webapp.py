@@ -27,6 +27,7 @@ from attribution import get_daily_attribution
 from pattern_detector import get_pattern_alerts
 from post_mortem import get_recent_post_mortems
 from factor_learning import FactorLearner, get_weight_suggestions
+from portfolio_chat import chat as ai_chat, check_setup as check_chat_setup
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -895,8 +896,8 @@ with col4:
 
 # ─── Tabs ────────────────────────────────────────────────────────────────────
 st.markdown("")
-tab_positions, tab_activity, tab_intelligence = st.tabs([
-    "POSITIONS", "ACTIVITY", "INTELLIGENCE"
+tab_positions, tab_activity, tab_intelligence, tab_chat = st.tabs([
+    "POSITIONS", "ACTIVITY", "INTELLIGENCE", "CHAT"
 ])
 
 
@@ -1058,6 +1059,88 @@ with tab_intelligence:
                 st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">No attribution data</div>', unsafe_allow_html=True)
         except:
             st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Attribution loading</div>', unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: CHAT
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_chat:
+    st.markdown('<div class="section-header">Ask MOMMY</div>', unsafe_allow_html=True)
+
+    # Check if chat is configured
+    chat_ready, chat_status = check_chat_setup()
+
+    if not chat_ready:
+        st.markdown(f"""
+        <div style="background: var(--surface); border: 1px solid var(--border-subtle); padding: 1.5rem; margin: 1rem 0;">
+            <div style="color: var(--pulse-warning); font-size: 0.8rem; margin-bottom: 0.5rem;">Setup Required</div>
+            <div style="color: var(--text-secondary); font-size: 0.75rem;">
+                {chat_status}<br><br>
+                To enable AI chat:<br>
+                1. Add <code>ANTHROPIC_API_KEY=your-key-here</code> to your .env file<br>
+                2. Run <code>pip install anthropic</code><br>
+                3. Refresh the page
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        # Sample questions
+        st.markdown("""
+        <div style="color: var(--text-tertiary); font-size: 0.7rem; margin-bottom: 1rem;">
+            Try asking: "Which positions should I be worried about?" or "Summarize my portfolio health"
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Chat input
+        user_question = st.text_input(
+            "Ask a question about your portfolio",
+            placeholder="e.g., Which stocks are close to their stop loss?",
+            label_visibility="collapsed"
+        )
+
+        if user_question:
+            with st.spinner("Thinking..."):
+                response = ai_chat(user_question)
+
+            if response.success:
+                st.markdown(f"""
+                <div style="background: var(--surface); border: 1px solid var(--border-subtle); padding: 1.5rem; margin: 1rem 0;">
+                    <div style="color: var(--text-secondary); font-size: 0.8rem; white-space: pre-wrap;">{response.message}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.error(response.error)
+
+        # Quick action buttons
+        st.markdown("---")
+        st.markdown('<div style="color: var(--text-tertiary); font-size: 0.65rem; letter-spacing: 0.1rem; text-transform: uppercase; margin-bottom: 0.75rem;">Quick Questions</div>', unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Portfolio Health Check", use_container_width=True):
+                with st.spinner("Analyzing..."):
+                    response = ai_chat("Give me a quick health check of my portfolio. What's going well and what needs attention?")
+                if response.success:
+                    st.markdown(f"""
+                    <div style="background: var(--surface); border: 1px solid var(--border-subtle); padding: 1.5rem; margin: 1rem 0;">
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; white-space: pre-wrap;">{response.message}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.error(response.error)
+
+        with col2:
+            if st.button("Positions to Watch", use_container_width=True):
+                with st.spinner("Scanning..."):
+                    response = ai_chat("Which positions are approaching their stop loss or take profit levels? Any that need immediate attention?")
+                if response.success:
+                    st.markdown(f"""
+                    <div style="background: var(--surface); border: 1px solid var(--border-subtle); padding: 1.5rem; margin: 1rem 0;">
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; white-space: pre-wrap;">{response.message}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.error(response.error)
 
 
 # ─── Actions ─────────────────────────────────────────────────────────────────

@@ -3,5 +3,6 @@ pandas
 numpy
 matplotlib
 openai
+anthropic
 python-dotenv
 streamlit
