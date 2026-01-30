@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
-Mommy Bot - Bloomberg-Style Terminal Dashboard.
+M O M M Y — Autonomous Trading Intelligence
+
+A cinematic command center interface for monitoring
+a living system that operates quietly and continuously.
+
 Run with: streamlit run scripts/webapp.py
 """
 
@@ -23,32 +27,6 @@ from attribution import get_daily_attribution
 from pattern_detector import get_pattern_alerts
 from post_mortem import get_recent_post_mortems
 from factor_learning import FactorLearner, get_weight_suggestions
-
-# ─── Ticker URLs ──────────────────────────────────────────────────────────────
-TICKER_URLS = {
-    "RIOT": "https://www.riotplatforms.com/",
-    "SMR": "https://www.nuscalepower.com/",
-    "TDW": "https://www.teradyne.com/",
-    "BELFB": "https://www.belfuse.com/",
-    "AVAV": "https://www.avinc.com/",
-    "MGY": "https://www.magnoliaoilgas.com/",
-    "GOLF": "https://www.callawaygolf.com/",
-    "BTU": "https://www.peabodyenergy.com/",
-    "TEX": "https://www.terex.com/",
-    "CAKE": "https://www.thecheesecakefactory.com/",
-    "AXSM": "https://www.axsome.com/",
-    "CRC": "https://www.calresources.com/",
-    "LMND": "https://www.lemonade.com/",
-    "PFSI": "https://www.pfsinvestments.com/",
-    "EAT": "https://www.brinker.com/",
-}
-
-def get_ticker_link(ticker):
-    """Return markdown hyperlink for ticker if URL exists, otherwise plain text."""
-    url = TICKER_URLS.get(ticker)
-    if url:
-        return f"[{ticker}]({url})"
-    return ticker
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -95,41 +73,501 @@ def calculate_cash():
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Mommy Bot",
-    page_icon="🤖",
+    page_title="MOMMY",
+    page_icon="◆",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# ─── Custom CSS ───────────────────────────────────────────────────────────────
-st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+# ─── Cinematic CSS ───────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
 :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #111111;
-    --bg-tertiary: #1a1a1a;
-    --border-color: #2a2a2a;
-    --text-primary: #e0e0e0;
-    --text-secondary: #888888;
-    --text-muted: #555555;
-    --accent-orange: #ff6600;
-    --accent-amber: #ffaa00;
-    --positive: #00ff88;
-    --negative: #ff4444;
-    --blue: #4488ff;
+    --void: #000000;
+    --abyss: #050508;
+    --deep: #0a0a0f;
+    --surface: #12121a;
+    --elevated: #1a1a24;
+    --border-subtle: rgba(255, 255, 255, 0.03);
+    --border-visible: rgba(255, 255, 255, 0.06);
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-tertiary: rgba(255, 255, 255, 0.25);
+    --text-ghost: rgba(255, 255, 255, 0.12);
+    --pulse-cyan: #00d4ff;
+    --pulse-gold: #ffd700;
+    --pulse-positive: #00ff9d;
+    --pulse-negative: #ff3366;
+    --pulse-warning: #ffaa00;
+    --glow-cyan: rgba(0, 212, 255, 0.15);
+    --glow-gold: rgba(255, 215, 0, 0.1);
 }
-.stApp { background-color: var(--bg-primary) !important; }
-#MainMenu, footer, header { visibility: hidden; }
-* { font-family: 'JetBrains Mono', 'Consolas', monospace !important; }
-.block-container { padding-top: 1rem !important; }
-[data-testid="stMetric"] { background-color: var(--bg-secondary); border: 1px solid var(--border-color); padding: 10px; }
-[data-testid="stMetricLabel"] { color: var(--accent-amber) !important; font-size: 0.7rem !important; }
-[data-testid="stMetricValue"] { color: var(--text-primary) !important; font-size: 1.4rem !important; font-weight: 700 !important; }
-[data-testid="stMetricDelta"] > div { font-size: 0.8rem !important; }
-.stButton > button { background-color: var(--bg-tertiary) !important; color: var(--accent-orange) !important; border: 1px solid var(--accent-orange) !important; border-radius: 0 !important; font-weight: 600 !important; }
-.stButton > button:hover { background-color: var(--accent-orange) !important; color: var(--bg-primary) !important; }
-div[data-testid="stDataFrame"] > div { background-color: var(--bg-secondary) !important; }
-</style>""", unsafe_allow_html=True)
+
+/* ─── Base Reset ─────────────────────────────────────────────────────────── */
+.stApp {
+    background: var(--void);
+    background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 50% 120%, rgba(255, 215, 0, 0.02) 0%, transparent 40%);
+    min-height: 100vh;
+}
+
+* {
+    font-family: 'Space Grotesk', -apple-system, sans-serif !important;
+}
+
+code, pre, [data-testid="stCode"] * {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+#MainMenu, footer, header, [data-testid="stToolbar"], .stDeployButton {
+    display: none !important;
+}
+
+.block-container {
+    padding: 2rem 3rem 4rem 3rem !important;
+    max-width: 1600px !important;
+}
+
+/* ─── The Identity ───────────────────────────────────────────────────────── */
+.system-identity {
+    text-align: center;
+    padding: 3rem 0 2rem 0;
+    position: relative;
+}
+
+.system-identity::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, var(--glow-cyan) 0%, transparent 70%);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.system-name {
+    font-size: 2.5rem;
+    font-weight: 300;
+    letter-spacing: 1.2rem;
+    color: var(--text-primary);
+    margin: 0;
+    position: relative;
+    text-transform: uppercase;
+}
+
+.system-status {
+    font-size: 0.7rem;
+    letter-spacing: 0.4rem;
+    color: var(--text-tertiary);
+    margin-top: 0.8rem;
+    text-transform: uppercase;
+}
+
+.system-pulse {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--pulse-cyan);
+    border-radius: 50%;
+    margin-right: 12px;
+    animation: pulse 3s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--pulse-cyan);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ─── The Mind (Central Focus) ───────────────────────────────────────────── */
+.mind-container {
+    text-align: center;
+    padding: 4rem 2rem;
+    margin: 2rem auto;
+    max-width: 600px;
+    position: relative;
+}
+
+.mind-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--glow-cyan) 0%, transparent 60%);
+    opacity: 0.1;
+    pointer-events: none;
+}
+
+.mind-value {
+    font-size: 5rem;
+    font-weight: 300;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.mind-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.5rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+}
+
+.mind-delta {
+    font-size: 1.2rem;
+    font-weight: 400;
+    padding: 0.5rem 1.5rem;
+    border-radius: 100px;
+    display: inline-block;
+}
+
+.mind-delta.positive {
+    color: var(--pulse-positive);
+    background: rgba(0, 255, 157, 0.08);
+}
+
+.mind-delta.negative {
+    color: var(--pulse-negative);
+    background: rgba(255, 51, 102, 0.08);
+}
+
+/* ─── Secondary Metrics ──────────────────────────────────────────────────── */
+.metrics-row {
+    display: flex;
+    justify-content: center;
+    gap: 4rem;
+    padding: 2rem 0;
+    margin: 1rem 0 3rem 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.metric-item {
+    text-align: center;
+}
+
+.metric-value {
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.metric-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.25rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+}
+
+/* ─── Signal Panels ──────────────────────────────────────────────────────── */
+.signal-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.signal-panel {
+    background: linear-gradient(180deg, var(--surface) 0%, var(--abyss) 100%);
+    border: 1px solid var(--border-subtle);
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.signal-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-visible), transparent);
+}
+
+.signal-title {
+    font-size: 0.6rem;
+    letter-spacing: 0.2rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.signal-value {
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.signal-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ─── Regime Indicator ───────────────────────────────────────────────────── */
+.regime-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border-visible);
+}
+
+.regime-indicator.bull {
+    border-color: rgba(0, 255, 157, 0.2);
+}
+
+.regime-indicator.bear {
+    border-color: rgba(255, 51, 102, 0.2);
+}
+
+.regime-indicator.sideways {
+    border-color: rgba(255, 170, 0, 0.2);
+}
+
+.regime-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.regime-dot.bull { background: var(--pulse-positive); box-shadow: 0 0 8px var(--pulse-positive); }
+.regime-dot.bear { background: var(--pulse-negative); box-shadow: 0 0 8px var(--pulse-negative); }
+.regime-dot.sideways { background: var(--pulse-warning); box-shadow: 0 0 8px var(--pulse-warning); }
+
+.regime-text {
+    font-size: 0.7rem;
+    letter-spacing: 0.15rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+/* ─── Data Tables ────────────────────────────────────────────────────────── */
+.data-section {
+    margin: 3rem 0;
+}
+
+.section-header {
+    font-size: 0.6rem;
+    letter-spacing: 0.3rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+[data-testid="stDataFrame"] {
+    background: transparent !important;
+}
+
+[data-testid="stDataFrame"] > div {
+    background: var(--surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0 !important;
+}
+
+/* ─── Streamlit Overrides ────────────────────────────────────────────────── */
+[data-testid="stMetric"] {
+    background: transparent;
+    padding: 0;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 0.6rem !important;
+    letter-spacing: 0.2rem !important;
+    color: var(--text-tertiary) !important;
+    text-transform: uppercase !important;
+}
+
+[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
+    font-weight: 400 !important;
+    color: var(--text-primary) !important;
+}
+
+/* Buttons */
+.stButton > button {
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-visible) !important;
+    border-radius: 0 !important;
+    padding: 0.75rem 2rem !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.2rem !important;
+    text-transform: uppercase !important;
+    transition: all 0.3s ease !important;
+}
+
+.stButton > button:hover {
+    background: var(--surface) !important;
+    border-color: var(--pulse-cyan) !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.1) !important;
+}
+
+.stButton > button[kind="primary"] {
+    background: transparent !important;
+    border-color: var(--pulse-cyan) !important;
+    color: var(--pulse-cyan) !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    background: rgba(0, 212, 255, 0.1) !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+    background: transparent;
+    border-bottom: 1px solid var(--border-subtle);
+    gap: 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    color: var(--text-tertiary) !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.15rem !important;
+    text-transform: uppercase !important;
+    padding: 1rem 2rem !important;
+    border-bottom: 2px solid transparent !important;
+}
+
+.stTabs [aria-selected="true"] {
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--pulse-cyan) !important;
+}
+
+/* Charts */
+[data-testid="stVegaLiteChart"] {
+    background: transparent !important;
+}
+
+/* Dividers */
+hr {
+    border-color: var(--border-subtle) !important;
+    margin: 2rem 0 !important;
+}
+
+/* Info/Warning boxes */
+.stAlert {
+    background: var(--surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 0 !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Expander */
+.streamlit-expanderHeader {
+    background: var(--surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* ─── Risk Meter ─────────────────────────────────────────────────────────── */
+.risk-meter {
+    width: 100%;
+    height: 2px;
+    background: var(--border-subtle);
+    margin: 1rem 0;
+    position: relative;
+}
+
+.risk-meter-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+}
+
+.risk-low { background: var(--pulse-positive); box-shadow: 0 0 8px var(--pulse-positive); }
+.risk-moderate { background: var(--pulse-warning); box-shadow: 0 0 8px var(--pulse-warning); }
+.risk-high { background: var(--pulse-negative); box-shadow: 0 0 8px var(--pulse-negative); }
+
+/* ─── Alert Banner ───────────────────────────────────────────────────────── */
+.alert-banner {
+    background: linear-gradient(90deg, rgba(255, 51, 102, 0.1) 0%, transparent 100%);
+    border-left: 2px solid var(--pulse-negative);
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+}
+
+.alert-title {
+    font-size: 0.65rem;
+    letter-spacing: 0.2rem;
+    color: var(--pulse-negative);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.alert-detail {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* ─── Position Row ───────────────────────────────────────────────────────── */
+.position-row {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.position-row:last-child {
+    border-bottom: none;
+}
+
+.position-ticker {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    width: 80px;
+}
+
+.position-detail {
+    flex: 1;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.position-pnl {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.position-pnl.positive { color: var(--pulse-positive); }
+.position-pnl.negative { color: var(--pulse-negative); }
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+.footer {
+    text-align: center;
+    padding: 4rem 0 2rem 0;
+    margin-top: 4rem;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.footer-text {
+    font-size: 0.55rem;
+    letter-spacing: 0.3rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--border-visible); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+</style>
+""", unsafe_allow_html=True)
 
 
 # ─── Load Data ────────────────────────────────────────────────────────────────
@@ -146,426 +584,369 @@ total_return_pct = ((total_equity - starting_capital) / starting_capital) * 100
 num_positions = len(positions_df) if not positions_df.empty else 0
 max_positions = config.get("max_positions", 15)
 exposure_pct = (positions_value / total_equity * 100) if total_equity > 0 else 0
+day_pnl = snapshots_df.iloc[-1].get("day_pnl", 0) if not snapshots_df.empty else 0
+day_pct = snapshots_df.iloc[-1].get("day_pnl_pct", 0) if not snapshots_df.empty else 0
 
 
-# ─── Header ───────────────────────────────────────────────────────────────────
-h1, h2 = st.columns([3, 1])
-with h1:
-    st.markdown(f"## :orange[◆ MOMMY BOT]")
-with h2:
-    st.markdown(f"<p style='text-align:right; color:#888; padding-top:12px;'>🟢 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} EST</p>", unsafe_allow_html=True)
+# ─── The Identity ─────────────────────────────────────────────────────────────
+st.markdown(f"""
+<div class="system-identity">
+    <h1 class="system-name">M O M M Y</h1>
+    <div class="system-status">
+        <span class="system-pulse"></span>
+        Autonomous Trading Intelligence · {datetime.now().strftime('%Y.%m.%d')}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
-# ─── Capital Preservation Banner ─────────────────────────────────────────────
+# ─── Capital Preservation Alert ──────────────────────────────────────────────
 try:
     preservation = get_preservation_status()
     if preservation.active:
         st.markdown("""
-        <div style="background-color:#8B0000; border:2px solid #FF4444; padding:10px; margin:10px 0; border-radius:4px;">
-            <span style="color:#FFFFFF; font-weight:bold;">🛡️ CAPITAL PRESERVATION MODE ACTIVE</span>
+        <div class="alert-banner">
+            <div class="alert-title">Capital Preservation Active</div>
+            <div class="alert-detail">Position sizing reduced · New entries restricted</div>
         </div>
         """, unsafe_allow_html=True)
-        with st.expander("View Details", expanded=False):
-            st.markdown("**Trigger Reasons:**")
-            for reason in preservation.trigger_reasons:
-                st.markdown(f"- {reason}")
-            st.markdown("**Actions:**")
-            for action in preservation.actions_taken:
-                st.markdown(f"- {action.name}: {action.description}")
-            st.markdown("**Exit Conditions:**")
-            for condition in preservation.exit_conditions:
-                st.markdown(f"- {condition}")
-except Exception:
+except:
     pass
 
 
-# ─── Ticker Tape ──────────────────────────────────────────────────────────────
-if not positions_df.empty:
-    tape = []
-    for _, r in positions_df.iterrows():
-        ticker = r['ticker']
-        pnl = r.get("unrealized_pnl_pct", 0)
-        pnl_color = "#00ff88" if pnl >= 0 else "#ff4444"
-        url = TICKER_URLS.get(ticker)
-        if url:
-            ticker_html = f'<a href="{url}" target="_blank" style="color:#ffaa00;font-weight:bold;text-decoration:none;">{ticker}</a>'
-        else:
-            ticker_html = f'<span style="color:#ffaa00;font-weight:bold;">{ticker}</span>'
-        tape.append(f'{ticker_html} <span style="color:{pnl_color}">{pnl:+.2f}%</span>')
-    st.markdown(" &nbsp;&nbsp;&nbsp; ".join(tape), unsafe_allow_html=True)
-    st.divider()
+# ─── The Mind (Central Focus) ────────────────────────────────────────────────
+delta_class = "positive" if total_return_pct >= 0 else "negative"
+delta_sign = "+" if total_return_pct >= 0 else ""
+
+st.markdown(f"""
+<div class="mind-container">
+    <div class="mind-value">${total_equity:,.0f}</div>
+    <div class="mind-label">Total Equity</div>
+    <div class="mind-delta {delta_class}">{delta_sign}{total_return_pct:.2f}% all-time</div>
+</div>
+""", unsafe_allow_html=True)
 
 
-# ─── Main Metrics ─────────────────────────────────────────────────────────────
-c1, c2, c3, c4, c5 = st.columns(5)
-with c1:
-    st.metric("TOTAL EQUITY", f"${total_equity:,.0f}", f"{total_return_pct:+.2f}%")
-with c2:
-    st.metric("POSITIONS VALUE", f"${positions_value:,.0f}", f"{exposure_pct:.1f}% exposure")
-with c3:
-    st.metric("CASH", f"${cash:,.0f}", f"{100-exposure_pct:.1f}% available")
-with c4:
-    st.metric("POSITIONS", f"{num_positions} / {max_positions}", f"{max_positions - num_positions} slots open")
-with c5:
-    day_pnl = snapshots_df.iloc[-1].get("day_pnl", 0) if not snapshots_df.empty else 0
-    day_pct = snapshots_df.iloc[-1].get("day_pnl_pct", 0) if not snapshots_df.empty else 0
-    st.metric("DAY P&L", f"${day_pnl:,.0f}", f"{day_pct:+.2f}%")
+# ─── Secondary Metrics ───────────────────────────────────────────────────────
+day_sign = "+" if day_pnl >= 0 else ""
+st.markdown(f"""
+<div class="metrics-row">
+    <div class="metric-item">
+        <div class="metric-value">${positions_value:,.0f}</div>
+        <div class="metric-label">Deployed</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-value">${cash:,.0f}</div>
+        <div class="metric-label">Reserve</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-value">{num_positions}</div>
+        <div class="metric-label">Positions</div>
+    </div>
+    <div class="metric-item">
+        <div class="metric-value">{day_sign}${abs(day_pnl):,.0f}</div>
+        <div class="metric-label">Today</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
-st.markdown("")
+# ─── Signal Panels ───────────────────────────────────────────────────────────
+col1, col2, col3, col4 = st.columns(4)
 
-
-# ─── Four Panels ─────────────────────────────────────────────────────────────
-col_regime, col_risk, col_perf, col_trades = st.columns(4)
-
-with col_regime:
-    st.markdown("#### :orange[◆ MARKET REGIME]")
+with col1:
     try:
         ra = get_regime_analysis()
-        regime_emoji = {"BULL": "🟢 ▲ BULL", "BEAR": "🔴 ▼ BEAR", "SIDEWAYS": "🟡 ◆ SIDEWAYS"}.get(ra.regime.value.upper(), "⚪ UNKNOWN")
-        st.markdown(f"**{regime_emoji}**")
-        st.markdown(f"**Benchmark:** :orange[${ra.current_price:,.2f}]")
-        a50 = "🟢" if ra.above_50 else "🔴"
-        a200 = "🟢" if ra.above_200 else "🔴"
-        st.markdown(f"**50D SMA:** {a50} ${ra.sma_50:,.2f}")
-        st.markdown(f"**200D SMA:** {a200} ${ra.sma_200:,.2f}")
+        regime_class = ra.regime.value.lower()
+        regime_text = ra.regime.value.upper()
+        st.markdown(f"""
+        <div class="signal-panel">
+            <div class="signal-title">Market Regime</div>
+            <div class="regime-indicator {regime_class}">
+                <span class="regime-dot {regime_class}"></span>
+                <span class="regime-text">{regime_text}</span>
+            </div>
+            <div class="signal-detail" style="margin-top: 1rem;">
+                Benchmark ${ra.current_price:,.2f}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     except:
-        st.markdown("_Market data unavailable_")
+        st.markdown("""
+        <div class="signal-panel">
+            <div class="signal-title">Market Regime</div>
+            <div class="signal-value">—</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col_risk:
-    st.markdown("#### :orange[◆ RISK SCORE]")
+with col2:
     try:
         risk = get_risk_scoreboard()
-        # Color code based on risk level
-        risk_colors = {"LOW": "🟢", "MODERATE": "🟡", "ELEVATED": "🟠", "HIGH": "🔴", "CRITICAL": "⚫"}
-        risk_icon = risk_colors.get(risk.risk_level, "⚪")
-        st.markdown(f"**{risk_icon} {risk.overall_score:.0f}/100 ({risk.risk_level})**")
-        # Show component summary
-        for c in risk.components[:3]:  # Top 3 components
-            status_icon = "✓" if c.status == "OK" else ("⚠" if c.status == "WARNING" else "✗")
-            st.markdown(f"**{c.name}:** {status_icon} {c.score:.0f}")
-        if risk.recommended_actions:
-            st.caption(risk.recommended_actions[0][:50] + "..." if len(risk.recommended_actions[0]) > 50 else risk.recommended_actions[0])
-    except Exception as e:
-        st.markdown("_Calculating risk..._")
+        risk_class = "risk-low" if risk.overall_score >= 70 else ("risk-high" if risk.overall_score < 40 else "risk-moderate")
+        st.markdown(f"""
+        <div class="signal-panel">
+            <div class="signal-title">Risk Assessment</div>
+            <div class="signal-value">{risk.overall_score:.0f}</div>
+            <div class="risk-meter">
+                <div class="risk-meter-fill {risk_class}" style="width: {risk.overall_score}%;"></div>
+            </div>
+            <div class="signal-detail">{risk.risk_level}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    except:
+        st.markdown("""
+        <div class="signal-panel">
+            <div class="signal-title">Risk Assessment</div>
+            <div class="signal-value">—</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col_perf:
-    st.markdown("#### :orange[◆ PERFORMANCE]")
+with col3:
     try:
         analytics = PortfolioAnalytics()
         m = analytics.calculate_all_metrics()
-        if m:
-            st.markdown(f"**Sharpe Ratio:** {m.sharpe_ratio:.2f}")
-            st.markdown(f"**Max Drawdown:** {m.max_drawdown_pct:.2f}%")
-            st.markdown(f"**Total Return:** {m.total_return_pct:+.2f}%")
-            st.markdown(f"**Days Tracked:** {m.days_tracked}")
-        else:
-            st.markdown("_Insufficient data_")
+        sharpe = m.sharpe_ratio if m else 0
+        st.markdown(f"""
+        <div class="signal-panel">
+            <div class="signal-title">Sharpe Ratio</div>
+            <div class="signal-value">{sharpe:.2f}</div>
+            <div class="signal-detail">Risk-adjusted return</div>
+        </div>
+        """, unsafe_allow_html=True)
     except:
-        st.markdown("_Collecting data..._")
+        st.markdown("""
+        <div class="signal-panel">
+            <div class="signal-title">Sharpe Ratio</div>
+            <div class="signal-value">—</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-with col_trades:
-    st.markdown("#### :orange[◆ TRADE STATS]")
+with col4:
     try:
         analyzer = TradeAnalyzer()
         ts = analyzer.calculate_trade_stats()
-        if ts and ts.total_trades > 0:
-            st.markdown(f"**Win Rate:** {ts.win_rate_pct:.1f}%")
-            st.markdown(f"**Profit Factor:** {ts.profit_factor:.2f}x")
-            st.markdown(f"**Avg Win/Loss:** +{ts.avg_win_pct:.1f}% / {ts.avg_loss_pct:.1f}%")
-            st.markdown(f"**Realized P&L:** ${ts.total_realized_pnl:,.2f}")
-        else:
-            st.markdown(f"_No closed trades yet ({num_positions} open)_")
+        win_rate = ts.win_rate_pct if ts and ts.total_trades > 0 else 0
+        st.markdown(f"""
+        <div class="signal-panel">
+            <div class="signal-title">Win Rate</div>
+            <div class="signal-value">{win_rate:.0f}%</div>
+            <div class="signal-detail">{ts.total_trades if ts else 0} closed trades</div>
+        </div>
+        """, unsafe_allow_html=True)
     except:
-        st.markdown("_Awaiting trades..._")
+        st.markdown("""
+        <div class="signal-panel">
+            <div class="signal-title">Win Rate</div>
+            <div class="signal-value">—</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
+# ─── Tabs ────────────────────────────────────────────────────────────────────
 st.markdown("")
-st.divider()
+tab_positions, tab_activity, tab_intelligence = st.tabs([
+    "POSITIONS", "ACTIVITY", "INTELLIGENCE"
+])
 
 
-# ─── Positions Table ──────────────────────────────────────────────────────────
-st.markdown(f"#### :orange[◆ POSITIONS ({num_positions})]")
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: POSITIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_positions:
+    if not positions_df.empty:
+        st.markdown('<div class="section-header">Current Holdings</div>', unsafe_allow_html=True)
 
-if not positions_df.empty:
-    display_df = positions_df[["ticker", "shares", "avg_cost_basis", "current_price", "market_value", "unrealized_pnl", "unrealized_pnl_pct", "stop_loss", "take_profit"]].copy()
-    display_df.columns = ["TICKER", "SHARES", "AVG COST", "CURRENT", "MKT VALUE", "P&L $", "P&L %", "STOP", "TARGET"]
-    display_df["AVG COST"] = display_df["AVG COST"].apply(lambda x: f"${x:.2f}")
-    display_df["CURRENT"] = display_df["CURRENT"].apply(lambda x: f"${x:.2f}")
-    display_df["MKT VALUE"] = display_df["MKT VALUE"].apply(lambda x: f"${x:,.2f}")
-    display_df["P&L $"] = display_df["P&L $"].apply(lambda x: f"${x:+,.2f}")
-    display_df["P&L %"] = display_df["P&L %"].apply(lambda x: f"{x:+.2f}%")
-    display_df["STOP"] = display_df["STOP"].apply(lambda x: f"${x:.2f}")
-    display_df["TARGET"] = display_df["TARGET"].apply(lambda x: f"${x:.2f}")
-    display_df["SHARES"] = display_df["SHARES"].astype(int)
+        for _, row in positions_df.iterrows():
+            pnl_class = "positive" if row["unrealized_pnl"] >= 0 else "negative"
+            pnl_sign = "+" if row["unrealized_pnl"] >= 0 else ""
+            st.markdown(f"""
+            <div class="position-row">
+                <div class="position-ticker">{row['ticker']}</div>
+                <div class="position-detail">
+                    {int(row['shares'])} shares · ${row['avg_cost_basis']:.2f} avg · ${row['current_price']:.2f} current
+                </div>
+                <div class="position-pnl {pnl_class}">
+                    {pnl_sign}${row['unrealized_pnl']:.2f} ({pnl_sign}{row['unrealized_pnl_pct']:.1f}%)
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
-    # Build clickable ticker links row
-    ticker_links = []
-    for t in positions_df["ticker"].tolist():
-        url = TICKER_URLS.get(t, f"https://finance.yahoo.com/quote/{t}")
-        ticker_links.append(f'<a href="{url}" target="_blank" style="color:#ffaa00;text-decoration:none;margin-right:16px;">{t}</a>')
-    st.markdown("**Quick Links:** " + " ".join(ticker_links), unsafe_allow_html=True)
-
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-
-    total_unrealized = positions_df["unrealized_pnl"].sum()
-    color = "green" if total_unrealized >= 0 else "red"
-    st.markdown(f"**Total Unrealized P&L:** :{color}[${total_unrealized:+,.2f}]")
-else:
-    st.markdown("_No positions. Run ./run_daily.sh to start trading._")
-
-
-st.markdown("")
-
-
-# ─── Risk Assessment Detail ──────────────────────────────────────────────────
-st.markdown("#### :orange[◆ RISK ASSESSMENT]")
-try:
-    risk = get_risk_scoreboard()
-
-    # Risk meter row
-    r1, r2, r3 = st.columns([1, 2, 1])
-    with r1:
-        risk_colors = {"LOW": "green", "MODERATE": "orange", "ELEVATED": "orange", "HIGH": "red", "CRITICAL": "red"}
-        st.metric("RISK SCORE", f"{risk.overall_score:.0f}/100", risk.risk_level)
-    with r2:
-        st.markdown(f"**Assessment:** {risk.narrative}")
-    with r3:
-        pass
-
-    # Component breakdown
-    st.markdown("**Component Scores:**")
-    comp_cols = st.columns(5)
-    for i, c in enumerate(risk.components):
-        with comp_cols[i]:
-            status_color = "green" if c.status == "OK" else ("orange" if c.status == "WARNING" else "red")
-            st.markdown(f":{status_color}[**{c.name}**]")
-            st.markdown(f"{c.score:.0f}/100")
-
-    # Recommendations
-    if risk.recommended_actions:
-        st.markdown("**Recommendations:**")
-        for rec in risk.recommended_actions[:3]:
-            st.markdown(f"- {rec}")
-
-except Exception as e:
-    st.markdown("_Risk assessment loading..._")
-
-st.markdown("")
-
-
-# ─── Performance Attribution ─────────────────────────────────────────────────
-st.markdown("#### :orange[◆ WHY TODAY HAPPENED]")
-try:
-    attribution = get_daily_attribution()
-    if attribution and (attribution.total_return != 0 or attribution.top_contributors):
-        # Summary row
-        a1, a2, a3 = st.columns([1, 2, 1])
-        with a1:
-            pnl_color = "green" if attribution.total_return >= 0 else "red"
-            st.metric("DAY P&L", f"${attribution.total_return:+,.2f}", f"{attribution.total_return_pct:+.2f}%")
-        with a2:
-            st.markdown(f"**{attribution.narrative}**")
-        with a3:
-            pass
-
-        # Factor attribution
-        if attribution.factor_details:
-            st.markdown("**Factor Attribution:**")
-            factor_cols = st.columns(5)
-            for i, f in enumerate(attribution.factor_details[:5]):
-                with factor_cols[i]:
-                    f_color = "green" if f.contribution >= 0 else "red"
-                    st.markdown(f":{f_color}[**{f.factor.replace('_', ' ').title()}**]")
-                    st.markdown(f"${f.contribution:+,.0f}")
-
-        # Top/bottom contributors
-        if attribution.top_contributors or attribution.bottom_contributors:
-            st.markdown("")
-            tc1, tc2 = st.columns(2)
-            with tc1:
-                if attribution.top_contributors:
-                    st.markdown("**Top Contributors:**")
-                    for t in attribution.top_contributors[:3]:
-                        t_color = "green" if t.pnl >= 0 else "red"
-                        st.markdown(f"- {t.ticker}: :{t_color}[${t.pnl:+,.2f}] ({t.pnl_pct:+.1f}%)")
-            with tc2:
-                if attribution.bottom_contributors and attribution.bottom_contributors[0].pnl < 0:
-                    st.markdown("**Bottom Contributors:**")
-                    for b in attribution.bottom_contributors[:3]:
-                        b_color = "green" if b.pnl >= 0 else "red"
-                        st.markdown(f"- {b.ticker}: :{b_color}[${b.pnl:+,.2f}] ({b.pnl_pct:+.1f}%)")
+        # Summary
+        total_unrealized = positions_df["unrealized_pnl"].sum()
+        pnl_class = "positive" if total_unrealized >= 0 else "negative"
+        st.markdown(f"""
+        <div style="text-align: right; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+            <span style="color: var(--text-tertiary); font-size: 0.65rem; letter-spacing: 0.15rem; text-transform: uppercase; margin-right: 1rem;">Unrealized P&L</span>
+            <span class="position-pnl {pnl_class}" style="font-size: 1.2rem;">${total_unrealized:+,.2f}</span>
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.markdown("_No performance data for attribution yet_")
-except Exception as e:
-    st.markdown("_Attribution loading..._")
-
-st.markdown("")
-
-
-# ─── Pattern Alerts & Learning ───────────────────────────────────────────────
-col_alerts, col_pm = st.columns(2)
-
-with col_alerts:
-    st.markdown("#### :orange[◆ PATTERN ALERTS]")
-    try:
-        alerts = get_pattern_alerts()
-        if alerts:
-            for alert in alerts[:3]:
-                level_colors = {"INFO": "blue", "MEDIUM": "orange", "HIGH": "red", "CRITICAL": "red"}
-                level_icons = {"INFO": "ℹ️", "MEDIUM": "⚠️", "HIGH": "🔴", "CRITICAL": "🚨"}
-                color = level_colors.get(alert.alert_level, "gray")
-                icon = level_icons.get(alert.alert_level, "❓")
-                st.markdown(f"{icon} :{color}[**{alert.title}**]")
-                st.caption(alert.description)
-                if alert.recommendation:
-                    st.markdown(f"_→ {alert.recommendation}_")
-        else:
-            st.markdown("_No concerning patterns detected_")
-    except Exception:
-        st.markdown("_Pattern detection loading..._")
-
-with col_pm:
-    st.markdown("#### :orange[◆ RECENT LESSONS]")
-    try:
-        post_mortems = get_recent_post_mortems(3)
-        if post_mortems:
-            for pm in reversed(post_mortems):
-                pm_color = "green" if pm.pnl >= 0 else "red"
-                st.markdown(f"**{pm.ticker}** :{pm_color}[{pm.pnl_pct:+.1f}%] - {pm.exit_reason}")
-                st.caption(pm.summary)
-                if pm.recommendation:
-                    st.markdown(f"_→ {pm.recommendation}_")
-        else:
-            st.markdown("_No closed trades yet - lessons appear after sells_")
-    except Exception:
-        st.markdown("_Post-mortems loading..._")
-
-st.markdown("")
+        st.markdown("""
+        <div style="text-align: center; padding: 4rem 0; color: var(--text-tertiary);">
+            <div style="font-size: 0.7rem; letter-spacing: 0.2rem; text-transform: uppercase;">No Active Positions</div>
+            <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-ghost);">System awaiting entry signals</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
-# ─── Factor Learning ─────────────────────────────────────────────────────────
-st.markdown("#### :orange[◆ FACTOR LEARNING]")
-try:
-    learner = FactorLearner()
-    factor_summary = learner.get_factor_summary()
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: ACTIVITY
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_activity:
+    # Equity Curve
+    if not snapshots_df.empty and len(snapshots_df) > 1:
+        st.markdown('<div class="section-header">Equity Curve</div>', unsafe_allow_html=True)
+        chart_df = snapshots_df[["date", "total_equity"]].copy()
+        chart_df["date"] = pd.to_datetime(chart_df["date"])
+        chart_df = chart_df.set_index("date")
+        chart_df.columns = ["EQUITY"]
+        st.line_chart(chart_df, use_container_width=True, color="#00d4ff")
 
-    if factor_summary["status"] == "ok" and factor_summary["factors"]:
-        # Factor performance grid
-        fc1, fc2, fc3, fc4, fc5 = st.columns(5)
-        factor_cols = [fc1, fc2, fc3, fc4, fc5]
-
-        for i, f in enumerate(factor_summary["factors"][:5]):
-            with factor_cols[i]:
-                # Trend icons
-                trend_icon = {"improving": "▲", "stable": "─", "declining": "▼"}.get(f["trend"], "?")
-                trend_color = "green" if f["trend"] == "improving" else ("red" if f["trend"] == "declining" else "orange")
-
-                # Win rate coloring
-                wr_color = "green" if f["win_rate"] >= 55 else ("red" if f["win_rate"] < 45 else "orange")
-
-                st.markdown(f"**{f['factor'].replace('_', ' ').title()}**")
-                st.markdown(f":{wr_color}[{f['win_rate']:.0f}%] win rate")
-                st.markdown(f":{trend_color}[{trend_icon}] {f['trend']}")
-                contrib_color = "green" if f["total_contribution"] >= 0 else "red"
-                st.markdown(f":{contrib_color}[${f['total_contribution']:+,.0f}]")
-
-        # Weight suggestions
-        suggestions = get_weight_suggestions()
-        if suggestions:
-            st.markdown("")
-            st.markdown("**Suggested Weight Adjustments:**")
-            for s in suggestions[:3]:
-                conf_color = "green" if s.confidence == "HIGH" else ("orange" if s.confidence == "MEDIUM" else "gray")
-                change_color = "green" if s.change_pct > 0 else "red"
-                st.markdown(
-                    f"- **{s.factor.replace('_', ' ').title()}**: "
-                    f"{s.current_weight:.0%} → {s.suggested_weight:.0%} "
-                    f"(:{change_color}[{s.change_pct:+.1f}%]) "
-                    f":{conf_color}[[{s.confidence}]]"
-                )
+    # Recent Transactions
+    st.markdown('<div class="section-header">Recent Transactions</div>', unsafe_allow_html=True)
+    if not transactions_df.empty:
+        recent = transactions_df.tail(8).iloc[::-1][["date", "action", "ticker", "shares", "price", "reason"]].copy()
+        recent.columns = ["DATE", "ACTION", "TICKER", "SHARES", "PRICE", "REASON"]
+        recent["SHARES"] = recent["SHARES"].astype(int)
+        recent["PRICE"] = recent["PRICE"].apply(lambda x: f"${x:.2f}")
+        st.dataframe(recent, use_container_width=True, hide_index=True)
     else:
-        st.markdown("_Need more closed trades to analyze factor performance_")
-        st.caption("Factor learning becomes active after trades are closed with post-mortems")
-except Exception as e:
-    st.markdown("_Factor learning loading..._")
+        st.markdown("""
+        <div style="text-align: center; padding: 3rem 0; color: var(--text-tertiary);">
+            <div style="font-size: 0.7rem; letter-spacing: 0.2rem; text-transform: uppercase;">No Transaction History</div>
+        </div>
+        """, unsafe_allow_html=True)
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: INTELLIGENCE
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_intelligence:
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        # Pattern Detection
+        st.markdown('<div class="section-header">Pattern Detection</div>', unsafe_allow_html=True)
+        try:
+            alerts = get_pattern_alerts()
+            if alerts:
+                for alert in alerts[:3]:
+                    level_colors = {"INFO": "var(--text-secondary)", "MEDIUM": "var(--pulse-warning)", "HIGH": "var(--pulse-negative)", "CRITICAL": "var(--pulse-negative)"}
+                    color = level_colors.get(alert.alert_level, "var(--text-secondary)")
+                    st.markdown(f"""
+                    <div style="margin-bottom: 1rem; padding-left: 1rem; border-left: 2px solid {color};">
+                        <div style="font-size: 0.8rem; color: var(--text-primary);">{alert.title}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-top: 0.3rem;">{alert.description}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">No patterns detected</div>', unsafe_allow_html=True)
+        except:
+            st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Pattern analysis initializing</div>', unsafe_allow_html=True)
+
+        # Recent Lessons
+        st.markdown('<div class="section-header" style="margin-top: 2rem;">Learning Archive</div>', unsafe_allow_html=True)
+        try:
+            post_mortems = get_recent_post_mortems(3)
+            if post_mortems:
+                for pm in reversed(post_mortems):
+                    pnl_color = "var(--pulse-positive)" if pm.pnl >= 0 else "var(--pulse-negative)"
+                    st.markdown(f"""
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.8rem;">
+                            <span style="color: var(--text-primary);">{pm.ticker}</span>
+                            <span style="color: {pnl_color}; margin-left: 0.5rem;">{pm.pnl_pct:+.1f}%</span>
+                            <span style="color: var(--text-tertiary); margin-left: 0.5rem;">{pm.exit_reason}</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-top: 0.3rem;">{pm.summary}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Awaiting completed trades</div>', unsafe_allow_html=True)
+        except:
+            st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Learning system initializing</div>', unsafe_allow_html=True)
+
+    with col_right:
+        # Factor Performance
+        st.markdown('<div class="section-header">Factor Intelligence</div>', unsafe_allow_html=True)
+        try:
+            learner = FactorLearner()
+            factor_summary = learner.get_factor_summary()
+
+            if factor_summary["status"] == "ok" and factor_summary["factors"]:
+                for f in factor_summary["factors"][:5]:
+                    trend_colors = {"improving": "var(--pulse-positive)", "stable": "var(--text-tertiary)", "declining": "var(--pulse-negative)"}
+                    trend_color = trend_colors.get(f["trend"], "var(--text-tertiary)")
+                    wr_color = "var(--pulse-positive)" if f["win_rate"] >= 55 else ("var(--pulse-negative)" if f["win_rate"] < 45 else "var(--text-secondary)")
+
+                    st.markdown(f"""
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-subtle);">
+                        <span style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1rem;">{f['factor'].replace('_', ' ')}</span>
+                        <span style="color: {wr_color}; font-size: 0.85rem;">{f['win_rate']:.0f}%</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Insufficient data for analysis</div>', unsafe_allow_html=True)
+        except:
+            st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Factor analysis initializing</div>', unsafe_allow_html=True)
+
+        # Attribution
+        st.markdown('<div class="section-header" style="margin-top: 2rem;">Attribution</div>', unsafe_allow_html=True)
+        try:
+            attribution = get_daily_attribution()
+            if attribution and attribution.top_contributors:
+                for t in attribution.top_contributors[:3]:
+                    pnl_color = "var(--pulse-positive)" if t.pnl >= 0 else "var(--pulse-negative)"
+                    st.markdown(f"""
+                    <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                        <span style="color: var(--text-secondary); font-size: 0.8rem;">{t.ticker}</span>
+                        <span style="color: {pnl_color}; font-size: 0.8rem;">${t.pnl:+,.0f}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">No attribution data</div>', unsafe_allow_html=True)
+        except:
+            st.markdown('<div style="color: var(--text-tertiary); font-size: 0.75rem;">Attribution loading</div>', unsafe_allow_html=True)
+
+
+# ─── Actions ─────────────────────────────────────────────────────────────────
 st.markdown("")
-st.divider()
+st.markdown("---")
 
+col1, col2, col3 = st.columns([1, 1, 1])
 
-# ─── Recent Activity ──────────────────────────────────────────────────────────
-st.markdown("#### :orange[◆ RECENT ACTIVITY]")
-
-if not transactions_df.empty:
-    recent = transactions_df.tail(8).iloc[::-1][["date", "action", "ticker", "shares", "price", "total_value", "reason"]].copy()
-
-    # Build clickable ticker links for recent transactions
-    recent_tickers = recent["ticker"].unique().tolist()
-    recent_links = []
-    for t in recent_tickers:
-        url = TICKER_URLS.get(t, f"https://finance.yahoo.com/quote/{t}")
-        recent_links.append(f'<a href="{url}" target="_blank" style="color:#ffaa00;text-decoration:none;margin-right:16px;">{t}</a>')
-    st.markdown("**Quick Links:** " + " ".join(recent_links), unsafe_allow_html=True)
-
-    recent.columns = ["DATE", "ACTION", "TICKER", "SHARES", "PRICE", "VALUE", "REASON"]
-    recent["SHARES"] = recent["SHARES"].astype(int)
-    recent["PRICE"] = recent["PRICE"].apply(lambda x: f"${x:.2f}")
-    recent["VALUE"] = recent["VALUE"].apply(lambda x: f"${x:,.2f}")
-    st.dataframe(recent, use_container_width=True, hide_index=True)
-else:
-    st.markdown("_No transactions recorded._")
-
-
-st.markdown("")
-
-
-# ─── Equity Chart ─────────────────────────────────────────────────────────────
-if not snapshots_df.empty and len(snapshots_df) > 1:
-    st.markdown("#### :orange[◆ EQUITY CURVE]")
-    chart_df = snapshots_df[["date", "total_equity"]].copy()
-    chart_df["date"] = pd.to_datetime(chart_df["date"])
-    chart_df = chart_df.set_index("date")
-    chart_df.columns = ["EQUITY"]
-    st.line_chart(chart_df, use_container_width=True, color="#ff6600")
-
-
-# ─── Footer ───────────────────────────────────────────────────────────────────
-st.markdown("")
-col_l, col_c, col_r = st.columns([1, 1, 1])
-
-with col_l:
-    if st.button("⟳ REFRESH", use_container_width=True):
+with col1:
+    if st.button("REFRESH", use_container_width=True):
         st.rerun()
 
-with col_c:
-    if st.button("▶ RUN DAILY", use_container_width=True, type="primary"):
-        with st.spinner("Running daily workflow... (this may take a few minutes)"):
+with col2:
+    if st.button("EXECUTE DAILY", use_container_width=True, type="primary"):
+        with st.spinner(""):
             try:
-                # Get project root directory
                 project_root = Path(__file__).parent.parent
                 result = subprocess.run(
                     ["bash", "run_daily.sh"],
                     cwd=project_root,
                     capture_output=True,
                     text=True,
-                    timeout=600  # 10 minute timeout
+                    timeout=600
                 )
                 if result.returncode == 0:
-                    st.success("Daily run complete!")
-                    st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout, language="text")
+                    st.success("Execution complete")
+                    with st.expander("Output"):
+                        st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
                     st.rerun()
                 else:
-                    st.error("Daily run failed!")
-                    st.code(result.stderr[-1000:] if result.stderr else result.stdout[-1000:], language="text")
+                    st.error("Execution failed")
+                    st.code(result.stderr[-1000:] if result.stderr else result.stdout[-1000:])
             except subprocess.TimeoutExpired:
-                st.error("Daily run timed out (>10 minutes)")
+                st.error("Timeout exceeded")
             except Exception as e:
                 st.error(f"Error: {e}")
 
-with col_r:
-    if st.button("🔍 DISCOVER", use_container_width=True):
-        with st.spinner("Discovering new stocks..."):
+with col3:
+    if st.button("DISCOVER", use_container_width=True):
+        with st.spinner(""):
             try:
                 project_root = Path(__file__).parent.parent
                 result = subprocess.run(
@@ -573,17 +954,21 @@ with col_r:
                     cwd=project_root,
                     capture_output=True,
                     text=True,
-                    timeout=300  # 5 minute timeout
+                    timeout=300
                 )
                 if result.returncode == 0:
-                    st.success("Discovery complete!")
-                    st.code(result.stdout[-3000:] if len(result.stdout) > 3000 else result.stdout, language="text")
+                    st.success("Discovery complete")
+                    with st.expander("Results", expanded=True):
+                        st.code(result.stdout[-2000:])
                 else:
-                    st.error("Discovery failed!")
-                    st.code(result.stderr[-1000:] if result.stderr else "No error output", language="text")
-            except subprocess.TimeoutExpired:
-                st.error("Discovery timed out (>5 minutes)")
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    st.error("Discovery failed")
+            except:
+                st.error("Discovery error")
 
-st.markdown("<p style='text-align:center; color:#555; font-size:0.7rem; margin-top:24px;'>MOMMY BOT v3.0 | DATA DELAYED | NOT FINANCIAL ADVICE</p>", unsafe_allow_html=True)
+
+# ─── Footer ──────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="footer">
+    <div class="footer-text">Autonomous Trading Intelligence · Data Delayed · Not Financial Advice</div>
+</div>
+""", unsafe_allow_html=True)

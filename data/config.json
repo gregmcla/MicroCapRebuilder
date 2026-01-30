@@ -1,4 +1,11 @@
 {
+  "mode": "live",
+  "paper_trading": {
+    "enabled": false,
+    "simulated_fill_delay_pct": 0.1,
+    "simulated_slippage_pct": 0.05,
+    "paper_data_suffix": "_paper"
+  },
   "starting_capital": 50000.0,
   "risk_per_trade_pct": 10.0,
   "max_position_pct": 15.0,
@@ -96,6 +103,14 @@
     "confidence_multiplier_enabled": true,
     "confidence_min": 0.5,
     "confidence_max": 1.5
+  },
+
+  "data_provider": {
+    "primary": "yfinance",
+    "fallback": "alpha_vantage",
+    "alpha_vantage_api_key": "",
+    "cache_minutes": 15,
+    "retry_count": 3
   },
 
   "discovery": {
