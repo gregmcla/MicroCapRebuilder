@@ -18,6 +18,7 @@ from trade_analyzer import TradeAnalyzer
 from market_regime import get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard
 from capital_preservation import get_preservation_status
+from attribution import get_daily_attribution
 
 # ─── Ticker URLs ──────────────────────────────────────────────────────────────
 TICKER_URLS = {
@@ -345,6 +346,55 @@ try:
 
 except Exception as e:
     st.markdown("_Risk assessment loading..._")
+
+st.markdown("")
+
+
+# ─── Performance Attribution ─────────────────────────────────────────────────
+st.markdown("#### :orange[◆ WHY TODAY HAPPENED]")
+try:
+    attribution = get_daily_attribution()
+    if attribution and (attribution.total_return != 0 or attribution.top_contributors):
+        # Summary row
+        a1, a2, a3 = st.columns([1, 2, 1])
+        with a1:
+            pnl_color = "green" if attribution.total_return >= 0 else "red"
+            st.metric("DAY P&L", f"${attribution.total_return:+,.2f}", f"{attribution.total_return_pct:+.2f}%")
+        with a2:
+            st.markdown(f"**{attribution.narrative}**")
+        with a3:
+            pass
+
+        # Factor attribution
+        if attribution.factor_details:
+            st.markdown("**Factor Attribution:**")
+            factor_cols = st.columns(5)
+            for i, f in enumerate(attribution.factor_details[:5]):
+                with factor_cols[i]:
+                    f_color = "green" if f.contribution >= 0 else "red"
+                    st.markdown(f":{f_color}[**{f.factor.replace('_', ' ').title()}**]")
+                    st.markdown(f"${f.contribution:+,.0f}")
+
+        # Top/bottom contributors
+        if attribution.top_contributors or attribution.bottom_contributors:
+            st.markdown("")
+            tc1, tc2 = st.columns(2)
+            with tc1:
+                if attribution.top_contributors:
+                    st.markdown("**Top Contributors:**")
+                    for t in attribution.top_contributors[:3]:
+                        t_color = "green" if t.pnl >= 0 else "red"
+                        st.markdown(f"- {t.ticker}: :{t_color}[${t.pnl:+,.2f}] ({t.pnl_pct:+.1f}%)")
+            with tc2:
+                if attribution.bottom_contributors and attribution.bottom_contributors[0].pnl < 0:
+                    st.markdown("**Bottom Contributors:**")
+                    for b in attribution.bottom_contributors[:3]:
+                        b_color = "green" if b.pnl >= 0 else "red"
+                        st.markdown(f"- {b.ticker}: :{b_color}[${b.pnl:+,.2f}] ({b.pnl_pct:+.1f}%)")
+    else:
+        st.markdown("_No performance data for attribution yet_")
+except Exception as e:
+    st.markdown("_Attribution loading..._")
 
 st.markdown("")
 st.divider()

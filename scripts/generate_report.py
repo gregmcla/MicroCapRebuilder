@@ -23,6 +23,7 @@ import pandas as pd
 from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from risk_scoreboard import get_risk_scoreboard
+from attribution import get_daily_attribution
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -148,6 +149,39 @@ def generate_report() -> str:
                 lines.append(f"  - {rec}")
     except Exception as e:
         lines.append("  Risk calculation unavailable")
+    lines.append("")
+
+    # Performance Attribution (Why Today Happened)
+    lines.append("WHY TODAY HAPPENED")
+    lines.append("-" * 40)
+    try:
+        attribution = get_daily_attribution()
+        if attribution and (attribution.total_return != 0 or attribution.top_contributors):
+            lines.append(f"Day P&L: ${attribution.total_return:+,.2f} ({attribution.total_return_pct:+.2f}%)")
+            lines.append("")
+
+            if attribution.factor_details:
+                lines.append("Factor Attribution:")
+                for f in attribution.factor_details[:5]:
+                    sign = "+" if f.contribution >= 0 else ""
+                    lines.append(f"  {f.factor:<18} {sign}${f.contribution:>8,.2f}")
+                lines.append("")
+
+            if attribution.top_contributors:
+                top = attribution.top_contributors[0]
+                lines.append(f"Top Contributor:  {top.ticker} ${top.pnl:+,.2f} ({top.pnl_pct:+.1f}%)")
+
+            if attribution.bottom_contributors and attribution.bottom_contributors[0].pnl < 0:
+                bottom = attribution.bottom_contributors[0]
+                lines.append(f"Bottom:           {bottom.ticker} ${bottom.pnl:+,.2f} ({bottom.pnl_pct:+.1f}%)")
+
+            if attribution.narrative:
+                lines.append("")
+                lines.append(f"Summary: {attribution.narrative}")
+        else:
+            lines.append("  No performance data for attribution")
+    except Exception as e:
+        lines.append("  Attribution calculation unavailable")
     lines.append("")
 
     # Risk Metrics
