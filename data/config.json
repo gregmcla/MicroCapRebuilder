@@ -108,7 +108,7 @@
   "data_provider": {
     "primary": "yfinance",
     "fallback": "alpha_vantage",
-    "alpha_vantage_api_key": "",
+    "alpha_vantage_api_key": "R2RJZGQ41ZS61MBK",
     "cache_minutes": 15,
     "retry_count": 3
   },
