@@ -15,10 +15,16 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-# Load environment variables
+# Load environment variables - try multiple paths
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent.parent / ".env")
+    # Try script-relative path first
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path, override=True)
+    else:
+        # Try current working directory
+        load_dotenv(override=True)
 except ImportError:
     pass
 
@@ -230,6 +236,15 @@ User question: {user_message}"""
 
 def check_setup() -> tuple[bool, str]:
     """Check if chat is properly configured."""
+    # Re-load env in case it wasn't loaded at import time
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).resolve().parent.parent / ".env"
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+    except ImportError:
+        pass
+
     api_key = get_api_key()
 
     if not api_key:
