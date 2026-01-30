@@ -21,9 +21,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Load .env BEFORE importing modules that need it
 try:
     from dotenv import load_dotenv
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path, override=True)
+    # Try multiple paths to find .env
+    for env_path in [
+        Path(__file__).resolve().parent.parent / ".env",
+        Path.cwd() / ".env",
+        Path.home() / "MicroCapRebuilder" / ".env",
+    ]:
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            break
 except ImportError:
     pass
 
