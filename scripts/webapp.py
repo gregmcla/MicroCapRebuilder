@@ -150,6 +150,54 @@ def get_trade_stats(transactions_df):
     return stats
 
 
+def close_all_positions():
+    """Emergency close all positions - creates SELL transactions for each position."""
+    import uuid
+    from datetime import date as dt_date
+    from schema import TRANSACTION_COLUMNS, Action, Reason
+
+    positions_df = load_positions()
+    if positions_df.empty:
+        return 0, "No positions to close"
+
+    transactions = []
+    for _, pos in positions_df.iterrows():
+        tx = {
+            "transaction_id": str(uuid.uuid4())[:8],
+            "date": dt_date.today().isoformat(),
+            "ticker": pos['ticker'],
+            "action": "SELL",
+            "shares": pos['shares'],
+            "price": pos['current_price'],
+            "total_value": round(pos['shares'] * pos['current_price'], 2),
+            "stop_loss": "",
+            "take_profit": "",
+            "reason": "MANUAL",
+            "regime_at_entry": "",
+            "composite_score": "",
+            "factor_scores": "",
+            "signal_rank": "",
+        }
+        transactions.append(tx)
+
+    # Append to transactions file
+    files = get_data_files()
+    df_new = pd.DataFrame(transactions)
+
+    if files["transactions"].exists():
+        df_existing = pd.read_csv(files["transactions"])
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        df_combined = df_new
+
+    df_combined.to_csv(files["transactions"], index=False)
+
+    # Clear positions file
+    pd.DataFrame(columns=positions_df.columns).to_csv(files["positions"], index=False)
+
+    return len(transactions), f"Closed {len(transactions)} positions"
+
+
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="MOMMY",
@@ -309,6 +357,16 @@ st.markdown("""
 .chart-btn { padding: 0.25rem 0.6rem; font-size: 0.65rem; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-dim); cursor: pointer; }
 .chart-btn.active { background: var(--green-bg); border-color: var(--green); color: var(--green); }
 
+/* Mommy Chat */
+.mommy-chat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+.mommy-chat-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+.mommy-avatar { width: 32px; height: 32px; background: linear-gradient(135deg, #22c55e, #16a34a); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+.mommy-name { font-weight: 600; color: var(--text); font-size: 0.85rem; }
+.mommy-status { font-size: 0.65rem; color: var(--green); }
+.mommy-input-row { display: flex; gap: 0.5rem; }
+.mommy-response { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 0.875rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+.mommy-response::before { content: '"'; font-size: 1.5rem; color: var(--green); opacity: 0.5; margin-right: 0.25rem; }
+
 /* Footer */
 .footer { text-align: center; padding: 1.5rem 0 1rem 0; font-size: 0.55rem; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; border-top: 1px solid var(--border); margin-top: 1.5rem; }
 
@@ -409,7 +467,11 @@ if st.session_state.show_close_all_confirm:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("YES, CLOSE ALL", type="primary"):
-            st.warning("Close all positions would execute here")
+            count, msg = close_all_positions()
+            if count > 0:
+                st.success(f"Closed {count} positions")
+            else:
+                st.info(msg)
             st.session_state.show_close_all_confirm = False
             st.rerun()
     with col2:
@@ -455,6 +517,28 @@ avg_win_loss = f"${avg_win:.0f} / ${abs(avg_loss):.0f}" if avg_loss != 0 else "N
 m5 = f'<div class="metric-card"><div class="metric-label" title="Average winning trade vs losing trade">Avg Win/Loss</div><div class="metric-value">{avg_win_loss}</div></div>'
 metrics_html = f'<div class="metrics-grid">{m1}{m2}{m3}{m4}{m5}</div>'
 st.markdown(metrics_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MOMMY CHAT (Top of page, nicer styling)
+# ═══════════════════════════════════════════════════════════════════════════════
+if chat_ready:
+    chat_header = '<div class="mommy-chat-header"><div class="mommy-avatar">M</div><div><div class="mommy-name">Ask Mommy</div><div class="mommy-status">Online</div></div></div>'
+    st.markdown(f'<div class="mommy-chat">{chat_header}', unsafe_allow_html=True)
+
+    user_question = st.text_input("chat_input", placeholder="What should I know about my portfolio today?", label_visibility="collapsed", key="mommy_chat_top")
+
+    if user_question:
+        with st.spinner("Mommy is thinking..."):
+            response = ai_chat(user_question)
+        if response.success:
+            # Make the response sound more like Mommy
+            mommy_response = response.message
+            st.markdown(f'<div class="mommy-response">{mommy_response}</div>', unsafe_allow_html=True)
+        else:
+            st.error(response.error)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -527,8 +611,10 @@ if not transactions_df.empty:
             insights.append(('warn', f'{ticker} stopped out'))
         elif reason == 'TAKE_PROFIT':
             insights.append(('good', f'{ticker} hit target'))
-    if len(recent_buys) > 0:
-        insights.append(('neutral', f'{len(recent_buys)} new position{"s" if len(recent_buys) > 1 else ""} opened'))
+    # Count unique tickers bought, not total transactions
+    unique_new_positions = recent_buys['ticker'].nunique() if not recent_buys.empty else 0
+    if unique_new_positions > 0:
+        insights.append(('neutral', f'{unique_new_positions} new position{"s" if unique_new_positions > 1 else ""} opened'))
 
 if near_stop:
     for pos in near_stop[:2]:
@@ -895,23 +981,6 @@ with st.expander("Trade History / Journal", expanded=False):
             st.info("No closed trades yet")
     else:
         st.info("No trade history")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# CHAT
-# ═══════════════════════════════════════════════════════════════════════════════
-if chat_ready:
-    st.markdown('<div class="section-head"><span class="section-title">Ask Mommy</span></div>', unsafe_allow_html=True)
-
-    user_question = st.text_input("Question", placeholder="Which positions should I watch?", label_visibility="collapsed")
-
-    if user_question:
-        with st.spinner("Thinking..."):
-            response = ai_chat(user_question)
-        if response.success:
-            st.markdown(f'<div style="background: var(--card); padding: 0.875rem; border-radius: 6px; margin-top: 0.4rem; color: var(--text-dim); font-size: 0.8rem; white-space: pre-wrap;">{response.message}</div>', unsafe_allow_html=True)
-        else:
-            st.error(response.error)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
