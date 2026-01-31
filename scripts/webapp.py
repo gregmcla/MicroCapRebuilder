@@ -912,8 +912,8 @@ with col4:
 
 # ─── Tabs ────────────────────────────────────────────────────────────────────
 st.markdown("")
-tab_positions, tab_activity, tab_intelligence, tab_chat = st.tabs([
-    "POSITIONS", "ACTIVITY", "INTELLIGENCE", "CHAT"
+tab_positions, tab_activity, tab_risk, tab_intelligence, tab_chat = st.tabs([
+    "POSITIONS", "ACTIVITY", "RISK", "INTELLIGENCE", "CHAT"
 ])
 
 
@@ -984,6 +984,130 @@ with tab_activity:
             <div style="font-size: 0.7rem; letter-spacing: 0.2rem; text-transform: uppercase;">No Transaction History</div>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: RISK
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab_risk:
+    try:
+        analytics = PortfolioAnalytics()
+        m = analytics.calculate_all_metrics()
+
+        if m and m.days_tracked >= 5:
+            # Benchmark Comparison Section
+            st.markdown('<div class="section-header">📊 Benchmark Comparison (vs Russell 2000)</div>', unsafe_allow_html=True)
+
+            bench_cols = st.columns(4)
+
+            with bench_cols[0]:
+                alpha_color = "var(--pulse-positive)" if m.alpha_pct > 0 else "var(--pulse-negative)"
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Alpha</div>
+                    <div style="font-size: 1.5rem; color: {alpha_color}; margin: 0.5rem 0;">{m.alpha_pct:+.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Risk-adjusted excess</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bench_cols[1]:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Beta</div>
+                    <div style="font-size: 1.5rem; color: var(--text-primary); margin: 0.5rem 0;">{m.beta:.2f}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Market sensitivity</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bench_cols[2]:
+                port_color = "var(--pulse-positive)" if m.total_return_pct > 0 else "var(--pulse-negative)"
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Portfolio</div>
+                    <div style="font-size: 1.5rem; color: {port_color}; margin: 0.5rem 0;">{m.total_return_pct:+.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Total return</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bench_cols[3]:
+                bench_color = "var(--pulse-positive)" if m.benchmark_return_pct > 0 else "var(--pulse-negative)"
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Benchmark</div>
+                    <div style="font-size: 1.5rem; color: {bench_color}; margin: 0.5rem 0;">{m.benchmark_return_pct:+.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Russell 2000</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Risk Metrics Section
+            st.markdown('<div class="section-header" style="margin-top: 2rem;">⚠️ Risk Metrics</div>', unsafe_allow_html=True)
+
+            risk_cols = st.columns(4)
+
+            with risk_cols[0]:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">VaR (95%)</div>
+                    <div style="font-size: 1.5rem; color: var(--pulse-negative); margin: 0.5rem 0;">{m.var_95_pct:.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Daily worst case</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with risk_cols[1]:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Max Drawdown</div>
+                    <div style="font-size: 1.5rem; color: var(--pulse-negative); margin: 0.5rem 0;">{m.max_drawdown_pct:.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Peak to trough</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with risk_cols[2]:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Volatility</div>
+                    <div style="font-size: 1.5rem; color: var(--text-primary); margin: 0.5rem 0;">{m.volatility_annual:.1f}%</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">Annualized</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with risk_cols[3]:
+                st.markdown(f"""
+                <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                    <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">Correlation</div>
+                    <div style="font-size: 1.5rem; color: var(--text-primary); margin: 0.5rem 0;">{m.correlation:.2f}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-ghost);">With benchmark</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Stress Test Section
+            st.markdown('<div class="section-header" style="margin-top: 2rem;">🔥 Stress Test: What if Market Drops?</div>', unsafe_allow_html=True)
+
+            stress_cols = st.columns(4)
+            scenarios = [(-5, "Correction"), (-10, "Pullback"), (-20, "Bear Market"), (-30, "Crash")]
+
+            for i, (drop, label) in enumerate(scenarios):
+                impact = m.beta * drop
+                with stress_cols[i]:
+                    st.markdown(f"""
+                    <div style="text-align: center; padding: 1rem; background: var(--surface); border-radius: 0.5rem;">
+                        <div style="font-size: 0.65rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.1rem;">{label}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.25rem 0;">Market {drop}%</div>
+                        <div style="font-size: 1.3rem; color: var(--pulse-negative); margin: 0.5rem 0;">{impact:+.1f}%</div>
+                        <div style="font-size: 0.65rem; color: var(--text-ghost);">Est. portfolio</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        else:
+            st.markdown("""
+            <div style="text-align: center; padding: 4rem 0; color: var(--text-tertiary);">
+                <div style="font-size: 0.7rem; letter-spacing: 0.2rem; text-transform: uppercase;">Insufficient Data</div>
+                <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-ghost);">Need at least 5 days of trading history</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Error loading risk metrics: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -296,11 +296,13 @@ class WatchlistManager:
         """
         Full watchlist update cycle.
 
-        1. Run discovery scans (optional)
-        2. Add discovered stocks
-        3. Mark stale tickers
-        4. Remove old stale tickers
-        5. Enforce max size
+        1. Remove poor performers (consistent losers)
+        2. Run discovery scans (optional)
+        3. Add discovered stocks
+        4. Mark stale tickers
+        5. Remove old stale tickers
+        6. Balance sectors
+        7. Enforce max size
 
         Args:
             run_discovery: Whether to run discovery scans
@@ -313,8 +315,13 @@ class WatchlistManager:
             "added": 0,
             "marked_stale": 0,
             "removed": 0,
+            "poor_performers_removed": 0,
+            "sector_balanced": {},
             "total_active": 0,
         }
+
+        # Remove consistent losers first
+        stats["poor_performers_removed"] = self.remove_poor_performers()
 
         if run_discovery:
             try:
@@ -327,6 +334,10 @@ class WatchlistManager:
 
         stats["marked_stale"] = self.mark_stale_tickers()
         stats["removed"] = self.remove_stale_tickers()
+
+        # Balance sectors
+        stats["sector_balanced"] = self.balance_sectors()
+
         stats["removed"] += self.enforce_max_size()
         stats["total_active"] = len(self.get_active_tickers())
 
@@ -355,6 +366,188 @@ class WatchlistManager:
             "by_source": by_source,
             "by_sector": by_sector,
         }
+
+    def remove_poor_performers(self, min_trades: int = 3, max_loss_rate: float = 0.75) -> int:
+        """
+        Remove tickers that consistently lose money when traded.
+
+        Args:
+            min_trades: Minimum trades to evaluate (default 3)
+            max_loss_rate: Remove if loss rate exceeds this (default 75%)
+
+        Returns:
+            Number of tickers removed
+        """
+        from data_files import get_transactions_file
+
+        tx_file = get_transactions_file()
+        if not tx_file.exists():
+            return 0
+
+        import pandas as pd
+        transactions = pd.read_csv(tx_file)
+
+        if transactions.empty or "ticker" not in transactions.columns:
+            return 0
+
+        entries = self._load_watchlist()
+        core_tickers = self._load_core_watchlist()
+
+        # Analyze completed trades (sells)
+        sells = transactions[transactions["action"] == "SELL"]
+        if sells.empty:
+            return 0
+
+        # Calculate win/loss by ticker
+        ticker_stats = {}
+        for ticker in sells["ticker"].unique():
+            ticker_sells = sells[sells["ticker"] == ticker]
+            total_trades = len(ticker_sells)
+
+            if total_trades < min_trades:
+                continue
+
+            # Count losses (where reason is STOP_LOSS or realized negative)
+            losses = len(ticker_sells[ticker_sells["reason"] == "STOP_LOSS"])
+            loss_rate = losses / total_trades
+
+            ticker_stats[ticker] = {
+                "trades": total_trades,
+                "losses": losses,
+                "loss_rate": loss_rate,
+            }
+
+        # Remove poor performers
+        removed_count = 0
+        new_entries = []
+
+        for entry in entries:
+            if entry.ticker in core_tickers:
+                new_entries.append(entry)
+                continue
+
+            stats = ticker_stats.get(entry.ticker)
+            if stats and stats["loss_rate"] > max_loss_rate:
+                # Poor performer - remove
+                print(f"  Removing {entry.ticker}: {stats['loss_rate']:.0%} loss rate ({stats['losses']}/{stats['trades']} trades)")
+                removed_count += 1
+                continue
+
+            new_entries.append(entry)
+
+        if removed_count > 0:
+            self._save_watchlist(new_entries)
+
+        return removed_count
+
+    def balance_sectors(self, max_sector_pct: float = 25.0) -> Dict[str, int]:
+        """
+        Balance sectors to prevent over-concentration.
+
+        Args:
+            max_sector_pct: Maximum percentage per sector (default 25%)
+
+        Returns:
+            Dict of sectors and how many removed from each
+        """
+        entries = self._load_watchlist()
+        core_tickers = self._load_core_watchlist()
+
+        active_entries = [e for e in entries if e.status == "ACTIVE"]
+        total_active = len(active_entries)
+
+        if total_active == 0:
+            return {}
+
+        max_per_sector = int(total_active * max_sector_pct / 100)
+        if max_per_sector < 3:
+            max_per_sector = 3  # Minimum 3 per sector
+
+        # Group by sector
+        by_sector = {}
+        for entry in active_entries:
+            sector = entry.sector or "Unknown"
+            if sector not in by_sector:
+                by_sector[sector] = []
+            by_sector[sector].append(entry)
+
+        # Remove excess from over-represented sectors
+        removed_by_sector = {}
+        to_remove = set()
+
+        for sector, sector_entries in by_sector.items():
+            if len(sector_entries) > max_per_sector:
+                # Sort by discovery score (keep highest)
+                sector_entries.sort(key=lambda x: x.discovery_score, reverse=True)
+
+                # Remove lowest scoring (but not core)
+                for entry in sector_entries[max_per_sector:]:
+                    if entry.ticker not in core_tickers:
+                        to_remove.add(entry.ticker)
+                        removed_by_sector[sector] = removed_by_sector.get(sector, 0) + 1
+
+        if to_remove:
+            new_entries = [e for e in entries if e.ticker not in to_remove]
+            self._save_watchlist(new_entries)
+
+        return removed_by_sector
+
+    def get_sector_balance(self) -> Dict[str, Dict]:
+        """
+        Get current sector balance analysis.
+
+        Returns:
+            Dict with sector counts and percentages
+        """
+        entries = self._load_watchlist()
+        active_entries = [e for e in entries if e.status == "ACTIVE"]
+        total = len(active_entries)
+
+        if total == 0:
+            return {}
+
+        by_sector = {}
+        for entry in active_entries:
+            sector = entry.sector or "Unknown"
+            by_sector[sector] = by_sector.get(sector, 0) + 1
+
+        result = {}
+        for sector, count in sorted(by_sector.items(), key=lambda x: x[1], reverse=True):
+            result[sector] = {
+                "count": count,
+                "pct": round(count / total * 100, 1),
+            }
+
+        return result
+
+    def get_underrepresented_sectors(self, target_sectors: List[str] = None) -> List[str]:
+        """
+        Identify sectors that are underrepresented.
+
+        Args:
+            target_sectors: List of sectors that should be represented
+
+        Returns:
+            List of underrepresented sector names
+        """
+        if target_sectors is None:
+            target_sectors = [
+                "Technology", "Healthcare", "Financial Services",
+                "Consumer Cyclical", "Industrials", "Energy",
+                "Communication Services", "Consumer Defensive",
+            ]
+
+        balance = self.get_sector_balance()
+        current_sectors = set(balance.keys())
+
+        missing = []
+        for sector in target_sectors:
+            if sector not in current_sectors:
+                missing.append(sector)
+            elif balance[sector]["pct"] < 5.0:  # Less than 5%
+                missing.append(sector)
+
+        return missing
 
 
 def get_watchlist_tickers() -> List[str]:

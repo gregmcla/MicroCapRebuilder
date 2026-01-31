@@ -124,15 +124,19 @@
     },
     "filters": {
       "min_market_cap_m": 300,
-      "max_market_cap_m": 5000,
+      "max_market_cap_m": 50000,
       "min_avg_volume": 200000,
       "min_price": 5.0,
-      "max_price": 500.0
+      "max_price": 1000.0
     },
     "watchlist": {
       "max_tickers": 150,
       "stale_days_threshold": 30,
-      "core_tickers_file": "data/core_watchlist.jsonl"
+      "core_tickers_file": "data/core_watchlist.jsonl",
+      "max_sector_pct": 25,
+      "remove_poor_performers": true,
+      "min_trades_for_removal": 3,
+      "max_loss_rate_for_removal": 0.75
     }
   }
 }
