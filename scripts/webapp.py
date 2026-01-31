@@ -159,6 +159,19 @@ st.markdown("""
 .summary-value.red { color: var(--red); }
 .summary-sub { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem; }
 
+/* Insight box */
+.insight-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; border-left: 3px solid var(--text-faint); }
+.insight-box.insight-good { border-left-color: var(--green); }
+.insight-box.insight-warn { border-left-color: var(--gold); }
+.insight-box.insight-alert { border-left-color: var(--red); }
+.insight-status { font-size: 0.95rem; color: var(--text); margin-bottom: 0.5rem; }
+.insight-items { display: flex; flex-wrap: wrap; gap: 1rem; }
+.insight-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-dim); }
+.insight-dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot-good { background: var(--green); }
+.dot-warn { background: var(--gold); }
+.dot-neutral { background: var(--text-faint); }
+
 /* Section headers */
 .section-head { display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
 .section-title { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
@@ -294,6 +307,75 @@ card3 = f'<div class="summary-card"><div class="summary-label">Unrealized P&L</d
 card4 = f'<div class="summary-card"><div class="summary-label">Cash</div><div class="summary-value">${cash:,.0f}</div><div class="summary-sub">{(cash/total_equity*100):.0f}% reserve</div></div>'
 summary_html = f'<div class="summary-grid">{card1}{card2}{card3}{card4}</div>'
 st.markdown(summary_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STATUS INSIGHT - What's happening right now
+# ═══════════════════════════════════════════════════════════════════════════════
+# Get current drawdown
+if not snapshots_df.empty:
+    peak_equity = snapshots_df['total_equity'].max()
+    current_drawdown = ((peak_equity - total_equity) / peak_equity) * 100 if peak_equity > 0 else 0
+else:
+    current_drawdown = 0
+
+# Check preservation status
+try:
+    preservation = get_preservation_status()
+    preservation_active = preservation.get('preservation_mode', False)
+except:
+    preservation_active = False
+
+# Generate smart status
+status_sentence, sentiment = generate_status_sentence(
+    positions_df, snapshots_df, day_pnl,
+    regime=regime, preservation_active=preservation_active, drawdown_pct=current_drawdown
+)
+
+# Build insight items
+insights = []
+
+# Recent sells (last 7 days)
+if not transactions_df.empty:
+    transactions_df['date'] = pd.to_datetime(transactions_df['date'])
+    recent_sells = transactions_df[(transactions_df['action'] == 'SELL') & (transactions_df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7))]
+    recent_buys = transactions_df[(transactions_df['action'] == 'BUY') & (transactions_df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7))]
+
+    for _, sell in recent_sells.iterrows():
+        reason = sell.get('reason', '')
+        ticker = sell['ticker']
+        if reason == 'STOP_LOSS':
+            insights.append(('warn', f'{ticker} stopped out'))
+        elif reason == 'TAKE_PROFIT':
+            insights.append(('good', f'{ticker} hit target'))
+        else:
+            insights.append(('neutral', f'Sold {ticker}'))
+
+    if len(recent_buys) > 0:
+        insights.append(('neutral', f'{len(recent_buys)} new position{"s" if len(recent_buys) > 1 else ""} opened'))
+
+# Positions near levels
+if near_stop:
+    for pos in near_stop[:2]:
+        insights.append(('warn', f'{pos["ticker"]} {pos["distance_pct"]:.0f}% from stop'))
+
+if near_target:
+    for pos in near_target[:2]:
+        insights.append(('good', f'{pos["ticker"]} {pos["distance_pct"]:.0f}% from target'))
+
+# Build insight HTML
+sentiment_class = {'calm': 'insight-calm', 'positive': 'insight-good', 'attention': 'insight-warn', 'warning': 'insight-alert'}.get(sentiment, 'insight-calm')
+
+insight_items = ""
+for item_type, text in insights[:4]:
+    dot_class = f'dot-{item_type}'
+    insight_items += f'<span class="insight-item"><span class="insight-dot {dot_class}"></span>{text}</span>'
+
+insight_html = f'<div class="insight-box {sentiment_class}"><div class="insight-status">{status_sentence}</div>'
+if insight_items:
+    insight_html += f'<div class="insight-items">{insight_items}</div>'
+insight_html += '</div>'
+st.markdown(insight_html, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
