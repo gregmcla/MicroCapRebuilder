@@ -164,34 +164,39 @@ st.markdown("""
 .section-title { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
 .section-badge { font-size: 0.65rem; color: var(--text-faint); }
 
-/* Position cards - NEW DESIGN */
-.pos-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
-.pos-card:hover { background: var(--card-hover); }
-.pos-card.alert { border-left: 3px solid var(--gold); }
-.pos-card.winner { border-left: 3px solid var(--green); }
+/* Positions quick stats */
+.pos-stats { display: flex; gap: 0.75rem; align-items: center; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.75rem; padding: 0.5rem 0; }
+.stat-item { display: flex; gap: 0.25rem; }
+.stat-sep { color: var(--text-faint); }
+.stat-win { color: var(--green); }
+.stat-lose { color: var(--red); }
 
-.pos-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
-.pos-ticker { font-size: 1.25rem; font-weight: 600; color: var(--text); }
-.pos-pnl { text-align: right; }
-.pos-pnl-value { font-size: 1.1rem; font-weight: 600; }
-.pos-pnl-value.green { color: var(--green); }
-.pos-pnl-value.red { color: var(--red); }
-.pos-pnl-pct { font-size: 0.8rem; color: var(--text-dim); }
+/* Positions table - compact */
+.pos-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.pos-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.65rem; font-weight: 500; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+.pos-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.pos-table tr:hover { background: var(--card); }
+.pos-table tr.row-alert { background: rgba(234,179,8,0.06); }
+.pos-table tr.row-alert:hover { background: rgba(234,179,8,0.1); }
+.pos-table tr.row-target { background: rgba(34,197,94,0.06); }
+.pos-table tr.row-down { }
 
-.pos-meta { display: flex; gap: 2rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-dim); }
-.pos-meta-item { display: flex; flex-direction: column; }
-.pos-meta-label { font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase; margin-bottom: 0.1rem; }
-.pos-meta-value { color: var(--text); }
+.col-ticker { font-weight: 600; color: var(--text); min-width: 60px; }
+.col-value { color: var(--text-dim); min-width: 70px; }
+.col-pnl { font-weight: 500; min-width: 70px; }
+.col-pct { min-width: 55px; }
+.col-bar { min-width: 100px; }
+.col-status { min-width: 50px; text-align: right; }
 
-.pos-bar-container { margin: 0.75rem 0; }
-.pos-bar-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-faint); margin-bottom: 0.3rem; }
-.pos-bar { height: 6px; background: linear-gradient(90deg, var(--red) 0%, var(--red) 20%, var(--gold) 20%, var(--gold) 40%, #444 40%, #444 60%, var(--green) 60%, var(--green) 100%); border-radius: 3px; position: relative; }
-.pos-bar-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: white; border: 2px solid var(--bg); border-radius: 50%; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
-.pos-bar-entry { position: absolute; top: -2px; height: 10px; width: 2px; background: var(--text-faint); transform: translateX(-50%); }
+.pnl-up { color: var(--green); }
+.pnl-down { color: var(--red); }
 
-.pos-stops { display: flex; justify-content: space-between; font-size: 0.75rem; margin-top: 0.5rem; }
-.pos-stop { color: var(--red); }
-.pos-target { color: var(--green); }
+.status-warn { font-size: 0.65rem; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 0.03em; }
+.status-good { font-size: 0.65rem; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* Mini progress bar in table */
+.mini-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.mini-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
 
 /* Transaction list */
 .tx-item { display: flex; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); gap: 1rem; }
@@ -292,98 +297,93 @@ st.markdown(summary_html, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# POSITIONS
+# POSITIONS - Compact Table Design
 # ═══════════════════════════════════════════════════════════════════════════════
 near_stop = get_positions_near_stop(positions_df, threshold_pct=5.0)
 near_target = get_positions_near_target(positions_df, threshold_pct=8.0)
+near_stop_tickers = {p['ticker'] for p in near_stop}
+near_target_tickers = {p['ticker'] for p in near_target}
 
-alert_count = len(near_stop)
-badge_text = f"{alert_count} need attention" if alert_count > 0 else f"{num_positions} positions"
+# Count winners/losers
+if not positions_df.empty:
+    winners = len(positions_df[positions_df['unrealized_pnl'] > 0])
+    losers = len(positions_df[positions_df['unrealized_pnl'] <= 0])
+    best_pct = positions_df['unrealized_pnl_pct'].max()
+    worst_pct = positions_df['unrealized_pnl_pct'].min()
+else:
+    winners = losers = 0
+    best_pct = worst_pct = 0
 
-st.markdown(f'<div class="section-head"><span class="section-title">Positions</span><span class="section-badge">{badge_text}</span></div>', unsafe_allow_html=True)
+# Quick stats line
+stats_html = f'<div class="pos-stats"><span class="stat-item"><span class="stat-win">{winners}W</span> / <span class="stat-lose">{losers}L</span></span><span class="stat-sep">|</span><span class="stat-item">Best: <span class="stat-win">+{best_pct:.0f}%</span></span><span class="stat-sep">|</span><span class="stat-item">Worst: <span class="stat-lose">{worst_pct:.0f}%</span></span></div>'
+
+st.markdown(f'<div class="section-head"><span class="section-title">Positions</span><span class="section-badge">{num_positions} open</span></div>', unsafe_allow_html=True)
 
 if not positions_df.empty:
-    # Sort by attention priority then by P&L
+    st.markdown(stats_html, unsafe_allow_html=True)
+
+    # Sort: alerts first, then by P&L %
     positions_sorted = positions_df.copy()
-    near_stop_tickers = [p['ticker'] for p in near_stop]
-    positions_sorted['_priority'] = positions_sorted['ticker'].apply(lambda t: 0 if t in near_stop_tickers else 1)
+    positions_sorted['_priority'] = positions_sorted['ticker'].apply(lambda t: 0 if t in near_stop_tickers else (1 if t in near_target_tickers else 2))
     positions_sorted = positions_sorted.sort_values(['_priority', 'unrealized_pnl_pct'], ascending=[True, False])
 
+    # Build table rows
+    rows_html = ""
     for _, row in positions_sorted.iterrows():
         ticker = row['ticker']
-        shares = int(row['shares'])
-        entry_price = row['avg_cost_basis']
-        current_price = row['current_price']
-        market_value = row['market_value']
         pnl = row['unrealized_pnl']
         pnl_pct = row['unrealized_pnl_pct']
+        market_value = row['market_value']
+        current_price = row['current_price']
+        entry_price = row['avg_cost_basis']
         stop_loss = row.get('stop_loss', entry_price * 0.92)
         take_profit = row.get('take_profit', entry_price * 1.20)
-        entry_date = row.get('entry_date', '')
 
-        # Calculate days held
-        try:
-            entry_dt = pd.to_datetime(entry_date)
-            days_held = (datetime.now() - entry_dt).days
-        except:
-            days_held = 0
-
-        # Progress calculation
+        # Progress bar calculation
         progress = calculate_position_progress(row)
-        if progress:
-            marker_pct = progress['progress_pct']
-            zone = progress['zone']
+        prog_pct = progress['progress_pct'] if progress else 50
+        zone = progress['zone'] if progress else 'neutral'
+
+        # Status indicator
+        if ticker in near_stop_tickers:
+            status = "WATCH"
+            status_class = "status-warn"
+            row_class = "row-alert"
+        elif ticker in near_target_tickers:
+            status = "TARGET"
+            status_class = "status-good"
+            row_class = "row-target"
+        elif pnl >= 0:
+            status = ""
+            status_class = ""
+            row_class = ""
         else:
-            marker_pct = 50
-            zone = 'neutral'
+            status = ""
+            status_class = ""
+            row_class = "row-down"
 
-        # Entry marker position
-        if stop_loss < entry_price < take_profit:
-            entry_marker_pct = ((entry_price - stop_loss) / (take_profit - stop_loss)) * 100
-        else:
-            entry_marker_pct = 50
-
-        # Card styling
-        card_class = ""
-        if zone in ['danger', 'caution']:
-            card_class = "alert"
-        elif zone in ['winning', 'near_target']:
-            card_class = "winner"
-
-        # P&L styling
-        pnl_class = "green" if pnl >= 0 else "red"
+        # P&L formatting
+        pnl_class = "pnl-up" if pnl >= 0 else "pnl-down"
         pnl_sign = "+" if pnl >= 0 else ""
 
-        # Distance to stop/target
-        stop_dist = ((current_price - stop_loss) / current_price) * 100
-        target_dist = ((take_profit - current_price) / current_price) * 100
+        # Progress bar color
+        if prog_pct < 25:
+            bar_color = "var(--red)"
+        elif prog_pct < 50:
+            bar_color = "var(--gold)"
+        elif prog_pct < 75:
+            bar_color = "#666"
+        else:
+            bar_color = "var(--green)"
 
-        # Position % of portfolio
-        port_pct = (market_value / total_equity) * 100 if total_equity > 0 else 0
+        # Build compact row
+        rows_html += f'<tr class="{row_class}"><td class="col-ticker">{ticker}</td><td class="col-value">${market_value:,.0f}</td><td class="col-pnl {pnl_class}">{pnl_sign}${abs(pnl):,.0f}</td><td class="col-pct {pnl_class}">{pnl_sign}{pnl_pct:.1f}%</td><td class="col-bar"><div class="mini-bar"><div class="mini-fill" style="width:{prog_pct}%;background:{bar_color}"></div></div></td><td class="col-status"><span class="{status_class}">{status}</span></td></tr>'
 
-        # Build HTML as single line to avoid Streamlit escaping issues
-        meta_items = (
-            f'<div class="pos-meta-item"><span class="pos-meta-label">Shares</span><span class="pos-meta-value">{shares}</span></div>'
-            f'<div class="pos-meta-item"><span class="pos-meta-label">Value</span><span class="pos-meta-value">${market_value:,.0f}</span></div>'
-            f'<div class="pos-meta-item"><span class="pos-meta-label">% Portfolio</span><span class="pos-meta-value">{port_pct:.1f}%</span></div>'
-            f'<div class="pos-meta-item"><span class="pos-meta-label">Entry</span><span class="pos-meta-value">${entry_price:.2f}</span></div>'
-            f'<div class="pos-meta-item"><span class="pos-meta-label">Current</span><span class="pos-meta-value">${current_price:.2f}</span></div>'
-            f'<div class="pos-meta-item"><span class="pos-meta-label">Days</span><span class="pos-meta-value">{days_held}</span></div>'
-        )
-
-        top_section = f'<div class="pos-top"><span class="pos-ticker">{ticker}</span><div class="pos-pnl"><div class="pos-pnl-value {pnl_class}">{pnl_sign}${abs(pnl):,.2f}</div><div class="pos-pnl-pct">{pnl_sign}{pnl_pct:.1f}%</div></div></div>'
-
-        meta_section = f'<div class="pos-meta">{meta_items}</div>'
-
-        bar_labels = f'<div class="pos-bar-labels"><span>Stop ${stop_loss:.0f} ({stop_dist:.0f}%)</span><span>Target ${take_profit:.0f} ({target_dist:.0f}%)</span></div>'
-        bar_inner = f'<div class="pos-bar"><div class="pos-bar-entry" style="left:{entry_marker_pct}%"></div><div class="pos-bar-marker" style="left:{marker_pct}%"></div></div>'
-        bar_section = f'<div class="pos-bar-container">{bar_labels}{bar_inner}</div>'
-
-        html = f'<div class="pos-card {card_class}">{top_section}{meta_section}{bar_section}</div>'
-        st.markdown(html, unsafe_allow_html=True)
+    table_html = f'<table class="pos-table"><thead><tr><th>Ticker</th><th>Value</th><th>P&L</th><th>%</th><th>Progress</th><th></th></tr></thead><tbody>{rows_html}</tbody></table>'
+    st.markdown(table_html, unsafe_allow_html=True)
 
 else:
-    st.markdown('<div style="text-align:center; padding: 3rem; color: var(--text-faint);">No positions yet</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; padding: 2rem; color: var(--text-faint);">No positions yet</div>', unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
