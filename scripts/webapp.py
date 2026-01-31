@@ -616,13 +616,15 @@ if chat_ready:
     chat_header = '<div class="mommy-chat-header"><div class="mommy-avatar">M</div><div><div class="mommy-name">Ask Mommy</div><div class="mommy-status">Online</div></div></div>'
     st.markdown(f'<div class="mommy-chat">{chat_header}', unsafe_allow_html=True)
 
-    user_question = st.text_input("chat_input", placeholder="What should I know about my portfolio today?", label_visibility="collapsed", key="mommy_chat_top")
+    # Use a form to prevent auto-triggering on page rerun
+    with st.form(key="mommy_chat_form", clear_on_submit=True):
+        user_question = st.text_input("chat_input", placeholder="What should I know about my portfolio today?", label_visibility="collapsed")
+        submitted = st.form_submit_button("Ask", use_container_width=True)
 
-    if user_question:
+    if submitted and user_question:
         with st.spinner("Mommy is thinking..."):
             response = ai_chat(user_question)
         if response.success:
-            # Make the response sound more like Mommy
             mommy_response = response.message
             st.markdown(f'<div class="mommy-response">{mommy_response}</div>', unsafe_allow_html=True)
         else:
