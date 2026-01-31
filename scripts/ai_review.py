@@ -221,7 +221,17 @@ def review_proposed_actions(
             if start >= 0 and end > start:
                 clean_text = clean_text[start:end]
 
-        reviews_data = json.loads(clean_text)
+        # Try parsing, with fallback to fix common issues
+        try:
+            reviews_data = json.loads(clean_text)
+        except json.JSONDecodeError:
+            # Try fixing common issues: single quotes, trailing commas
+            import re
+            fixed_text = clean_text
+            # Remove trailing commas before } or ]
+            fixed_text = re.sub(r',(\s*[}\]])', r'\1', fixed_text)
+            # Try again
+            reviews_data = json.loads(fixed_text)
 
         # Map reviews back to actions
         reviews_by_ticker = {r["ticker"]: r for r in reviews_data.get("reviews", [])}

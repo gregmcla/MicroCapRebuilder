@@ -260,6 +260,8 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
             take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
 
             slots_available = config.get("max_positions", 15) - num_positions
+            remaining_cash = cash  # Track how much cash is left as we propose buys
+
             for i, candidate in enumerate(top_candidates[:slots_available]):
                 ticker = candidate["ticker"]
                 price = candidate.get("current_price", 0)
@@ -269,10 +271,20 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
                 if price <= 0:
                     continue
 
-                # Calculate position
-                shares = int(max_position_value / price)
+                # Calculate position size (capped by remaining cash)
+                position_value = min(max_position_value, remaining_cash)
+                shares = int(position_value / price)
                 if shares < 1:
+                    print(f"  ⏸️ Skipping {ticker} - insufficient cash (${remaining_cash:.0f} remaining)")
                     continue
+
+                actual_cost = shares * price
+                if actual_cost > remaining_cash:
+                    # Reduce shares to fit remaining cash
+                    shares = int(remaining_cash / price)
+                    if shares < 1:
+                        continue
+                    actual_cost = shares * price
 
                 stop_loss = round(price * (1 - stop_loss_pct), 2)
                 take_profit = round(price * (1 + take_profit_pct), 2)
@@ -289,7 +301,8 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
                     regime=regime.value,
                     reason=f"Quant score {score:.0f}/100 - Rank #{i+1}"
                 ))
-                print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f}")
+                remaining_cash -= actual_cost
+                print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f} (${actual_cost:.0f}, ${remaining_cash:.0f} remaining)")
 
     num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
     print(f"  Found {num_buys} buy candidate(s)")
