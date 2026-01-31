@@ -201,13 +201,27 @@ def review_proposed_actions(
             response_text = response.choices[0].message.content
 
         # Parse JSON response
-        # Handle potential markdown code blocks
-        if "```json" in response_text:
-            response_text = response_text.split("```json")[1].split("```")[0]
-        elif "```" in response_text:
-            response_text = response_text.split("```")[1].split("```")[0]
+        # Handle potential markdown code blocks and extra text
+        clean_text = response_text.strip()
 
-        reviews_data = json.loads(response_text.strip())
+        # Remove markdown code blocks
+        if "```json" in clean_text:
+            clean_text = clean_text.split("```json")[1].split("```")[0]
+        elif "```" in clean_text:
+            parts = clean_text.split("```")
+            if len(parts) >= 2:
+                clean_text = parts[1]
+
+        # Try to find JSON object boundaries
+        clean_text = clean_text.strip()
+        if not clean_text.startswith("{"):
+            # Find first { and last }
+            start = clean_text.find("{")
+            end = clean_text.rfind("}") + 1
+            if start >= 0 and end > start:
+                clean_text = clean_text[start:end]
+
+        reviews_data = json.loads(clean_text)
 
         # Map reviews back to actions
         reviews_by_ticker = {r["ticker"]: r for r in reviews_data.get("reviews", [])}

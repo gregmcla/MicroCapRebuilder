@@ -977,19 +977,20 @@ if analysis:
             if mods:
                 mods_text = f'<div style="font-size:0.7rem; color:var(--gold); margin-top:0.2rem;">Modified: {", ".join(mods)}</div>'
 
-        card_html = f'''<div class="ai-card{blocked_class}">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div><span class="ai-action {action_class}">{action_type}</span> <span class="ai-ticker">{ticker}</span> <span style="color:var(--text-dim); font-size:0.75rem;">{shares} shares @ ${price:.2f}</span></div>
-                <div style="font-size:0.75rem; color:{decision_color};">{decision_icon} {decision}</div>
-            </div>
-            <div style="display:flex; gap:1rem; margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint);">
-                <span>Quant Score: <strong style="color:var(--text)">{quant_score:.0f}</strong>/100</span>
-                <span>Confidence: <strong style="color:var(--text)">{conf_pct}%</strong></span>
-            </div>
-            <div class="ai-reason"><strong>Quant:</strong> {quant_reason}</div>
-            <div class="ai-reason"><strong>AI Review:</strong> {ai_reason}</div>
-            {mods_text}
-        </div>'''
+        # Build card HTML as single line to avoid Streamlit rendering issues
+        card_html = f'<div class="ai-card{blocked_class}">'
+        card_html += f'<div style="display:flex; justify-content:space-between; align-items:center;">'
+        card_html += f'<div><span class="ai-action {action_class}">{action_type}</span> <span class="ai-ticker">{ticker}</span> <span style="color:var(--text-dim); font-size:0.75rem;">{shares} shares @ ${price:.2f}</span></div>'
+        card_html += f'<div style="font-size:0.75rem; color:{decision_color};">{decision_icon} {decision}</div>'
+        card_html += '</div>'
+        card_html += f'<div style="display:flex; gap:1rem; margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint);">'
+        card_html += f'<span>Quant Score: <strong style="color:var(--text)">{quant_score:.0f}</strong>/100</span>'
+        card_html += f'<span>Confidence: <strong style="color:var(--text)">{conf_pct}%</strong></span>'
+        card_html += '</div>'
+        card_html += f'<div class="ai-reason"><strong>Quant:</strong> {quant_reason}</div>'
+        card_html += f'<div class="ai-reason"><strong>AI Review:</strong> {ai_reason}</div>'
+        card_html += mods_text
+        card_html += '</div>'
         st.markdown(card_html, unsafe_allow_html=True)
 
 
