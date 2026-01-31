@@ -159,6 +159,7 @@ Respond ONLY with the JSON, no other text."""
 def review_proposed_actions(
     proposed_actions: list,
     portfolio_context: dict,
+    batch_size: int = 10,
 ) -> list:
     """
     Review proposed actions using AI.
@@ -171,16 +172,31 @@ def review_proposed_actions(
     client_type, client = get_ai_client()
 
     if client is None:
-        # No AI available - approve all with low confidence
+        # No AI available - approve based on quant score
         return [
             ReviewedAction(
                 original=action,
                 decision=ReviewDecision.APPROVE,
-                ai_reasoning="AI review unavailable - auto-approved based on quant score",
-                confidence=0.5,
+                ai_reasoning=f"AI unavailable - approved based on quant score {action.quant_score:.0f}/100",
+                confidence=min(0.3 + (action.quant_score / 100) * 0.4, 0.7),
             )
             for action in proposed_actions
         ]
+
+    # Batch large numbers of actions to avoid overwhelming the AI
+    if len(proposed_actions) > batch_size:
+        all_reviewed = []
+        for i in range(0, len(proposed_actions), batch_size):
+            batch = proposed_actions[i:i + batch_size]
+            batch_reviewed = _review_batch(client_type, client, batch, portfolio_context)
+            all_reviewed.extend(batch_reviewed)
+        return all_reviewed
+
+    return _review_batch(client_type, client, proposed_actions, portfolio_context)
+
+
+def _review_batch(client_type, client, proposed_actions: list, portfolio_context: dict) -> list:
+    """Review a batch of proposed actions."""
 
     prompt = build_review_prompt(proposed_actions, portfolio_context)
 
@@ -188,17 +204,21 @@ def review_proposed_actions(
         if client_type == "anthropic":
             response = client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=2000,
+                max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}]
             )
-            response_text = response.content[0].text
+            response_text = response.content[0].text if response.content else ""
         else:  # openai
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
-                max_tokens=2000,
+                max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}]
             )
-            response_text = response.choices[0].message.content
+            response_text = response.choices[0].message.content if response.choices else ""
+
+        # Check for empty response
+        if not response_text or not response_text.strip():
+            raise ValueError("Empty response from AI")
 
         # Parse JSON response
         # Handle potential markdown code blocks and extra text
@@ -220,18 +240,22 @@ def review_proposed_actions(
             end = clean_text.rfind("}") + 1
             if start >= 0 and end > start:
                 clean_text = clean_text[start:end]
+            else:
+                raise ValueError(f"No JSON found in response: {clean_text[:200]}")
 
         # Try parsing, with fallback to fix common issues
         try:
             reviews_data = json.loads(clean_text)
-        except json.JSONDecodeError:
-            # Try fixing common issues: single quotes, trailing commas
+        except json.JSONDecodeError as e:
+            # Try fixing common issues: trailing commas
             import re
             fixed_text = clean_text
             # Remove trailing commas before } or ]
             fixed_text = re.sub(r',(\s*[}\]])', r'\1', fixed_text)
-            # Try again
-            reviews_data = json.loads(fixed_text)
+            try:
+                reviews_data = json.loads(fixed_text)
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid JSON after fixes: {str(e)[:100]}")
 
         # Map reviews back to actions
         reviews_by_ticker = {r["ticker"]: r for r in reviews_data.get("reviews", [])}
