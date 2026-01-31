@@ -847,17 +847,14 @@ if not positions_df.empty:
 
         # Status badge
         status_text = ""
-        status_class = zone
         if zone == 'danger':
-            status_text = "Near stop"
+            status_text = "NEAR STOP"
         elif zone == 'caution':
-            status_text = "Watch"
+            status_text = "WATCH"
         elif zone == 'near_target':
-            status_text = "Near target!"
+            status_text = "NEAR TARGET"
         elif zone == 'winning':
-            status_text = "Winning"
-
-        status_badge = f'<span class="position-status {status_class}">{status_text}</span>' if status_text else ""
+            status_text = "WINNING"
 
         # P&L formatting
         pnl = row['unrealized_pnl']
@@ -865,40 +862,43 @@ if not positions_df.empty:
         pnl_class = "positive" if pnl >= 0 else "negative"
         pnl_sign = "+" if pnl >= 0 else ""
 
-        # Progress bar
-        progress_bar = render_position_progress_bar(progress) if progress else ""
+        # Progress bar values
+        if progress:
+            stop_price = progress['stop_loss']
+            target_price = progress['take_profit']
+            marker_pct = progress['progress_pct']
+            marker_zone = progress['zone']
+        else:
+            stop_price = 0
+            target_price = 0
+            marker_pct = 50
+            marker_zone = 'neutral'
 
-        st.markdown(f"""
-        <div class="position-card {card_class}">
-            <div class="position-header">
-                <span class="position-ticker">{row['ticker']}</span>
-                {status_badge}
-            </div>
-            <div class="position-details">
-                {int(row['shares'])} shares @ ${row['avg_cost_basis']:.2f} → ${row['current_price']:.2f}
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span class="position-pnl {pnl_class}">{pnl_sign}${abs(pnl):.2f} ({pnl_sign}{pnl_pct:.1f}%)</span>
-            </div>
-            {progress_bar}
-        </div>
-        """, unsafe_allow_html=True)
+        # Build HTML as single line to avoid Streamlit parsing issues
+        status_html = f'<span class="position-status {zone}">{status_text}</span>' if status_text else ''
+
+        html = f'<div class="position-card {card_class}">'
+        html += f'<div class="position-header"><span class="position-ticker">{row["ticker"]}</span>{status_html}</div>'
+        html += f'<div class="position-details">{int(row["shares"])} shares @ ${row["avg_cost_basis"]:.2f} → ${row["current_price"]:.2f}</div>'
+        html += f'<div class="position-pnl {pnl_class}">{pnl_sign}${abs(pnl):.2f} ({pnl_sign}{pnl_pct:.1f}%)</div>'
+
+        if progress:
+            html += f'<div class="position-progress-container">'
+            html += f'<span class="progress-label-left">${stop_price:.0f}</span>'
+            html += f'<div class="progress-track"><div class="progress-marker {marker_zone}" style="left: {marker_pct}%;"></div></div>'
+            html += f'<span class="progress-label-right">${target_price:.0f}</span>'
+            html += f'</div>'
+
+        html += '</div>'
+
+        st.markdown(html, unsafe_allow_html=True)
 
     # Total unrealized P&L
     total_unrealized = positions_df["unrealized_pnl"].sum()
     total_class = "positive" if total_unrealized >= 0 else "negative"
-    st.markdown(f"""
-    <div style="text-align: right; margin: 1rem 0; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);">
-        <span style="color: var(--text-tertiary); font-size: 0.7rem; margin-right: 0.75rem;">Unrealized</span>
-        <span class="position-pnl {total_class}" style="font-size: 1.1rem;">${total_unrealized:+,.2f}</span>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f'<div style="text-align: right; margin: 1rem 0; padding-top: 0.5rem; border-top: 1px solid var(--border-subtle);"><span style="color: var(--text-tertiary); font-size: 0.7rem; margin-right: 0.75rem;">Unrealized</span><span class="position-pnl {total_class}" style="font-size: 1.1rem;">${total_unrealized:+,.2f}</span></div>', unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-text">No positions yet. I'm watching for opportunities.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="empty-state"><div class="empty-state-text">No positions yet. I\'m watching for opportunities.</div></div>', unsafe_allow_html=True)
 
 
 # ─── AI Intelligence Section ──────────────────────────────────────────────────
@@ -926,7 +926,7 @@ if chat_ready:
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🔍 Analyze Portfolio", use_container_width=True):
+        if st.button("ANALYZE PORTFOLIO", use_container_width=True):
             with st.spinner("Thinking..."):
                 try:
                     result = run_intelligence()
@@ -943,7 +943,7 @@ if chat_ready:
                 for a in actions if "error" not in a
             )
 
-        if st.button("🚀 Execute", use_container_width=True, disabled=not has_executable, type="primary"):
+        if st.button("EXECUTE", use_container_width=True, disabled=not has_executable, type="primary"):
             with st.spinner("Executing..."):
                 try:
                     results = execute_actions(actions)
@@ -967,32 +967,24 @@ if chat_ready:
 
             if action_type == "HOLD":
                 card_class = "hold"
-                icon = "⏸️"
             elif action_type in ["BUY", "ADD"]:
                 card_class = "buy"
-                icon = "📈"
             elif action_type in ["SELL", "TRIM"]:
                 card_class = "sell"
-                icon = "📉"
             else:
                 card_class = ""
-                icon = "⚙️"
 
             if safety == "BLOCKED":
                 card_class += " blocked"
-                blocked_note = f" · Blocked: {action.get('block_reason', 'Safety rail')}"
+                blocked_note = f" [BLOCKED: {action.get('block_reason', 'Safety rail')}]"
             else:
                 blocked_note = ""
 
-            st.markdown(f"""
-            <div class="rec-card {card_class}">
-                <div class="rec-header">
-                    <span class="rec-action">{icon} {action_type}</span>
-                    <span class="rec-ticker">{ticker}</span>
-                </div>
-                <div class="rec-reason">{reason}{blocked_note}</div>
-            </div>
-            """, unsafe_allow_html=True)
+            html = f'<div class="rec-card {card_class}">'
+            html += f'<div class="rec-header"><span class="rec-action">{action_type}</span><span class="rec-ticker">{ticker}</span></div>'
+            html += f'<div class="rec-reason">{reason}{blocked_note}</div>'
+            html += '</div>'
+            st.markdown(html, unsafe_allow_html=True)
 
 
 # ─── Recent Activity Section ──────────────────────────────────────────────────
@@ -1010,41 +1002,19 @@ if not transactions_df.empty:
 
     for _, tx in recent.iterrows():
         action_class = "buy" if tx["action"] == "BUY" else "sell"
-        st.markdown(f"""
-        <div class="tx-row">
-            <span class="tx-action {action_class}">{tx['action']}</span>
-            <span class="tx-ticker">{tx['ticker']}</span>
-            <span class="tx-details">{int(tx['shares'])} @ ${tx['price']:.2f}</span>
-            <span class="tx-date">{tx['date']}</span>
-        </div>
-        """, unsafe_allow_html=True)
+        html = f'<div class="tx-row"><span class="tx-action {action_class}">{tx["action"]}</span><span class="tx-ticker">{tx["ticker"]}</span><span class="tx-details">{int(tx["shares"])} @ ${tx["price"]:.2f}</span><span class="tx-date">{tx["date"]}</span></div>'
+        st.markdown(html, unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <div class="empty-state">
-        <div class="empty-state-text">No transactions yet.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="empty-state"><div class="empty-state-text">No transactions yet.</div></div>', unsafe_allow_html=True)
 
 
 # ─── Performance Metrics Section ──────────────────────────────────────────────
-with st.expander("📊 Performance & Risk", expanded=False):
+with st.expander("Performance & Risk", expanded=False):
     try:
         analytics = PortfolioAnalytics()
         m = analytics.calculate_all_metrics()
 
         if m and m.days_tracked >= 3:
-            st.markdown("""
-            <div class="metric-grid">
-            """, unsafe_allow_html=True)
-
-            # Sharpe
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value">{m.sharpe_ratio:.2f}</div>
-                    <div class="metric-label">Sharpe</div>
-                </div>
-            """, unsafe_allow_html=True)
-
             # Win Rate
             try:
                 analyzer = TradeAnalyzer()
@@ -1053,32 +1023,16 @@ with st.expander("📊 Performance & Risk", expanded=False):
             except:
                 win_rate = 0
 
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value">{win_rate:.0f}%</div>
-                    <div class="metric-label">Win Rate</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            # Max Drawdown
             dd_class = "negative" if m.max_drawdown_pct < -5 else ""
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value {dd_class}">{m.max_drawdown_pct:.1f}%</div>
-                    <div class="metric-label">Max Drawdown</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            # Alpha
             alpha_class = "positive" if m.alpha_pct > 0 else "negative"
-            st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-value {alpha_class}">{m.alpha_pct:+.1f}%</div>
-                    <div class="metric-label">Alpha</div>
-                </div>
-            """, unsafe_allow_html=True)
 
-            st.markdown("</div>", unsafe_allow_html=True)
+            metrics_html = '<div class="metric-grid">'
+            metrics_html += f'<div class="metric-card"><div class="metric-value">{m.sharpe_ratio:.2f}</div><div class="metric-label">Sharpe</div></div>'
+            metrics_html += f'<div class="metric-card"><div class="metric-value">{win_rate:.0f}%</div><div class="metric-label">Win Rate</div></div>'
+            metrics_html += f'<div class="metric-card"><div class="metric-value {dd_class}">{m.max_drawdown_pct:.1f}%</div><div class="metric-label">Max Drawdown</div></div>'
+            metrics_html += f'<div class="metric-card"><div class="metric-value {alpha_class}">{m.alpha_pct:+.1f}%</div><div class="metric-label">Alpha</div></div>'
+            metrics_html += '</div>'
+            st.markdown(metrics_html, unsafe_allow_html=True)
         else:
             st.info("Need more trading history for metrics.")
     except Exception as e:
@@ -1086,15 +1040,11 @@ with st.expander("📊 Performance & Risk", expanded=False):
 
 
 # ─── Chat Section ─────────────────────────────────────────────────────────────
-with st.expander("💬 Ask Mommy", expanded=False):
+with st.expander("Ask Mommy", expanded=False):
     if not chat_ready:
         st.info("Add ANTHROPIC_API_KEY to .env to enable chat.")
     else:
-        st.markdown("""
-        <div style="color: var(--text-tertiary); font-size: 0.75rem; margin-bottom: 1rem;">
-            Ask anything about your portfolio.
-        </div>
-        """, unsafe_allow_html=True)
+        st.caption("Ask anything about your portfolio.")
 
         user_question = st.text_input(
             "Question",
@@ -1107,11 +1057,7 @@ with st.expander("💬 Ask Mommy", expanded=False):
                 response = ai_chat(user_question)
 
             if response.success:
-                st.markdown(f"""
-                <div style="background: var(--surface); padding: 1rem; border-radius: 6px; margin-top: 1rem;">
-                    <div style="color: var(--text-secondary); font-size: 0.85rem; white-space: pre-wrap;">{response.message}</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div style="background: var(--surface); padding: 1rem; border-radius: 6px; margin-top: 1rem;"><div style="color: var(--text-secondary); font-size: 0.85rem; white-space: pre-wrap;">{response.message}</div></div>', unsafe_allow_html=True)
             else:
                 st.error(response.error)
 
@@ -1122,11 +1068,11 @@ st.markdown("---")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🔄 Refresh", use_container_width=True):
+    if st.button("REFRESH", use_container_width=True):
         st.rerun()
 
 with col2:
-    if st.button("▶️ Run Daily", use_container_width=True, type="primary"):
+    if st.button("RUN DAILY", use_container_width=True, type="primary"):
         with st.spinner("Running..."):
             try:
                 project_root = Path(__file__).parent.parent
@@ -1148,7 +1094,7 @@ with col2:
                 st.error(f"Error: {e}")
 
 with col3:
-    if st.button("🔍 Discover", use_container_width=True):
+    if st.button("DISCOVER", use_container_width=True):
         with st.spinner("Discovering..."):
             try:
                 project_root = Path(__file__).parent.parent
@@ -1170,7 +1116,7 @@ with col3:
 
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
-with st.expander("⚙️ Settings", expanded=False):
+with st.expander("Settings", expanded=False):
     col_info, col_toggle = st.columns([3, 1])
 
     with col_info:
