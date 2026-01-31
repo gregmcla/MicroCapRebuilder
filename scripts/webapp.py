@@ -506,14 +506,19 @@ with col_execute:
 
 with col_discover:
     if st.button("DISCOVER", use_container_width=True, key="discover_top"):
-        with st.spinner("Discovering..."):
+        with st.spinner("Discovering new candidates..."):
             try:
                 project_root = Path(__file__).parent.parent
                 result = subprocess.run([sys.executable, "scripts/watchlist_manager.py", "--update"], cwd=project_root, capture_output=True, text=True, timeout=300)
                 if result.returncode == 0:
                     st.success("Discovery complete!")
+                    # Show the output
+                    if result.stdout:
+                        st.code(result.stdout[-1500:], language=None)
                 else:
-                    st.warning("Discovery skipped")
+                    st.warning("Discovery had issues")
+                    if result.stderr:
+                        st.code(result.stderr[-500:], language=None)
             except Exception as e:
                 st.error(f"Error: {e}")
 
