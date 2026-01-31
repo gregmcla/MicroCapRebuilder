@@ -614,6 +614,114 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PORTFOLIO COMPOSITION
+# ═══════════════════════════════════════════════════════════════════════════════
+if not positions_df.empty and num_positions > 0:
+    st.markdown('<div class="section-head"><span class="section-title">Portfolio Composition</span></div>', unsafe_allow_html=True)
+
+    col_chart, col_metrics = st.columns([2, 1])
+
+    with col_chart:
+        # Create pie chart data
+        chart_data = positions_df[['ticker', 'market_value']].copy()
+        chart_data = chart_data.sort_values('market_value', ascending=False)
+
+        # Add cash as a slice
+        cash_row = pd.DataFrame({'ticker': ['Cash'], 'market_value': [cash]})
+        chart_data = pd.concat([chart_data, cash_row], ignore_index=True)
+
+        # Calculate percentages
+        chart_data['percentage'] = (chart_data['market_value'] / total_equity * 100).round(1)
+
+        # Use plotly for donut chart
+        try:
+            import plotly.graph_objects as go
+
+            colors = ['#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#84cc16', '#f43f5e', '#6366f1', '#14b8a6']
+            # Add gray for cash
+            chart_colors = colors[:len(chart_data)-1] + ['#374151']
+
+            fig = go.Figure(data=[go.Pie(
+                labels=chart_data['ticker'],
+                values=chart_data['market_value'],
+                hole=0.6,
+                textinfo='label+percent',
+                textposition='outside',
+                marker=dict(colors=chart_colors[:len(chart_data)]),
+                textfont=dict(size=11, color='rgba(255,255,255,0.8)'),
+            )])
+
+            fig.update_layout(
+                showlegend=False,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(t=20, b=20, l=20, r=20),
+                height=250,
+                annotations=[dict(
+                    text=f'${total_equity:,.0f}',
+                    x=0.5, y=0.5,
+                    font=dict(size=16, color='rgba(255,255,255,0.9)'),
+                    showarrow=False
+                )]
+            )
+
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        except ImportError:
+            # Fallback to simple bar if plotly not available
+            st.bar_chart(chart_data.set_index('ticker')['market_value'], height=200)
+
+    with col_metrics:
+        # Diversification metrics
+        if len(positions_df) > 0:
+            weights = positions_df['market_value'] / total_equity
+            # Herfindahl-Hirschman Index (lower is more diversified)
+            hhi = (weights ** 2).sum()
+            # Effective number of positions (1/HHI)
+            effective_n = 1 / hhi if hhi > 0 else 0
+            # Largest position weight
+            max_weight = weights.max() * 100
+            # Concentration (top 3)
+            top3_weight = weights.nlargest(3).sum() * 100 if len(weights) >= 3 else weights.sum() * 100
+
+            # Diversification health score (0-100)
+            # Good: effective_n close to actual n, max_weight < 15%, top3 < 50%
+            div_score = min(100, (effective_n / num_positions) * 50 + (1 - max_weight/30) * 25 + (1 - top3_weight/75) * 25)
+            div_score = max(0, div_score)
+
+            if div_score >= 70:
+                div_status = "Good"
+                div_color = "var(--green)"
+            elif div_score >= 40:
+                div_status = "Moderate"
+                div_color = "var(--gold)"
+            else:
+                div_status = "Concentrated"
+                div_color = "var(--red)"
+
+            metrics_html = f'''
+            <div style="font-size: 0.75rem; color: var(--text-dim);">
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase;">Diversification</div>
+                    <div style="font-size: 1.1rem; font-weight: 600; color: {div_color};">{div_status}</div>
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <span style="color: var(--text-faint);">Largest Position:</span> {max_weight:.1f}%
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <span style="color: var(--text-faint);">Top 3 Concentration:</span> {top3_weight:.1f}%
+                </div>
+                <div style="margin-bottom: 0.5rem;">
+                    <span style="color: var(--text-faint);">Cash Reserve:</span> {(cash/total_equity*100):.1f}%
+                </div>
+                <div>
+                    <span style="color: var(--text-faint);">Positions:</span> {num_positions}
+                </div>
+            </div>
+            '''
+            st.markdown(metrics_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # RECENT ACTIVITY (Enhanced)
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="section-head"><span class="section-title">Recent Activity</span></div>', unsafe_allow_html=True)

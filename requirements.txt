@@ -6,3 +6,4 @@ openai
 anthropic
 python-dotenv
 streamlit
+plotly
