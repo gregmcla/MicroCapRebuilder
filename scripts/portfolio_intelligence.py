@@ -44,15 +44,12 @@ LOGS_DIR = SCRIPT_DIR.parent / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
 
 # ─── Safety Rails Configuration ───────────────────────────────────────────────
+# These are hard limits to prevent catastrophic mistakes, not to limit trading
 SAFETY_RAILS = {
     "max_position_pct": 20.0,       # No single position > 20% of portfolio
-    "min_cash_pct": 10.0,           # Always keep 10% cash
-    "max_daily_sells": 3,           # Max 3 sell actions per day
-    "max_daily_buys": 2,            # Max 2 buy actions per day
-    "max_daily_turnover_pct": 30.0, # Max 30% of portfolio traded per day
+    "min_cash_pct": 5.0,            # Keep 5% cash for emergencies
     "max_sector_pct": 40.0,         # No sector > 40% of portfolio
     "max_correlation": 0.85,        # No two positions correlated > 0.85
-    "daily_loss_halt_pct": 5.0,     # Stop trading if down 5% in a day
 }
 
 # ─── Action Types ─────────────────────────────────────────────────────────────
@@ -375,12 +372,9 @@ What actions should we take today? Respond with a JSON array of actions."""
 
 
 def apply_safety_rails(actions: list[dict], context: dict) -> list[dict]:
-    """Filter actions through safety rails."""
+    """Filter actions through safety rails - only blocks catastrophic mistakes."""
 
     filtered = []
-    buy_count = 0
-    sell_count = 0
-    turnover = 0
     total_equity = context["portfolio"]["total_equity"]
 
     for action in actions:
@@ -392,19 +386,6 @@ def apply_safety_rails(actions: list[dict], context: dict) -> list[dict]:
         ticker = action.get("ticker")
         blocked = False
         block_reason = ""
-
-        # Count buys/sells
-        if action_type == "BUY":
-            buy_count += 1
-            if buy_count > SAFETY_RAILS["max_daily_buys"]:
-                blocked = True
-                block_reason = f"Exceeded max daily buys ({SAFETY_RAILS['max_daily_buys']})"
-
-        if action_type in ["SELL", "TRIM"]:
-            sell_count += 1
-            if sell_count > SAFETY_RAILS["max_daily_sells"]:
-                blocked = True
-                block_reason = f"Exceeded max daily sells ({SAFETY_RAILS['max_daily_sells']})"
 
         # Check position size for buys/adds
         if action_type in ["BUY", "ADD"] and not blocked:

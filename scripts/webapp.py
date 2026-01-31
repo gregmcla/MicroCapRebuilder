@@ -1005,96 +1005,118 @@ with tab_intelligence:
         </div>
         """, unsafe_allow_html=True)
     else:
-        # Run Analysis button
-        if st.button("🔍 Run AI Analysis", use_container_width=True):
-            with st.spinner("🧠 Mommy is thinking..."):
-                try:
-                    result = run_intelligence()
-                    actions = result.get("actions", [])
+        # Import execute function
+        from execute_intelligence import execute_actions
 
-                    if actions:
-                        st.markdown("""
-                        <div style="margin: 1rem 0;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; letter-spacing: 0.1rem; text-transform: uppercase; margin-bottom: 0.75rem;">Recommendations</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+        # Initialize session state for recommendations
+        if "ai_recommendations" not in st.session_state:
+            st.session_state.ai_recommendations = None
 
-                        for action in actions:
-                            if "error" in action:
-                                st.error(action["error"])
-                                continue
+        # Buttons row
+        col_analyze, col_execute = st.columns(2)
 
-                            action_type = action.get("action", "")
-                            ticker = action.get("ticker", "-")
-                            reason = action.get("reason", "")
-                            safety = action.get("safety_check", "")
+        with col_analyze:
+            if st.button("🔍 Analyze", use_container_width=True):
+                with st.spinner("🧠 Mommy is thinking..."):
+                    try:
+                        result = run_intelligence()
+                        st.session_state.ai_recommendations = result.get("actions", [])
+                    except Exception as e:
+                        st.error(f"Intelligence error: {e}")
+                        st.session_state.ai_recommendations = None
 
-                            # Color based on action type
-                            if action_type == "HOLD":
-                                color = "var(--text-tertiary)"
-                                icon = "⏸️"
-                            elif action_type in ["BUY", "ADD"]:
-                                color = "var(--pulse-positive)"
-                                icon = "📈"
-                            elif action_type in ["SELL", "TRIM"]:
-                                color = "var(--pulse-negative)"
-                                icon = "📉"
-                            else:
-                                color = "var(--pulse-warning)"
-                                icon = "⚙️"
+        with col_execute:
+            # Only enable if we have executable recommendations
+            has_executable = False
+            if st.session_state.ai_recommendations:
+                has_executable = any(
+                    a.get("safety_check") == "PASSED" and a.get("action") != "HOLD"
+                    for a in st.session_state.ai_recommendations
+                    if "error" not in a
+                )
 
-                            blocked = safety == "BLOCKED"
-                            block_style = "opacity: 0.5;" if blocked else ""
-                            block_label = " [BLOCKED]" if blocked else ""
+            if st.button("🚀 Execute", use_container_width=True, disabled=not has_executable):
+                with st.spinner("Executing trades..."):
+                    try:
+                        results = execute_actions(st.session_state.ai_recommendations)
+                        executed = sum(1 for r in results if r.get("result", {}).get("status") == "EXECUTED")
+                        st.success(f"Executed {executed} action(s)")
+                        st.session_state.ai_recommendations = None  # Clear after execution
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Execution error: {e}")
 
-                            st.markdown(f"""
-                            <div style="background: var(--surface); border-left: 3px solid {color}; padding: 1rem; margin-bottom: 0.75rem; {block_style}">
-                                <div style="font-size: 0.85rem; color: var(--text-primary);">
-                                    {icon} <strong>{action_type}</strong> {ticker}{block_label}
-                                </div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                                    {reason}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+        # Display recommendations
+        actions = st.session_state.ai_recommendations
+        if actions:
+            st.markdown("""
+            <div style="margin: 1rem 0;">
+                <div style="color: var(--text-secondary); font-size: 0.7rem; letter-spacing: 0.1rem; text-transform: uppercase; margin-bottom: 0.75rem;">Recommendations</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-                            if blocked:
-                                st.markdown(f"""
-                                <div style="font-size: 0.7rem; color: var(--pulse-warning); margin-top: -0.5rem; margin-bottom: 0.75rem; padding-left: 1rem;">
-                                    ⚠️ {action.get('block_reason', 'Safety rail triggered')}
-                                </div>
-                                """, unsafe_allow_html=True)
-                    else:
-                        st.info("No actions recommended at this time")
+            for action in actions:
+                if "error" in action:
+                    st.error(action["error"])
+                    continue
 
-                except Exception as e:
-                    st.error(f"Intelligence error: {e}")
+                action_type = action.get("action", "")
+                ticker = action.get("ticker", "-")
+                reason = action.get("reason", "")
+                safety = action.get("safety_check", "")
+
+                # Color based on action type
+                if action_type == "HOLD":
+                    color = "var(--text-tertiary)"
+                    icon = "⏸️"
+                elif action_type in ["BUY", "ADD"]:
+                    color = "var(--pulse-positive)"
+                    icon = "📈"
+                elif action_type in ["SELL", "TRIM"]:
+                    color = "var(--pulse-negative)"
+                    icon = "📉"
+                else:
+                    color = "var(--pulse-warning)"
+                    icon = "⚙️"
+
+                blocked = safety == "BLOCKED"
+                block_style = "opacity: 0.5;" if blocked else ""
+                block_label = " [BLOCKED]" if blocked else ""
+
+                st.markdown(f"""
+                <div style="background: var(--surface); border-left: 3px solid {color}; padding: 1rem; margin-bottom: 0.75rem; {block_style}">
+                    <div style="font-size: 0.85rem; color: var(--text-primary);">
+                        {icon} <strong>{action_type}</strong> {ticker}{block_label}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                        {reason}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if blocked:
+                    st.markdown(f"""
+                    <div style="font-size: 0.7rem; color: var(--pulse-warning); margin-top: -0.5rem; margin-bottom: 0.75rem; padding-left: 1rem;">
+                        ⚠️ {action.get('block_reason', 'Safety rail triggered')}
+                    </div>
+                    """, unsafe_allow_html=True)
 
         # Safety Rails Display
         with st.expander("⛨ Safety Rails", expanded=False):
             st.markdown("""
             <div style="font-size: 0.7rem; color: var(--text-tertiary); margin-bottom: 1rem;">
-                These limits protect the portfolio from excessive risk
+                Hard limits to prevent catastrophic mistakes only
             </div>
             """, unsafe_allow_html=True)
 
-            rails_left, rails_right = st.columns(2)
-            with rails_left:
-                st.markdown(f"""
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                    Max Position: <strong>{SAFETY_RAILS['max_position_pct']}%</strong><br>
-                    Min Cash: <strong>{SAFETY_RAILS['min_cash_pct']}%</strong><br>
-                    Max Sector: <strong>{SAFETY_RAILS['max_sector_pct']}%</strong>
-                </div>
-                """, unsafe_allow_html=True)
-            with rails_right:
-                st.markdown(f"""
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                    Max Daily Buys: <strong>{SAFETY_RAILS['max_daily_buys']}</strong><br>
-                    Max Daily Sells: <strong>{SAFETY_RAILS['max_daily_sells']}</strong><br>
-                    Daily Loss Halt: <strong>{SAFETY_RAILS['daily_loss_halt_pct']}%</strong>
-                </div>
-                """, unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                Max Position Size: <strong>{SAFETY_RAILS['max_position_pct']}%</strong> of portfolio<br>
+                Min Cash Reserve: <strong>{SAFETY_RAILS['min_cash_pct']}%</strong> emergency buffer<br>
+                Max Sector Concentration: <strong>{SAFETY_RAILS['max_sector_pct']}%</strong><br>
+                Max Position Correlation: <strong>{SAFETY_RAILS['max_correlation']}</strong>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("---")
 
