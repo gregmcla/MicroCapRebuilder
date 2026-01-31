@@ -11,6 +11,7 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
+import numpy as np
 import streamlit as st
 import sys
 
@@ -108,6 +109,47 @@ def calculate_cash():
     return config["starting_capital"] - buys + sells
 
 
+def get_trade_stats(transactions_df):
+    """Calculate detailed trade statistics."""
+    if transactions_df.empty:
+        return {}
+
+    sells = transactions_df[transactions_df['action'] == 'SELL'].copy()
+    if sells.empty:
+        return {}
+
+    # Calculate P&L for each sell by matching with buys
+    stats = {
+        'total_trades': len(sells),
+        'winning_trades': 0,
+        'losing_trades': 0,
+        'total_pnl': 0,
+        'avg_win': 0,
+        'avg_loss': 0,
+        'largest_win': 0,
+        'largest_loss': 0,
+        'profit_factor': 0,
+    }
+
+    try:
+        analyzer = TradeAnalyzer()
+        analysis = analyzer.analyze()
+        if analysis:
+            stats['winning_trades'] = analysis.get('winning_trades', 0)
+            stats['losing_trades'] = analysis.get('losing_trades', 0)
+            stats['total_pnl'] = analysis.get('total_realized_pnl', 0)
+            stats['avg_win'] = analysis.get('avg_win', 0)
+            stats['avg_loss'] = analysis.get('avg_loss', 0)
+            stats['largest_win'] = analysis.get('best_trade_pnl', 0)
+            stats['largest_loss'] = analysis.get('worst_trade_pnl', 0)
+            stats['profit_factor'] = analysis.get('profit_factor', 0)
+            stats['win_rate'] = analysis.get('win_rate', 0)
+    except:
+        pass
+
+    return stats
+
+
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="MOMMY",
@@ -117,6 +159,18 @@ st.set_page_config(
 )
 
 paper_mode = is_paper_mode()
+
+# Initialize session state
+if "ai_recommendations" not in st.session_state:
+    st.session_state.ai_recommendations = None
+if "show_execute_confirm" not in st.session_state:
+    st.session_state.show_execute_confirm = False
+if "show_close_all_confirm" not in st.session_state:
+    st.session_state.show_close_all_confirm = False
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = datetime.now()
+if "chart_timeframe" not in st.session_state:
+    st.session_state.chart_timeframe = "1M"
 
 # ─── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -140,102 +194,128 @@ st.markdown("""
 
 .stApp { background: var(--bg); }
 #MainMenu, footer, header, [data-testid="stToolbar"], .stDeployButton { display: none !important; }
-.block-container { padding: 1rem 2rem 2rem 2rem !important; max-width: 1100px !important; }
+.block-container { padding: 1rem 2rem 2rem 2rem !important; max-width: 1200px !important; }
 
 /* Header bar */
 .header-bar { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
 .header-title { font-size: 1.1rem; font-weight: 600; color: var(--text); letter-spacing: 0.1em; }
-.header-mode { display: flex; align-items: center; gap: 0.5rem; }
-.mode-btn { padding: 0.4rem 1rem; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em; }
-.mode-btn.active { background: var(--green-bg); border-color: var(--green); color: var(--green); }
-.mode-btn.paper.active { background: var(--gold-bg); border-color: var(--gold); color: var(--gold); }
 
 /* Summary cards */
-.summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; }
-.summary-label { font-size: 0.65rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.25rem; }
-.summary-value { font-size: 1.5rem; font-weight: 500; color: var(--text); }
+.summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+.summary-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; position: relative; }
+.summary-label { font-size: 0.6rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.2rem; }
+.summary-value { font-size: 1.3rem; font-weight: 500; color: var(--text); }
 .summary-value.green { color: var(--green); }
 .summary-value.red { color: var(--red); }
-.summary-sub { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem; }
+.summary-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+.sparkline { position: absolute; bottom: 8px; right: 10px; width: 50px; height: 20px; }
+
+/* Risk metrics row */
+.metrics-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+.metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.8rem; text-align: center; }
+.metric-label { font-size: 0.55rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-value { font-size: 1rem; font-weight: 600; color: var(--text); margin-top: 0.15rem; }
+.metric-value.good { color: var(--green); }
+.metric-value.warn { color: var(--gold); }
+.metric-value.bad { color: var(--red); }
 
 /* Insight box */
-.insight-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; border-left: 3px solid var(--text-faint); }
+.insight-box { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem 1rem; margin-bottom: 1rem; border-left: 3px solid var(--text-faint); }
 .insight-box.insight-good { border-left-color: var(--green); }
 .insight-box.insight-warn { border-left-color: var(--gold); }
 .insight-box.insight-alert { border-left-color: var(--red); }
-.insight-status { font-size: 0.95rem; color: var(--text); margin-bottom: 0.5rem; }
-.insight-items { display: flex; flex-wrap: wrap; gap: 1rem; }
-.insight-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-dim); }
-.insight-dot { width: 6px; height: 6px; border-radius: 50%; }
+.insight-status { font-size: 0.9rem; color: var(--text); margin-bottom: 0.4rem; }
+.insight-items { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.insight-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.7rem; color: var(--text-dim); }
+.insight-dot { width: 5px; height: 5px; border-radius: 50%; }
 .dot-good { background: var(--green); }
 .dot-warn { background: var(--gold); }
 .dot-neutral { background: var(--text-faint); }
 
 /* Section headers */
-.section-head { display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
-.section-title { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
-.section-badge { font-size: 0.65rem; color: var(--text-faint); }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 0.6rem 0; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+.section-title { font-size: 0.7rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.section-badge { font-size: 0.6rem; color: var(--text-faint); }
 
-/* Positions quick stats */
-.pos-stats { display: flex; gap: 0.75rem; align-items: center; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.75rem; padding: 0.5rem 0; }
-.stat-item { display: flex; gap: 0.25rem; }
-.stat-sep { color: var(--text-faint); }
-.stat-win { color: var(--green); }
-.stat-lose { color: var(--red); }
+/* Status bar */
+.status-bar { display: flex; gap: 1rem; align-items: center; font-size: 0.65rem; color: var(--text-faint); padding: 0.4rem 0; margin-bottom: 0.5rem; }
+.status-item { display: flex; align-items: center; gap: 0.3rem; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; }
+.status-dot.green { background: var(--green); }
+.status-dot.yellow { background: var(--gold); }
+.status-dot.red { background: var(--red); }
 
-/* Positions table - compact */
-.pos-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.pos-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.65rem; font-weight: 500; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
-.pos-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+/* Positions table */
+.pos-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.pos-table th { text-align: left; padding: 0.45rem 0.6rem; font-size: 0.6rem; font-weight: 500; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); cursor: pointer; }
+.pos-table th:hover { color: var(--text-dim); }
+.pos-table td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .pos-table tr:hover { background: var(--card); }
+.pos-table tr.row-win { background: rgba(34,197,94,0.04); }
+.pos-table tr.row-lose { background: rgba(239,68,68,0.04); }
 .pos-table tr.row-alert { background: rgba(234,179,8,0.06); }
-.pos-table tr.row-alert:hover { background: rgba(234,179,8,0.1); }
-.pos-table tr.row-target { background: rgba(34,197,94,0.06); }
-.pos-table tr.row-down { }
 
-.col-ticker { font-weight: 600; color: var(--text); min-width: 60px; }
-.col-value { color: var(--text-dim); min-width: 70px; }
-.col-pnl { font-weight: 500; min-width: 70px; }
-.col-pct { min-width: 55px; }
-.col-bar { min-width: 100px; }
-.col-status { min-width: 50px; text-align: right; }
-
+.col-ticker { font-weight: 600; color: var(--text); }
+.col-dim { color: var(--text-dim); }
+.col-small { font-size: 0.7rem; color: var(--text-faint); }
 .pnl-up { color: var(--green); }
 .pnl-down { color: var(--red); }
 
-.status-warn { font-size: 0.65rem; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 0.03em; }
-.status-good { font-size: 0.65rem; font-weight: 600; color: var(--green); text-transform: uppercase; letter-spacing: 0.03em; }
+.mini-bar { width: 60px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.mini-fill { height: 100%; border-radius: 2px; }
 
-/* Mini progress bar in table */
-.mini-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.mini-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+/* Tooltip */
+.tooltip { position: relative; cursor: help; border-bottom: 1px dotted var(--text-faint); }
+.tooltip:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #222; color: var(--text); padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.65rem; white-space: nowrap; z-index: 100; }
 
 /* Transaction list */
-.tx-item { display: flex; align-items: center; padding: 0.6rem 0; border-bottom: 1px solid var(--border); gap: 1rem; }
-.tx-item:last-child { border-bottom: none; }
-.tx-badge { font-size: 0.6rem; font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 3px; min-width: 32px; text-align: center; }
+.tx-item { display: flex; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); gap: 0.75rem; font-size: 0.8rem; }
+.tx-badge { font-size: 0.55rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 3px; min-width: 28px; text-align: center; }
 .tx-badge.buy { background: var(--green-bg); color: var(--green); }
 .tx-badge.sell { background: var(--red-bg); color: var(--red); }
-.tx-ticker { font-weight: 500; color: var(--text); min-width: 50px; }
-.tx-detail { color: var(--text-dim); font-size: 0.8rem; flex: 1; }
-.tx-date { color: var(--text-faint); font-size: 0.75rem; }
+.tx-ticker { font-weight: 500; color: var(--text); min-width: 45px; }
+.tx-detail { color: var(--text-dim); font-size: 0.75rem; flex: 1; }
+.tx-pnl { font-weight: 500; min-width: 60px; text-align: right; }
+.tx-date { color: var(--text-faint); font-size: 0.7rem; }
+
+/* AI recommendation cards */
+.ai-card { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; }
+.ai-card.blocked { opacity: 0.5; }
+.ai-action { font-weight: 600; font-size: 0.85rem; }
+.ai-action.buy { color: var(--green); }
+.ai-action.sell { color: var(--red); }
+.ai-action.hold { color: var(--text-dim); }
+.ai-ticker { font-weight: 500; color: var(--text); }
+.ai-reason { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.3rem; }
+.ai-confidence { font-size: 0.65rem; color: var(--text-faint); margin-top: 0.2rem; }
+
+/* Confirmation modal */
+.confirm-box { background: var(--card); border: 2px solid var(--gold); border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
+.confirm-title { font-weight: 600; color: var(--gold); margin-bottom: 0.5rem; }
+.confirm-list { font-size: 0.8rem; color: var(--text-dim); }
+
+/* Emergency button */
+.emergency-btn { background: transparent !important; color: var(--red) !important; border: 1px solid var(--red) !important; font-size: 0.6rem !important; padding: 0.3rem 0.6rem !important; opacity: 0.6; }
+.emergency-btn:hover { opacity: 1 !important; background: var(--red-bg) !important; }
 
 /* Buttons */
-.stButton > button { background: var(--card) !important; color: var(--text-dim) !important; border: 1px solid var(--border) !important; border-radius: 6px !important; font-size: 0.7rem !important; letter-spacing: 0.05em !important; text-transform: uppercase !important; }
+.stButton > button { background: var(--card) !important; color: var(--text-dim) !important; border: 1px solid var(--border) !important; border-radius: 6px !important; font-size: 0.65rem !important; letter-spacing: 0.05em !important; text-transform: uppercase !important; }
 .stButton > button:hover { background: var(--card-hover) !important; border-color: var(--green) !important; color: var(--text) !important; }
 .stButton > button[kind="primary"] { background: var(--green-bg) !important; border-color: var(--green) !important; color: var(--green) !important; }
 
-/* Checkbox styling */
-.stCheckbox label { color: var(--text-dim) !important; font-size: 0.75rem !important; }
+/* Chart container */
+.chart-container { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+.chart-controls { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+.chart-btn { padding: 0.25rem 0.6rem; font-size: 0.65rem; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-dim); cursor: pointer; }
+.chart-btn.active { background: var(--green-bg); border-color: var(--green); color: var(--green); }
 
 /* Footer */
-.footer { text-align: center; padding: 2rem 0 1rem 0; font-size: 0.6rem; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; border-top: 1px solid var(--border); margin-top: 2rem; }
+.footer { text-align: center; padding: 1.5rem 0 1rem 0; font-size: 0.55rem; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; border-top: 1px solid var(--border); margin-top: 1.5rem; }
 
 /* Responsive */
 @media (max-width: 768px) {
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
-    .pos-meta { flex-wrap: wrap; gap: 1rem; }
+    .metrics-grid { grid-template-columns: repeat(3, 1fr); }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -257,6 +337,27 @@ num_positions = len(positions_df) if not positions_df.empty else 0
 day_pnl = snapshots_df.iloc[-1].get("day_pnl", 0) if not snapshots_df.empty else 0
 day_pnl_pct = snapshots_df.iloc[-1].get("day_pnl_pct", 0) if not snapshots_df.empty else 0
 
+# Calculate additional metrics
+total_invested = positions_df["market_value"].sum() if not positions_df.empty else 0
+buying_power = cash
+
+# Get analytics
+try:
+    analytics = PortfolioAnalytics()
+    metrics = analytics.calculate_metrics()
+    sharpe_ratio = metrics.get('sharpe_ratio', 0) if metrics else 0
+    max_drawdown = metrics.get('max_drawdown_pct', 0) if metrics else 0
+    sortino_ratio = metrics.get('sortino_ratio', 0) if metrics else 0
+except:
+    sharpe_ratio = max_drawdown = sortino_ratio = 0
+
+# Get trade stats
+trade_stats = get_trade_stats(transactions_df)
+win_rate = trade_stats.get('win_rate', 0)
+profit_factor = trade_stats.get('profit_factor', 0)
+avg_win = trade_stats.get('avg_win', 0)
+avg_loss = trade_stats.get('avg_loss', 0)
+
 # Get regime
 try:
     regime_analysis = get_regime_analysis()
@@ -264,14 +365,30 @@ try:
 except:
     regime = "UNKNOWN"
 
+# Check API status
+chat_ready, chat_error = check_chat_setup()
+api_status = "green" if chat_ready else "red"
+last_refresh = st.session_state.last_refresh.strftime("%H:%M:%S")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HEADER BAR WITH MODE TOGGLE
+# STATUS BAR
 # ═══════════════════════════════════════════════════════════════════════════════
-col_title, col_mode = st.columns([3, 1])
+status_html = f'<div class="status-bar"><span class="status-item"><span class="status-dot {api_status}"></span>API {"Connected" if chat_ready else "Disconnected"}</span><span class="status-item">Last refresh: {last_refresh}</span><span class="status-item">Regime: {regime}</span></div>'
+st.markdown(status_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# HEADER BAR WITH MODE TOGGLE AND EMERGENCY CONTROLS
+# ═══════════════════════════════════════════════════════════════════════════════
+col_title, col_emergency, col_mode = st.columns([2, 1, 1])
 
 with col_title:
     st.markdown('<div class="header-title">M O M M Y</div>', unsafe_allow_html=True)
+
+with col_emergency:
+    if st.button("CLOSE ALL", key="close_all_btn", help="Emergency: Close all positions"):
+        st.session_state.show_close_all_confirm = True
 
 with col_mode:
     mode_col1, mode_col2 = st.columns(2)
@@ -286,65 +403,123 @@ with col_mode:
                 set_paper_mode(True)
                 st.rerun()
 
+# Emergency confirmation dialog
+if st.session_state.show_close_all_confirm:
+    st.markdown('<div class="confirm-box"><div class="confirm-title">Confirm Close All Positions</div><div class="confirm-list">This will close ALL open positions at market price. This action cannot be undone.</div></div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("YES, CLOSE ALL", type="primary"):
+            st.warning("Close all positions would execute here")
+            st.session_state.show_close_all_confirm = False
+            st.rerun()
+    with col2:
+        if st.button("CANCEL"):
+            st.session_state.show_close_all_confirm = False
+            st.rerun()
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SUMMARY CARDS
+# SUMMARY CARDS (Enhanced with 5 cards)
 # ═══════════════════════════════════════════════════════════════════════════════
 total_class = "green" if total_return >= 0 else "red"
 day_class = "green" if day_pnl >= 0 else "red"
 total_sign = "+" if total_return >= 0 else ""
 day_sign = "+" if day_pnl >= 0 else ""
 
-# Calculate total unrealized P&L
 total_unrealized = positions_df["unrealized_pnl"].sum() if not positions_df.empty else 0
 unrealized_class = "green" if total_unrealized >= 0 else "red"
 unrealized_sign = "+" if total_unrealized >= 0 else ""
 
-# Build summary cards as single-line HTML
 card1 = f'<div class="summary-card"><div class="summary-label">Total Equity</div><div class="summary-value">${total_equity:,.0f}</div><div class="summary-sub">{total_sign}{total_return_pct:.1f}% all-time</div></div>'
 card2 = f'<div class="summary-card"><div class="summary-label">Today</div><div class="summary-value {day_class}">{day_sign}${abs(day_pnl):,.0f}</div><div class="summary-sub">{day_sign}{day_pnl_pct:.2f}%</div></div>'
 card3 = f'<div class="summary-card"><div class="summary-label">Unrealized P&L</div><div class="summary-value {unrealized_class}">{unrealized_sign}${abs(total_unrealized):,.0f}</div><div class="summary-sub">{num_positions} positions</div></div>'
-card4 = f'<div class="summary-card"><div class="summary-label">Cash</div><div class="summary-value">${cash:,.0f}</div><div class="summary-sub">{(cash/total_equity*100):.0f}% reserve</div></div>'
-summary_html = f'<div class="summary-grid">{card1}{card2}{card3}{card4}</div>'
+card4 = f'<div class="summary-card"><div class="summary-label">Cash / Buying Power</div><div class="summary-value">${cash:,.0f}</div><div class="summary-sub">{(cash/total_equity*100):.0f}% available</div></div>'
+card5 = f'<div class="summary-card"><div class="summary-label">Invested</div><div class="summary-value">${total_invested:,.0f}</div><div class="summary-sub">{(total_invested/total_equity*100):.0f}% deployed</div></div>'
+summary_html = f'<div class="summary-grid">{card1}{card2}{card3}{card4}{card5}</div>'
 st.markdown(summary_html, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STATUS INSIGHT - What's happening right now
+# RISK METRICS ROW
 # ═══════════════════════════════════════════════════════════════════════════════
-# Get positions near stop/target (used here and in positions section)
+sharpe_class = "good" if sharpe_ratio > 1 else "warn" if sharpe_ratio > 0 else "bad"
+dd_class = "good" if max_drawdown < 5 else "warn" if max_drawdown < 10 else "bad"
+wr_class = "good" if win_rate > 50 else "warn" if win_rate > 40 else "bad"
+pf_class = "good" if profit_factor > 1.5 else "warn" if profit_factor > 1 else "bad"
+
+m1 = f'<div class="metric-card"><div class="metric-label" title="Risk-adjusted return measure">Sharpe Ratio</div><div class="metric-value {sharpe_class}">{sharpe_ratio:.2f}</div></div>'
+m2 = f'<div class="metric-card"><div class="metric-label" title="Largest peak-to-trough decline">Max Drawdown</div><div class="metric-value {dd_class}">{max_drawdown:.1f}%</div></div>'
+m3 = f'<div class="metric-card"><div class="metric-label" title="Percentage of winning trades">Win Rate</div><div class="metric-value {wr_class}">{win_rate:.0f}%</div></div>'
+m4 = f'<div class="metric-card"><div class="metric-label" title="Gross profits / gross losses">Profit Factor</div><div class="metric-value {pf_class}">{profit_factor:.2f}</div></div>'
+avg_win_loss = f"${avg_win:.0f} / ${abs(avg_loss):.0f}" if avg_loss != 0 else "N/A"
+m5 = f'<div class="metric-card"><div class="metric-label" title="Average winning trade vs losing trade">Avg Win/Loss</div><div class="metric-value">{avg_win_loss}</div></div>'
+metrics_html = f'<div class="metrics-grid">{m1}{m2}{m3}{m4}{m5}</div>'
+st.markdown(metrics_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EQUITY CURVE CHART
+# ═══════════════════════════════════════════════════════════════════════════════
+if not snapshots_df.empty:
+    st.markdown('<div class="section-head"><span class="section-title">Equity Curve</span></div>', unsafe_allow_html=True)
+
+    # Timeframe selector
+    timeframes = ["1W", "1M", "3M", "YTD", "ALL"]
+    cols = st.columns(len(timeframes))
+    for i, tf in enumerate(timeframes):
+        with cols[i]:
+            if st.button(tf, key=f"tf_{tf}", use_container_width=True,
+                        type="primary" if st.session_state.chart_timeframe == tf else "secondary"):
+                st.session_state.chart_timeframe = tf
+                st.rerun()
+
+    # Filter data by timeframe
+    chart_df = snapshots_df.copy()
+    chart_df['date'] = pd.to_datetime(chart_df['date'])
+
+    now = pd.Timestamp.now()
+    if st.session_state.chart_timeframe == "1W":
+        chart_df = chart_df[chart_df['date'] >= now - pd.Timedelta(days=7)]
+    elif st.session_state.chart_timeframe == "1M":
+        chart_df = chart_df[chart_df['date'] >= now - pd.Timedelta(days=30)]
+    elif st.session_state.chart_timeframe == "3M":
+        chart_df = chart_df[chart_df['date'] >= now - pd.Timedelta(days=90)]
+    elif st.session_state.chart_timeframe == "YTD":
+        chart_df = chart_df[chart_df['date'] >= pd.Timestamp(now.year, 1, 1)]
+
+    if not chart_df.empty:
+        chart_df = chart_df.set_index('date')
+        st.line_chart(chart_df['total_equity'], use_container_width=True, height=200)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STATUS INSIGHT
+# ═══════════════════════════════════════════════════════════════════════════════
 near_stop = get_positions_near_stop(positions_df, threshold_pct=5.0)
 near_target = get_positions_near_target(positions_df, threshold_pct=8.0)
 
-# Get current drawdown
 if not snapshots_df.empty:
     peak_equity = snapshots_df['total_equity'].max()
     current_drawdown = ((peak_equity - total_equity) / peak_equity) * 100 if peak_equity > 0 else 0
 else:
     current_drawdown = 0
 
-# Check preservation status
 try:
     preservation = get_preservation_status()
     preservation_active = preservation.get('preservation_mode', False)
 except:
     preservation_active = False
 
-# Generate smart status
 status_sentence, sentiment = generate_status_sentence(
     positions_df, snapshots_df, day_pnl,
     regime=regime, preservation_active=preservation_active, drawdown_pct=current_drawdown
 )
 
-# Build insight items
 insights = []
-
-# Recent sells (last 7 days)
 if not transactions_df.empty:
     transactions_df['date'] = pd.to_datetime(transactions_df['date'])
     recent_sells = transactions_df[(transactions_df['action'] == 'SELL') & (transactions_df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7))]
     recent_buys = transactions_df[(transactions_df['action'] == 'BUY') & (transactions_df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=7))]
-
     for _, sell in recent_sells.iterrows():
         reason = sell.get('reason', '')
         ticker = sell['ticker']
@@ -352,29 +527,18 @@ if not transactions_df.empty:
             insights.append(('warn', f'{ticker} stopped out'))
         elif reason == 'TAKE_PROFIT':
             insights.append(('good', f'{ticker} hit target'))
-        else:
-            insights.append(('neutral', f'Sold {ticker}'))
-
     if len(recent_buys) > 0:
         insights.append(('neutral', f'{len(recent_buys)} new position{"s" if len(recent_buys) > 1 else ""} opened'))
 
-# Positions near levels
 if near_stop:
     for pos in near_stop[:2]:
         insights.append(('warn', f'{pos["ticker"]} {pos["distance_pct"]:.0f}% from stop'))
-
 if near_target:
     for pos in near_target[:2]:
         insights.append(('good', f'{pos["ticker"]} {pos["distance_pct"]:.0f}% from target'))
 
-# Build insight HTML
 sentiment_class = {'calm': 'insight-calm', 'positive': 'insight-good', 'attention': 'insight-warn', 'warning': 'insight-alert'}.get(sentiment, 'insight-calm')
-
-insight_items = ""
-for item_type, text in insights[:4]:
-    dot_class = f'dot-{item_type}'
-    insight_items += f'<span class="insight-item"><span class="insight-dot {dot_class}"></span>{text}</span>'
-
+insight_items = "".join([f'<span class="insight-item"><span class="insight-dot dot-{t}"></span>{txt}</span>' for t, txt in insights[:4]])
 insight_html = f'<div class="insight-box {sentiment_class}"><div class="insight-status">{status_sentence}</div>'
 if insight_items:
     insight_html += f'<div class="insight-items">{insight_items}</div>'
@@ -383,100 +547,79 @@ st.markdown(insight_html, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# POSITIONS - Compact Table Design
+# POSITIONS TABLE (Enhanced)
 # ═══════════════════════════════════════════════════════════════════════════════
 near_stop_tickers = {p['ticker'] for p in near_stop}
 near_target_tickers = {p['ticker'] for p in near_target}
 
-# Count winners/losers
 if not positions_df.empty:
     winners = len(positions_df[positions_df['unrealized_pnl'] > 0])
     losers = len(positions_df[positions_df['unrealized_pnl'] <= 0])
-    best_pct = positions_df['unrealized_pnl_pct'].max()
-    worst_pct = positions_df['unrealized_pnl_pct'].min()
 else:
     winners = losers = 0
-    best_pct = worst_pct = 0
 
-# Quick stats line
-stats_html = f'<div class="pos-stats"><span class="stat-item"><span class="stat-win">{winners}W</span> / <span class="stat-lose">{losers}L</span></span><span class="stat-sep">|</span><span class="stat-item">Best: <span class="stat-win">+{best_pct:.0f}%</span></span><span class="stat-sep">|</span><span class="stat-item">Worst: <span class="stat-lose">{worst_pct:.0f}%</span></span></div>'
-
-st.markdown(f'<div class="section-head"><span class="section-title">Positions</span><span class="section-badge">{num_positions} open</span></div>', unsafe_allow_html=True)
+st.markdown(f'<div class="section-head"><span class="section-title">Positions</span><span class="section-badge">{winners}W / {losers}L · {num_positions} open</span></div>', unsafe_allow_html=True)
 
 if not positions_df.empty:
-    st.markdown(stats_html, unsafe_allow_html=True)
-
-    # Sort: alerts first, then by P&L %
     positions_sorted = positions_df.copy()
     positions_sorted['_priority'] = positions_sorted['ticker'].apply(lambda t: 0 if t in near_stop_tickers else (1 if t in near_target_tickers else 2))
     positions_sorted = positions_sorted.sort_values(['_priority', 'unrealized_pnl_pct'], ascending=[True, False])
 
-    # Build table rows
     rows_html = ""
     for _, row in positions_sorted.iterrows():
         ticker = row['ticker']
+        shares = int(row.get('shares', 0))
+        entry_price = row['avg_cost_basis']
+        current_price = row['current_price']
+        market_value = row['market_value']
         pnl = row['unrealized_pnl']
         pnl_pct = row['unrealized_pnl_pct']
-        market_value = row['market_value']
-        current_price = row['current_price']
-        entry_price = row['avg_cost_basis']
         stop_loss = row.get('stop_loss', entry_price * 0.92)
         take_profit = row.get('take_profit', entry_price * 1.20)
+        entry_date = row.get('entry_date', '')
 
-        # Progress bar calculation
+        # Days held
+        try:
+            days_held = (datetime.now() - pd.to_datetime(entry_date)).days
+        except:
+            days_held = 0
+
+        # Portfolio weight
+        port_weight = (market_value / total_equity) * 100 if total_equity > 0 else 0
+
+        # Progress
         progress = calculate_position_progress(row)
         prog_pct = progress['progress_pct'] if progress else 50
-        zone = progress['zone'] if progress else 'neutral'
 
-        # Status indicator
+        # Row styling
         if ticker in near_stop_tickers:
-            status = "WATCH"
-            status_class = "status-warn"
             row_class = "row-alert"
-        elif ticker in near_target_tickers:
-            status = "TARGET"
-            status_class = "status-good"
-            row_class = "row-target"
         elif pnl >= 0:
-            status = ""
-            status_class = ""
-            row_class = ""
+            row_class = "row-win"
         else:
-            status = ""
-            status_class = ""
-            row_class = "row-down"
+            row_class = "row-lose"
 
-        # P&L formatting
         pnl_class = "pnl-up" if pnl >= 0 else "pnl-down"
         pnl_sign = "+" if pnl >= 0 else ""
 
-        # Progress bar color
-        if prog_pct < 25:
-            bar_color = "var(--red)"
-        elif prog_pct < 50:
-            bar_color = "var(--gold)"
-        elif prog_pct < 75:
-            bar_color = "#666"
-        else:
-            bar_color = "var(--green)"
+        bar_color = "var(--red)" if prog_pct < 25 else "var(--gold)" if prog_pct < 50 else "#666" if prog_pct < 75 else "var(--green)"
 
-        # Build compact row
-        rows_html += f'<tr class="{row_class}"><td class="col-ticker">{ticker}</td><td class="col-value">${market_value:,.0f}</td><td class="col-pnl {pnl_class}">{pnl_sign}${abs(pnl):,.0f}</td><td class="col-pct {pnl_class}">{pnl_sign}{pnl_pct:.1f}%</td><td class="col-bar"><div class="mini-bar"><div class="mini-fill" style="width:{prog_pct}%;background:{bar_color}"></div></div></td><td class="col-status"><span class="{status_class}">{status}</span></td></tr>'
+        rows_html += f'<tr class="{row_class}"><td class="col-ticker">{ticker}</td><td class="col-dim">{shares}</td><td class="col-dim">${entry_price:.2f}</td><td class="col-dim">${current_price:.2f}</td><td class="col-dim">${market_value:,.0f}</td><td class="{pnl_class}">{pnl_sign}${abs(pnl):,.0f}</td><td class="{pnl_class}">{pnl_sign}{pnl_pct:.1f}%</td><td class="col-small">{port_weight:.1f}%</td><td class="col-small">{days_held}d</td><td class="col-small">${stop_loss:.0f}</td><td class="col-small">${take_profit:.0f}</td><td><div class="mini-bar"><div class="mini-fill" style="width:{prog_pct}%;background:{bar_color}"></div></div></td></tr>'
 
-    table_html = f'<table class="pos-table"><thead><tr><th>Ticker</th><th>Value</th><th>P&L</th><th>%</th><th>Progress</th><th></th></tr></thead><tbody>{rows_html}</tbody></table>'
+    header = '<tr><th>Ticker</th><th>Shares</th><th>Entry</th><th>Current</th><th>Value</th><th>P&L</th><th>%</th><th>Weight</th><th>Days</th><th>Stop</th><th>Target</th><th title="Position between stop loss (0%) and take profit (100%)">Progress</th></tr>'
+    table_html = f'<table class="pos-table"><thead>{header}</thead><tbody>{rows_html}</tbody></table>'
     st.markdown(table_html, unsafe_allow_html=True)
-
 else:
-    st.markdown('<div style="text-align:center; padding: 2rem; color: var(--text-faint);">No positions yet</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; padding: 1.5rem; color: var(--text-faint);">No positions yet</div>', unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# RECENT ACTIVITY
+# RECENT ACTIVITY (Enhanced)
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="section-head"><span class="section-title">Recent Activity</span></div>', unsafe_allow_html=True)
 
 if not transactions_df.empty:
-    recent = transactions_df.tail(8).iloc[::-1]
+    recent = transactions_df.tail(10).iloc[::-1]
 
     for _, tx in recent.iterrows():
         action = tx["action"]
@@ -484,25 +627,29 @@ if not transactions_df.empty:
         ticker = tx["ticker"]
         shares = int(tx["shares"])
         price = tx["price"]
-        date = tx["date"]
-        html = f'<div class="tx-item"><span class="tx-badge {badge_class}">{action}</span><span class="tx-ticker">{ticker}</span><span class="tx-detail">{shares} @ ${price:.2f}</span><span class="tx-date">{date}</span></div>'
+        total_val = tx.get("total_value", shares * price)
+        date_str = str(tx["date"])
+        reason = tx.get("reason", "")
+
+        # For sells, show P&L if available
+        pnl_html = ""
+        if action == "SELL" and reason in ["STOP_LOSS", "TAKE_PROFIT"]:
+            reason_text = " (Stop)" if reason == "STOP_LOSS" else " (Target)"
+            pnl_html = f'<span class="tx-detail" style="color: var(--{"red" if reason == "STOP_LOSS" else "green"})">{reason_text}</span>'
+
+        html = f'<div class="tx-item"><span class="tx-badge {badge_class}">{action}</span><span class="tx-ticker">{ticker}</span><span class="tx-detail">{shares} @ ${price:.2f} = ${total_val:,.0f}</span>{pnl_html}<span class="tx-date">{date_str}</span></div>'
         st.markdown(html, unsafe_allow_html=True)
 else:
-    st.markdown('<div style="text-align:center; padding: 2rem; color: var(--text-faint);">No transactions yet</div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center; padding: 1.5rem; color: var(--text-faint);">No transactions yet</div>', unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI INTELLIGENCE
+# AI INTELLIGENCE (Enhanced with confirmation)
 # ═══════════════════════════════════════════════════════════════════════════════
-chat_ready, _ = check_chat_setup()
-
 if chat_ready:
     from execute_intelligence import execute_actions
 
     st.markdown('<div class="section-head"><span class="section-title">AI Intelligence</span></div>', unsafe_allow_html=True)
-
-    if "ai_recommendations" not in st.session_state:
-        st.session_state.ai_recommendations = None
 
     actions = st.session_state.ai_recommendations
 
@@ -513,6 +660,7 @@ if chat_ready:
                 try:
                     result = run_intelligence()
                     st.session_state.ai_recommendations = result.get("actions", [])
+                    st.session_state.show_execute_confirm = False
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
@@ -522,17 +670,10 @@ if chat_ready:
         if actions:
             has_executable = any(a.get("safety_check") == "PASSED" and a.get("action") != "HOLD" for a in actions if "error" not in a)
 
-        if st.button("EXECUTE", use_container_width=True, disabled=not has_executable, type="primary"):
-            with st.spinner("Executing..."):
-                try:
-                    results = execute_actions(actions)
-                    executed = sum(1 for r in results if r.get("result", {}).get("status") == "EXECUTED")
-                    st.success(f"Executed {executed} action(s)")
-                    st.session_state.ai_recommendations = None
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+        if st.button("REVIEW & EXECUTE", use_container_width=True, disabled=not has_executable, type="primary"):
+            st.session_state.show_execute_confirm = True
 
+    # Show recommendations with confidence
     if actions:
         for action in actions:
             if "error" in action:
@@ -541,26 +682,55 @@ if chat_ready:
             ticker = action.get("ticker", "-")
             reason = action.get("reason", "")
             safety = action.get("safety_check", "")
+            confidence = action.get("confidence", 0.5)
 
-            color = "#22c55e" if action_type in ["BUY", "ADD"] else "#ef4444" if action_type in ["SELL", "TRIM"] else "#666"
-            blocked = " (BLOCKED)" if safety == "BLOCKED" else ""
+            action_class = "buy" if action_type in ["BUY", "ADD"] else "sell" if action_type in ["SELL", "TRIM"] else "hold"
+            blocked_class = " blocked" if safety == "BLOCKED" else ""
+            conf_pct = int(confidence * 100) if isinstance(confidence, float) else 50
 
-            st.markdown(f'<div style="padding: 0.5rem; border-left: 3px solid {color}; margin: 0.5rem 0; background: var(--card);"><strong>{action_type}</strong> {ticker}{blocked}<br><span style="font-size: 0.8rem; color: var(--text-dim);">{reason}</span></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ai-card{blocked_class}"><span class="ai-action {action_class}">{action_type}</span> <span class="ai-ticker">{ticker}</span>{"  (BLOCKED)" if safety == "BLOCKED" else ""}<div class="ai-reason">{reason}</div><div class="ai-confidence">Confidence: {conf_pct}%</div></div>', unsafe_allow_html=True)
+
+    # Confirmation dialog
+    if st.session_state.show_execute_confirm and actions:
+        executable = [a for a in actions if a.get("safety_check") == "PASSED" and a.get("action") != "HOLD" and "error" not in a]
+
+        st.markdown('<div class="confirm-box"><div class="confirm-title">Confirm Execution</div><div class="confirm-list">The following trades will be executed:</div></div>', unsafe_allow_html=True)
+
+        for a in executable:
+            st.markdown(f"- **{a.get('action')}** {a.get('ticker')}", unsafe_allow_html=False)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("EXECUTE NOW", type="primary"):
+                with st.spinner("Executing..."):
+                    try:
+                        results = execute_actions(actions)
+                        executed = sum(1 for r in results if r.get("result", {}).get("status") == "EXECUTED")
+                        st.success(f"Executed {executed} action(s)")
+                        st.session_state.ai_recommendations = None
+                        st.session_state.show_execute_confirm = False
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        with col2:
+            if st.button("CANCEL"):
+                st.session_state.show_execute_confirm = False
+                st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ACTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
-
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("REFRESH", use_container_width=True):
+    if st.button("REFRESH (R)", use_container_width=True, help="Keyboard: R"):
+        st.session_state.last_refresh = datetime.now()
         st.rerun()
 
 with col2:
-    if st.button("RUN DAILY", use_container_width=True, type="primary"):
+    if st.button("RUN DAILY (D)", use_container_width=True, type="primary", help="Keyboard: D"):
         with st.spinner("Running..."):
             try:
                 project_root = Path(__file__).parent.parent
@@ -575,7 +745,7 @@ with col2:
                 st.error(f"Error: {e}")
 
 with col3:
-    if st.button("DISCOVER", use_container_width=True):
+    if st.button("DISCOVER (F)", use_container_width=True, help="Keyboard: F"):
         with st.spinner("Discovering..."):
             try:
                 project_root = Path(__file__).parent.parent
@@ -590,6 +760,36 @@ with col3:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# TRADE HISTORY (Collapsible)
+# ═══════════════════════════════════════════════════════════════════════════════
+with st.expander("Trade History / Journal", expanded=False):
+    if not transactions_df.empty:
+        sells = transactions_df[transactions_df['action'] == 'SELL'].copy()
+        if not sells.empty:
+            sells = sells.sort_values('date', ascending=False)
+
+            history_rows = ""
+            for _, tx in sells.head(20).iterrows():
+                ticker = tx['ticker']
+                date_str = str(tx['date'])
+                shares = int(tx['shares'])
+                price = tx['price']
+                reason = tx.get('reason', 'MANUAL')
+                total_val = tx.get('total_value', shares * price)
+
+                reason_color = "var(--red)" if reason == "STOP_LOSS" else "var(--green)" if reason == "TAKE_PROFIT" else "var(--text-dim)"
+
+                history_rows += f'<tr><td>{date_str}</td><td class="col-ticker">{ticker}</td><td>SELL</td><td>{shares}</td><td>${price:.2f}</td><td>${total_val:,.0f}</td><td style="color:{reason_color}">{reason}</td></tr>'
+
+            history_html = f'<table class="pos-table"><thead><tr><th>Date</th><th>Ticker</th><th>Side</th><th>Shares</th><th>Price</th><th>Total</th><th>Reason</th></tr></thead><tbody>{history_rows}</tbody></table>'
+            st.markdown(history_html, unsafe_allow_html=True)
+        else:
+            st.info("No closed trades yet")
+    else:
+        st.info("No trade history")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CHAT
 # ═══════════════════════════════════════════════════════════════════════════════
 if chat_ready:
@@ -601,7 +801,7 @@ if chat_ready:
         with st.spinner("Thinking..."):
             response = ai_chat(user_question)
         if response.success:
-            st.markdown(f'<div style="background: var(--card); padding: 1rem; border-radius: 6px; margin-top: 0.5rem; color: var(--text-dim); font-size: 0.85rem; white-space: pre-wrap;">{response.message}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background: var(--card); padding: 0.875rem; border-radius: 6px; margin-top: 0.4rem; color: var(--text-dim); font-size: 0.8rem; white-space: pre-wrap;">{response.message}</div>', unsafe_allow_html=True)
         else:
             st.error(response.error)
 
@@ -610,4 +810,4 @@ if chat_ready:
 # FOOTER
 # ═══════════════════════════════════════════════════════════════════════════════
 mode_indicator = "PAPER MODE" if paper_mode else "LIVE"
-st.markdown(f'<div class="footer">{mode_indicator} · Data Delayed · Not Financial Advice</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="footer">{mode_indicator} · Data Delayed · Not Financial Advice · Keyboard: R=Refresh, D=Daily, F=Discover</div>', unsafe_allow_html=True)
