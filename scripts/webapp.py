@@ -162,8 +162,10 @@ st.markdown("""
     background-image: radial-gradient(ellipse 100% 60% at 50% -10%, rgba(74, 222, 128, 0.03) 0%, transparent 50%);
 }
 
-* {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+/* Apply font to content, but not to Streamlit's icon elements */
+.stApp p, .stApp span, .stApp div, .stApp h1, .stApp h2, .stApp h3, .stApp label,
+.stMarkdown, .stButton button, .stTextInput input {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 #MainMenu, footer, header, [data-testid="stToolbar"], .stDeployButton {
