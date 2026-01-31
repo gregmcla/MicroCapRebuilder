@@ -482,6 +482,95 @@ if st.session_state.show_close_all_confirm:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PRIMARY ACTIONS BAR (Top of page for easy access)
+# ═══════════════════════════════════════════════════════════════════════════════
+analysis = st.session_state.unified_analysis
+has_executable = analysis.get("summary", {}).get("can_execute", False) if analysis else False
+
+col_analyze, col_execute, col_discover, col_update, col_refresh = st.columns(5)
+
+with col_analyze:
+    if st.button("ANALYZE", use_container_width=True, type="primary", key="analyze_top"):
+        with st.spinner("Running unified analysis..."):
+            try:
+                result = run_unified_analysis(dry_run=True)
+                st.session_state.unified_analysis = result
+                st.session_state.show_execute_confirm = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+with col_execute:
+    if st.button("EXECUTE", use_container_width=True, disabled=not has_executable, key="execute_top"):
+        st.session_state.show_execute_confirm = True
+
+with col_discover:
+    if st.button("DISCOVER", use_container_width=True, key="discover_top"):
+        with st.spinner("Discovering..."):
+            try:
+                project_root = Path(__file__).parent.parent
+                result = subprocess.run([sys.executable, "scripts/watchlist_manager.py", "--update"], cwd=project_root, capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    st.success("Discovery complete!")
+                else:
+                    st.warning("Discovery skipped")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+with col_update:
+    if st.button("UPDATE", use_container_width=True, key="update_top"):
+        with st.spinner("Updating prices..."):
+            try:
+                project_root = Path(__file__).parent.parent
+                result = subprocess.run([sys.executable, "scripts/update_positions.py"], cwd=project_root, capture_output=True, text=True, timeout=120)
+                if result.returncode == 0:
+                    st.success("Prices updated!")
+                    st.rerun()
+                else:
+                    st.error("Update failed")
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+with col_refresh:
+    if st.button("REFRESH", use_container_width=True, key="refresh_top"):
+        st.session_state.last_refresh = datetime.now()
+        st.rerun()
+
+# Execute confirmation dialog (shown inline when triggered)
+if st.session_state.show_execute_confirm and analysis:
+    approved = analysis.get("approved", [])
+    modified = analysis.get("modified", [])
+    executable = approved + modified
+
+    if executable:
+        st.markdown('<div class="confirm-box"><div class="confirm-title">Confirm Execution</div><div class="confirm-list">The following trades will be executed:</div></div>', unsafe_allow_html=True)
+
+        for r in executable:
+            action = r.original
+            shares = r.modified_shares or action.shares
+            mod_note = " (modified)" if r.decision == ReviewDecision.MODIFY else ""
+            st.markdown(f"- **{action.action_type}** {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("EXECUTE NOW", type="primary", key="exec_confirm"):
+                with st.spinner("Executing approved actions..."):
+                    try:
+                        result = execute_approved_actions(analysis)
+                        executed = result.get("executed", 0)
+                        st.success(f"Executed {executed} action(s)")
+                        st.session_state.unified_analysis = None
+                        st.session_state.show_execute_confirm = False
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+        with col2:
+            if st.button("CANCEL", key="exec_cancel"):
+                st.session_state.show_execute_confirm = False
+                st.rerun()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SUMMARY CARDS (Enhanced with 5 cards)
 # ═══════════════════════════════════════════════════════════════════════════════
 total_class = "green" if total_return >= 0 else "red"
@@ -839,34 +928,10 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# UNIFIED ANALYSIS (Quant + AI Review Combined)
+# ANALYSIS RESULTS (Shows when analysis is run from top buttons)
 # ═══════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="section-head"><span class="section-title">Analysis & Actions</span></div>', unsafe_allow_html=True)
-
-analysis = st.session_state.unified_analysis
-
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("ANALYZE", use_container_width=True, type="primary"):
-        with st.spinner("Running unified analysis (quant + AI review)..."):
-            try:
-                result = run_unified_analysis(dry_run=True)
-                st.session_state.unified_analysis = result
-                st.session_state.show_execute_confirm = False
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-with col2:
-    has_executable = False
-    if analysis:
-        has_executable = analysis.get("summary", {}).get("can_execute", False)
-
-    if st.button("EXECUTE APPROVED", use_container_width=True, disabled=not has_executable):
-        st.session_state.show_execute_confirm = True
-
-# Show analysis results
 if analysis:
+    st.markdown('<div class="section-head"><span class="section-title">Analysis Results</span></div>', unsafe_allow_html=True)
     summary = analysis.get("summary", {})
     st.markdown(f'''
     <div style="display:flex; gap:1rem; margin:0.75rem 0; font-size:0.75rem;">
@@ -926,78 +991,6 @@ if analysis:
             {mods_text}
         </div>'''
         st.markdown(card_html, unsafe_allow_html=True)
-
-# Confirmation dialog
-if st.session_state.show_execute_confirm and analysis:
-    approved = analysis.get("approved", [])
-    modified = analysis.get("modified", [])
-    executable = approved + modified
-
-    if executable:
-        st.markdown('<div class="confirm-box"><div class="confirm-title">Confirm Execution</div><div class="confirm-list">The following trades will be executed:</div></div>', unsafe_allow_html=True)
-
-        for r in executable:
-            action = r.original
-            shares = r.modified_shares or action.shares
-            mod_note = " (modified)" if r.decision == ReviewDecision.MODIFY else ""
-            st.markdown(f"- **{action.action_type}** {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("EXECUTE NOW", type="primary"):
-                with st.spinner("Executing approved actions..."):
-                    try:
-                        result = execute_approved_actions(analysis)
-                        executed = result.get("executed", 0)
-                        st.success(f"Executed {executed} action(s)")
-                        st.session_state.unified_analysis = None
-                        st.session_state.show_execute_confirm = False
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-        with col2:
-            if st.button("CANCEL"):
-                st.session_state.show_execute_confirm = False
-                st.rerun()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# SECONDARY ACTIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-st.markdown("---")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    if st.button("REFRESH", use_container_width=True):
-        st.session_state.last_refresh = datetime.now()
-        st.rerun()
-
-with col2:
-    if st.button("DISCOVER STOCKS", use_container_width=True):
-        with st.spinner("Discovering new candidates..."):
-            try:
-                project_root = Path(__file__).parent.parent
-                result = subprocess.run([sys.executable, "scripts/watchlist_manager.py", "--update"], cwd=project_root, capture_output=True, text=True, timeout=300)
-                if result.returncode == 0:
-                    st.success("Discovery complete!")
-                else:
-                    st.warning("Discovery skipped")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-with col3:
-    if st.button("UPDATE PRICES", use_container_width=True):
-        with st.spinner("Updating positions..."):
-            try:
-                project_root = Path(__file__).parent.parent
-                result = subprocess.run([sys.executable, "scripts/update_positions.py"], cwd=project_root, capture_output=True, text=True, timeout=120)
-                if result.returncode == 0:
-                    st.success("Prices updated!")
-                    st.rerun()
-                else:
-                    st.error("Update failed")
-            except Exception as e:
-                st.error(f"Error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

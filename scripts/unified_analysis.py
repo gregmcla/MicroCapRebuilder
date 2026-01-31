@@ -230,7 +230,9 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
 
         if candidates:
             scorer = StockScorer()
-            scored = scorer.score_multiple(candidates)
+            scored_results = scorer.score_watchlist(candidates)
+            # Convert StockScore objects to dicts
+            scored = [{"ticker": s.ticker, "composite_score": s.composite_score, "current_price": s.current_price, "factor_scores": s.factor_scores} for s in scored_results if s]
 
             # Filter to top candidates with score >= 60
             top_candidates = [s for s in scored if s.get("composite_score", 0) >= 60]
