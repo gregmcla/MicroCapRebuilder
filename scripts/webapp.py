@@ -312,6 +312,10 @@ st.markdown(summary_html, unsafe_allow_html=True)
 # ═══════════════════════════════════════════════════════════════════════════════
 # STATUS INSIGHT - What's happening right now
 # ═══════════════════════════════════════════════════════════════════════════════
+# Get positions near stop/target (used here and in positions section)
+near_stop = get_positions_near_stop(positions_df, threshold_pct=5.0)
+near_target = get_positions_near_target(positions_df, threshold_pct=8.0)
+
 # Get current drawdown
 if not snapshots_df.empty:
     peak_equity = snapshots_df['total_equity'].max()
@@ -381,8 +385,6 @@ st.markdown(insight_html, unsafe_allow_html=True)
 # ═══════════════════════════════════════════════════════════════════════════════
 # POSITIONS - Compact Table Design
 # ═══════════════════════════════════════════════════════════════════════════════
-near_stop = get_positions_near_stop(positions_df, threshold_pct=5.0)
-near_target = get_positions_near_target(positions_df, threshold_pct=8.0)
 near_stop_tickers = {p['ticker'] for p in near_stop}
 near_target_tickers = {p['ticker'] for p in near_target}
 
