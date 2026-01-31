@@ -646,12 +646,14 @@ st.markdown("""
     color: var(--mommy-gold) !important;
 }
 
-/* ─── Expanders ────────────────────────────────────────────────────────────── */
-.streamlit-expanderHeader {
-    background: var(--surface) !important;
-    border-radius: 6px !important;
+/* ─── Checkboxes ───────────────────────────────────────────────────────────── */
+.stCheckbox label {
+    color: var(--text-secondary) !important;
     font-size: 0.75rem !important;
-    letter-spacing: 0.1rem !important;
+}
+
+.stCheckbox [data-testid="stCheckbox"] {
+    background: transparent !important;
 }
 
 /* ─── Chat Input ───────────────────────────────────────────────────────────── */
@@ -1011,7 +1013,10 @@ else:
 
 
 # ─── Performance Metrics Section ──────────────────────────────────────────────
-with st.expander("Performance & Risk", expanded=False):
+st.markdown('<div class="section-header"><span class="section-title">Performance & Risk</span></div>', unsafe_allow_html=True)
+
+show_metrics = st.checkbox("Show metrics", value=False, key="show_metrics")
+if show_metrics:
     try:
         analytics = PortfolioAnalytics()
         m = analytics.calculate_all_metrics()
@@ -1042,7 +1047,10 @@ with st.expander("Performance & Risk", expanded=False):
 
 
 # ─── Chat Section ─────────────────────────────────────────────────────────────
-with st.expander("Ask Mommy", expanded=False):
+st.markdown('<div class="section-header"><span class="section-title">Ask Mommy</span></div>', unsafe_allow_html=True)
+
+show_chat = st.checkbox("Show chat", value=False, key="show_chat")
+if show_chat:
     if not chat_ready:
         st.info("Add ANTHROPIC_API_KEY to .env to enable chat.")
     else:
@@ -1090,8 +1098,7 @@ with col2:
                     st.rerun()
                 else:
                     st.error("Failed")
-                    with st.expander("Details"):
-                        st.code(result.stderr or result.stdout)
+                    st.code(result.stderr or result.stdout)
             except Exception as e:
                 st.error(f"Error: {e}")
 
@@ -1109,8 +1116,7 @@ with col3:
                 )
                 if result.returncode == 0:
                     st.success("Done!")
-                    with st.expander("Results", expanded=True):
-                        st.code(result.stdout[-2000:])
+                    st.code(result.stdout[-2000:])
                 else:
                     st.error("Failed")
             except Exception as e:
@@ -1118,18 +1124,17 @@ with col3:
 
 
 # ─── Settings ─────────────────────────────────────────────────────────────────
-with st.expander("Settings", expanded=False):
+st.markdown('<div class="section-header"><span class="section-title">Settings</span></div>', unsafe_allow_html=True)
+
+show_settings = st.checkbox("Show settings", value=False, key="show_settings")
+if show_settings:
     col_info, col_toggle = st.columns([3, 1])
 
     with col_info:
         if paper_mode:
-            st.markdown("""
-            **Paper Trading** - Simulated trades, no real money.
-            """)
+            st.markdown("**Paper Trading** - Simulated trades, no real money.")
         else:
-            st.markdown("""
-            **Live Trading** - Real portfolio data.
-            """)
+            st.markdown("**Live Trading** - Real portfolio data.")
 
     with col_toggle:
         if paper_mode:
