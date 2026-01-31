@@ -12,25 +12,45 @@ echo "════════════════════════�
 echo "  MOMMY BOT Daily Run - $(date +%Y-%m-%d)"
 echo "═══════════════════════════════════════════════════════════"
 
+# Check for unified mode flag
+UNIFIED_MODE=${UNIFIED_MODE:-true}
+
 # 0) Run stock discovery (finds new candidates)
 echo ""
 echo "Step 0: Running stock discovery..."
 python scripts/watchlist_manager.py --update 2>/dev/null || echo "  (Discovery skipped - will retry next run)"
 
-# 1) Check and execute sells (stop loss / take profit)
-echo ""
-echo "Step 1: Checking for stop loss / take profit triggers..."
-scripts/execute_sells.py
+if [ "$UNIFIED_MODE" = "true" ] && [ -n "$ANTHROPIC_API_KEY" -o -n "$OPENAI_API_KEY" ]; then
+    # ═══════════════════════════════════════════════════════════════
+    # UNIFIED MODE: Single analysis with AI review
+    # ═══════════════════════════════════════════════════════════════
+    echo ""
+    echo "Step 1-3: Running UNIFIED ANALYSIS (Quant + AI Review)..."
+    python scripts/unified_analysis.py --execute
 
-# 1b) Detect patterns (alert before picking if something is wrong)
-echo ""
-echo "Step 1b: Checking for patterns..."
-python scripts/pattern_detector.py 2>/dev/null || echo "  (Pattern detection skipped)"
+    # Skip the old separate steps - unified handles everything
+else
+    # ═══════════════════════════════════════════════════════════════
+    # LEGACY MODE: Separate steps without AI review
+    # ═══════════════════════════════════════════════════════════════
+    echo ""
+    echo "(Running in LEGACY mode - no AI review)"
 
-# 2) Pick new stocks from watchlist
-echo ""
-echo "Step 2: Picking stocks from watchlist..."
-scripts/pick_from_watchlist.py
+    # 1) Check and execute sells (stop loss / take profit)
+    echo ""
+    echo "Step 1: Checking for stop loss / take profit triggers..."
+    scripts/execute_sells.py
+
+    # 1b) Detect patterns (alert before picking if something is wrong)
+    echo ""
+    echo "Step 1b: Checking for patterns..."
+    python scripts/pattern_detector.py 2>/dev/null || echo "  (Pattern detection skipped)"
+
+    # 2) Pick new stocks from watchlist
+    echo ""
+    echo "Step 2: Picking stocks from watchlist..."
+    scripts/pick_from_watchlist.py
+fi
 
 # 3) Update positions with current prices and record daily snapshot
 echo ""
@@ -41,15 +61,6 @@ scripts/update_positions.py
 echo ""
 echo "Step 3b: Updating factor performance..."
 python scripts/factor_learning.py 2>/dev/null || echo "  (Factor learning skipped - need more trades)"
-
-# 3c) Run Portfolio Intelligence (AI-driven analysis and actions)
-echo ""
-echo "Step 3c: Running Portfolio Intelligence..."
-if [ -n "$ANTHROPIC_API_KEY" ]; then
-    python scripts/execute_intelligence.py 2>/dev/null || echo "  (Intelligence skipped - check API key)"
-else
-    echo "  (Intelligence skipped - ANTHROPIC_API_KEY not set)"
-fi
 
 # 4) Generate performance chart
 echo ""

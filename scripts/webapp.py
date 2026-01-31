@@ -37,13 +37,14 @@ from market_regime import get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard
 from capital_preservation import get_preservation_status
 from portfolio_chat import chat as ai_chat, check_setup as check_chat_setup
-from portfolio_intelligence import run_intelligence, SAFETY_RAILS
 from webapp_helpers import (
     generate_status_sentence,
     calculate_position_progress,
     get_positions_near_stop,
     get_positions_near_target,
 )
+from unified_analysis import run_unified_analysis, execute_approved_actions
+from ai_review import ReviewDecision
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -209,8 +210,8 @@ st.set_page_config(
 paper_mode = is_paper_mode()
 
 # Initialize session state
-if "ai_recommendations" not in st.session_state:
-    st.session_state.ai_recommendations = None
+if "unified_analysis" not in st.session_state:
+    st.session_state.unified_analysis = None
 if "show_execute_confirm" not in st.session_state:
     st.session_state.show_execute_confirm = False
 if "show_close_all_confirm" not in st.session_state:
@@ -838,70 +839,118 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AI INTELLIGENCE (Enhanced with confirmation)
+# UNIFIED ANALYSIS (Quant + AI Review Combined)
 # ═══════════════════════════════════════════════════════════════════════════════
-if chat_ready:
-    from execute_intelligence import execute_actions
+st.markdown('<div class="section-head"><span class="section-title">Analysis & Actions</span></div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section-head"><span class="section-title">AI Intelligence</span></div>', unsafe_allow_html=True)
+analysis = st.session_state.unified_analysis
 
-    actions = st.session_state.ai_recommendations
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("ANALYZE", use_container_width=True, type="primary"):
+        with st.spinner("Running unified analysis (quant + AI review)..."):
+            try:
+                result = run_unified_analysis(dry_run=True)
+                st.session_state.unified_analysis = result
+                st.session_state.show_execute_confirm = False
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("ANALYZE PORTFOLIO", use_container_width=True):
-            with st.spinner("Analyzing..."):
-                try:
-                    result = run_intelligence()
-                    st.session_state.ai_recommendations = result.get("actions", [])
-                    st.session_state.show_execute_confirm = False
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error: {e}")
+with col2:
+    has_executable = False
+    if analysis:
+        has_executable = analysis.get("summary", {}).get("can_execute", False)
 
-    with col2:
-        has_executable = False
-        if actions:
-            has_executable = any(a.get("safety_check") == "PASSED" and a.get("action") != "HOLD" for a in actions if "error" not in a)
+    if st.button("EXECUTE APPROVED", use_container_width=True, disabled=not has_executable):
+        st.session_state.show_execute_confirm = True
 
-        if st.button("REVIEW & EXECUTE", use_container_width=True, disabled=not has_executable, type="primary"):
-            st.session_state.show_execute_confirm = True
+# Show analysis results
+if analysis:
+    summary = analysis.get("summary", {})
+    st.markdown(f'''
+    <div style="display:flex; gap:1rem; margin:0.75rem 0; font-size:0.75rem;">
+        <span style="color:var(--text-faint);">Proposed: <strong style="color:var(--text)">{summary.get("total_proposed", 0)}</strong></span>
+        <span style="color:var(--green);">Approved: <strong>{summary.get("approved", 0)}</strong></span>
+        <span style="color:var(--gold);">Modified: <strong>{summary.get("modified", 0)}</strong></span>
+        <span style="color:var(--red);">Vetoed: <strong>{summary.get("vetoed", 0)}</strong></span>
+    </div>
+    ''', unsafe_allow_html=True)
 
-    # Show recommendations with confidence
-    if actions:
-        for action in actions:
-            if "error" in action:
-                continue
-            action_type = action.get("action", "")
-            ticker = action.get("ticker", "-")
-            reason = action.get("reason", "")
-            safety = action.get("safety_check", "")
-            confidence = action.get("confidence", 0.5)
+    # Show reviewed actions
+    reviewed = analysis.get("reviewed_actions", [])
+    for r in reviewed:
+        action = r.original
+        decision = r.decision
+        ai_reason = r.ai_reasoning
+        confidence = r.confidence
 
-            action_class = "buy" if action_type in ["BUY", "ADD"] else "sell" if action_type in ["SELL", "TRIM"] else "hold"
-            blocked_class = " blocked" if safety == "BLOCKED" else ""
-            conf_pct = int(confidence * 100) if isinstance(confidence, float) else 50
+        action_type = action.action_type
+        ticker = action.ticker
+        shares = action.shares
+        price = action.price
+        quant_score = action.quant_score
+        quant_reason = action.reason
 
-            st.markdown(f'<div class="ai-card{blocked_class}"><span class="ai-action {action_class}">{action_type}</span> <span class="ai-ticker">{ticker}</span>{"  (BLOCKED)" if safety == "BLOCKED" else ""}<div class="ai-reason">{reason}</div><div class="ai-confidence">Confidence: {conf_pct}%</div></div>', unsafe_allow_html=True)
+        # Determine styling
+        action_class = "buy" if action_type == "BUY" else "sell"
+        decision_color = "var(--green)" if decision == ReviewDecision.APPROVE else "var(--gold)" if decision == ReviewDecision.MODIFY else "var(--red)"
+        decision_icon = "✅" if decision == ReviewDecision.APPROVE else "🔧" if decision == ReviewDecision.MODIFY else "❌"
+        blocked_class = " blocked" if decision == ReviewDecision.VETO else ""
+        conf_pct = int(confidence * 100)
 
-    # Confirmation dialog
-    if st.session_state.show_execute_confirm and actions:
-        executable = [a for a in actions if a.get("safety_check") == "PASSED" and a.get("action") != "HOLD" and "error" not in a]
+        # Show modified values if any
+        mods_text = ""
+        if decision == ReviewDecision.MODIFY:
+            mods = []
+            if r.modified_shares and r.modified_shares != shares:
+                mods.append(f"shares: {shares}→{r.modified_shares}")
+            if r.modified_stop and r.modified_stop != action.stop_loss:
+                mods.append(f"stop: ${action.stop_loss:.0f}→${r.modified_stop:.0f}")
+            if r.modified_target and r.modified_target != action.take_profit:
+                mods.append(f"target: ${action.take_profit:.0f}→${r.modified_target:.0f}")
+            if mods:
+                mods_text = f'<div style="font-size:0.7rem; color:var(--gold); margin-top:0.2rem;">Modified: {", ".join(mods)}</div>'
 
+        card_html = f'''<div class="ai-card{blocked_class}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div><span class="ai-action {action_class}">{action_type}</span> <span class="ai-ticker">{ticker}</span> <span style="color:var(--text-dim); font-size:0.75rem;">{shares} shares @ ${price:.2f}</span></div>
+                <div style="font-size:0.75rem; color:{decision_color};">{decision_icon} {decision}</div>
+            </div>
+            <div style="display:flex; gap:1rem; margin-top:0.4rem; font-size:0.7rem; color:var(--text-faint);">
+                <span>Quant Score: <strong style="color:var(--text)">{quant_score:.0f}</strong>/100</span>
+                <span>Confidence: <strong style="color:var(--text)">{conf_pct}%</strong></span>
+            </div>
+            <div class="ai-reason"><strong>Quant:</strong> {quant_reason}</div>
+            <div class="ai-reason"><strong>AI Review:</strong> {ai_reason}</div>
+            {mods_text}
+        </div>'''
+        st.markdown(card_html, unsafe_allow_html=True)
+
+# Confirmation dialog
+if st.session_state.show_execute_confirm and analysis:
+    approved = analysis.get("approved", [])
+    modified = analysis.get("modified", [])
+    executable = approved + modified
+
+    if executable:
         st.markdown('<div class="confirm-box"><div class="confirm-title">Confirm Execution</div><div class="confirm-list">The following trades will be executed:</div></div>', unsafe_allow_html=True)
 
-        for a in executable:
-            st.markdown(f"- **{a.get('action')}** {a.get('ticker')}", unsafe_allow_html=False)
+        for r in executable:
+            action = r.original
+            shares = r.modified_shares or action.shares
+            mod_note = " (modified)" if r.decision == ReviewDecision.MODIFY else ""
+            st.markdown(f"- **{action.action_type}** {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("EXECUTE NOW", type="primary"):
-                with st.spinner("Executing..."):
+                with st.spinner("Executing approved actions..."):
                     try:
-                        results = execute_actions(actions)
-                        executed = sum(1 for r in results if r.get("result", {}).get("status") == "EXECUTED")
+                        result = execute_approved_actions(analysis)
+                        executed = result.get("executed", 0)
                         st.success(f"Executed {executed} action(s)")
-                        st.session_state.ai_recommendations = None
+                        st.session_state.unified_analysis = None
                         st.session_state.show_execute_confirm = False
                         st.rerun()
                     except Exception as e:
@@ -913,42 +962,40 @@ if chat_ready:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ACTIONS
+# SECONDARY ACTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 st.markdown("---")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("REFRESH (R)", use_container_width=True, help="Keyboard: R"):
+    if st.button("REFRESH", use_container_width=True):
         st.session_state.last_refresh = datetime.now()
         st.rerun()
 
 with col2:
-    if st.button("RUN DAILY (D)", use_container_width=True, type="primary", help="Keyboard: D"):
-        with st.spinner("Running..."):
+    if st.button("DISCOVER STOCKS", use_container_width=True):
+        with st.spinner("Discovering new candidates..."):
             try:
                 project_root = Path(__file__).parent.parent
-                result = subprocess.run(["bash", "run_daily.sh"], cwd=project_root, capture_output=True, text=True, timeout=600)
+                result = subprocess.run([sys.executable, "scripts/watchlist_manager.py", "--update"], cwd=project_root, capture_output=True, text=True, timeout=300)
                 if result.returncode == 0:
-                    st.success("Done!")
-                    st.rerun()
+                    st.success("Discovery complete!")
                 else:
-                    st.error("Failed")
-                    st.code(result.stderr or result.stdout)
+                    st.warning("Discovery skipped")
             except Exception as e:
                 st.error(f"Error: {e}")
 
 with col3:
-    if st.button("DISCOVER (F)", use_container_width=True, help="Keyboard: F"):
-        with st.spinner("Discovering..."):
+    if st.button("UPDATE PRICES", use_container_width=True):
+        with st.spinner("Updating positions..."):
             try:
                 project_root = Path(__file__).parent.parent
-                result = subprocess.run([sys.executable, "scripts/stock_discovery.py"], cwd=project_root, capture_output=True, text=True, timeout=300)
+                result = subprocess.run([sys.executable, "scripts/update_positions.py"], cwd=project_root, capture_output=True, text=True, timeout=120)
                 if result.returncode == 0:
-                    st.success("Done!")
-                    st.code(result.stdout[-2000:])
+                    st.success("Prices updated!")
+                    st.rerun()
                 else:
-                    st.error("Failed")
+                    st.error("Update failed")
             except Exception as e:
                 st.error(f"Error: {e}")
 
@@ -987,4 +1034,4 @@ with st.expander("Trade History / Journal", expanded=False):
 # FOOTER
 # ═══════════════════════════════════════════════════════════════════════════════
 mode_indicator = "PAPER MODE" if paper_mode else "LIVE"
-st.markdown(f'<div class="footer">{mode_indicator} · Data Delayed · Not Financial Advice · Keyboard: R=Refresh, D=Daily, F=Discover</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="footer">{mode_indicator} · Unified Analysis (Quant + AI) · Not Financial Advice</div>', unsafe_allow_html=True)
