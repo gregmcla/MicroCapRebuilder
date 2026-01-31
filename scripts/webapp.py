@@ -282,30 +282,12 @@ total_unrealized = positions_df["unrealized_pnl"].sum() if not positions_df.empt
 unrealized_class = "green" if total_unrealized >= 0 else "red"
 unrealized_sign = "+" if total_unrealized >= 0 else ""
 
-summary_html = f'''
-<div class="summary-grid">
-    <div class="summary-card">
-        <div class="summary-label">Total Equity</div>
-        <div class="summary-value">${total_equity:,.0f}</div>
-        <div class="summary-sub">{total_sign}{total_return_pct:.1f}% all-time</div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-label">Today</div>
-        <div class="summary-value {day_class}">{day_sign}${abs(day_pnl):,.0f}</div>
-        <div class="summary-sub">{day_sign}{day_pnl_pct:.2f}%</div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-label">Unrealized P&L</div>
-        <div class="summary-value {unrealized_class}">{unrealized_sign}${abs(total_unrealized):,.0f}</div>
-        <div class="summary-sub">{num_positions} positions</div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-label">Cash</div>
-        <div class="summary-value">${cash:,.0f}</div>
-        <div class="summary-sub">{(cash/total_equity*100):.0f}% reserve</div>
-    </div>
-</div>
-'''
+# Build summary cards as single-line HTML
+card1 = f'<div class="summary-card"><div class="summary-label">Total Equity</div><div class="summary-value">${total_equity:,.0f}</div><div class="summary-sub">{total_sign}{total_return_pct:.1f}% all-time</div></div>'
+card2 = f'<div class="summary-card"><div class="summary-label">Today</div><div class="summary-value {day_class}">{day_sign}${abs(day_pnl):,.0f}</div><div class="summary-sub">{day_sign}{day_pnl_pct:.2f}%</div></div>'
+card3 = f'<div class="summary-card"><div class="summary-label">Unrealized P&L</div><div class="summary-value {unrealized_class}">{unrealized_sign}${abs(total_unrealized):,.0f}</div><div class="summary-sub">{num_positions} positions</div></div>'
+card4 = f'<div class="summary-card"><div class="summary-label">Cash</div><div class="summary-value">${cash:,.0f}</div><div class="summary-sub">{(cash/total_equity*100):.0f}% reserve</div></div>'
+summary_html = f'<div class="summary-grid">{card1}{card2}{card3}{card4}</div>'
 st.markdown(summary_html, unsafe_allow_html=True)
 
 
@@ -379,57 +361,25 @@ if not positions_df.empty:
         # Position % of portfolio
         port_pct = (market_value / total_equity) * 100 if total_equity > 0 else 0
 
-        html = f'''
-        <div class="pos-card {card_class}">
-            <div class="pos-top">
-                <div>
-                    <span class="pos-ticker">{ticker}</span>
-                </div>
-                <div class="pos-pnl">
-                    <div class="pos-pnl-value {pnl_class}">{pnl_sign}${abs(pnl):,.2f}</div>
-                    <div class="pos-pnl-pct">{pnl_sign}{pnl_pct:.1f}%</div>
-                </div>
-            </div>
+        # Build HTML as single line to avoid Streamlit escaping issues
+        meta_items = (
+            f'<div class="pos-meta-item"><span class="pos-meta-label">Shares</span><span class="pos-meta-value">{shares}</span></div>'
+            f'<div class="pos-meta-item"><span class="pos-meta-label">Value</span><span class="pos-meta-value">${market_value:,.0f}</span></div>'
+            f'<div class="pos-meta-item"><span class="pos-meta-label">% Portfolio</span><span class="pos-meta-value">{port_pct:.1f}%</span></div>'
+            f'<div class="pos-meta-item"><span class="pos-meta-label">Entry</span><span class="pos-meta-value">${entry_price:.2f}</span></div>'
+            f'<div class="pos-meta-item"><span class="pos-meta-label">Current</span><span class="pos-meta-value">${current_price:.2f}</span></div>'
+            f'<div class="pos-meta-item"><span class="pos-meta-label">Days</span><span class="pos-meta-value">{days_held}</span></div>'
+        )
 
-            <div class="pos-meta">
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">Shares</span>
-                    <span class="pos-meta-value">{shares}</span>
-                </div>
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">Value</span>
-                    <span class="pos-meta-value">${market_value:,.0f}</span>
-                </div>
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">% Portfolio</span>
-                    <span class="pos-meta-value">{port_pct:.1f}%</span>
-                </div>
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">Entry</span>
-                    <span class="pos-meta-value">${entry_price:.2f}</span>
-                </div>
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">Current</span>
-                    <span class="pos-meta-value">${current_price:.2f}</span>
-                </div>
-                <div class="pos-meta-item">
-                    <span class="pos-meta-label">Days Held</span>
-                    <span class="pos-meta-value">{days_held}</span>
-                </div>
-            </div>
+        top_section = f'<div class="pos-top"><span class="pos-ticker">{ticker}</span><div class="pos-pnl"><div class="pos-pnl-value {pnl_class}">{pnl_sign}${abs(pnl):,.2f}</div><div class="pos-pnl-pct">{pnl_sign}{pnl_pct:.1f}%</div></div></div>'
 
-            <div class="pos-bar-container">
-                <div class="pos-bar-labels">
-                    <span>Stop ${stop_loss:.0f} ({stop_dist:.0f}% away)</span>
-                    <span>Target ${take_profit:.0f} ({target_dist:.0f}% away)</span>
-                </div>
-                <div class="pos-bar">
-                    <div class="pos-bar-entry" style="left: {entry_marker_pct}%;"></div>
-                    <div class="pos-bar-marker" style="left: {marker_pct}%;"></div>
-                </div>
-            </div>
-        </div>
-        '''
+        meta_section = f'<div class="pos-meta">{meta_items}</div>'
+
+        bar_labels = f'<div class="pos-bar-labels"><span>Stop ${stop_loss:.0f} ({stop_dist:.0f}%)</span><span>Target ${take_profit:.0f} ({target_dist:.0f}%)</span></div>'
+        bar_inner = f'<div class="pos-bar"><div class="pos-bar-entry" style="left:{entry_marker_pct}%"></div><div class="pos-bar-marker" style="left:{marker_pct}%"></div></div>'
+        bar_section = f'<div class="pos-bar-container">{bar_labels}{bar_inner}</div>'
+
+        html = f'<div class="pos-card {card_class}">{top_section}{meta_section}{bar_section}</div>'
         st.markdown(html, unsafe_allow_html=True)
 
 else:
@@ -451,15 +401,7 @@ if not transactions_df.empty:
         shares = int(tx["shares"])
         price = tx["price"]
         date = tx["date"]
-
-        html = f'''
-        <div class="tx-item">
-            <span class="tx-badge {badge_class}">{action}</span>
-            <span class="tx-ticker">{ticker}</span>
-            <span class="tx-detail">{shares} shares @ ${price:.2f}</span>
-            <span class="tx-date">{date}</span>
-        </div>
-        '''
+        html = f'<div class="tx-item"><span class="tx-badge {badge_class}">{action}</span><span class="tx-ticker">{ticker}</span><span class="tx-detail">{shares} @ ${price:.2f}</span><span class="tx-date">{date}</span></div>'
         st.markdown(html, unsafe_allow_html=True)
 else:
     st.markdown('<div style="text-align:center; padding: 2rem; color: var(--text-faint);">No transactions yet</div>', unsafe_allow_html=True)
