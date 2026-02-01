@@ -282,3 +282,131 @@ Manual verification:
 3. Verify `data/transactions.csv` for new trades
 4. Check `data/positions.csv` for current state
 5. Verify `charts/performance.png` is generated
+
+
+## Unified Analysis Architecture (New)
+
+The system now uses a unified analysis pipeline that combines quantitative scoring with optional AI review:
+
+### Key Files
+- `unified_analysis.py` - Single source of truth for trading decisions
+- `ai_review.py` - AI review layer (can APPROVE/MODIFY/VETO trades)
+- `webapp.py` - Dashboard with ANALYZE → EXECUTE flow
+
+### Flow
+```
+ANALYZE button → run_unified_analysis()
+                    ↓
+              1. Check stop/target triggers → proposed sells
+              2. Score watchlist → proposed buys (limited by cash)
+              3. AI reviews proposals (batched, 10 at a time)
+                    ↓
+              Show results with quant + AI reasoning
+                    ↓
+EXECUTE → execute_approved_actions()
+```
+
+### Cash Tracking
+Position sizing now tracks remaining cash as buys are proposed:
+- Each position is capped by available cash
+- Skips positions when cash runs out
+- Shows "(${amount} remaining)" in output
+
+
+## Common Mistakes to Avoid
+
+### Streamlit HTML Rendering
+**Problem**: Multi-line f-strings with HTML cause Streamlit to escape tags, showing raw `</div>` in output.
+
+**Solution**: Build HTML as concatenated single-line strings:
+```python
+# BAD - will show raw </div>
+html = f'''<div class="card">
+    <div class="title">{title}</div>
+</div>'''
+
+# GOOD - renders correctly
+html = f'<div class="card">'
+html += f'<div class="title">{title}</div>'
+html += '</div>'
+```
+
+### Streamlit Form Auto-Triggering
+**Problem**: `st.text_input` retains state across reruns, causing unintended actions when other buttons trigger page reloads.
+
+**Solution**: Wrap inputs in a form with `clear_on_submit=True`:
+```python
+with st.form(key="my_form", clear_on_submit=True):
+    user_input = st.text_input("Enter text")
+    submitted = st.form_submit_button("Submit")
+if submitted and user_input:
+    # Only runs on explicit submit
+```
+
+### AI JSON Parsing
+**Problem**: LLMs often return JSON with extra text, markdown blocks, or trailing commas.
+
+**Solution**: Clean the response before parsing:
+1. Strip markdown code blocks (`\`\`\`json ... \`\`\``)
+2. Find JSON boundaries (`{` to `}`)
+3. Remove trailing commas before `}` or `]`
+4. Batch large requests (10 items max) to avoid truncation
+
+### StockScorer Attributes
+**Problem**: `StockScore` dataclass has individual score attributes, not a `factor_scores` dict.
+
+**Solution**: Build the dict manually:
+```python
+factor_scores = {
+    "momentum": s.momentum_score,
+    "volatility": s.volatility_score,
+    "volume": s.volume_score,
+    "relative_strength": s.relative_strength_score,
+    "mean_reversion": s.mean_reversion_score,
+    "rsi": s.rsi_score,
+}
+```
+
+### Cash Limit Enforcement
+**Problem**: Proposing unlimited buys without tracking remaining cash.
+
+**Solution**: Track remaining_cash as positions are proposed:
+```python
+remaining_cash = cash
+for candidate in candidates:
+    if shares * price > remaining_cash:
+        print(f"Skipping {ticker} - insufficient cash")
+        continue
+    remaining_cash -= shares * price
+```
+
+
+## Project-Specific Commands
+
+### Quick Analysis
+```bash
+# Run unified analysis (dry run)
+python scripts/unified_analysis.py
+
+# Run with execution
+python scripts/unified_analysis.py --execute
+```
+
+### Dashboard
+```bash
+streamlit run scripts/webapp.py
+```
+
+### Watchlist Management
+```bash
+# Update watchlist with discovery
+python scripts/watchlist_manager.py --update
+
+# Show watchlist status
+python scripts/watchlist_manager.py --status
+```
+
+
+## Session Notes
+
+Keep notes from each development session in `docs/session_notes/` to maintain context across conversations. Update after significant changes.
