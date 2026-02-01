@@ -2,12 +2,13 @@
 
 ## Project Overview
 
-MicroCapRebuilder is an **intelligent, risk-managed portfolio trading system** for microcap stocks. The system features:
+MicroCapRebuilder (aka **Mommy Bot**) is an **intelligent, adaptive portfolio trading system** for microcap stocks. The system features:
 
-- **Multi-factor stock scoring** (momentum, volatility, volume, relative strength)
+- **Multi-factor stock scoring** (momentum, volatility, volume, relative strength, RSI)
 - **Market regime detection** (bull/bear/sideways adaptation)
-- **Automated risk management** (stop losses, take profits, position limits)
+- **Automated risk management** (stop losses, take profits, position sizing)
 - **Professional analytics** (Sharpe ratio, drawdown, win rate)
+- **Adaptive Strategy System** (PIVOT analysis, health monitoring, early warnings)
 - **Daily reporting** with comprehensive metrics
 
 ## Directory Structure
@@ -30,7 +31,10 @@ MicroCapRebuilder/
 │   ├── schema.py               # Centralized data schemas
 │   ├── migrate_data.py         # Legacy data migration (one-time)
 │   ├── set_roi_baseline.py     # ROI baseline recording
-│   └── build_watchlist.py      # Watchlist generator
+│   ├── build_watchlist.py      # Watchlist generator
+│   ├── strategy_health.py      # Strategy Health Dashboard (A-F grading)
+│   ├── strategy_pivot.py       # PIVOT analysis and recommendations
+│   └── early_warning.py        # Early warning system
 ├── data/                       # Data files
 │   ├── config.json             # Centralized configuration
 │   ├── watchlist.jsonl         # Stock watchlist (66 tickers)
@@ -410,3 +414,75 @@ python scripts/watchlist_manager.py --status
 ## Session Notes
 
 Keep notes from each development session in `docs/session_notes/` to maintain context across conversations. Update after significant changes.
+
+
+## Adaptive Strategy System (New)
+
+The system now includes an adaptive strategy layer that monitors performance and suggests strategic pivots when conditions change.
+
+### Key Files
+- `strategy_health.py` - Strategy Health Dashboard (A-F grading)
+- `strategy_pivot.py` - PIVOT analyzer and recommendation engine
+- `early_warning.py` - Early warning system for detecting issues
+
+### PIVOT Button
+
+The PIVOT button in the dashboard performs holistic strategy analysis:
+
+1. **Strategy Health Check** - Grades strategy A-F across 5 components:
+   - Performance (30%): Returns, Sharpe ratio, alpha
+   - Risk Control (25%): Drawdown, stop adherence
+   - Trading Edge (20%): Win rate, profit factor
+   - Factor Alignment (15%): Are factors working for current regime?
+   - Market Fit (10%): Is strategy suited to current conditions?
+
+2. **Diagnosis** - Identifies what's working and what's struggling
+
+3. **Pivot Recommendations** - Suggests strategic changes:
+   - **Consolidation Mode**: Fewer, larger positions
+   - **Defensive Mode**: Reduced risk, tighter stops
+   - **Cash Mode**: Significant exposure reduction
+   - **Aggressive Mode**: Lean into momentum (bull markets)
+   - **Regime Adaptation**: Adjust for current market regime
+
+### Usage
+
+```python
+from strategy_health import get_strategy_health
+from strategy_pivot import analyze_pivot, apply_recommended_pivot
+
+# Get strategy health
+health = get_strategy_health()
+print(f"Grade: {health.grade} ({health.score}/100)")
+
+# Run pivot analysis
+pivot = analyze_pivot()
+if pivot.should_pivot:
+    print(f"Recommended: {pivot.recommended_pivot.name}")
+    # Apply the recommended pivot
+    apply_recommended_pivot(pivot)
+```
+
+### Early Warning System
+
+Detects issues before they cause damage:
+- Regime shifts (benchmark near key moving averages)
+- Drawdown warnings (approaching thresholds)
+- Losing streaks (consecutive stop-loss exits)
+- Concentration risk (single position too large)
+- Over-diversification (too many small positions)
+
+```python
+from early_warning import get_warnings
+warnings = get_warnings()
+for w in warnings:
+    print(f"[{w.severity.value}] {w.title}: {w.description}")
+```
+
+### Design Philosophy
+
+Mommy Bot is designed to be **adaptive, not constrained**:
+- No hard position limits - the system learns what works
+- Strategy health monitoring suggests when to consolidate or expand
+- PIVOT analysis recommends changes based on performance, not arbitrary rules
+- Early warnings provide proactive risk management

@@ -45,6 +45,8 @@ from webapp_helpers import (
 )
 from unified_analysis import run_unified_analysis, execute_approved_actions
 from ai_review import ReviewDecision
+from strategy_health import get_strategy_health
+from strategy_pivot import analyze_pivot, apply_recommended_pivot
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -220,6 +222,10 @@ if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now()
 if "chart_timeframe" not in st.session_state:
     st.session_state.chart_timeframe = "1M"
+if "pivot_analysis" not in st.session_state:
+    st.session_state.pivot_analysis = None
+if "show_pivot_apply_confirm" not in st.session_state:
+    st.session_state.show_pivot_apply_confirm = False
 
 # ─── CSS ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -368,6 +374,50 @@ st.markdown("""
 .mommy-response { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 0.875rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; }
 .mommy-response::before { content: '"'; font-size: 1.5rem; color: var(--green); opacity: 0.5; margin-right: 0.25rem; }
 
+/* Strategy Health Card */
+.health-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+.health-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.health-grade { font-size: 1.8rem; font-weight: 700; }
+.health-grade.grade-a { color: var(--green); }
+.health-grade.grade-b { color: #3b82f6; }
+.health-grade.grade-c { color: var(--gold); }
+.health-grade.grade-d { color: #f97316; }
+.health-grade.grade-f { color: var(--red); }
+.health-score { font-size: 0.75rem; color: var(--text-dim); }
+.health-components { display: flex; flex-direction: column; gap: 0.5rem; }
+.health-component { display: flex; align-items: center; gap: 0.75rem; }
+.health-label { font-size: 0.7rem; color: var(--text-dim); min-width: 100px; }
+.health-bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.health-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+.health-fill.good { background: var(--green); }
+.health-fill.warn { background: var(--gold); }
+.health-fill.bad { background: var(--red); }
+.health-value { font-size: 0.7rem; color: var(--text-faint); min-width: 35px; text-align: right; }
+.health-diagnosis { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-dim); line-height: 1.5; }
+.pivot-urgency { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600; text-transform: uppercase; }
+.pivot-urgency.critical { background: var(--red-bg); color: var(--red); }
+.pivot-urgency.high { background: rgba(249,115,22,0.15); color: #f97316; }
+.pivot-urgency.medium { background: var(--gold-bg); color: var(--gold); }
+.pivot-urgency.low { background: rgba(59,130,246,0.15); color: #3b82f6; }
+
+/* Pivot Analysis Card */
+.pivot-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+.pivot-mommy { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 8px; padding: 0.875rem; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text); line-height: 1.5; font-style: italic; }
+.pivot-section { margin-bottom: 1rem; }
+.pivot-section-title { font-size: 0.7rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+.pivot-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.pivot-item { font-size: 0.8rem; color: var(--text-dim); padding-left: 1rem; position: relative; }
+.pivot-item::before { content: ''; position: absolute; left: 0; top: 0.5em; width: 4px; height: 4px; border-radius: 50%; }
+.pivot-item.working::before { background: var(--green); }
+.pivot-item.failing::before { background: var(--red); }
+.pivot-recommendation { background: var(--card-hover); border: 1px solid var(--border); border-radius: 8px; padding: 0.875rem; margin-bottom: 0.5rem; }
+.pivot-recommendation.recommended { border-color: var(--green); background: rgba(34,197,94,0.05); }
+.pivot-rec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.pivot-rec-name { font-weight: 600; color: var(--text); }
+.pivot-rec-badge { font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 3px; background: var(--green-bg); color: var(--green); }
+.pivot-rec-desc { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+.pivot-rec-details { font-size: 0.75rem; color: var(--text-faint); }
+
 /* Footer */
 .footer { text-align: center; padding: 1.5rem 0 1rem 0; font-size: 0.55rem; color: var(--text-faint); letter-spacing: 0.1em; text-transform: uppercase; border-top: 1px solid var(--border); margin-top: 1.5rem; }
 
@@ -487,7 +537,7 @@ if st.session_state.show_close_all_confirm:
 analysis = st.session_state.unified_analysis
 has_executable = analysis.get("summary", {}).get("can_execute", False) if analysis else False
 
-col_analyze, col_execute, col_discover, col_update, col_refresh = st.columns(5)
+col_analyze, col_execute, col_pivot, col_discover, col_update, col_refresh = st.columns(6)
 
 with col_analyze:
     if st.button("ANALYZE", use_container_width=True, type="primary", key="analyze_top"):
@@ -504,6 +554,16 @@ with col_execute:
     if st.button("EXECUTE", use_container_width=True, disabled=not has_executable, key="execute_top"):
         st.session_state.show_execute_confirm = True
 
+with col_pivot:
+    if st.button("PIVOT", use_container_width=True, key="pivot_top"):
+        with st.spinner("Analyzing strategy..."):
+            try:
+                pivot_result = analyze_pivot()
+                st.session_state.pivot_analysis = pivot_result
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
+
 with col_discover:
     if st.button("DISCOVER", use_container_width=True, key="discover_top"):
         with st.spinner("Discovering new candidates..."):
@@ -512,7 +572,6 @@ with col_discover:
                 result = subprocess.run([sys.executable, "scripts/watchlist_manager.py", "--update"], cwd=project_root, capture_output=True, text=True, timeout=300)
                 if result.returncode == 0:
                     st.success("Discovery complete!")
-                    # Show the output
                     if result.stdout:
                         st.code(result.stdout[-1500:], language=None)
                 else:
@@ -612,6 +671,110 @@ avg_win_loss = f"${avg_win:.0f} / ${abs(avg_loss):.0f}" if avg_loss != 0 else "N
 m5 = f'<div class="metric-card"><div class="metric-label" title="Average winning trade vs losing trade">Avg Win/Loss</div><div class="metric-value">{avg_win_loss}</div></div>'
 metrics_html = f'<div class="metrics-grid">{m1}{m2}{m3}{m4}{m5}</div>'
 st.markdown(metrics_html, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STRATEGY HEALTH & PIVOT ANALYSIS (Shows when PIVOT button is clicked)
+# ═══════════════════════════════════════════════════════════════════════════════
+pivot_analysis = st.session_state.pivot_analysis
+
+if pivot_analysis:
+    health = pivot_analysis.health
+
+    # Determine grade class
+    grade_first = health.grade[0].upper()
+    grade_class = f"grade-{grade_first.lower()}" if grade_first in ['A', 'B', 'C', 'D', 'F'] else "grade-c"
+
+    # Strategy Health Card
+    health_html = '<div class="health-card">'
+    health_html += '<div class="health-header">'
+    health_html += f'<div><span class="health-grade {grade_class}">{health.grade}</span><div class="health-score">{health.score:.0f}/100 - {health.grade_description}</div></div>'
+    if pivot_analysis.should_pivot:
+        health_html += f'<span class="pivot-urgency {pivot_analysis.urgency}">PIVOT {pivot_analysis.urgency.upper()}</span>'
+    health_html += '</div>'
+
+    # Component bars
+    health_html += '<div class="health-components">'
+    for c in health.components:
+        fill_class = "good" if c.score >= 70 else "warn" if c.score >= 50 else "bad"
+        health_html += f'<div class="health-component">'
+        health_html += f'<span class="health-label">{c.name}</span>'
+        health_html += f'<div class="health-bar"><div class="health-fill {fill_class}" style="width:{c.score}%"></div></div>'
+        health_html += f'<span class="health-value">{c.score:.0f}</span>'
+        health_html += '</div>'
+    health_html += '</div>'
+
+    # Diagnosis
+    health_html += f'<div class="health-diagnosis">{health.diagnosis}</div>'
+    health_html += '</div>'
+    st.markdown(health_html, unsafe_allow_html=True)
+
+    # Pivot Analysis Card (if pivot is recommended)
+    if pivot_analysis.should_pivot or pivot_analysis.diagnosis_working or pivot_analysis.diagnosis_failing:
+        pivot_html = '<div class="pivot-card">'
+
+        # Mommy's narrative
+        pivot_html += f'<div class="pivot-mommy">"{pivot_analysis.mommy_says}"</div>'
+
+        # What's working
+        if pivot_analysis.diagnosis_working:
+            pivot_html += '<div class="pivot-section">'
+            pivot_html += '<div class="pivot-section-title">What\'s Working</div>'
+            pivot_html += '<div class="pivot-list">'
+            for item in pivot_analysis.diagnosis_working[:4]:
+                pivot_html += f'<div class="pivot-item working">{item.description}</div>'
+            pivot_html += '</div></div>'
+
+        # What's struggling
+        if pivot_analysis.diagnosis_failing:
+            pivot_html += '<div class="pivot-section">'
+            pivot_html += '<div class="pivot-section-title">What\'s Struggling</div>'
+            pivot_html += '<div class="pivot-list">'
+            for item in pivot_analysis.diagnosis_failing[:4]:
+                pivot_html += f'<div class="pivot-item failing">{item.description}</div>'
+            pivot_html += '</div></div>'
+
+        pivot_html += '</div>'
+        st.markdown(pivot_html, unsafe_allow_html=True)
+
+        # Pivot Recommendations
+        if pivot_analysis.pivots:
+            st.markdown('<div class="section-head"><span class="section-title">Pivot Options</span></div>', unsafe_allow_html=True)
+
+            for pivot in pivot_analysis.pivots[:3]:
+                is_recommended = pivot == pivot_analysis.recommended_pivot
+                rec_class = "recommended" if is_recommended else ""
+
+                rec_html = f'<div class="pivot-recommendation {rec_class}">'
+                rec_html += '<div class="pivot-rec-header">'
+                rec_html += f'<span class="pivot-rec-name">{pivot.name}</span>'
+                if is_recommended:
+                    rec_html += '<span class="pivot-rec-badge">RECOMMENDED</span>'
+                rec_html += '</div>'
+                rec_html += f'<div class="pivot-rec-desc">{pivot.description}</div>'
+                rec_html += f'<div class="pivot-rec-details">Confidence: {pivot.confidence*100:.0f}% | Risk: {pivot.risk_change}</div>'
+                rec_html += '</div>'
+                st.markdown(rec_html, unsafe_allow_html=True)
+
+            # Apply pivot button
+            if pivot_analysis.recommended_pivot:
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(f"APPLY: {pivot_analysis.recommended_pivot.name}", type="primary", key="apply_pivot"):
+                        try:
+                            success = apply_recommended_pivot(pivot_analysis)
+                            if success:
+                                st.success(f"Applied {pivot_analysis.recommended_pivot.name} successfully!")
+                                st.session_state.pivot_analysis = None
+                                st.rerun()
+                            else:
+                                st.error("Failed to apply pivot")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+                with col2:
+                    if st.button("DISMISS", key="dismiss_pivot"):
+                        st.session_state.pivot_analysis = None
+                        st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
