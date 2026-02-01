@@ -5,6 +5,7 @@ env/
 data/*.csv
 data/*.json
 !data/config.json
+!data/curated_universe.json
 logs/
 reports/
 charts/

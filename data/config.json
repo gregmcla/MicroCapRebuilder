@@ -138,5 +138,37 @@
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75
     }
+  },
+
+  "universe": {
+    "enabled": true,
+    "refresh_frequency_days": 7,
+    "sources": {
+      "curated": {
+        "enabled": true,
+        "file": "data/curated_universe.json"
+      },
+      "etf_holdings": {
+        "enabled": true,
+        "etfs": ["IWM", "IJR", "VB"]
+      }
+    },
+    "tiers": {
+      "core": {
+        "max_tickers": 100,
+        "scan_frequency": "daily"
+      },
+      "extended": {
+        "max_tickers": 300,
+        "scan_frequency": "rotating_3day"
+      }
+    },
+    "filters": {
+      "min_market_cap_m": 300,
+      "max_market_cap_m": 50000,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 1000.0
+    }
   }
 }

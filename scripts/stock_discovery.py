@@ -96,35 +96,8 @@ class StockDiscovery:
     Discovers new stock candidates through multiple scanning strategies.
 
     Uses yfinance for data (no external API keys required).
+    Now uses dynamic universe from UniverseProvider instead of hardcoded list.
     """
-
-    # Russell 2000 proxy - small cap ETF components would be ideal
-    # For now, using a list of known small-cap tickers as seed universe
-    SCAN_UNIVERSE = [
-        # Technology
-        "CRDO", "MOD", "OKLO", "AVAV", "IDCC", "UPST", "AI", "SYNA", "MGNI",
-        "CALX", "ACLS", "EXTR", "AGYS", "AX",
-        # Financials
-        "SFBS", "WSBC", "BOH", "CBU", "BANF", "PFSI", "BANR",
-        # Consumer
-        "ANF", "URBN", "AEO", "CAKE", "EAT", "FUN", "GOLF",
-        # Energy & Materials
-        "CRC", "BTU", "MGY", "SM", "KTB",
-        # Healthcare
-        "GH", "FOLD", "ADMA", "AXSM", "ARWR", "ADUS", "CRSP",
-        # Industrials
-        "JBT", "TEX", "TDW", "ABM", "HURN", "GFF", "VC",
-        # REITs
-        "SBRA", "KRG", "OUT", "HASI",
-        # Utilities
-        "AWR", "ALE", "MGEE",
-        # Other
-        "WDFC", "SMPL", "BELFB", "LMND", "RIOT", "SMR", "ITRI",
-        # Additional small caps for broader coverage
-        "APPS", "PRFT", "PLAB", "LIVN", "HLIT", "DOMO", "BSIG",
-        "PRGS", "RUN", "SEDG", "ENPH", "STEM", "CHPT", "BLNK",
-        "IONQ", "RKLB", "ASTR", "MNDY", "GTLB", "PATH", "CFLT",
-    ]
 
     # Sector ETFs for rotation analysis
     SECTOR_ETFS = {
@@ -141,11 +114,51 @@ class StockDiscovery:
         "Consumer Staples": "XLP",
     }
 
-    def __init__(self):
+    def __init__(self, universe: List[str] = None):
+        """
+        Initialize the discovery engine.
+
+        Args:
+            universe: Optional list of tickers to scan. If None, uses UniverseProvider.
+        """
         self.config = load_config()
         self.discovery_config = self.config.get("discovery", {})
         self._price_cache: Dict[str, pd.DataFrame] = {}
         self._info_cache: Dict[str, dict] = {}
+
+        # Get scan universe from provider or use provided list
+        if universe is not None:
+            self.scan_universe = universe
+        else:
+            self.scan_universe = self._get_dynamic_universe()
+
+    def _get_dynamic_universe(self) -> List[str]:
+        """Get the scan universe from UniverseProvider."""
+        try:
+            from universe_provider import UniverseProvider
+            provider = UniverseProvider()
+            universe = provider.get_todays_scan_universe()
+            stats = provider.get_stats()
+            print(f"Universe: {stats['core_count']} core + {len(provider.get_todays_extended_batch())} extended = {len(universe)} tickers today")
+            return universe
+        except ImportError:
+            print("Warning: UniverseProvider not available, using legacy universe")
+            return self._get_legacy_universe()
+        except Exception as e:
+            print(f"Warning: Error loading universe: {e}, using legacy")
+            return self._get_legacy_universe()
+
+    def _get_legacy_universe(self) -> List[str]:
+        """Legacy hardcoded universe as fallback."""
+        return [
+            "CRDO", "MOD", "OKLO", "AVAV", "IDCC", "UPST", "AI", "SYNA", "MGNI",
+            "CALX", "ACLS", "EXTR", "AGYS", "AX", "SFBS", "WSBC", "BOH", "CBU",
+            "BANF", "PFSI", "BANR", "ANF", "URBN", "AEO", "CAKE", "EAT", "FUN",
+            "GOLF", "CRC", "BTU", "MGY", "SM", "KTB", "GH", "FOLD", "ADMA",
+            "AXSM", "ARWR", "ADUS", "CRSP", "JBT", "TEX", "TDW", "ABM", "HURN",
+            "GFF", "VC", "SBRA", "KRG", "OUT", "HASI", "AWR", "ALE", "MGEE",
+            "WDFC", "SMPL", "BELFB", "LMND", "RIOT", "SMR", "ITRI",
+        ]
 
     def _fetch_price_data(self, ticker: str, period: str = "3mo") -> Optional[pd.DataFrame]:
         """Fetch and cache price data."""
@@ -345,7 +358,7 @@ class StockDiscovery:
         - Volume ratio > 1.3x average
         """
         print("  Scanning for momentum breakouts...")
-        universe = universe or self.SCAN_UNIVERSE
+        universe = universe or self.scan_universe
         candidates = []
 
         for ticker in universe:
@@ -394,7 +407,7 @@ class StockDiscovery:
         - Volume pickup on recovery
         """
         print("  Scanning for oversold bounces...")
-        universe = universe or self.SCAN_UNIVERSE
+        universe = universe or self.scan_universe
         candidates = []
 
         for ticker in universe:
@@ -439,7 +452,7 @@ class StockDiscovery:
         - Strong relative strength
         """
         print("  Scanning for sector leaders...")
-        universe = universe or self.SCAN_UNIVERSE
+        universe = universe or self.scan_universe
         candidates = []
 
         # First, identify leading sectors
@@ -503,7 +516,7 @@ class StockDiscovery:
         - Consistent over multiple days
         """
         print("  Scanning for volume anomalies...")
-        universe = universe or self.SCAN_UNIVERSE
+        universe = universe or self.scan_universe
         candidates = []
 
         for ticker in universe:
