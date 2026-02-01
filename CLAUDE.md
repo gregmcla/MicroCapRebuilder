@@ -260,3 +260,58 @@ Manual verification:
 3. Verify `data/transactions.csv` for new trades
 4. Check `data/positions.csv` for current state
 5. Verify `charts/performance.png` is generated
+
+## Claude Code Integration
+
+### Custom Slash Commands
+
+Available commands in `.claude/commands/`:
+
+| Command | Purpose |
+|---------|---------|
+| `/analyze-trades` | Analyze recent trading performance and patterns |
+| `/portfolio-status` | Real-time portfolio check with live prices |
+| `/validate-data` | Check data integrity across all CSV files |
+| `/backtest-strategy` | Run backtests against historical data |
+| `/techdebt` | Find and catalog technical debt |
+| `/market-check` | Quick market conditions assessment |
+
+### Advanced Usage
+
+See `docs/CLAUDE_CODE_STRATEGY.md` for:
+- Parallel worktree setup for concurrent development
+- Plan mode workflows for complex features
+- Subagent usage for compute-heavy analysis
+- Bug fixing automation patterns
+
+## AI Assistant Self-Rules (Learned)
+
+Rules accumulated from corrections - **do not violate these**:
+
+### Market Data
+- Never assume market is open - always check trading hours before live price fetches
+- yfinance returns NaN for delisted/invalid tickers - always handle with `.dropna()` or explicit checks
+- Weekend/holiday dates have no price data - skip these in backtests
+- Use `period` parameter for recent data, `start/end` for specific ranges
+
+### Position Calculations
+- Cash is DERIVED from transactions, never stored directly - recalculate from transaction history
+- Stop loss prices must be BELOW entry for longs: `stop_loss < avg_cost_basis < take_profit`
+- Position sizing: `shares = floor((equity * risk_pct) / (entry - stop_loss))`
+- Never allow negative shares or negative cash in any calculation
+
+### Data Integrity
+- Always use `schema.py` constants for column names - never hardcode strings
+- When writing CSVs, use `index=False` to avoid extra index column
+- Transaction IDs must be unique UUIDs - generate with `uuid.uuid4().hex[:8]`
+- Append to `transactions.csv`, never overwrite (it's a ledger)
+
+### Error Handling
+- Wrap all yfinance calls in try/except - API can fail
+- Log failures but don't crash the daily run for single ticker failures
+- If >50% of price fetches fail, something is wrong - abort and alert
+
+### Testing Changes
+- After modifying trading logic, verify with: current positions match transactions
+- After modifying scoring, verify: all scores between 0-100, no NaN values
+- Run `./run_daily.sh` after any change to validate full pipeline
