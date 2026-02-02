@@ -863,6 +863,493 @@ footer {{ visibility: hidden; }}
         justify-content: center;
     }}
 }}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TAB-BASED NAVIGATION SYSTEM
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Top Header Bar ────────────────────────────────────────────────────── */
+.top-header {{
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-2) var(--space-4);
+}}
+
+.header-content {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+}}
+
+.header-logo {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}}
+
+.logo-icon {{
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--bg-primary);
+    font-family: var(--font-display);
+}}
+
+.logo-text {{
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}}
+
+/* ─── Navigation Tabs ───────────────────────────────────────────────────── */
+.nav-tabs {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    background: var(--bg-card);
+    border-radius: var(--radius-full);
+    padding: 4px;
+}}
+
+.nav-tab {{
+    padding: 8px 20px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+}}
+
+.nav-tab:hover {{
+    color: var(--text-primary);
+    background: rgba(255,255,255,0.05);
+}}
+
+.nav-tab.active {{
+    background: var(--accent);
+    color: var(--bg-primary);
+}}
+
+/* ─── Header Controls ───────────────────────────────────────────────────── */
+.header-controls {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+}}
+
+.status-indicator {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 12px;
+    color: var(--text-secondary);
+}}
+
+.status-indicator .dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}}
+
+.status-indicator .dot.connected {{
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}}
+
+.status-indicator .dot.disconnected {{
+    background: var(--danger);
+}}
+
+.mode-toggle {{
+    display: flex;
+    background: var(--bg-card);
+    border-radius: var(--radius-full);
+    padding: 3px;
+}}
+
+.mode-btn {{
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}}
+
+.mode-btn.active {{
+    background: var(--accent);
+    color: var(--bg-primary);
+}}
+
+.mode-btn:not(.active) {{
+    background: transparent;
+    color: var(--text-secondary);
+}}
+
+.emergency-btn {{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(245,101,101,0.1);
+    border: 1px solid rgba(245,101,101,0.3);
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}}
+
+.emergency-btn:hover {{
+    background: rgba(245,101,101,0.2);
+    border-color: var(--danger);
+}}
+
+/* ─── Compact Metrics Strip ─────────────────────────────────────────────── */
+.metrics-strip {{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-8);
+    padding: var(--space-2) var(--space-4);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    height: 50px;
+}}
+
+.strip-metric {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}}
+
+.strip-metric-value {{
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}}
+
+.strip-metric-value.positive {{ color: var(--success); }}
+.strip-metric-value.negative {{ color: var(--danger); }}
+
+.strip-metric-label {{
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}}
+
+.strip-divider {{
+    width: 1px;
+    height: 24px;
+    background: var(--border-light);
+}}
+
+.regime-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 600;
+}}
+
+.regime-badge.bull {{
+    background: rgba(72,187,120,0.15);
+    color: var(--success);
+}}
+
+.regime-badge.bear {{
+    background: rgba(245,101,101,0.15);
+    color: var(--danger);
+}}
+
+.regime-badge.sideways {{
+    background: rgba(237,137,54,0.15);
+    color: var(--warning);
+}}
+
+/* ─── Main Layout with Persistent Sidebar ───────────────────────────────── */
+.app-layout {{
+    display: flex;
+    min-height: calc(100vh - 110px);
+}}
+
+.main-content {{
+    flex: 1;
+    padding: var(--space-6);
+    max-width: 1100px;
+    margin: 0 auto;
+    transition: margin-right 0.3s ease;
+}}
+
+.main-content.sidebar-open {{
+    margin-right: 320px;
+}}
+
+/* ─── Collapsible Mommy Sidebar ─────────────────────────────────────────── */
+.mommy-panel {{
+    position: fixed;
+    right: 0;
+    top: 110px;
+    width: 300px;
+    height: calc(100vh - 110px);
+    background: var(--bg-card);
+    border-left: 1px solid var(--border);
+    padding: var(--space-4);
+    overflow-y: auto;
+    transition: transform 0.3s ease, width 0.3s ease;
+    z-index: 900;
+}}
+
+.mommy-panel.collapsed {{
+    width: 60px;
+    padding: var(--space-2);
+}}
+
+.collapse-btn {{
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 48px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px 0 0 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}}
+
+.collapse-btn:hover {{
+    color: var(--accent);
+}}
+
+.panel-content {{
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}}
+
+.mommy-panel.collapsed .panel-content {{
+    opacity: 0;
+    pointer-events: none;
+}}
+
+.collapsed-avatar {{
+    display: none;
+    width: 44px;
+    height: 44px;
+    margin: var(--space-2) auto;
+    cursor: pointer;
+}}
+
+.mommy-panel.collapsed .collapsed-avatar {{
+    display: block;
+}}
+
+/* ─── Alert Cards ───────────────────────────────────────────────────────── */
+.alert-card {{
+    background: rgba(237,137,54,0.1);
+    border: 1px solid rgba(237,137,54,0.3);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}}
+
+.alert-card.danger {{
+    background: rgba(245,101,101,0.1);
+    border-color: rgba(245,101,101,0.3);
+}}
+
+.alert-card.success {{
+    background: rgba(72,187,120,0.1);
+    border-color: rgba(72,187,120,0.3);
+}}
+
+.alert-icon {{
+    font-size: 18px;
+}}
+
+.alert-text {{
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-primary);
+}}
+
+.alert-action {{
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+}}
+
+/* ─── View All Link ─────────────────────────────────────────────────────── */
+.view-all-link {{
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: 13px;
+    color: var(--accent);
+    cursor: pointer;
+    transition: gap 0.2s ease;
+}}
+
+.view-all-link:hover {{
+    gap: var(--space-2);
+}}
+
+/* ─── Modal Overlay ─────────────────────────────────────────────────────── */
+.modal-overlay {{
+    position: fixed;
+    inset: 0;
+    background: rgba(10,22,40,0.9);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}}
+
+.modal-content {{
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    max-width: 480px;
+    width: 90%;
+}}
+
+.modal-header {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+}}
+
+.modal-title {{
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}}
+
+.modal-close {{
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+}}
+
+/* ─── Contextual Action Buttons ─────────────────────────────────────────── */
+.action-bar {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}}
+
+.action-btn {{
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}}
+
+.action-btn:hover {{
+    border-color: var(--accent);
+    background: rgba(79,209,197,0.1);
+}}
+
+.action-btn.primary {{
+    background: var(--accent);
+    color: var(--bg-primary);
+    border-color: var(--accent);
+}}
+
+.action-btn.primary:hover {{
+    background: var(--accent-light);
+}}
+
+/* ─── Compact Equity Curve ──────────────────────────────────────────────── */
+.compact-chart {{
+    height: 200px;
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    padding: var(--space-3);
+}}
+
+/* ─── Filter/Sort Controls ──────────────────────────────────────────────── */
+.filter-bar {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}}
+
+.filter-group {{
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}}
+
+.filter-label {{
+    font-size: 12px;
+    color: var(--text-muted);
+}}
+
+/* ─── Empty State ───────────────────────────────────────────────────────── */
+.empty-state {{
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--text-secondary);
+}}
+
+.empty-state-icon {{
+    font-size: 48px;
+    opacity: 0.3;
+    margin-bottom: var(--space-4);
+}}
+
+.empty-state-text {{
+    font-size: 16px;
+}}
 </style>
 """
 
