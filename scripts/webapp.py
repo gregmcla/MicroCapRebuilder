@@ -381,6 +381,16 @@ strip_html += '</div>'
 
 strip_html += '<div class="strip-divider"></div>'
 
+# Total Return (Overall P&L)
+return_class = "positive" if total_return >= 0 else "negative"
+return_sign = "+" if total_return >= 0 else ""
+strip_html += '<div class="strip-metric">'
+strip_html += f'<span class="strip-metric-value {return_class}">{return_sign}${abs(total_return):,.0f} ({return_sign}{abs(total_return_pct):.1f}%)</span>'
+strip_html += '<span class="strip-metric-label">Total P&L</span>'
+strip_html += '</div>'
+
+strip_html += '<div class="strip-divider"></div>'
+
 # Cash
 strip_html += '<div class="strip-metric">'
 strip_html += f'<span class="strip-metric-value">${cash:,.0f}</span>'
