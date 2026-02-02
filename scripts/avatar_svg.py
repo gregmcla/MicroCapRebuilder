@@ -38,63 +38,36 @@ def get_avatar_svg(state: AvatarState = "neutral", size: int = 80) -> str:
 
     expression = expressions.get(state, expressions["neutral"])
 
+    # Simplified SVG without gradients for better Streamlit compatibility
     svg = f'''<svg width="{size}" height="{size}" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="hairGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1A2744"/>
-      <stop offset="100%" style="stop-color:#0D1B2A"/>
-    </linearGradient>
-    <linearGradient id="skinGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#FDF2E9"/>
-      <stop offset="100%" style="stop-color:#E8D5C4"/>
-    </linearGradient>
-    <linearGradient id="tealGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4FD1C5"/>
-      <stop offset="100%" style="stop-color:#38B2AC"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.15"/>
-    </filter>
-  </defs>
-
   <!-- Background circle -->
   <circle cx="40" cy="40" r="38" fill="#111D2E"/>
 
   <!-- Hair back layer -->
-  <path d="M15 35 Q12 20 25 12 Q40 5 55 12 Q68 20 65 35
-           Q68 50 60 60 L58 48 Q55 35 40 32 Q25 35 22 48 L20 60
-           Q12 50 15 35"
-        fill="url(#hairGradient)"/>
+  <path d="M15 35 Q12 20 25 12 Q40 5 55 12 Q68 20 65 35 Q68 50 60 60 L58 48 Q55 35 40 32 Q25 35 22 48 L20 60 Q12 50 15 35" fill="#1A2744"/>
 
   <!-- Neck -->
-  <path d="M32 58 L32 70 Q40 72 48 70 L48 58" fill="url(#skinGradient)"/>
+  <path d="M32 58 L32 70 Q40 72 48 70 L48 58" fill="#F0E6DC"/>
 
   <!-- Face shape -->
-  <ellipse cx="40" cy="42" rx="20" ry="24" fill="url(#skinGradient)" filter="url(#softShadow)"/>
+  <ellipse cx="40" cy="42" rx="20" ry="24" fill="#F0E6DC"/>
 
   <!-- Hair front/bangs -->
-  <path d="M20 38 Q22 28 30 24 Q40 20 50 24 Q58 28 60 38
-           Q58 32 50 30 Q40 28 30 30 Q22 32 20 38"
-        fill="url(#hairGradient)"/>
+  <path d="M20 38 Q22 28 30 24 Q40 20 50 24 Q58 28 60 38 Q58 32 50 30 Q40 28 30 30 Q22 32 20 38" fill="#1A2744"/>
 
   <!-- Teal earrings (signature element) -->
-  <circle cx="18" cy="50" r="4" fill="url(#tealGradient)">
-    <animate attributeName="opacity" values="0.9;1;0.9" dur="3s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="62" cy="50" r="4" fill="url(#tealGradient)">
-    <animate attributeName="opacity" values="0.9;1;0.9" dur="3s" repeatCount="indefinite"/>
-  </circle>
+  <circle cx="18" cy="50" r="4" fill="#4FD1C5"/>
+  <circle cx="62" cy="50" r="4" fill="#4FD1C5"/>
 
   <!-- Expression (eyes, eyebrows, mouth) -->
   {expression}
 
   <!-- Subtle blush -->
-  <ellipse cx="28" cy="48" rx="5" ry="3" fill="#E8B4B8" opacity="0.3"/>
-  <ellipse cx="52" cy="48" rx="5" ry="3" fill="#E8B4B8" opacity="0.3"/>
+  <ellipse cx="28" cy="48" rx="5" ry="3" fill="#E8B4B8" opacity="0.4"/>
+  <ellipse cx="52" cy="48" rx="5" ry="3" fill="#E8B4B8" opacity="0.4"/>
 
-  <!-- Teal accent in hair -->
-  <path d="M25 30 Q30 28 32 32" stroke="#4FD1C5" stroke-width="1.5" fill="none" opacity="0.6"/>
-
+  <!-- Teal hair highlight -->
+  <path d="M25 30 Q30 28 32 32" stroke="#4FD1C5" stroke-width="1.5" fill="none" opacity="0.5"/>
 </svg>'''
 
     return svg
