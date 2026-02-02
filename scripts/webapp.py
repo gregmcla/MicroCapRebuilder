@@ -536,6 +536,7 @@ with sidebar_col:
                 response = ai_chat(user_question)
             if response.success:
                 st.session_state.mommy_chat_response = response.message
+                st.rerun()
             else:
                 st.session_state.mommy_chat_response = None
                 st.error(response.error)
