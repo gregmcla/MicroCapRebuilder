@@ -15,104 +15,191 @@ from typing import Optional
 import pandas as pd
 
 # ─── Mommy Voice Phrase Library ───────────────────────────────────────────────
+# Warm, direct, occasionally teasing - always in command
 
 MOMMY_PHRASES = {
-    # All-clear states - calm and reassuring
+    # All-clear states - calm, confident, a touch playful
     "all_clear": [
-        "Everything's running smoothly.",
-        "I've got things under control.",
-        "All systems healthy - nothing needs your attention.",
-        "Portfolio's humming along nicely.",
-        "Looking good. I'm keeping watch.",
+        "All quiet on the western front. Go enjoy your coffee.",
+        "Nothing's on fire. I'll holler if that changes.",
+        "Smooth sailing, sweetie. Mommy's got this.",
+        "Portfolio's humming along nicely. Just the way I like it.",
+        "Looking good out there. I'm keeping watch.",
+        "Everything's in order. You can breathe.",
+        "Steady as she goes. Nothing needs your attention right now.",
     ],
 
-    # Positive states - warm celebration
+    # Positive states - warm celebration with personality
     "good_day": [
-        "Nice day! Up ${amount}.",
-        "Looking good today - we're up ${amount}.",
-        "Green vibes today. +${amount}.",
-        "A good day! Up ${amount}.",
+        "Look at us! Up ${amount} today.",
+        "Nice work, sweetie. We're up ${amount}.",
+        "Green across the board - +${amount}. Love to see it.",
+        "What a day! Up ${amount}. Pat yourself on the back.",
+        "The market's being kind today. +${amount}.",
+        "Well well, up ${amount}. Someone's having a good day.",
     ],
 
-    # Near stop - protective concern
+    # Near stop - protective concern with personality
     "near_stop_single": [
-        "Heads up - {ticker} is getting close to its stop.",
-        "Keep an eye on {ticker}, it's only {pct:.1f}% from stop.",
-        "Watching {ticker} carefully - approaching stop level.",
-        "{ticker} needs attention - {pct:.1f}% from stop.",
+        "Heads up - {ticker} is getting a little too close to the edge for my taste.",
+        "Keep an eye on {ticker}, sweetie. Only {pct:.1f}% from stop.",
+        "I don't love where {ticker} is sitting. {pct:.1f}% from stop.",
+        "{ticker} is making me nervous - watching it like a hawk.",
+        "Fair warning: {ticker} is {pct:.1f}% from stop. Don't say I didn't tell you.",
     ],
 
     "near_stop_multiple": [
-        "{count} positions are approaching stop levels.",
-        "A few positions need watching - {count} near their stops.",
-        "Heads up on {count} positions getting close to stops.",
+        "{count} positions are getting uncomfortably close to stops. Let's pay attention.",
+        "Sweetie, we've got {count} positions in the danger zone. Stay sharp.",
+        "Mommy's a bit concerned - {count} positions near their stops.",
+        "Red alert on {count} positions. Time to focus.",
     ],
 
-    # Near target - excited but calm
+    # Near target - excited, proud
     "near_target": [
-        "Good news - {ticker} is approaching target!",
-        "{ticker} is only {pct:.1f}% from take-profit.",
-        "Almost there! {ticker} nearing target.",
-        "{ticker} looking strong - {pct:.1f}% to target.",
+        "Look at you! {ticker} is almost at the finish line.",
+        "{ticker} is knocking on the door - only {pct:.1f}% from target!",
+        "Get ready to celebrate - {ticker} is {pct:.1f}% from take-profit.",
+        "Almost there, sweetie! {ticker} nearing target.",
+        "{ticker} is looking gorgeous right now. {pct:.1f}% to payday.",
+        "Time to start thinking about taking some chips off {ticker}.",
     ],
 
-    # Market conditions
+    # Market conditions - direct and knowing
     "bear_market": [
-        "Markets are choppy. Staying cautious.",
-        "Bear conditions - I'm being extra careful.",
-        "Rough markets. Playing it safe.",
+        "The bears are out, sweetie. We're playing defense.",
+        "Rough neighborhood out there. Keeping positions tight.",
+        "Bear market vibes. Not the time for heroics.",
+        "Markets are in a mood. Staying cautious.",
     ],
 
     "sideways_market": [
-        "Markets are indecisive. Staying patient.",
-        "Sideways action today. Waiting for clarity.",
+        "Markets can't make up their mind. Patience.",
+        "Choppy waters today. Waiting for clarity.",
+        "Sideways action. Not my favorite, but we adapt.",
+        "The market's being indecisive. That's fine - so are we.",
     ],
 
-    # Drawdown states - supportive
+    # Drawdown states - supportive but real
     "drawdown_mild": [
-        "We're {pct:.1f}% below peak. Staying disciplined.",
-        "Small pullback - down {pct:.1f}% from high. Normal.",
+        "We're {pct:.1f}% off the highs. Nothing to panic about.",
+        "Small pullback - down {pct:.1f}%. Part of the game.",
+        "Down {pct:.1f}% from peak. Staying disciplined.",
+        "Little setback at {pct:.1f}% drawdown. We've seen worse.",
     ],
 
     "drawdown_significant": [
-        "Down {pct:.1f}% from peak. Hanging in there.",
-        "Rough patch - {pct:.1f}% drawdown. Patience.",
+        "Okay, {pct:.1f}% drawdown is getting my attention. Tightening up.",
+        "Down {pct:.1f}% from peak. Hang in there with me.",
+        "Not gonna sugarcoat it - {pct:.1f}% drawdown. But we'll get through.",
+        "Rough patch. {pct:.1f}% down. Let's be smart about this.",
     ],
 
-    # Capital preservation - protective
+    # Capital preservation - protective mama bear
     "preservation_mode": [
-        "Capital preservation mode active. Safety first.",
-        "Playing defense right now. Protecting what we have.",
-        "Preservation mode on. Being extra careful.",
+        "Preservation mode is on. We're protecting what we've got.",
+        "Safety first, sweetie. I've put up the shields.",
+        "Time to play defense. Capital preservation active.",
+        "I've switched to mama bear mode. No unnecessary risks.",
     ],
 
-    # Bad day - supportive
+    # Bad day - supportive, not dismissive
     "bad_day": [
-        "Tough day - down ${amount}. Tomorrow's another day.",
-        "Red day, down ${amount}. It happens.",
-        "Down ${amount} today. Part of the journey.",
+        "Tough day - down ${amount}. Tomorrow's a fresh start.",
+        "Red day, down ${amount}. It happens to the best of us.",
+        "Down ${amount} today. Not fun, but not the end of the world.",
+        "Ouch - ${amount} in the red. Let's shake it off.",
+        "Market giveth, market taketh. Down ${amount} today.",
     ],
 
     # Empty portfolio
     "no_positions": [
-        "No positions yet. Ready when you are.",
-        "Portfolio is empty. Standing by.",
-        "All cash. Waiting for the right opportunities.",
+        "All cash, sitting pretty. Ready when you are.",
+        "No positions yet. Just say the word.",
+        "Portfolio's empty. Waiting for the right dance partner.",
+        "Fully liquid. Let's find some opportunities.",
+    ],
+
+    # Great day - proud mama
+    "great_day": [
+        "Now THIS is a day! Up ${amount}. I'm so proud.",
+        "Killing it! +${amount}. You should be smiling.",
+        "What a beauty - up ${amount}. Let's keep this energy.",
+        "Chef's kiss. Up ${amount} today.",
+    ],
+
+    # Winning streak - celebratory
+    "winning_streak": [
+        "{count} wins in a row! Don't let it go to your head, sweetie.",
+        "We're on a roll - {count} consecutive wins. Stay humble.",
+        "Hot streak! {count} wins. Let's keep the momentum.",
+    ],
+
+    # Losing streak - tough love
+    "losing_streak": [
+        "{count} losses in a row. Let's regroup and refocus.",
+        "Rough stretch - {count} consecutive stops hit. We'll bounce back.",
+        "Not our week. {count} losses. Time to tighten up.",
+    ],
+
+    # Teasing - for when user checks too often
+    "teasing": [
+        "Back already? The market doesn't move that fast, sweetie.",
+        "Checking again? I promise I'll tell you if something happens.",
+        "You know I've got this, right? Go take a walk.",
+        "The portfolio's fine. You're the one I'm worried about.",
+        "Third check this hour? Someone's anxious today.",
+    ],
+
+    # Position-specific callouts
+    "position_callout": [
+        "Keep an eye on {ticker} - it's been moving.",
+        "{ticker} is doing its thing. Looking healthy.",
+        "Watching {ticker} closely today.",
     ],
 }
 
 
 def get_greeting() -> str:
-    """Get time-appropriate greeting."""
+    """Get time-appropriate greeting with personality."""
     hour = datetime.now().hour
+
+    morning_greetings = [
+        "Good morning, sweetie!",
+        "Morning! Let's see what we've got.",
+        "Rise and shine! Ready to make some money?",
+        "Good morning! Coffee first, then charts.",
+    ]
+
+    afternoon_greetings = [
+        "Good afternoon!",
+        "Afternoon check-in time.",
+        "Hey there! How's the day treating you?",
+        "Back for a midday peek?",
+    ]
+
+    evening_greetings = [
+        "Evening, love. Let's see what the market left on our doorstep.",
+        "Good evening! Time for the daily wrap-up.",
+        "Evening check-in. Let's see how we did.",
+        "Hey sweetie. Let's review the day.",
+    ]
+
+    night_greetings = [
+        "Burning the midnight oil?",
+        "Late night trading thoughts?",
+        "Can't sleep without checking the portfolio?",
+        "Night owl mode activated.",
+    ]
+
     if 5 <= hour < 12:
-        return "Good morning"
+        return random.choice(morning_greetings)
     elif 12 <= hour < 17:
-        return "Good afternoon"
+        return random.choice(afternoon_greetings)
     elif 17 <= hour < 22:
-        return "Good evening"
+        return random.choice(evening_greetings)
     else:
-        return "Hello"
+        return random.choice(night_greetings)
 
 
 def get_positions_near_stop(positions_df: pd.DataFrame, threshold_pct: float = 5.0) -> list:

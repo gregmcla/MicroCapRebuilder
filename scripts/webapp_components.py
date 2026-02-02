@@ -34,6 +34,8 @@ except ImportError:
     PLOTLY_AVAILABLE = False
 
 from webapp_styles import COLORS, inject_styles
+from avatar_svg import get_avatar_svg, AvatarState as AvatarStateType
+from avatar_states import AvatarState, determine_avatar_state_simple
 
 
 # ─── Sparkline Generation ─────────────────────────────────────────────────────
@@ -353,68 +355,147 @@ def render_equity_curve(snapshots_df: pd.DataFrame, height: int = 300):
 
 # ─── Mommy Companion Sidebar ──────────────────────────────────────────────────
 
+import random
+
 def get_time_greeting() -> str:
-    """Get a time-appropriate greeting."""
+    """Get a time-appropriate greeting with personality."""
     hour = datetime.now().hour
 
-    if hour < 12:
-        return "Good morning, sweetie!"
-    elif hour < 17:
-        return "Good afternoon!"
+    morning = [
+        "Good morning, sweetie!",
+        "Morning! Let's see what we've got.",
+        "Rise and shine!",
+    ]
+    afternoon = [
+        "Good afternoon!",
+        "Hey there!",
+        "Afternoon check-in time.",
+    ]
+    evening = [
+        "Evening, love.",
+        "Good evening!",
+        "Hey sweetie.",
+    ]
+    night = [
+        "Burning the midnight oil?",
+        "Late night trading thoughts?",
+        "Can't sleep?",
+    ]
+
+    if 5 <= hour < 12:
+        return random.choice(morning)
+    elif 12 <= hour < 17:
+        return random.choice(afternoon)
+    elif 17 <= hour < 22:
+        return random.choice(evening)
     else:
-        return "Good evening!"
+        return random.choice(night)
 
 
 def get_mommy_greeting(
     day_pnl: float = 0,
     positions_near_stop: int = 0,
-    positions_near_target: int = 0
+    positions_near_target: int = 0,
+    regime: str = "UNKNOWN",
+    drawdown_pct: float = 0
 ) -> str:
-    """Generate a context-aware greeting from Mommy."""
-    greetings = []
+    """Generate a context-aware greeting from Mommy with personality."""
 
     # Time-based greeting
-    base_greeting = get_time_greeting()
+    base = get_time_greeting()
+    parts = [base]
 
-    # Performance-based comment
-    if day_pnl > 100:
-        greetings.append(f"{base_greeting} We're doing great today!")
+    # Priority 1: Positions near stop (concern)
+    if positions_near_stop >= 2:
+        parts.append(f"We've got {positions_near_stop} positions getting too close to stops. Let's pay attention.")
+    elif positions_near_stop == 1:
+        parts.append("One position is making me nervous - keep an eye out.")
+
+    # Priority 2: Positions near target (celebration)
+    elif positions_near_target >= 2:
+        parts.append(f"Look at us! {positions_near_target} positions approaching targets.")
+    elif positions_near_target == 1:
+        parts.append("One of our positions is almost at the finish line!")
+
+    # Priority 3: Day performance
+    elif day_pnl > 500:
+        parts.append("What a day! We're killing it.")
+    elif day_pnl > 100:
+        parts.append("Looking good today. I like what I see.")
     elif day_pnl > 0:
-        greetings.append(f"{base_greeting} Looking good so far.")
+        parts.append("We're in the green. Steady as she goes.")
+    elif day_pnl < -500:
+        parts.append("Rough day, I won't lie. But we'll bounce back.")
     elif day_pnl < -100:
-        greetings.append(f"{base_greeting} Bit of a rough day, but we've got this.")
+        parts.append("A bit of red today. Nothing we can't handle.")
     elif day_pnl < 0:
-        greetings.append(f"{base_greeting} Slight dip today, nothing to worry about.")
+        parts.append("Slight dip. No need to panic.")
+
+    # Priority 4: Market regime
+    elif regime == "BEAR":
+        parts.append("The bears are out. Playing it safe.")
+    elif regime == "SIDEWAYS":
+        parts.append("Markets are choppy. Patience is key.")
     else:
-        greetings.append(f"{base_greeting}")
+        # Default - encouraging
+        encouraging = [
+            "I've got my eyes on everything.",
+            "All systems normal.",
+            "Smooth sailing so far.",
+            "Let's make some money.",
+        ]
+        parts.append(random.choice(encouraging))
 
-    # Alerts
-    if positions_near_stop > 0:
-        greetings.append(f"Heads up - {positions_near_stop} position(s) near stop loss.")
-    if positions_near_target > 0:
-        greetings.append(f"Nice! {positions_near_target} position(s) approaching target.")
-
-    return " ".join(greetings)
+    return " ".join(parts)
 
 
 def render_mommy_sidebar(
     day_pnl: float = 0,
     insights: List[str] = None,
     positions_near_stop: int = 0,
-    positions_near_target: int = 0
+    positions_near_target: int = 0,
+    regime: str = "UNKNOWN",
+    drawdown_pct: float = 0
 ):
     """
-    Render the Mommy companion sidebar.
+    Render the Mommy companion sidebar with dynamic avatar.
+
+    The avatar expression changes based on portfolio state:
+    - neutral: Default calm look
+    - pleased: When things are going well
+    - concerned: When positions need attention
+    - skeptical: In uncertain market conditions
     """
-    greeting = get_mommy_greeting(day_pnl, positions_near_stop, positions_near_target)
+    # Determine avatar state
+    avatar_state = determine_avatar_state_simple(
+        day_pnl=day_pnl,
+        positions_near_stop=positions_near_stop,
+        positions_near_target=positions_near_target,
+        regime=regime,
+        drawdown_pct=drawdown_pct
+    )
+
+    # Get greeting with context
+    greeting = get_mommy_greeting(
+        day_pnl=day_pnl,
+        positions_near_stop=positions_near_stop,
+        positions_near_target=positions_near_target,
+        regime=regime,
+        drawdown_pct=drawdown_pct
+    )
     insights = insights or []
+
+    # Get SVG avatar for current state
+    avatar_svg = get_avatar_svg(avatar_state.value, size=80)
 
     html = '<div class="mommy-sidebar">'
 
-    # Avatar
-    html += '<div class="mommy-avatar">M</div>'
+    # Avatar with breathing animation
+    html += '<div class="mommy-avatar-container">'
+    html += avatar_svg
+    html += '</div>'
 
-    # Greeting
+    # Greeting bubble
     html += f'<div class="mommy-greeting">"{greeting}"</div>'
 
     # Recent insights

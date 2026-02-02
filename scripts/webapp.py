@@ -491,7 +491,9 @@ with sidebar_col:
         day_pnl=day_pnl,
         insights=insights,
         positions_near_stop=len(near_stop),
-        positions_near_target=len(near_target)
+        positions_near_target=len(near_target),
+        regime=regime,
+        drawdown_pct=max_drawdown
     )
 
     # Chat input in sidebar
@@ -499,15 +501,40 @@ with sidebar_col:
         st.markdown(f'<div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid {COLORS["border"]};">', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size: 12px; color: {COLORS["text_secondary"]}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Ask Me Anything</div>', unsafe_allow_html=True)
 
+        # Quick-action chips
+        import random
+        QUICK_QUESTIONS = [
+            ("Portfolio Health", "Give me a quick health check on my portfolio"),
+            ("Positions at Risk", "Which positions are closest to their stop losses?"),
+            ("Near Targets", "Which positions are approaching their targets?"),
+            ("Today's Summary", "Summarize how my portfolio did today"),
+        ]
+
+        chips_html = '<div class="quick-chips">'
+        for label, _ in QUICK_QUESTIONS:
+            chips_html += f'<span class="quick-chip">{label}</span>'
+        chips_html += '</div>'
+        st.markdown(chips_html, unsafe_allow_html=True)
+
+        # Rotating placeholder suggestions
+        PLACEHOLDERS = [
+            "How's my portfolio doing?",
+            "Any positions I should worry about?",
+            "What should I watch today?",
+            "How's my diversification?",
+            "Summarize my risk exposure",
+        ]
+        placeholder = random.choice(PLACEHOLDERS)
+
         with st.form(key="mommy_chat_form", clear_on_submit=True):
-            user_question = st.text_input("chat_input", placeholder="How's my portfolio doing?", label_visibility="collapsed")
+            user_question = st.text_input("chat_input", placeholder=placeholder, label_visibility="collapsed")
             submitted = st.form_submit_button("Ask", use_container_width=True)
 
         if submitted and user_question:
-            with st.spinner("Thinking..."):
+            with st.spinner("Mommy is thinking..."):
                 response = ai_chat(user_question)
             if response.success:
-                st.markdown(f'<div style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 12px; border-radius: 8px; font-style: italic; color: {COLORS["text_primary"]};">"{response.message}"</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="mommy-response" style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 12px; border-radius: 8px; font-style: italic; color: {COLORS["text_primary"]};">"{response.message}"</div>', unsafe_allow_html=True)
             else:
                 st.error(response.error)
 

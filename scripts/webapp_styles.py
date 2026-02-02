@@ -249,11 +249,12 @@ STYLES = f"""
 }}
 
 .metric-value {{
-    font-size: 36px;
-    font-weight: 700;
+    font-size: 40px;
+    font-weight: 800;
     color: var(--text-primary);
     font-family: var(--font-body);
     font-variant-numeric: tabular-nums;
+    line-height: 1.1;
 }}
 
 .metric-value.positive {{
@@ -265,10 +266,11 @@ STYLES = f"""
 }}
 
 .metric-label {{
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     margin-top: var(--space-2);
 }}
 
@@ -352,9 +354,10 @@ STYLES = f"""
 }}
 
 .position-symbol {{
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
     margin-bottom: var(--space-2);
 }}
 
@@ -427,13 +430,44 @@ STYLES = f"""
     font-family: var(--font-display);
 }}
 
+/* Avatar container for SVG avatar */
+.mommy-avatar-container {{
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--space-4);
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--accent);
+    box-shadow: 0 0 20px rgba(79, 209, 197, 0.2);
+    animation: avatar-breathe 4s ease-in-out infinite;
+}}
+
+.mommy-avatar-container svg {{
+    width: 100%;
+    height: 100%;
+}}
+
+/* Avatar breathing animation - subtle lifelike movement */
+@keyframes avatar-breathe {{
+    0%, 100% {{
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(79, 209, 197, 0.2);
+    }}
+    50% {{
+        transform: scale(1.02);
+        box-shadow: 0 0 25px rgba(79, 209, 197, 0.3);
+    }}
+}}
+
 .mommy-greeting {{
     font-family: var(--font-display);
-    font-size: 16px;
+    font-size: 18px;
     text-align: center;
     color: var(--text-primary);
     margin-bottom: var(--space-4);
     font-style: italic;
+    line-height: 1.5;
+    padding: 0 var(--space-2);
 }}
 
 .mommy-input {{
@@ -497,6 +531,86 @@ STYLES = f"""
 @keyframes typing-bounce {{
     0%, 80%, 100% {{ transform: translateY(0); }}
     40% {{ transform: translateY(-6px); }}
+}}
+
+/* ─── Text Reveal Animation ────────────────────────────────────────────── */
+.mommy-response {{
+    animation: text-reveal 0.4s ease-out;
+}}
+
+@keyframes text-reveal {{
+    from {{
+        opacity: 0;
+        transform: translateY(8px);
+    }}
+    to {{
+        opacity: 1;
+        transform: translateY(0);
+    }}
+}}
+
+/* ─── Quick Action Chips ───────────────────────────────────────────────── */
+.quick-chips {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+}}
+
+.quick-chip {{
+    display: inline-block;
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-full);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+}}
+
+.quick-chip:hover {{
+    background: rgba(79, 209, 197, 0.15);
+    transform: translateY(-1px);
+}}
+
+.quick-chip:active {{
+    transform: translateY(0);
+}}
+
+/* ─── Enhanced Position Card Danger Glow ───────────────────────────────── */
+@keyframes pulse-danger-glow {{
+    0%, 100% {{
+        box-shadow: 0 0 0 0 rgba(245, 101, 101, 0.4),
+                    0 0 15px rgba(245, 101, 101, 0.15);
+    }}
+    50% {{
+        box-shadow: 0 0 0 8px rgba(245, 101, 101, 0),
+                    0 0 25px rgba(245, 101, 101, 0.08);
+    }}
+}}
+
+.position-card.critical {{
+    animation: pulse-danger-glow 2s infinite;
+    border-color: var(--danger) !important;
+}}
+
+/* ─── Success Glow for Near-Target Positions ───────────────────────────── */
+@keyframes pulse-success-glow {{
+    0%, 100% {{
+        box-shadow: 0 0 0 0 rgba(72, 187, 120, 0.4),
+                    0 0 15px rgba(72, 187, 120, 0.15);
+    }}
+    50% {{
+        box-shadow: 0 0 0 8px rgba(72, 187, 120, 0),
+                    0 0 25px rgba(72, 187, 120, 0.08);
+    }}
+}}
+
+.position-card.winning {{
+    animation: pulse-success-glow 2s infinite;
+    border-color: var(--success) !important;
 }}
 
 /* ─── Strategy Health Card ──────────────────────────────────────────────── */
@@ -724,9 +838,10 @@ footer {{ visibility: hidden; }}
 
 .section-title {{
     font-family: var(--font-display);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 500;
     color: var(--text-primary);
+    letter-spacing: -0.02em;
 }}
 
 /* ─── Responsive ────────────────────────────────────────────────────────── */
