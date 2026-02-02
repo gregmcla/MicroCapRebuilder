@@ -536,16 +536,13 @@ with sidebar_col:
                 response = ai_chat(user_question)
             if response.success:
                 st.session_state.mommy_chat_response = response.message
-                st.rerun()
             else:
                 st.session_state.mommy_chat_response = None
                 st.error(response.error)
 
+        # Display response outside the submit block so it persists
         if st.session_state.mommy_chat_response:
-            response_html = f'<div class="mommy-response" style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 10px; border-radius: 8px; margin-top: 10px;">'
-            response_html += f'<div style="font-size: 13px; font-style: italic; color: {COLORS["text_primary"]};">"{st.session_state.mommy_chat_response}"</div>'
-            response_html += '</div>'
-            st.markdown(response_html, unsafe_allow_html=True)
+            st.markdown(f'<div style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; font-style: italic; color: {COLORS["text_primary"]};">"{st.session_state.mommy_chat_response}"</div>', unsafe_allow_html=True)
             if st.button("Clear", key="clear_chat", use_container_width=True):
                 st.session_state.mommy_chat_response = None
                 st.rerun()
