@@ -337,6 +337,88 @@ numpy          # Analytics calculations
 matplotlib     # Chart generation
 python-dotenv  # Environment variables
 streamlit      # Web dashboard
+anthropic      # Claude AI for chat and review (optional)
+```
+
+
+## Paper Mode vs Live Mode
+
+The system supports two modes controlled via `data/config.json`:
+
+```python
+# In config.json
+"mode": "paper"  # or "live"
+```
+
+**Paper Mode:**
+- Uses separate data files: `positions_paper.csv`, `transactions_paper.csv`, `daily_snapshots_paper.csv`
+- Safe for testing without affecting real portfolio data
+- Toggle via LIVE/PAPER button in dashboard header
+
+**Live Mode:**
+- Uses main data files: `positions.csv`, `transactions.csv`, `daily_snapshots.csv`
+- Real portfolio tracking
+
+```python
+# How it works in code
+def get_data_files():
+    suffix = "_paper" if is_paper_mode() else ""
+    return {
+        "positions": DATA_DIR / f"positions{suffix}.csv",
+        "transactions": DATA_DIR / f"transactions{suffix}.csv",
+        "snapshots": DATA_DIR / f"daily_snapshots{suffix}.csv",
+    }
+```
+
+
+## AI Chat System (Mommy Chat)
+
+The dashboard includes an AI chat feature powered by Claude:
+
+### Key Files
+- `portfolio_chat.py` - Chat interface with portfolio context
+- Requires `ANTHROPIC_API_KEY` in `.env` file
+
+### How It Works
+1. User asks a question in the sidebar
+2. System builds context from current positions, transactions, metrics
+3. Claude responds with portfolio-aware advice
+4. Response persists in session state until cleared
+
+### Setup
+```bash
+# Add to .env file
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Chat Context Includes
+- Current positions with P&L
+- Recent transactions
+- Risk metrics (Sharpe, drawdown)
+- Market regime
+- Positions near stops/targets
+
+
+## Watchlist & Universe Expansion
+
+### Watchlist File
+`data/watchlist.jsonl` - One JSON object per line:
+```json
+{"ticker": "CRDO", "added": "2026-01-15", "source": "discovery"}
+```
+
+### Discovery System (`watchlist_manager.py`)
+Scans for new candidates using multiple strategies:
+- **Momentum breakouts**: Stocks breaking above resistance
+- **Oversold bounces**: RSI < 30 with reversal signals
+- **Sector leaders**: Top performers in each sector
+- **Volume surges**: Unusual volume with price movement
+
+```bash
+# Run discovery
+python scripts/watchlist_manager.py --update
+
+# From dashboard: click DISCOVER button
 ```
 
 ## Testing
@@ -542,6 +624,32 @@ python scripts/watchlist_manager.py --update
 
 # Show watchlist status
 python scripts/watchlist_manager.py --status
+```
+
+
+## Git Workflow
+
+### Branch Structure
+- `main` - Stable production code
+- `claude/*` - Feature branches created by Claude Code sessions
+
+### Common Issue: Local config.json Conflicts
+The dashboard modifies `data/config.json` when toggling LIVE/PAPER mode. This causes merge conflicts when pulling.
+
+**Fix:**
+```bash
+git checkout data/config.json
+git pull origin <branch-name>
+```
+
+### Auto-Pull Script
+`run_dashboard.sh` automatically pulls before starting:
+```bash
+#!/bin/bash
+cd ~/MicroCapRebuilder
+git pull origin claude/add-claude-documentation-SJTa1
+source .venv/bin/activate
+streamlit run scripts/webapp.py
 ```
 
 
