@@ -26,15 +26,23 @@ MicroCapRebuilder/
 │   ├── trade_analyzer.py       # Trade performance analysis
 │   ├── generate_report.py      # Daily text report generation
 │   ├── generate_graph.py       # Performance chart generation
-│   ├── webapp.py               # Streamlit web dashboard
+│   ├── webapp.py               # Streamlit web dashboard (tab-based)
+│   ├── webapp_styles.py        # CSS design system
+│   ├── webapp_components.py    # Reusable UI components
+│   ├── webapp_helpers.py       # Dashboard helper functions
+│   ├── avatar_svg.py           # SVG avatar generator
+│   ├── avatar_states.py        # Avatar state management
+│   ├── portfolio_chat.py       # AI chat functionality
 │   ├── overlay_stats.py        # Statistics overlay on charts
 │   ├── schema.py               # Centralized data schemas
 │   ├── migrate_data.py         # Legacy data migration (one-time)
 │   ├── set_roi_baseline.py     # ROI baseline recording
 │   ├── build_watchlist.py      # Watchlist generator
+│   ├── watchlist_manager.py    # Watchlist discovery and management
 │   ├── strategy_health.py      # Strategy Health Dashboard (A-F grading)
 │   ├── strategy_pivot.py       # PIVOT analysis and recommendations
 │   └── early_warning.py        # Early warning system
+├── run_dashboard.sh            # Auto-pull + start dashboard
 ├── data/                       # Data files
 │   ├── config.json             # Centralized configuration
 │   ├── watchlist.jsonl         # Stock watchlist (66 tickers)
@@ -154,22 +162,75 @@ Generates comprehensive text report (`reports/daily_report.txt`):
 ### Web Dashboard
 
 #### `webapp.py` - Streamlit Dashboard
-Browser-based dashboard for daily portfolio check-ins.
+Browser-based dashboard with **tab-based navigation architecture** for reduced cognitive load.
 
 **Launch:**
 ```bash
 streamlit run scripts/webapp.py
 ```
 
-**Features:**
-- Portfolio summary metrics (equity, positions value, cash)
-- Market regime display with bull/bear/sideways indicators
-- Performance metrics (Sharpe ratio, max drawdown, total return)
-- Trade statistics (win rate, profit factor, realized P&L)
-- Positions table with color-coded P&L
-- Recent transactions list
-- Equity curve chart
-- Auto-refresh button
+Or use the auto-pull helper (pulls latest changes before running):
+```bash
+./run_dashboard.sh
+```
+
+#### Dashboard Architecture (Tab-Based Navigation)
+
+The dashboard uses a tab-based navigation system instead of a single mega-scroll page:
+
+| Tab | Contents |
+|-----|----------|
+| **Dashboard** | Alerts (positions near stop/target), Top 5 positions needing attention, Compact equity curve, Recent activity |
+| **Positions** | Full positions list, Cards/Table toggle, REFRESH and UPDATE buttons |
+| **Analysis** | ANALYZE + EXECUTE buttons, AI review results, Portfolio treemap, Risk metrics, Diversification |
+| **Activity** | Full transaction history, Trade history/journal |
+| **Discover** | RUN DISCOVERY button for stock screening |
+
+#### Global Elements (Always Visible)
+
+1. **Header Bar**: Logo + Navigation tabs + Status dot + LIVE/PAPER toggle + ⚠️ Emergency button
+2. **Compact Metrics Strip** (50px): Equity | Today P&L | Total P&L | Cash | Regime badge
+3. **Mommy Sidebar** (persistent right panel): Avatar, greeting, insights, chat input
+
+#### Key Dashboard Files
+
+```
+scripts/
+├── webapp.py              # Main dashboard (tab-based navigation)
+├── webapp_styles.py       # CSS design system (colors, typography, components)
+├── webapp_components.py   # Reusable UI components (cards, charts, etc.)
+├── webapp_helpers.py      # Helper functions (greetings, calculations)
+├── avatar_svg.py          # Programmatic SVG avatar generator (4 expressions)
+├── avatar_states.py       # Avatar state management based on portfolio conditions
+└── portfolio_chat.py      # AI chat functionality
+```
+
+#### Avatar System
+
+The Mommy avatar has 4 expressions determined by portfolio state:
+- **neutral**: Default state
+- **pleased**: Good day P&L or positions near targets
+- **concerned**: Positions near stop loss or high drawdown
+- **skeptical**: Bear market regime
+
+```python
+from avatar_svg import get_avatar_svg
+from avatar_states import determine_avatar_state_simple
+
+state = determine_avatar_state_simple(day_pnl=100, positions_near_stop=0, ...)
+svg = get_avatar_svg(state.value, size=80)
+```
+
+#### Session State Keys
+
+The dashboard uses these Streamlit session state keys:
+- `current_tab`: Active navigation tab ("Dashboard", "Positions", etc.)
+- `unified_analysis`: Results from ANALYZE button
+- `show_execute_confirm`: Execute confirmation dialog
+- `show_emergency_modal`: Emergency controls modal
+- `mommy_chat_response`: Persisted chat response
+- `view_mode`: Positions view mode ("cards" or "table")
+- `chart_timeframe`: Equity curve timeframe ("1W", "1M", "3M", "YTD", "ALL")
 
 ## Data Schemas
 
@@ -317,6 +378,38 @@ Position sizing now tracks remaining cash as buys are proposed:
 - Shows "(${amount} remaining)" in output
 
 
+## Design System
+
+The dashboard uses a custom design system defined in `webapp_styles.py`:
+
+### Color Palette
+```python
+COLORS = {
+    "bg_primary": "#0A1628",      # Deep navy background
+    "bg_card": "#111D2E",         # Card background
+    "accent_teal": "#4FD1C5",     # Primary accent (teal)
+    "success": "#48BB78",         # Green (profits, bull)
+    "warning": "#ED8936",         # Orange (caution)
+    "danger": "#F56565",          # Red (losses, bear, stops)
+    "text_primary": "#F7FAFC",    # Main text
+    "text_secondary": "#A0AEC0",  # Secondary text
+    "text_muted": "#4A5568",      # Muted text
+}
+```
+
+### Typography
+- **Display font**: Fraunces (serif) - for headers and branding
+- **Body font**: Inter (sans-serif) - for content
+
+### CSS Classes (defined in webapp_styles.py)
+- `.metrics-strip` - Compact top metrics bar
+- `.nav-tab` / `.nav-tab.active` - Navigation tabs
+- `.alert-card` / `.alert-card.danger` / `.alert-card.success` - Alert cards
+- `.regime-badge.bull` / `.bear` / `.sideways` - Regime indicators
+- `.mommy-avatar-container` - Avatar with breathing animation
+- `.quick-chips` / `.quick-chip` - Chat quick-action chips
+
+
 ## Common Mistakes to Avoid
 
 ### Streamlit HTML Rendering
@@ -382,6 +475,47 @@ for candidate in candidates:
         print(f"Skipping {ticker} - insufficient cash")
         continue
     remaining_cash -= shares * price
+```
+
+### Streamlit Chat Response Persistence
+**Problem**: Chat responses disappear after form submission because the page reruns.
+
+**Solution**: Store response in session state and display OUTSIDE the submit block:
+```python
+# Initialize session state
+if "chat_response" not in st.session_state:
+    st.session_state.chat_response = None
+
+# Form with clear_on_submit
+with st.form(key="chat_form", clear_on_submit=True):
+    user_input = st.text_input("Ask", label_visibility="collapsed")
+    submitted = st.form_submit_button("Send")
+
+# Process submission and store in session state
+if submitted and user_input:
+    response = ai_chat(user_input)
+    if response.success:
+        st.session_state.chat_response = response.message
+
+# Display OUTSIDE the if block so it persists across reruns
+if st.session_state.chat_response:
+    st.markdown(f'"{st.session_state.chat_response}"')
+    if st.button("Clear"):
+        st.session_state.chat_response = None
+        st.rerun()
+```
+
+### SVG Rendering in Streamlit
+**Problem**: SVG gradients (`<linearGradient>`) and filters don't render in Streamlit's markdown.
+
+**Solution**: Use solid colors instead of gradients:
+```python
+# BAD - gradients won't render
+svg = '<linearGradient id="grad"><stop offset="0%" stop-color="#4FD1C5"/></linearGradient>'
+svg += '<circle fill="url(#grad)"/>'
+
+# GOOD - solid colors work
+svg = '<circle fill="#4FD1C5"/>'
 ```
 
 
