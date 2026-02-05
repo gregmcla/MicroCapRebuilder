@@ -16,3 +16,4 @@ backup/
 .env.*
 *.secret
 secrets/
+.worktrees/
