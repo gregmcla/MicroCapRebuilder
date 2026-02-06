@@ -31,15 +31,8 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from market_regime import get_market_regime, get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config as load_base_config, CONFIG_FILE
-)
-
-
-def load_config() -> dict:
-    """Load configuration from config.json."""
-    return load_base_config()
+from portfolio_state import load_portfolio_state
+from data_files import CONFIG_FILE
 
 
 def save_config(config: dict):
@@ -99,7 +92,9 @@ class StrategyPivotAnalyzer:
     """Analyze strategy and generate pivot recommendations."""
 
     def __init__(self):
-        self.config = load_config()
+        # Load config on-demand from portfolio state
+        state = load_portfolio_state(fetch_prices=False)
+        self.config = state.config
         self.analytics = PortfolioAnalytics()
         self.trade_analyzer = TradeAnalyzer()
 
@@ -142,10 +137,8 @@ class StrategyPivotAnalyzer:
 
     def _load_positions(self) -> pd.DataFrame:
         """Load current positions."""
-        positions_file = get_positions_file()
-        if not positions_file.exists():
-            return pd.DataFrame()
-        return pd.read_csv(positions_file)
+        state = load_portfolio_state(fetch_prices=False)
+        return state.positions
 
     def _diagnose(self, health: StrategyHealth, trade_stats, risk_scoreboard, positions_df, regime) -> Tuple[List[DiagnosisItem], List[DiagnosisItem]]:
         """Diagnose what's working and what's failing."""
@@ -441,7 +434,8 @@ class StrategyPivotAnalyzer:
     def apply_pivot(self, pivot: PivotRecommendation) -> bool:
         """Apply a pivot recommendation to the config."""
         try:
-            config = load_config()
+            state = load_portfolio_state(fetch_prices=False)
+            config = state.config
 
             for key, value in pivot.config_changes.items():
                 # Handle nested keys like "scoring.default_weights.momentum"

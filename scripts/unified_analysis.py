@@ -20,88 +20,27 @@ Usage:
 """
 
 import json
-import sys
-from datetime import date, datetime
-from pathlib import Path
-from typing import Optional
 import uuid
+from datetime import date, datetime
 
-import pandas as pd
-
-# Add script directory to path
-sys.path.insert(0, str(Path(__file__).parent))
-
-from schema import TRANSACTION_COLUMNS, POSITION_COLUMNS, Action, Reason
+from schema import Action, Reason
 from stock_scorer import StockScorer
-from market_regime import get_market_regime, get_position_size_multiplier, MarketRegime, get_regime_analysis
+from market_regime import MarketRegime, get_position_size_multiplier
 from risk_manager import RiskManager
 from capital_preservation import get_preservation_status
 from ai_review import (
     ProposedAction, ReviewedAction, ReviewDecision,
     review_proposed_actions, format_review_summary
 )
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config as load_base_config, is_paper_mode, get_mode_indicator,
-    DATA_DIR, get_watchlist_file
+from data_files import get_mode_indicator
+from portfolio_state import (
+    load_portfolio_state,
+    load_watchlist,
+    save_transactions_batch,
+    update_position,
+    remove_position,
+    save_positions,
 )
-
-# ─── Configuration ────────────────────────────────────────────────────────────
-
-CONFIG_PATH = DATA_DIR / "config.json"
-
-
-def load_config() -> dict:
-    """Load configuration."""
-    if CONFIG_PATH.exists():
-        with open(CONFIG_PATH) as f:
-            return json.load(f)
-    return {
-        "starting_capital": 50000.0,
-        "risk_per_trade_pct": 10.0,
-        "max_positions": 15,
-        "default_stop_loss_pct": 8.0,
-        "default_take_profit_pct": 20.0,
-    }
-
-
-def load_watchlist() -> list:
-    """Load tickers from watchlist."""
-    watchlist_path = get_watchlist_file()
-    if not watchlist_path.exists():
-        return []
-
-    with open(watchlist_path, "r") as f:
-        watchlist = [json.loads(line) for line in f if line.strip()]
-
-    return [item["ticker"] for item in watchlist]
-
-
-def load_positions() -> pd.DataFrame:
-    """Load current positions."""
-    positions_file = get_positions_file()
-    if not positions_file.exists():
-        return pd.DataFrame(columns=POSITION_COLUMNS)
-    return pd.read_csv(positions_file)
-
-
-def load_transactions() -> pd.DataFrame:
-    """Load transactions."""
-    tx_file = get_transactions_file()
-    if not tx_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(tx_file)
-
-
-def calculate_cash(config: dict, transactions_df: pd.DataFrame) -> float:
-    """Calculate available cash."""
-    if transactions_df.empty:
-        return config["starting_capital"]
-
-    total_spent = transactions_df[transactions_df["action"] == "BUY"]["total_value"].sum()
-    total_received = transactions_df[transactions_df["action"] == "SELL"]["total_value"].sum()
-
-    return config["starting_capital"] - total_spent + total_received
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -131,25 +70,13 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     print(f"UNIFIED ANALYSIS - {get_mode_indicator()}")
     print(f"{'='*60}\n")
 
-    config = load_config()
-    positions_df = load_positions()
-    transactions_df = load_transactions()
-    cash = calculate_cash(config, transactions_df)
+    # Single state load replaces 5 separate loads
+    state = load_portfolio_state(fetch_prices=True)
+    config = state.config
+    regime = state.regime
+    position_multiplier = get_position_size_multiplier(regime)
 
-    positions_value = positions_df["market_value"].sum() if not positions_df.empty else 0
-    total_equity = positions_value + cash
-    num_positions = len(positions_df)
-
-    # Get market regime
-    try:
-        regime_analysis = get_regime_analysis()
-        regime = regime_analysis.regime
-        position_multiplier = regime_analysis.position_multiplier
-    except:
-        regime = MarketRegime.SIDEWAYS
-        position_multiplier = 0.5
-
-    print(f"Portfolio: ${total_equity:,.0f} | Cash: ${cash:,.0f} | Positions: {num_positions}")
+    print(f"Portfolio: ${state.total_equity:,.0f} | Cash: ${state.cash:,.0f} | Positions: {state.num_positions}")
     print(f"Market Regime: {regime.value} | Position Multiplier: {position_multiplier:.0%}")
     print()
 
@@ -167,12 +94,12 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     # ─── Step 1: Check Stop Loss / Take Profit Triggers ───────────────────────
     print("Checking stop loss / take profit triggers...")
 
-    if not positions_df.empty:
+    if not state.positions.empty:
         risk_manager = RiskManager()
 
-        for _, pos in positions_df.iterrows():
+        for _, pos in state.positions.iterrows():
             ticker = pos["ticker"]
-            current_price = pos["current_price"]
+            current_price = state.price_cache.get(ticker, pos["current_price"])
             stop_loss = pos.get("stop_loss", 0)
             take_profit = pos.get("take_profit", 0)
             shares = pos["shares"]
@@ -221,11 +148,11 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
         print("  ⚠️  Bear market - skipping new buys")
     elif preservation_active:
         print("  ⚠️  Preservation mode - skipping new buys")
-    elif num_positions >= config.get("max_positions", 15):
-        print(f"  ⚠️  At max positions ({num_positions}) - skipping new buys")
+    elif state.num_positions >= config.get("max_positions", 15):
+        print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
     else:
         watchlist = load_watchlist()
-        current_tickers = set(positions_df["ticker"].tolist()) if not positions_df.empty else set()
+        current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
         candidates = [t for t in watchlist if t not in current_tickers]
 
         if candidates:
@@ -255,12 +182,12 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
 
             # Calculate position size
             risk_per_trade = config.get("risk_per_trade_pct", 10.0) / 100
-            max_position_value = total_equity * risk_per_trade * position_multiplier
+            max_position_value = state.total_equity * risk_per_trade * position_multiplier
             stop_loss_pct = config.get("default_stop_loss_pct", 8.0) / 100
             take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
 
-            slots_available = config.get("max_positions", 15) - num_positions
-            remaining_cash = cash  # Track how much cash is left as we propose buys
+            slots_available = config.get("max_positions", 15) - state.num_positions
+            remaining_cash = state.cash  # Track how much cash is left as we propose buys
 
             for i, candidate in enumerate(top_candidates[:slots_available]):
                 ticker = candidate["ticker"]
@@ -313,9 +240,9 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
 
     # Build portfolio context for AI
     portfolio_context = {
-        "total_equity": total_equity,
-        "cash": cash,
-        "num_positions": num_positions,
+        "total_equity": state.total_equity,
+        "cash": state.cash,
+        "num_positions": state.num_positions,
         "regime": regime.value,
         "win_rate": 0.5,  # Could calculate from transactions
         "positions": [
@@ -323,10 +250,10 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
                 "ticker": pos["ticker"],
                 "shares": pos["shares"],
                 "pnl_pct": pos.get("unrealized_pnl_pct", 0),
-                "weight": (pos["market_value"] / total_equity * 100) if total_equity > 0 else 0
+                "weight": (pos["market_value"] / state.total_equity * 100) if state.total_equity > 0 else 0
             }
-            for _, pos in positions_df.iterrows()
-        ] if not positions_df.empty else []
+            for _, pos in state.positions.iterrows()
+        ] if not state.positions.empty else []
     }
 
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context)
@@ -372,8 +299,8 @@ def execute_approved_actions(analysis_result: dict) -> dict:
     if not actions_to_execute:
         return {"executed": 0, "message": "No actions to execute"}
 
-    config = load_config()
-    positions_df = load_positions()
+    # Load fresh state for execution
+    state = load_portfolio_state(fetch_prices=False)
     transactions = []
 
     print(f"\n{'='*60}")
@@ -409,60 +336,20 @@ def execute_approved_actions(analysis_result: dict) -> dict:
         }
         transactions.append(tx)
 
+        # Update positions
+        if action.action_type == "BUY":
+            state = update_position(state, action.ticker, shares, action.price, stop_loss, take_profit)
+        elif action.action_type == "SELL":
+            state = remove_position(state, action.ticker)
+
         mod_note = " (MODIFIED)" if reviewed.decision == ReviewDecision.MODIFY else ""
         print(f"  ✅ {action.action_type} {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
         print(f"     AI: {reviewed.ai_reasoning}")
 
-    # Save transactions
+    # Save everything at once
     if transactions:
-        tx_file = get_transactions_file()
-        df_new = pd.DataFrame(transactions)
-
-        if tx_file.exists():
-            df_existing = pd.read_csv(tx_file)
-            df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-        else:
-            df_combined = df_new
-
-        df_combined.to_csv(tx_file, index=False)
-
-        # Update positions
-        positions_file = get_positions_file()
-        for tx in transactions:
-            if tx["action"] == "BUY":
-                # Add or update position
-                if tx["ticker"] in positions_df["ticker"].values:
-                    idx = positions_df[positions_df["ticker"] == tx["ticker"]].index[0]
-                    existing_shares = positions_df.at[idx, "shares"]
-                    existing_cost = positions_df.at[idx, "avg_cost_basis"]
-                    new_shares = existing_shares + tx["shares"]
-                    new_cost = ((existing_shares * existing_cost) + (tx["shares"] * tx["price"])) / new_shares
-                    positions_df.at[idx, "shares"] = new_shares
-                    positions_df.at[idx, "avg_cost_basis"] = round(new_cost, 2)
-                    positions_df.at[idx, "current_price"] = tx["price"]
-                    positions_df.at[idx, "market_value"] = round(new_shares * tx["price"], 2)
-                    positions_df.at[idx, "stop_loss"] = tx["stop_loss"]
-                    positions_df.at[idx, "take_profit"] = tx["take_profit"]
-                else:
-                    new_row = {
-                        "ticker": tx["ticker"],
-                        "shares": tx["shares"],
-                        "avg_cost_basis": tx["price"],
-                        "current_price": tx["price"],
-                        "market_value": tx["total_value"],
-                        "unrealized_pnl": 0.0,
-                        "unrealized_pnl_pct": 0.0,
-                        "stop_loss": tx["stop_loss"],
-                        "take_profit": tx["take_profit"],
-                        "entry_date": tx["date"],
-                    }
-                    positions_df = pd.concat([positions_df, pd.DataFrame([new_row])], ignore_index=True)
-
-            elif tx["action"] == "SELL":
-                # Remove position
-                positions_df = positions_df[positions_df["ticker"] != tx["ticker"]]
-
-        positions_df.to_csv(positions_file, index=False)
+        state = save_transactions_batch(state, transactions)
+        save_positions(state)
 
     print(f"\n✅ Executed {len(transactions)} action(s)")
     return {"executed": len(transactions), "transactions": transactions}

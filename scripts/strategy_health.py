@@ -27,15 +27,7 @@ from analytics import PortfolioAnalytics, RiskMetrics
 from trade_analyzer import TradeAnalyzer, TradeStats
 from market_regime import get_market_regime, get_regime_analysis, MarketRegime
 from risk_scoreboard import get_risk_scoreboard, RiskScoreboard
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config as load_base_config
-)
-
-
-def load_config() -> dict:
-    """Load configuration from config.json."""
-    return load_base_config()
+from portfolio_state import load_portfolio_state
 
 
 # ─── Grade Thresholds ───
@@ -93,7 +85,9 @@ class StrategyHealthCalculator:
     }
 
     def __init__(self):
-        self.config = load_config()
+        # Load config on-demand from portfolio state
+        state = load_portfolio_state(fetch_prices=False)
+        self.config = state.config
         self.analytics = PortfolioAnalytics()
         self.trade_analyzer = TradeAnalyzer()
 
@@ -166,10 +160,8 @@ class StrategyHealthCalculator:
 
     def _load_positions(self) -> pd.DataFrame:
         """Load current positions."""
-        positions_file = get_positions_file()
-        if not positions_file.exists():
-            return pd.DataFrame()
-        return pd.read_csv(positions_file)
+        state = load_portfolio_state(fetch_prices=False)
+        return state.positions
 
     def _calc_performance(self, metrics: Optional[RiskMetrics]) -> HealthComponent:
         """Calculate performance health (returns, Sharpe, alpha)."""

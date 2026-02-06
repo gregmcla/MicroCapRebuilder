@@ -42,13 +42,7 @@ def _load_env():
 
 _loaded_from = _load_env()
 
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config, is_paper_mode
-)
-
-# ─── Configuration ────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
+from portfolio_state import load_portfolio_state
 
 
 @dataclass
@@ -66,94 +60,79 @@ def get_api_key() -> Optional[str]:
 
 def get_portfolio_context() -> str:
     """Build context about current portfolio state for the AI."""
-    config = load_config()
-    mode = "PAPER TRADING" if is_paper_mode() else "LIVE TRADING"
-
-    # Load data
-    positions_file = get_positions_file()
-    transactions_file = get_transactions_file()
-    snapshots_file = get_daily_snapshots_file()
+    state = load_portfolio_state(fetch_prices=False)
+    mode = "PAPER TRADING" if state.paper_mode else "LIVE TRADING"
 
     context_parts = [
         f"# Portfolio Status ({mode})",
         f"Date: {date.today().isoformat()}",
-        f"Starting Capital: ${config.get('starting_capital', 50000):,.2f}",
+        f"Starting Capital: ${state.config.get('starting_capital', 50000):,.2f}",
         "",
     ]
 
     # Positions
-    if positions_file.exists():
-        positions_df = pd.read_csv(positions_file)
-        if not positions_df.empty:
-            total_value = positions_df["market_value"].sum()
-            total_pnl = positions_df["unrealized_pnl"].sum()
+    if not state.positions.empty:
+        total_value = state.positions["market_value"].sum()
+        total_pnl = state.positions["unrealized_pnl"].sum()
 
-            context_parts.append("## Current Positions")
-            context_parts.append(f"Total Positions: {len(positions_df)}")
-            context_parts.append(f"Total Value: ${total_value:,.2f}")
-            context_parts.append(f"Unrealized P&L: ${total_pnl:+,.2f}")
-            context_parts.append("")
-            context_parts.append("| Ticker | Shares | Avg Cost | Current | P&L | P&L % | Stop | Target |")
-            context_parts.append("|--------|--------|----------|---------|-----|-------|------|--------|")
+        context_parts.append("## Current Positions")
+        context_parts.append(f"Total Positions: {len(state.positions)}")
+        context_parts.append(f"Total Value: ${total_value:,.2f}")
+        context_parts.append(f"Unrealized P&L: ${total_pnl:+,.2f}")
+        context_parts.append("")
+        context_parts.append("| Ticker | Shares | Avg Cost | Current | P&L | P&L % | Stop | Target |")
+        context_parts.append("|--------|--------|----------|---------|-----|-------|------|--------|")
 
-            for _, row in positions_df.iterrows():
-                context_parts.append(
-                    f"| {row['ticker']} | {int(row['shares'])} | "
-                    f"${row['avg_cost_basis']:.2f} | ${row['current_price']:.2f} | "
-                    f"${row['unrealized_pnl']:+.2f} | {row['unrealized_pnl_pct']:+.1f}% | "
-                    f"${row.get('stop_loss', 0):.2f} | ${row.get('take_profit', 0):.2f} |"
-                )
-            context_parts.append("")
-        else:
-            context_parts.append("## Current Positions")
-            context_parts.append("No active positions.")
-            context_parts.append("")
+        for _, row in state.positions.iterrows():
+            context_parts.append(
+                f"| {row['ticker']} | {int(row['shares'])} | "
+                f"${row['avg_cost_basis']:.2f} | ${row['current_price']:.2f} | "
+                f"${row['unrealized_pnl']:+.2f} | {row['unrealized_pnl_pct']:+.1f}% | "
+                f"${row.get('stop_loss', 0):.2f} | ${row.get('take_profit', 0):.2f} |"
+            )
+        context_parts.append("")
+    else:
+        context_parts.append("## Current Positions")
+        context_parts.append("No active positions.")
+        context_parts.append("")
 
-    # Calculate cash
-    if transactions_file.exists():
-        transactions_df = pd.read_csv(transactions_file)
-        if not transactions_df.empty:
-            buys = transactions_df[transactions_df["action"] == "BUY"]["total_value"].sum()
-            sells = transactions_df[transactions_df["action"] == "SELL"]["total_value"].sum()
-            cash = config.get("starting_capital", 50000) - buys + sells
-            context_parts.append(f"## Cash Available: ${cash:,.2f}")
-            context_parts.append("")
+    # Cash
+    context_parts.append(f"## Cash Available: ${state.cash:,.2f}")
+    context_parts.append("")
 
-            # Recent transactions
-            recent = transactions_df.tail(10)
-            if not recent.empty:
-                context_parts.append("## Recent Transactions (last 10)")
-                context_parts.append("| Date | Action | Ticker | Shares | Price | Reason |")
-                context_parts.append("|------|--------|--------|--------|-------|--------|")
-                for _, row in recent.iloc[::-1].iterrows():
-                    context_parts.append(
-                        f"| {row['date']} | {row['action']} | {row['ticker']} | "
-                        f"{int(row['shares'])} | ${row['price']:.2f} | {row.get('reason', '')} |"
-                    )
-                context_parts.append("")
+    # Recent transactions
+    if not state.transactions.empty:
+        recent = state.transactions.tail(10)
+        context_parts.append("## Recent Transactions (last 10)")
+        context_parts.append("| Date | Action | Ticker | Shares | Price | Reason |")
+        context_parts.append("|------|--------|--------|--------|-------|--------|")
+        for _, row in recent.iloc[::-1].iterrows():
+            context_parts.append(
+                f"| {row['date']} | {row['action']} | {row['ticker']} | "
+                f"{int(row['shares'])} | ${row['price']:.2f} | {row.get('reason', '')} |"
+            )
+        context_parts.append("")
 
     # Daily performance
-    if snapshots_file.exists():
-        snapshots_df = pd.read_csv(snapshots_file)
-        if not snapshots_df.empty:
-            latest = snapshots_df.iloc[-1]
-            context_parts.append("## Today's Performance")
-            context_parts.append(f"Total Equity: ${latest['total_equity']:,.2f}")
-            context_parts.append(f"Day P&L: ${latest.get('day_pnl', 0):+,.2f} ({latest.get('day_pnl_pct', 0):+.2f}%)")
-            context_parts.append("")
+    if not state.snapshots.empty:
+        latest = state.snapshots.iloc[-1]
+        context_parts.append("## Today's Performance")
+        context_parts.append(f"Total Equity: ${latest['total_equity']:,.2f}")
+        context_parts.append(f"Day P&L: ${latest.get('day_pnl', 0):+,.2f} ({latest.get('day_pnl_pct', 0):+.2f}%)")
+        context_parts.append("")
 
-            # Calculate overall return
-            starting = config.get("starting_capital", 50000)
-            total_return = ((latest['total_equity'] - starting) / starting) * 100
-            context_parts.append(f"Total Return: {total_return:+.2f}%")
-            context_parts.append("")
+        # Calculate overall return
+        starting = state.config.get("starting_capital", 50000)
+        total_return = ((latest['total_equity'] - starting) / starting) * 100
+        context_parts.append(f"Total Return: {total_return:+.2f}%")
+        context_parts.append("")
 
     # Risk parameters
     context_parts.append("## Risk Parameters")
-    context_parts.append(f"Stop Loss: {config.get('default_stop_loss_pct', 8)}%")
-    context_parts.append(f"Take Profit: {config.get('default_take_profit_pct', 20)}%")
-    context_parts.append(f"Max Positions: {config.get('max_positions', 15)}")
-    context_parts.append(f"Risk Per Trade: {config.get('risk_per_trade_pct', 10)}%")
+    context_parts.append(f"Stop Loss: {state.config.get('default_stop_loss_pct', 8)}%")
+    context_parts.append(f"Take Profit: {state.config.get('default_take_profit_pct', 20)}%")
+    context_parts.append(f"Max Positions: {state.config.get('max_positions', 15)}")
+    context_parts.append(f"Risk Per Trade: {state.config.get('risk_per_trade_pct', 10)}%")
 
     return "\n".join(context_parts)
 

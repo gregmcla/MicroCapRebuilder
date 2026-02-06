@@ -71,68 +71,13 @@ from webapp_components import (
 from avatar_svg import get_avatar_svg
 from avatar_states import determine_avatar_state_simple
 
-# ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
-CONFIG_FILE = DATA_DIR / "config.json"
-
-
-def load_config():
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return {"starting_capital": 50000.0}
-
-
-def is_paper_mode():
-    config = load_config()
-    return config.get("mode", "live") == "paper"
-
-
-def set_paper_mode(enabled: bool):
-    config = load_config()
-    config["mode"] = "paper" if enabled else "live"
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=2)
-
-
-def get_data_files():
-    suffix = "_paper" if is_paper_mode() else ""
-    return {
-        "positions": DATA_DIR / f"positions{suffix}.csv",
-        "transactions": DATA_DIR / f"transactions{suffix}.csv",
-        "snapshots": DATA_DIR / f"daily_snapshots{suffix}.csv",
-    }
-
-
-def load_positions():
-    files = get_data_files()
-    if not files["positions"].exists():
-        return pd.DataFrame()
-    return pd.read_csv(files["positions"])
-
-
-def load_transactions():
-    files = get_data_files()
-    if not files["transactions"].exists():
-        return pd.DataFrame()
-    return pd.read_csv(files["transactions"])
-
-
-def load_snapshots():
-    files = get_data_files()
-    if not files["snapshots"].exists():
-        return pd.DataFrame()
-    return pd.read_csv(files["snapshots"])
-
-
-def calculate_cash():
-    config = load_config()
-    transactions_df = load_transactions()
-    if transactions_df.empty:
-        return config["starting_capital"]
-    buys = transactions_df[transactions_df["action"] == "BUY"]["total_value"].sum()
-    sells = transactions_df[transactions_df["action"] == "SELL"]["total_value"].sum()
-    return config["starting_capital"] - buys + sells
+# ─── Data Layer (via portfolio_state) ─────────────────────────────────────────
+from portfolio_state import load_portfolio_state, save_transactions_batch, remove_position, save_positions
+from data_files import (
+    load_config as _load_config, save_config as _save_config,
+    is_paper_mode, set_paper_mode, DATA_DIR, CONFIG_FILE,
+    get_positions_file,
+)
 
 
 def get_trade_stats(transactions_df):
@@ -179,14 +124,13 @@ def close_all_positions():
     """Emergency close all positions - creates SELL transactions for each position."""
     import uuid
     from datetime import date as dt_date
-    from schema import TRANSACTION_COLUMNS, Action, Reason
 
-    positions_df = load_positions()
-    if positions_df.empty:
+    state = load_portfolio_state(fetch_prices=False)
+    if state.positions.empty:
         return 0, "No positions to close"
 
     transactions = []
-    for _, pos in positions_df.iterrows():
+    for _, pos in state.positions.iterrows():
         tx = {
             "transaction_id": str(uuid.uuid4())[:8],
             "date": dt_date.today().isoformat(),
@@ -205,17 +149,11 @@ def close_all_positions():
         }
         transactions.append(tx)
 
-    files = get_data_files()
-    df_new = pd.DataFrame(transactions)
-
-    if files["transactions"].exists():
-        df_existing = pd.read_csv(files["transactions"])
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-    else:
-        df_combined = df_new
-
-    df_combined.to_csv(files["transactions"], index=False)
-    pd.DataFrame(columns=positions_df.columns).to_csv(files["positions"], index=False)
+    # Save transactions and clear positions
+    state = save_transactions_batch(state, transactions)
+    for _, pos in state.positions.iterrows():
+        state = remove_position(state, pos['ticker'])
+    save_positions(state)
 
     return len(transactions), f"Closed {len(transactions)} positions"
 
@@ -257,19 +195,22 @@ if "sidebar_collapsed" not in st.session_state:
 # ─── Inject CSS ───────────────────────────────────────────────────────────────
 st.markdown(inject_styles(), unsafe_allow_html=True)
 
-# ─── Load All Data ────────────────────────────────────────────────────────────
-config = load_config()
-positions_df = load_positions()
-transactions_df = load_transactions()
-snapshots_df = load_snapshots()
-cash = calculate_cash()
+# ─── Load All Data (single portfolio_state call) ─────────────────────────────
+_state = load_portfolio_state(fetch_prices=False)
+config = _state.config
+positions_df = _state.positions
+transactions_df = _state.transactions
+snapshots_df = _state.snapshots
+cash = _state.cash
+positions_value = _state.positions_value
+total_equity = _state.total_equity
+num_positions = _state.num_positions
+regime = _state.regime.value
+regime_analysis = _state.regime_analysis
 
-positions_value = positions_df["market_value"].sum() if not positions_df.empty else 0
-total_equity = positions_value + cash
 starting_capital = config.get("starting_capital", 50000.0)
 total_return = total_equity - starting_capital
 total_return_pct = (total_return / starting_capital) * 100
-num_positions = len(positions_df) if not positions_df.empty else 0
 day_pnl = snapshots_df.iloc[-1].get("day_pnl", 0) if not snapshots_df.empty else 0
 day_pnl_pct = snapshots_df.iloc[-1].get("day_pnl_pct", 0) if not snapshots_df.empty else 0
 
@@ -289,13 +230,6 @@ win_rate = trade_stats.get('win_rate', 0)
 profit_factor = trade_stats.get('profit_factor', 0)
 avg_win = trade_stats.get('avg_win', 0)
 avg_loss = trade_stats.get('avg_loss', 0)
-
-# Get regime
-try:
-    regime_analysis = get_regime_analysis()
-    regime = regime_analysis.regime.value
-except:
-    regime = "UNKNOWN"
 
 # Check API status
 chat_ready, chat_error = check_chat_setup()

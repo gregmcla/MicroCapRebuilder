@@ -17,15 +17,7 @@ import pandas as pd
 import numpy as np
 
 from market_regime import get_market_regime, MarketRegime
-from data_files import (
-    get_positions_file, get_daily_snapshots_file,
-    load_config as load_base_config, CONFIG_FILE
-)
-
-
-def load_config() -> dict:
-    """Load configuration from config.json."""
-    return load_base_config()
+from portfolio_state import load_portfolio_state
 
 
 # ─── Risk Levels ───
@@ -91,15 +83,13 @@ class RiskScoreboardCalculator:
     }
 
     def __init__(self):
-        self.config = load_config()
-        self.starting_capital = self.config.get("starting_capital", 50000.0)
+        self.state = load_portfolio_state(fetch_prices=False)
 
     def calculate(self) -> RiskScoreboard:
         """Calculate full risk scoreboard."""
-        # Load data
-        positions_df = self._load_positions()
-        snapshots_df = self._load_snapshots()
-        regime = get_market_regime()
+        positions_df = self.state.positions
+        snapshots_df = self.state.snapshots
+        regime = self.state.regime
 
         # Calculate each component
         components = []
@@ -144,23 +134,6 @@ class RiskScoreboardCalculator:
             narrative=narrative,
             recommended_actions=recommendations,
         )
-
-    def _load_positions(self) -> pd.DataFrame:
-        """Load current positions."""
-        positions_file = get_positions_file()
-        if not positions_file.exists():
-            return pd.DataFrame()
-        return pd.read_csv(positions_file)
-
-    def _load_snapshots(self) -> pd.DataFrame:
-        """Load daily snapshots."""
-        snapshots_file = get_daily_snapshots_file()
-        if not snapshots_file.exists():
-            return pd.DataFrame()
-        df = pd.read_csv(snapshots_file)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
 
     def _calc_concentration(self, positions_df: pd.DataFrame) -> RiskComponent:
         """Calculate concentration risk (largest position %)."""

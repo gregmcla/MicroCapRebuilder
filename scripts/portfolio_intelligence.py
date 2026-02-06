@@ -32,10 +32,8 @@ try:
 except ImportError:
     pass
 
-from data_files import (
-    get_positions_file, get_transactions_file, get_snapshots_file,
-    get_config_file, get_watchlist_file, is_paper_mode
-)
+from portfolio_state import load_portfolio_state
+from data_files import get_watchlist_file
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
@@ -63,39 +61,6 @@ class ActionType:
     HOLD = "HOLD"           # Explicit decision to do nothing
 
 
-def load_config() -> dict:
-    """Load configuration."""
-    config_file = get_config_file()
-    if config_file.exists():
-        with open(config_file) as f:
-            return json.load(f)
-    return {"starting_capital": 50000.0}
-
-
-def load_positions() -> pd.DataFrame:
-    """Load current positions."""
-    pos_file = get_positions_file()
-    if not pos_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(pos_file)
-
-
-def load_transactions() -> pd.DataFrame:
-    """Load transaction history."""
-    tx_file = get_transactions_file()
-    if not tx_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(tx_file)
-
-
-def load_snapshots() -> pd.DataFrame:
-    """Load daily snapshots."""
-    snap_file = get_snapshots_file()
-    if not snap_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(snap_file)
-
-
 def load_watchlist() -> pd.DataFrame:
     """Load watchlist."""
     wl_file = get_watchlist_file()
@@ -108,21 +73,6 @@ def load_watchlist() -> pd.DataFrame:
             if line.strip():
                 records.append(json.loads(line))
     return pd.DataFrame(records)
-
-
-def calculate_cash(config: dict, transactions: pd.DataFrame) -> float:
-    """Calculate current cash from transactions."""
-    starting = config.get("starting_capital", 50000.0)
-    if transactions.empty:
-        return starting
-
-    cash = starting
-    for _, tx in transactions.iterrows():
-        if tx["action"] == "BUY":
-            cash -= tx["total_value"]
-        elif tx["action"] == "SELL":
-            cash += tx["total_value"]
-    return cash
 
 
 def get_market_regime() -> dict:
@@ -195,22 +145,15 @@ def analyze_recent_performance(transactions: pd.DataFrame, days: int = 30) -> di
 
 
 def build_portfolio_context(
-    positions: pd.DataFrame,
-    transactions: pd.DataFrame,
-    snapshots: pd.DataFrame,
+    state,
     watchlist: pd.DataFrame,
-    config: dict,
 ) -> dict:
     """Build comprehensive portfolio context for AI analysis."""
 
-    cash = calculate_cash(config, transactions)
-    positions_value = positions["market_value"].sum() if not positions.empty and "market_value" in positions.columns else 0
-    total_equity = cash + positions_value
-
     # Position details
     position_details = []
-    if not positions.empty:
-        for _, pos in positions.iterrows():
+    if not state.positions.empty:
+        for _, pos in state.positions.iterrows():
             position_details.append({
                 "ticker": pos.get("ticker", ""),
                 "shares": pos.get("shares", 0),
@@ -221,13 +164,13 @@ def build_portfolio_context(
                 "unrealized_pnl_pct": pos.get("unrealized_pnl_pct", 0),
                 "stop_loss": pos.get("stop_loss", 0),
                 "take_profit": pos.get("take_profit", 0),
-                "pct_of_portfolio": (pos.get("market_value", 0) / total_equity * 100) if total_equity > 0 else 0,
+                "pct_of_portfolio": (pos.get("market_value", 0) / state.total_equity * 100) if state.total_equity > 0 else 0,
             })
 
     # Recent transactions
     recent_tx = []
-    if not transactions.empty:
-        recent = transactions.tail(10)
+    if not state.transactions.empty:
+        recent = state.transactions.tail(10)
         for _, tx in recent.iterrows():
             recent_tx.append({
                 "date": str(tx.get("date", "")),
@@ -239,7 +182,7 @@ def build_portfolio_context(
             })
 
     # Performance
-    performance = analyze_recent_performance(transactions)
+    performance = analyze_recent_performance(state.transactions)
 
     # Market conditions
     market = get_market_regime()
@@ -259,23 +202,23 @@ def build_portfolio_context(
 
     return {
         "timestamp": datetime.now().isoformat(),
-        "mode": "PAPER" if is_paper_mode() else "LIVE",
+        "mode": "PAPER" if state.paper_mode else "LIVE",
         "portfolio": {
-            "total_equity": round(total_equity, 2),
-            "cash": round(cash, 2),
-            "cash_pct": round(cash / total_equity * 100, 2) if total_equity > 0 else 100,
-            "positions_value": round(positions_value, 2),
-            "num_positions": len(positions),
+            "total_equity": round(state.total_equity, 2),
+            "cash": round(state.cash, 2),
+            "cash_pct": round(state.cash / state.total_equity * 100, 2) if state.total_equity > 0 else 100,
+            "positions_value": round(state.positions_value, 2),
+            "num_positions": state.num_positions,
             "positions": position_details,
         },
         "market": market,
         "performance": performance,
         "watchlist_candidates": watchlist_candidates,
         "config": {
-            "max_positions": config.get("max_positions", 15),
-            "risk_per_trade_pct": config.get("risk_per_trade_pct", 10),
-            "default_stop_loss_pct": config.get("default_stop_loss_pct", 8),
-            "default_take_profit_pct": config.get("default_take_profit_pct", 20),
+            "max_positions": state.config.get("max_positions", 15),
+            "risk_per_trade_pct": state.config.get("risk_per_trade_pct", 10),
+            "default_stop_loss_pct": state.config.get("default_stop_loss_pct", 8),
+            "default_take_profit_pct": state.config.get("default_take_profit_pct", 20),
         },
         "safety_rails": SAFETY_RAILS,
     }
@@ -459,15 +402,12 @@ def run_intelligence() -> dict:
     print()
 
     # Load all data
-    config = load_config()
-    positions = load_positions()
-    transactions = load_transactions()
-    snapshots = load_snapshots()
+    state = load_portfolio_state(fetch_prices=False)
     watchlist = load_watchlist()
 
     # Build context
     print("📊 Loading portfolio state...")
-    context = build_portfolio_context(positions, transactions, snapshots, watchlist, config)
+    context = build_portfolio_context(state, watchlist)
 
     print(f"   Equity: ${context['portfolio']['total_equity']:,.2f}")
     print(f"   Cash: ${context['portfolio']['cash']:,.2f} ({context['portfolio']['cash_pct']:.1f}%)")

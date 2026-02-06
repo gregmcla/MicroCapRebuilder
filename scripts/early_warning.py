@@ -28,15 +28,7 @@ import numpy as np
 
 from market_regime import get_regime_analysis, MarketRegime
 from trade_analyzer import TradeAnalyzer
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config as load_base_config
-)
-
-
-def load_config() -> dict:
-    """Load configuration from config.json."""
-    return load_base_config()
+from portfolio_state import load_portfolio_state
 
 
 class WarningSeverity(Enum):
@@ -78,26 +70,21 @@ class EarlyWarningSystem:
     }
 
     def __init__(self):
-        self.config = load_config()
+        self.state = load_portfolio_state(fetch_prices=False)
         self.trade_analyzer = TradeAnalyzer()
 
     def check_all(self) -> List[Warning]:
         """Run all warning checks and return active warnings."""
         warnings = []
 
-        # Load data
-        positions_df = self._load_positions()
-        snapshots_df = self._load_snapshots()
-        transactions_df = self._load_transactions()
-
         # Run all checks
         warnings.extend(self._check_regime_shift())
-        warnings.extend(self._check_drawdown(snapshots_df))
-        warnings.extend(self._check_losing_streak(transactions_df))
+        warnings.extend(self._check_drawdown(self.state.snapshots))
+        warnings.extend(self._check_losing_streak(self.state.transactions))
         warnings.extend(self._check_win_rate())
-        warnings.extend(self._check_concentration(positions_df))
-        warnings.extend(self._check_position_count(positions_df))
-        warnings.extend(self._check_positions_near_stop(positions_df))
+        warnings.extend(self._check_concentration(self.state.positions))
+        warnings.extend(self._check_position_count(self.state.positions))
+        warnings.extend(self._check_positions_near_stop(self.state.positions))
 
         # Sort by severity (critical first)
         severity_order = {
@@ -109,33 +96,6 @@ class EarlyWarningSystem:
         warnings.sort(key=lambda w: severity_order.get(w.severity, 4))
 
         return warnings
-
-    def _load_positions(self) -> pd.DataFrame:
-        """Load current positions."""
-        positions_file = get_positions_file()
-        if not positions_file.exists():
-            return pd.DataFrame()
-        return pd.read_csv(positions_file)
-
-    def _load_snapshots(self) -> pd.DataFrame:
-        """Load daily snapshots."""
-        snapshots_file = get_daily_snapshots_file()
-        if not snapshots_file.exists():
-            return pd.DataFrame()
-        df = pd.read_csv(snapshots_file)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
-
-    def _load_transactions(self) -> pd.DataFrame:
-        """Load transactions."""
-        transactions_file = get_transactions_file()
-        if not transactions_file.exists():
-            return pd.DataFrame()
-        df = pd.read_csv(transactions_file)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
 
     def _check_regime_shift(self) -> List[Warning]:
         """Check for potential regime shift."""

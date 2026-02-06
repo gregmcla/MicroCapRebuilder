@@ -21,7 +21,7 @@ from typing import List, Optional
 
 import pandas as pd
 
-from data_files import get_transactions_file
+from portfolio_state import load_portfolio_state
 
 
 @dataclass
@@ -62,12 +62,8 @@ class TradeAnalyzer:
 
     def load_transactions(self) -> pd.DataFrame:
         """Load all transactions."""
-        transactions_file = get_transactions_file()
-        if not transactions_file.exists():
-            return pd.DataFrame()
-
-        df = pd.read_csv(transactions_file)
-        return df
+        state = load_portfolio_state(fetch_prices=False)
+        return state.transactions
 
     def match_trades(self) -> List[CompletedTrade]:
         """

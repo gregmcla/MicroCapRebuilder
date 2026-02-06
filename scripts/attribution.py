@@ -18,9 +18,8 @@ from datetime import date, datetime, timedelta
 
 import pandas as pd
 
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file, DATA_DIR
-)
+from portfolio_state import load_portfolio_state
+from data_files import DATA_DIR
 
 # ─── Paths ───
 RATIONALES_FILE = DATA_DIR / "trade_rationales.jsonl"
@@ -79,36 +78,16 @@ class PerformanceAttributor:
     FACTOR_NAMES = ["momentum", "volatility", "volume", "relative_strength", "mean_reversion"]
 
     def __init__(self):
-        self.transactions_df = self._load_transactions()
-        self.positions_df = self._load_positions()
-        self.snapshots_df = self._load_snapshots()
+        state = load_portfolio_state(fetch_prices=False)
+        self.transactions_df = state.transactions.copy()
+        self.positions_df = state.positions.copy()
+        self.snapshots_df = state.snapshots.copy()
 
-    def _load_transactions(self) -> pd.DataFrame:
-        """Load transactions with factor scores."""
-        transactions_file = get_transactions_file()
-        if not transactions_file.exists():
-            return pd.DataFrame()
-        df = pd.read_csv(transactions_file)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
-
-    def _load_positions(self) -> pd.DataFrame:
-        """Load current positions."""
-        positions_file = get_positions_file()
-        if not positions_file.exists():
-            return pd.DataFrame()
-        return pd.read_csv(positions_file)
-
-    def _load_snapshots(self) -> pd.DataFrame:
-        """Load daily snapshots."""
-        snapshots_file = get_daily_snapshots_file()
-        if not snapshots_file.exists():
-            return pd.DataFrame()
-        df = pd.read_csv(snapshots_file)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-        return df
+        # Convert date columns to datetime if needed
+        if not self.transactions_df.empty and "date" in self.transactions_df.columns:
+            self.transactions_df["date"] = pd.to_datetime(self.transactions_df["date"])
+        if not self.snapshots_df.empty and "date" in self.snapshots_df.columns:
+            self.snapshots_df["date"] = pd.to_datetime(self.snapshots_df["date"])
 
     def get_daily_attribution(self, target_date: date = None) -> Optional[PerformanceAttribution]:
         """Get attribution for a single day."""

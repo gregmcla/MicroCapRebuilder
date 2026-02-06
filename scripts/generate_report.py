@@ -14,7 +14,6 @@ Usage: python scripts/generate_report.py
 Output: reports/daily_report.txt
 """
 
-import json
 from datetime import date
 from pathlib import Path
 
@@ -24,42 +23,10 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from risk_scoreboard import get_risk_scoreboard
 from attribution import get_daily_attribution
-from data_files import (
-    get_positions_file, get_transactions_file, get_daily_snapshots_file,
-    load_config as load_base_config, is_paper_mode, DATA_DIR, CONFIG_FILE
-)
+from portfolio_state import load_portfolio_state
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
-
-
-def load_config() -> dict:
-    """Load configuration."""
-    return load_base_config()
-
-
-def load_positions() -> pd.DataFrame:
-    """Load current positions."""
-    positions_file = get_positions_file()
-    if not positions_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(positions_file)
-
-
-def load_transactions() -> pd.DataFrame:
-    """Load all transactions."""
-    transactions_file = get_transactions_file()
-    if not transactions_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(transactions_file)
-
-
-def load_snapshots() -> pd.DataFrame:
-    """Load daily snapshots."""
-    snapshots_file = get_daily_snapshots_file()
-    if not snapshots_file.exists():
-        return pd.DataFrame()
-    return pd.read_csv(snapshots_file)
 
 
 def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:
@@ -70,23 +37,20 @@ def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
 def generate_report() -> str:
     """Generate the daily report text."""
-    config = load_config()
-    positions_df = load_positions()
-    transactions_df = load_transactions()
-    snapshots_df = load_snapshots()
+    # Load portfolio state
+    state = load_portfolio_state(fetch_prices=False)
+
+    # Extract what we need
+    config = state.config
+    positions_df = state.positions
+    transactions_df = state.transactions
+    snapshots_df = state.snapshots
+    cash = state.cash
+    positions_value = state.positions_value
+    total_equity = state.total_equity
 
     today = date.today().isoformat()
     starting_capital = config.get("starting_capital", 5000.0)
-
-    # Calculate current values
-    positions_value = positions_df["market_value"].sum() if not positions_df.empty else 0
-    cash = starting_capital
-    if not transactions_df.empty:
-        buys = transactions_df[transactions_df["action"] == "BUY"]["total_value"].sum()
-        sells = transactions_df[transactions_df["action"] == "SELL"]["total_value"].sum()
-        cash = starting_capital - buys + sells
-
-    total_equity = positions_value + cash
     total_return = ((total_equity - starting_capital) / starting_capital) * 100
 
     # Get analytics

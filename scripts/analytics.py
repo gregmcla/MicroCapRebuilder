@@ -15,7 +15,6 @@ Usage:
     metrics = analytics.calculate_all_metrics()
 """
 
-import json
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -24,7 +23,7 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
-from data_files import get_daily_snapshots_file, load_config as load_base_config, CONFIG_FILE
+from portfolio_state import load_portfolio_state
 
 
 @dataclass
@@ -52,14 +51,6 @@ class RiskMetrics:
     expected_shortfall_pct: float = 0.0
 
 
-def load_config() -> dict:
-    """Load configuration."""
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return {"starting_capital": 5000.0}
-
-
 class PortfolioAnalytics:
     """Calculate professional risk-adjusted portfolio metrics."""
 
@@ -71,16 +62,15 @@ class PortfolioAnalytics:
             risk_free_rate: Annual risk-free rate (default 5%)
         """
         self.risk_free_rate = risk_free_rate
-        self.config = load_config()
+        # Load config on-demand from portfolio state
+        state = load_portfolio_state(fetch_prices=False)
+        self.config = state.config
 
     def load_equity_curve(self) -> pd.DataFrame:
         """Load daily equity snapshots."""
-        snapshots_file = get_daily_snapshots_file()
-        if not snapshots_file.exists():
-            return pd.DataFrame()
-
-        df = pd.read_csv(snapshots_file)
-        if "date" in df.columns:
+        state = load_portfolio_state(fetch_prices=False)
+        df = state.snapshots
+        if not df.empty and "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date")
         return df
