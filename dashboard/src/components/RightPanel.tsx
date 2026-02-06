@@ -1,22 +1,20 @@
 /** Right panel — context tabs (Actions, Risk, Performance). */
 
-import { useState } from "react";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
-
-type Tab = "actions" | "risk" | "performance";
+import { useUIStore, type RightTab } from "../lib/store";
 
 function TabButton({
   tab,
   active,
   onClick,
 }: {
-  tab: Tab;
+  tab: RightTab;
   active: boolean;
   onClick: () => void;
 }) {
-  const labels: Record<Tab, string> = {
+  const labels: Record<RightTab, string> = {
     actions: "Actions",
     risk: "Risk",
     performance: "Performance",
@@ -36,13 +34,14 @@ function TabButton({
 }
 
 export default function RightPanel() {
-  const [activeTab, setActiveTab] = useState<Tab>("actions");
+  const activeTab = useUIStore((s) => s.rightTab);
+  const setActiveTab = useUIStore((s) => s.setRightTab);
 
   return (
     <div className="flex flex-col h-full">
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-3 pt-1 border-b border-border">
-        {(["actions", "risk", "performance"] as Tab[]).map((tab) => (
+        {(["actions", "risk", "performance"] as RightTab[]).map((tab) => (
           <TabButton
             key={tab}
             tab={tab}

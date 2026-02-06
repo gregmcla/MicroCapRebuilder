@@ -1,27 +1,24 @@
-/** Bottom right — Mommy co-pilot with insight + chat. */
+/** Bottom right — Mommy co-pilot with avatar, insight rotation, quick chips, chat. */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { useUIStore } from "../lib/store";
 import type { MommyInsight } from "../lib/types";
+import MommyAvatar from "./MommyAvatar";
 
-function MommyAvatar() {
-  return (
-    <div className="relative w-10 h-10 shrink-0">
-      {/* Glow */}
-      <div className="absolute inset-0 rounded-full bg-accent/20 animate-pulse" />
-      {/* Avatar circle */}
-      <div className="relative w-10 h-10 rounded-full bg-bg-elevated border border-accent/40 flex items-center justify-center">
-        <span className="text-accent text-lg font-bold">M</span>
-      </div>
-    </div>
-  );
-}
+const QUICK_CHIPS = [
+  { label: "Health", tab: "performance" as const, icon: "\u2764\uFE0F" },
+  { label: "Risk", tab: "risk" as const, icon: "\u{1F6E1}\uFE0F" },
+  { label: "Actions", tab: "actions" as const, icon: "\u26A1" },
+] as const;
 
 export default function MommyCoPilot() {
   const [input, setInput] = useState("");
   const [chatResponse, setChatResponse] = useState<string | null>(null);
+  const [chatFadeTimer, setChatFadeTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
+  const setRightTab = useUIStore((s) => s.setRightTab);
 
   const { data: insight } = useQuery<MommyInsight>({
     queryKey: ["mommyInsight"],
@@ -32,20 +29,41 @@ export default function MommyCoPilot() {
   const chatMutation = useMutation({
     mutationFn: (message: string) => api.chat(message),
     onSuccess: (data) => {
-      setChatResponse(typeof data === "string" ? data : data.response);
+      const text = typeof data === "string" ? data : data.response;
+      setChatResponse(text);
       queryClient.invalidateQueries({ queryKey: ["mommyInsight"] });
     },
   });
 
+  // Auto-dismiss chat response after 30s, fall back to insight rotation
+  const clearChatResponse = useCallback(() => {
+    setChatResponse(null);
+  }, []);
+
+  useEffect(() => {
+    if (chatResponse) {
+      const timer = setTimeout(clearChatResponse, 30_000);
+      setChatFadeTimer(timer);
+      return () => clearTimeout(timer);
+    }
+  }, [chatResponse, clearChatResponse]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    if (chatFadeTimer) clearTimeout(chatFadeTimer);
     chatMutation.mutate(input.trim());
     setInput("");
   };
 
+  const handleChipClick = (tab: "actions" | "risk" | "performance") => {
+    setRightTab(tab);
+  };
+
   const displayText =
     chatResponse ?? insight?.insight ?? "Mommy's here. Ask me anything, baby.";
+
+  const isChat = !!chatResponse;
 
   const categoryColor: Record<string, string> = {
     alert: "border-loss/40",
@@ -53,33 +71,60 @@ export default function MommyCoPilot() {
     performance: "border-profit/40",
     idle: "border-accent/40",
   };
-  const borderColor = chatResponse
+  const borderColor = isChat
     ? "border-accent/40"
     : categoryColor[insight?.category ?? "idle"] ?? "border-accent/40";
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 py-2 border-b border-border">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <h2 className="text-xs font-semibold text-text-secondary tracking-wider uppercase">
           Mommy
         </h2>
+        {insight && insight.warnings_count > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium">
+            {insight.warnings_count} warning{insight.warnings_count > 1 ? "s" : ""}
+          </span>
+        )}
       </div>
 
       {/* Insight area */}
       <div className="flex-1 flex items-start gap-3 p-3 overflow-y-auto">
-        <MommyAvatar />
-        <div
-          className={`flex-1 rounded-lg border ${borderColor} bg-bg-elevated/50 p-3`}
-        >
-          <p className="text-sm italic text-text-primary leading-relaxed">
-            {chatMutation.isPending ? (
-              <span className="animate-pulse text-text-muted">
-                Mommy's thinking...
-              </span>
-            ) : (
-              displayText
+        <MommyAvatar size={48} />
+        <div className="flex-1 min-w-0">
+          <div className={`rounded-lg border ${borderColor} bg-bg-elevated/50 p-3 mb-2`}>
+            <p className="text-sm italic text-text-primary leading-relaxed">
+              {chatMutation.isPending ? (
+                <span className="animate-pulse text-text-muted">
+                  Mommy's thinking...
+                </span>
+              ) : (
+                displayText
+              )}
+            </p>
+            {isChat && (
+              <button
+                onClick={clearChatResponse}
+                className="text-[10px] text-text-muted hover:text-text-secondary mt-1.5 transition-colors"
+              >
+                dismiss
+              </button>
             )}
-          </p>
+          </div>
+
+          {/* Quick chips */}
+          <div className="flex items-center gap-1.5">
+            {QUICK_CHIPS.map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => handleChipClick(chip.tab)}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-text-muted bg-bg-primary border border-border rounded-full hover:border-accent hover:text-accent transition-colors"
+              >
+                <span>{chip.icon}</span>
+                {chip.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

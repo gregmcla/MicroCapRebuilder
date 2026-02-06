@@ -16,6 +16,18 @@ interface AnalysisStore {
   clear: () => void;
 }
 
+export type RightTab = "actions" | "risk" | "performance";
+
+interface UIStore {
+  rightTab: RightTab;
+  setRightTab: (tab: RightTab) => void;
+}
+
+export const useUIStore = create<UIStore>((set) => ({
+  rightTab: "actions",
+  setRightTab: (tab) => set({ rightTab: tab }),
+}));
+
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   result: null,
   isAnalyzing: false,
