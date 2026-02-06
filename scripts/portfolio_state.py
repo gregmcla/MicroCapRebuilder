@@ -19,6 +19,7 @@ import json
 import time
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -91,6 +92,7 @@ class PortfolioState:
     timestamp: datetime
     price_cache: dict = field(default_factory=dict)
     price_failures: list = field(default_factory=list)
+    stale_alerts: dict = field(default_factory=dict)  # ticker -> consecutive_days (>= 2)
     paper_mode: bool = False
 
     class Config:
@@ -137,6 +139,7 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
     # Fetch prices and update positions if requested
     price_cache = {}
     price_failures = []
+    stale_alerts = {}
 
     if fetch_prices and not positions.empty:
         tickers = positions["ticker"].tolist()
@@ -144,6 +147,10 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
 
         # Update positions with fetched prices
         positions = _update_positions_with_prices(positions, price_cache)
+
+        # Track consecutive price fetch failures
+        successful = [t for t in tickers if t not in price_failures]
+        stale_alerts = update_stale_tracker(price_failures, successful)
 
     # Calculate derived values
     positions_value = float(positions["market_value"].sum()) if not positions.empty else 0.0
@@ -164,6 +171,7 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
         timestamp=datetime.now(),
         price_cache=price_cache,
         price_failures=price_failures,
+        stale_alerts=stale_alerts,
         paper_mode=paper_mode,
     )
 
@@ -185,7 +193,7 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict) ->
         ticker = row["ticker"]
         current_price = price_cache.get(ticker)
 
-        if current_price is None:
+        if current_price is None or current_price <= 0:
             # Keep existing price as fallback
             continue
 
@@ -238,6 +246,21 @@ def calculate_cash(transactions: pd.DataFrame, starting_capital: float) -> float
     return starting_capital - total_spent + total_received
 
 
+# ─── yfinance Helpers ───────────────────────────────────────────────────────
+
+def flatten_yf_close(df: pd.DataFrame) -> pd.Series:
+    """
+    Extract Close prices as a flat Series from a yfinance DataFrame.
+
+    Handles the multi-level column issue where newer yfinance versions
+    return MultiIndex columns (e.g., ('Close', 'AAPL')) instead of flat ones.
+    """
+    close = df["Close"]
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+    return close
+
+
 # ─── Price Fetching ──────────────────────────────────────────────────────────
 
 def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
@@ -265,7 +288,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
                 # Single ticker - close_col is a Series
                 if len(tickers) == 1:
                     price = float(close_col.iloc[-1])
-                    if pd.notna(price):
+                    if pd.notna(price) and price > 0:
                         prices[tickers[0]] = price
                     else:
                         failures.append(tickers[0])
@@ -274,7 +297,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
                 for ticker in tickers:
                     if ticker in close_col.columns:
                         val = close_col[ticker].iloc[-1]
-                        if pd.notna(val):
+                        if pd.notna(val) and float(val) > 0:
                             prices[ticker] = float(val)
                         else:
                             failures.append(ticker)
@@ -287,11 +310,9 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
             try:
                 single_df = yf.download(ticker, period="1d", progress=False, auto_adjust=True)
                 if not single_df.empty:
-                    close_col = single_df["Close"]
-                    if isinstance(close_col, pd.DataFrame):
-                        close_col = close_col.iloc[:, 0]
+                    close_col = flatten_yf_close(single_df)
                     price = float(close_col.iloc[-1])
-                    if pd.notna(price):
+                    if pd.notna(price) and price > 0:
                         prices[ticker] = price
                     else:
                         failures.append(ticker)
@@ -303,19 +324,100 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
     return prices, failures
 
 
+# ─── Stale Price Tracking ───────────────────────────────────────────────────
+
+_STALE_TRACKER_FILE = Path(__file__).parent.parent / "data" / "stale_prices.json"
+
+
+def _load_stale_tracker() -> dict:
+    """Load stale price tracker: {ticker: consecutive_failures}."""
+    if _STALE_TRACKER_FILE.exists():
+        with open(_STALE_TRACKER_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _save_stale_tracker(tracker: dict) -> None:
+    """Persist stale tracker to disk."""
+    with open(_STALE_TRACKER_FILE, "w") as f:
+        json.dump(tracker, f, indent=2)
+
+
+def update_stale_tracker(price_failures: list, successful_tickers: list) -> dict:
+    """
+    Update stale price tracker after a price fetch.
+
+    Returns dict of {ticker: consecutive_days} for tickers stale >= 2 days.
+    """
+    tracker = _load_stale_tracker()
+
+    # Reset successful fetches
+    for t in successful_tickers:
+        tracker.pop(t, None)
+
+    # Increment failures
+    for t in price_failures:
+        tracker[t] = tracker.get(t, 0) + 1
+
+    _save_stale_tracker(tracker)
+    return {t: days for t, days in tracker.items() if days >= 2}
+
+
+# ─── Benchmark ──────────────────────────────────────────────────────────────
+
 def fetch_benchmark_value(config: dict) -> Optional[float]:
     """Fetch benchmark value for comparison."""
     for symbol in [config.get("benchmark_symbol", "^RUT"), config.get("fallback_benchmark", "IWM")]:
         try:
             df = yf.download(symbol, period="1d", progress=False, auto_adjust=True)
             if not df.empty:
-                close_col = df["Close"]
-                if isinstance(close_col, pd.DataFrame):
-                    close_col = close_col.iloc[:, 0]
+                close_col = flatten_yf_close(df)
                 return round(float(close_col.iloc[-1]), 2)
         except Exception:
             continue
     return None
+
+
+# ─── Transaction Validation ─────────────────────────────────────────────────
+
+class TransactionValidationError(ValueError):
+    """Raised when a transaction fails validation."""
+    pass
+
+
+def validate_transaction(txn: dict, state: PortfolioState) -> None:
+    """
+    Validate a transaction before persisting.
+
+    Raises TransactionValidationError on failure. This is a money decision —
+    invalid transactions must halt execution, not silently pass.
+
+    Args:
+        txn: Transaction dict to validate.
+        state: Current portfolio state for context (cash, positions).
+    """
+    required = ["ticker", "action", "shares", "price", "total_value"]
+    for f in required:
+        if f not in txn or txn[f] is None or txn[f] == "":
+            raise TransactionValidationError(f"Missing required field: {f}")
+
+    if float(txn["price"]) <= 0:
+        raise TransactionValidationError(f"Invalid price for {txn['ticker']}: {txn['price']}")
+    if int(txn["shares"]) <= 0:
+        raise TransactionValidationError(f"Invalid shares for {txn['ticker']}: {txn['shares']}")
+
+    # For BUYs: verify cash covers cost
+    if txn["action"] in ("BUY", Action.BUY, "ADD", Action.ADD):
+        cost = float(txn["shares"]) * float(txn["price"])
+        if cost > state.cash + 0.01:  # Small float tolerance
+            raise TransactionValidationError(
+                f"Insufficient cash for {txn['ticker']}: need ${cost:.2f}, have ${state.cash:.2f}"
+            )
+
+    # For SELLs: verify position exists
+    if txn["action"] in ("SELL", Action.SELL, "TRIM", Action.TRIM):
+        if state.positions.empty or txn["ticker"] not in state.positions["ticker"].values:
+            raise TransactionValidationError(f"No position to sell: {txn['ticker']}")
 
 
 # ─── Transaction Operations ──────────────────────────────────────────────────
@@ -351,6 +453,10 @@ def save_transactions_batch(state: PortfolioState, transactions: list) -> Portfo
     """
     if not transactions:
         return state
+
+    # Validate all transactions before persisting any
+    for txn in transactions:
+        validate_transaction(txn, state)
 
     df_new = pd.DataFrame(transactions)
     tx_file = get_transactions_file()

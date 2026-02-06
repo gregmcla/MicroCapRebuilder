@@ -114,7 +114,7 @@ def get_trade_stats(transactions_df):
             stats['largest_loss'] = analysis.get('worst_trade_pnl', 0)
             stats['profit_factor'] = analysis.get('profit_factor', 0)
             stats['win_rate'] = analysis.get('win_rate', 0)
-    except:
+    except Exception:
         pass
 
     return stats
@@ -221,7 +221,7 @@ try:
     sharpe_ratio = metrics.get('sharpe_ratio', 0) if metrics else 0
     max_drawdown = metrics.get('max_drawdown_pct', 0) if metrics else 0
     sortino_ratio = metrics.get('sortino_ratio', 0) if metrics else 0
-except:
+except Exception:
     sharpe_ratio = max_drawdown = sortino_ratio = 0
 
 # Get trade stats

@@ -83,11 +83,13 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     # Check preservation mode
     try:
         preservation = get_preservation_status()
-        preservation_active = preservation.get("preservation_mode", False)
+        preservation_active = preservation.active
         if preservation_active:
             print("⚠️  CAPITAL PRESERVATION MODE ACTIVE - No new buys")
-    except:
-        preservation_active = False
+    except Exception as e:
+        print(f"  [WARN] Capital preservation check failed: {e}")
+        print(f"  [WARN] Defaulting to preservation_active=True (safe default)")
+        preservation_active = True  # Fail safe: halt buys on error
 
     proposed_actions = []
 

@@ -95,9 +95,8 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
         )
 
     # Handle multi-level columns from yfinance
-    close_col = df["Close"]
-    if isinstance(close_col, pd.DataFrame):
-        close_col = close_col.iloc[:, 0]  # Flatten if multi-level
+    from portfolio_state import flatten_yf_close
+    close_col = flatten_yf_close(df)
 
     current_price = float(close_col.iloc[-1])
     sma_50 = float(close_col.iloc[-50:].mean())

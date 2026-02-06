@@ -80,6 +80,10 @@ def main():
         for ticker in state.price_failures:
             print(f"    [warn] No price for {ticker} - using last known price")
 
+    if state.stale_alerts:
+        for ticker, days in state.stale_alerts.items():
+            print(f"    ⚠️  STALE PRICE: {ticker} - no price for {days} consecutive days")
+
     # Check for sell signals using price cache
     rm = RiskManager()
     signals = rm.get_all_sell_signals(state.positions, state.price_cache)
