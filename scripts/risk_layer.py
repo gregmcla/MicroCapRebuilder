@@ -42,6 +42,26 @@ class RiskLayer:
         self.min_score_drop_alert = self.layer1_config.get("min_score_drop_for_alert", 20)
         self.min_score_drop_sell = self.layer1_config.get("min_score_drop_for_sell", 30)
 
+    def _get_entry_score_from_transactions(self, ticker: str, state: PortfolioState) -> float:
+        """Get composite_score from most recent BUY transaction for ticker."""
+        if state.transactions.empty:
+            return 70.0
+
+        buys = state.transactions[
+            (state.transactions["ticker"] == ticker) &
+            (state.transactions["action"] == "BUY")
+        ].sort_values("date", ascending=False)
+
+        if buys.empty:
+            return 70.0  # Fallback for legacy positions
+
+        # Get composite_score from most recent buy
+        latest_buy = buys.iloc[0]
+        try:
+            return float(latest_buy.get("composite_score", 70.0))
+        except (ValueError, TypeError):
+            return 70.0
+
     def calculate_dynamic_stops(self, state: PortfolioState) -> Dict[str, StopLevels]:
         """
         Calculate dynamic stop levels for all positions.
@@ -51,6 +71,12 @@ class RiskLayer:
         """
         if state.positions.empty:
             return {}
+
+        # Score positions to get real ATR values
+        tickers = [pos["ticker"] for _, pos in state.positions.iterrows()]
+        scorer = StockScorer(regime=state.regime)
+        scores = scorer.score_watchlist(tickers)
+        score_map = {s.ticker: s for s in scores if s}
 
         stops = {}
 
@@ -69,11 +95,14 @@ class RiskLayer:
                     current_price, entry_price, current_stop
                 )
 
+            # Get real ATR from scoring
+            score_obj = score_map.get(ticker)
+            atr_pct = score_obj.atr_pct if score_obj else 2.5
+
             volatility_stop = None
             if self.layer1_config.get("enable_volatility_stops", True):
-                # Get ATR from score if available
                 volatility_stop = self._calculate_volatility_stop(
-                    current_price, entry_price, atr_pct=2.5  # TODO: Get real ATR
+                    current_price, entry_price, atr_pct=atr_pct
                 )
 
             regime_stop = self._calculate_regime_stop(
@@ -241,7 +270,7 @@ class RiskLayer:
                 continue
 
             current_score = current_score_obj.composite_score
-            entry_score = 70.0  # TODO: Load from transaction
+            entry_score = self._get_entry_score_from_transactions(ticker, state)
 
             score_drop = entry_score - current_score
 
