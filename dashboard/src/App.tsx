@@ -3,6 +3,7 @@
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import MarketTickerBanner from "./components/MarketTickerBanner";
 import TopBar from "./components/TopBar";
 import PositionsPanel from "./components/PositionsPanel";
 import RightPanel from "./components/RightPanel";
@@ -15,6 +16,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary">
+      <MarketTickerBanner />
       <TopBar state={state} isLoading={isLoading} />
 
       <Group direction="horizontal" className="flex-1">

@@ -209,6 +209,18 @@ export interface MommyInsight {
   critical_count: number;
 }
 
+export interface MarketIndex {
+  value: number;
+  change_pct: number;
+  sparkline: number[];
+}
+
+export interface MarketIndices {
+  sp500: MarketIndex;
+  russell2000: MarketIndex;
+  vix: MarketIndex;
+}
+
 // --- Analysis types ---
 
 export interface FactorScores {

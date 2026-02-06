@@ -8,6 +8,7 @@ import type {
   AnalysisResult,
   PerformanceData,
   LearningData,
+  MarketIndices,
 } from "./types";
 
 const BASE = "/api";
@@ -36,6 +37,7 @@ export const api = {
   getMommyInsight: () => get<MommyInsight>("/mommy/insight"),
   getPerformance: () => get<PerformanceData>("/performance"),
   getLearning: () => get<LearningData>("/learning"),
+  getMarketIndices: () => get<MarketIndices>("/market/indices"),
   analyze: () => post<AnalysisResult>("/analyze"),
   execute: () => post<Record<string, unknown>>("/execute"),
   chat: (message: string) => post<{ response: string }>("/chat", { message }),

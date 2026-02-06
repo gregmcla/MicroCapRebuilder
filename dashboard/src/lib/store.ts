@@ -72,3 +72,18 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
 
   clear: () => set({ result: null, error: null, lastAnalyzedAt: null }),
 }));
+
+interface FreshnessStore {
+  timestamps: Record<string, number>;
+  updateTimestamp: (key: string) => void;
+  getTimestamp: (key: string) => number | null;
+}
+
+export const useFreshnessStore = create<FreshnessStore>((set, get) => ({
+  timestamps: {},
+  updateTimestamp: (key) =>
+    set((state) => ({
+      timestamps: { ...state.timestamps, [key]: Date.now() },
+    })),
+  getTimestamp: (key) => get().timestamps[key] ?? null,
+}));
