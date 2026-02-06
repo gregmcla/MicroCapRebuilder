@@ -16,14 +16,13 @@
   "benchmark_symbol": "^RUT",
   "fallback_benchmark": "IWM",
   "chart_days": 30,
-
   "scoring": {
     "default_weights": {
       "momentum": 0.25,
       "volatility": 0.18,
       "volume": 0.12,
-      "relative_strength": 0.20,
-      "mean_reversion": 0.10,
+      "relative_strength": 0.2,
+      "mean_reversion": 0.1,
       "rsi": 0.15
     },
     "regime_weights": {
@@ -48,7 +47,7 @@
         "volatility": 0.25,
         "volume": 0.12,
         "relative_strength": 0.13,
-        "mean_reversion": 0.20,
+        "mean_reversion": 0.2,
         "rsi": 0.18
       }
     },
@@ -60,9 +59,18 @@
     "momentum": {
       "multi_timeframe_enabled": true,
       "timeframes": {
-        "short": {"days": 5, "weight": 0.20},
-        "medium": {"days": 20, "weight": 0.50},
-        "long": {"days": 60, "weight": 0.30}
+        "short": {
+          "days": 5,
+          "weight": 0.2
+        },
+        "medium": {
+          "days": 20,
+          "weight": 0.5
+        },
+        "long": {
+          "days": 60,
+          "weight": 0.3
+        }
       },
       "alignment_bonus_max": 15,
       "acceleration_bonus": 10
@@ -78,7 +86,6 @@
       "hard_filter_above": 85
     }
   },
-
   "risk_management": {
     "capital_preservation": {
       "enabled": true,
@@ -94,7 +101,6 @@
       }
     }
   },
-
   "learning": {
     "enabled": true,
     "review_period_trades": 30,
@@ -104,7 +110,6 @@
     "confidence_min": 0.5,
     "confidence_max": 1.5
   },
-
   "data_provider": {
     "primary": "yfinance",
     "fallback": "alpha_vantage",
@@ -112,7 +117,6 @@
     "cache_minutes": 15,
     "retry_count": 3
   },
-
   "discovery": {
     "enabled": true,
     "run_frequency": "weekly",
@@ -139,7 +143,6 @@
       "max_loss_rate_for_removal": 0.75
     }
   },
-
   "universe": {
     "enabled": true,
     "refresh_frequency_days": 7,
@@ -150,7 +153,11 @@
       },
       "etf_holdings": {
         "enabled": true,
-        "etfs": ["IWM", "IJR", "VB"]
+        "etfs": [
+          "IWM",
+          "IJR",
+          "VB"
+        ]
       }
     },
     "tiers": {

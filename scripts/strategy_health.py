@@ -216,7 +216,7 @@ class StrategyHealthCalculator:
             issues.append(f"Negative Sharpe ratio: {sharpe:.2f}")
 
         # Alpha contribution (up to 15 points)
-        alpha = metrics.alpha_pct
+        alpha = float(metrics.alpha_pct)
         details["alpha"] = alpha
         if alpha > 5:
             score += 15
@@ -452,7 +452,7 @@ class StrategyHealthCalculator:
 
         # Check if we're outperforming or underperforming benchmark
         if metrics:
-            alpha = metrics.alpha_pct
+            alpha = float(metrics.alpha_pct)
             details["alpha"] = alpha
             if alpha > 5:
                 strengths.append(f"Outperforming benchmark by {alpha:.1f}%")

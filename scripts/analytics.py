@@ -469,17 +469,21 @@ class PortfolioAnalytics:
             benchmark_returns = self.fetch_benchmark_data(str(start_date)[:10], str(end_date)[:10])
 
             if not benchmark_returns.empty:
+                # Ensure benchmark_returns is a 1-D Series
+                if hasattr(benchmark_returns, "columns"):
+                    benchmark_returns = benchmark_returns.iloc[:, 0]
+
                 # Calculate benchmark total return
                 benchmark_equity = (1 + benchmark_returns).cumprod()
                 if len(benchmark_equity) > 0:
-                    benchmark_return = round((benchmark_equity.iloc[-1] - 1) * 100, 2)
+                    benchmark_return = round(float((benchmark_equity.iloc[-1] - 1) * 100), 2)
 
                 # Beta and correlation
-                beta = self.calculate_beta(returns, benchmark_returns)
-                correlation = self.calculate_correlation(returns, benchmark_returns)
+                beta = float(self.calculate_beta(returns, benchmark_returns))
+                correlation = float(self.calculate_correlation(returns, benchmark_returns))
 
                 # Alpha (risk-adjusted excess return)
-                alpha = self.calculate_alpha(total_return, benchmark_return, beta)
+                alpha = float(self.calculate_alpha(total_return, benchmark_return, beta))
 
         # VaR and Expected Shortfall
         var_95 = self.calculate_var(returns, 0.95)

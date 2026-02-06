@@ -7,3 +7,5 @@ anthropic
 python-dotenv
 streamlit
 plotly
+fastapi
+uvicorn

@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  /* Background */
+  --color-bg-primary: #0B0E14;
+  --color-bg-surface: #141920;
+  --color-bg-elevated: #1A2030;
+
+  /* Borders */
+  --color-border: #1E2530;
+  --color-border-hover: #2A3545;
+
+  /* Accent */
+  --color-accent: #22D3EE;
+  --color-accent-dim: #0E7490;
+
+  /* Semantic */
+  --color-profit: #34D399;
+  --color-profit-dim: #065F46;
+  --color-loss: #F87171;
+  --color-loss-dim: #7F1D1D;
+  --color-warning: #FBBF24;
+  --color-warning-dim: #78350F;
+
+  /* Text */
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted: #475569;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Base styles */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mono font for data */
+.font-data {
+  font-family: var(--font-mono);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-hover);
+}
+
+/* Panel resize separators (react-resizable-panels v4) */
+[data-separator] {
+  background: var(--color-border);
+  transition: background 150ms;
+}
+[data-separator]:hover,
+[data-separator][data-separator="active"] {
+  background: var(--color-accent);
+}
