@@ -1,7 +1,9 @@
 /** Position detail view — shown in right panel when a position is clicked. */
 
+import { useState } from "react";
 import type { Position } from "../lib/types";
 import { useUIStore } from "../lib/store";
+import CandlestickChart from "./CandlestickChart";
 
 function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
@@ -51,6 +53,7 @@ function ProgressVisualization({ pos }: { pos: Position }) {
 
 export default function PositionDetail({ pos }: { pos: Position }) {
   const clearSelection = useUIStore((s) => s.selectPosition);
+  const [range, setRange] = useState("1M");
 
   const pnlColor =
     pos.unrealized_pnl_pct > 0
@@ -104,8 +107,30 @@ export default function PositionDetail({ pos }: { pos: Position }) {
           </div>
         </div>
 
+        {/* Time Range Selector */}
+        <div className="flex gap-1 mb-3">
+          {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                range === r
+                  ? 'bg-cyber-cyan text-black font-semibold'
+                  : 'text-text-muted border border-border hover:border-cyber-cyan'
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        {/* Candlestick Chart */}
+        <CandlestickChart ticker={pos.ticker} range={range} position={pos} />
+
         {/* Stop/Target progress */}
-        <ProgressVisualization pos={pos} />
+        <div className="mt-3">
+          <ProgressVisualization pos={pos} />
+        </div>
 
         {/* Details */}
         <div>

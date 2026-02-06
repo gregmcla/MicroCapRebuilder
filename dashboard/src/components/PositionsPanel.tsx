@@ -62,7 +62,7 @@ function PositionRow({ pos, onClick }: { pos: Position; totalValue: number; onCl
   const aprColor = apr > 100 ? "text-cyber-magenta" : pnlColor;
 
   return (
-    <div onClick={onClick} className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated/50 transition-colors border-b border-border/50">
+    <div onClick={onClick} className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)] transition-all border-b border-border/50">
       <div className="flex items-center gap-2 mb-1">
         <span className="font-bold text-sm text-text-primary w-14">
           {pos.ticker}

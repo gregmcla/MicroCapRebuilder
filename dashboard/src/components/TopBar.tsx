@@ -118,7 +118,7 @@ function AnalyzeExecuteButtons() {
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
-        className="px-3 py-1 text-xs font-semibold bg-accent/15 text-accent rounded hover:bg-accent/25 disabled:opacity-50 transition-colors"
+        className="px-3 py-1 text-xs font-semibold bg-accent/15 text-accent rounded hover:bg-accent/25 shadow-[0_0_8px_rgba(34,211,238,0.5)] disabled:opacity-50 transition-colors"
       >
         {isAnalyzing ? "Analyzing..." : "ANALYZE"}
       </button>
@@ -126,7 +126,7 @@ function AnalyzeExecuteButtons() {
         <button
           onClick={runExecute}
           disabled={isExecuting}
-          className="px-3 py-1 text-xs font-semibold bg-profit/15 text-profit rounded hover:bg-profit/25 disabled:opacity-50 transition-colors"
+          className="px-3 py-1 text-xs font-semibold bg-profit/15 text-profit rounded hover:bg-profit/25 shadow-[0_0_8px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-colors"
         >
           {isExecuting ? "Executing..." : `EXECUTE ${actionCount}`}
         </button>

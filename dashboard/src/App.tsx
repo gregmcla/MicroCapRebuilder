@@ -19,10 +19,10 @@ export default function App() {
       <MarketTickerBanner />
       <TopBar state={state} isLoading={isLoading} />
 
-      <Group direction="horizontal" className="flex-1">
+      <Group orientation="horizontal" className="flex-1">
         {/* Left column */}
         <Panel defaultSize={35} minSize={25}>
-          <Group direction="vertical">
+          <Group orientation="vertical">
             {/* Positions */}
             <Panel defaultSize={65} minSize={30}>
               <div className="h-full bg-bg-surface border-r border-border">
@@ -48,7 +48,7 @@ export default function App() {
 
         {/* Right column */}
         <Panel defaultSize={65} minSize={35}>
-          <Group direction="vertical">
+          <Group orientation="vertical">
             {/* Context Tabs */}
             <Panel defaultSize={65} minSize={30}>
               <div className="h-full bg-bg-surface">
