@@ -77,6 +77,8 @@ interface FreshnessStore {
   timestamps: Record<string, number>;
   updateTimestamp: (key: string) => void;
   getTimestamp: (key: string) => number | null;
+  getStalenessSeverity: (key: string) => "fresh" | "stale" | "very-stale" | "critical";
+  getTimeAgo: (key: string) => string;
 }
 
 export const useFreshnessStore = create<FreshnessStore>((set, get) => ({
@@ -86,4 +88,25 @@ export const useFreshnessStore = create<FreshnessStore>((set, get) => ({
       timestamps: { ...state.timestamps, [key]: Date.now() },
     })),
   getTimestamp: (key) => get().timestamps[key] ?? null,
+  getStalenessSeverity: (key) => {
+    const timestamp = get().timestamps[key];
+    if (!timestamp) return "critical";
+    const ageMs = Date.now() - timestamp;
+    const ageMin = ageMs / 60000;
+    if (ageMin < 5) return "fresh";
+    if (ageMin < 15) return "stale";
+    if (ageMin < 60) return "very-stale";
+    return "critical";
+  },
+  getTimeAgo: (key) => {
+    const timestamp = get().timestamps[key];
+    if (!timestamp) return "Never";
+    const ageMs = Date.now() - timestamp;
+    const ageSec = Math.floor(ageMs / 1000);
+    if (ageSec < 60) return "Just now";
+    const ageMin = Math.floor(ageSec / 60);
+    if (ageMin < 60) return `${ageMin}m ago`;
+    const ageHr = Math.floor(ageMin / 60);
+    return `${ageHr}h ago`;
+  },
 }));

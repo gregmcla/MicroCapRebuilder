@@ -1,8 +1,12 @@
 /** Top bar — always pinned, key metrics + action buttons. */
 
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { useAnalysisStore } from "../lib/store";
+import { useAnalysisStore, useFreshnessStore } from "../lib/store";
 import { useRisk } from "../hooks/useRisk";
+import { api } from "../lib/api";
+import FreshnessIndicator from "./FreshnessIndicator";
 
 function MetricPill({
   label,
@@ -59,6 +63,46 @@ function RiskBadge() {
   );
 }
 
+function UpdatePricesButton() {
+  const queryClient = useQueryClient();
+  const updateTimestamp = useFreshnessStore((s) => s.updateTimestamp);
+  const [updating, setUpdating] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setResult(null);
+    try {
+      const res = await api.updatePrices();
+      updateTimestamp("positions");
+      setResult(`Updated ${res.updated} positions`);
+      // Invalidate state query to refetch with new prices
+      queryClient.invalidateQueries({ queryKey: ["state"] });
+      setTimeout(() => setResult(null), 3000);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Update failed");
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={handleUpdate}
+        disabled={updating}
+        className="px-3 py-1 text-xs font-semibold bg-bg-elevated text-text-primary rounded hover:bg-border disabled:opacity-50 transition-colors"
+      >
+        {updating ? "Updating..." : "UPDATE"}
+      </button>
+      {result && (
+        <span className="text-xs text-text-muted">{result}</span>
+      )}
+    </div>
+  );
+}
+
 function AnalyzeExecuteButtons() {
   const { result, isAnalyzing, isExecuting, runAnalysis, runExecute } =
     useAnalysisStore();
@@ -69,6 +113,8 @@ function AnalyzeExecuteButtons() {
 
   return (
     <div className="flex items-center gap-1.5">
+      <FreshnessIndicator />
+      <UpdatePricesButton />
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}

@@ -63,6 +63,14 @@
   }
 }
 
+.animate-pulse-slow {
+  animation: pulse-slow 1s ease-in-out infinite;
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 0.7s ease-in-out infinite;
+}
+
 /* Base styles */
 html, body, #root {
   margin: 0;

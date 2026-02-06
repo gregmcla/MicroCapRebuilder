@@ -41,4 +41,5 @@ export const api = {
   analyze: () => post<AnalysisResult>("/analyze"),
   execute: () => post<Record<string, unknown>>("/execute"),
   chat: (message: string) => post<{ response: string }>("/chat", { message }),
+  updatePrices: () => post<{ updated: number; total_equity: number; unrealized_pnl: number }>("/state/update"),
 };
