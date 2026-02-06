@@ -23,6 +23,7 @@ from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
 from risk_scoreboard import get_risk_scoreboard
 from attribution import get_daily_attribution
+from factor_learning import FactorLearner, get_weight_suggestions
 from portfolio_state import load_portfolio_state
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
@@ -173,6 +174,35 @@ def generate_report() -> str:
     else:
         lines.append(f"  No completed trades yet")
         lines.append(f"  Open positions: {trade_stats.open_positions if trade_stats else len(positions_df)}")
+    lines.append("")
+
+    # Learning Insights
+    lines.append("LEARNING INSIGHTS")
+    lines.append("-" * 40)
+    try:
+        learner = FactorLearner()
+        summary = learner.get_factor_summary()
+        if summary.get("status") == "ok" and summary.get("factors"):
+            lines.append(f"Trades Analyzed: {summary.get('total_analyzed_trades', 0)}")
+            lines.append("")
+            lines.append(f"{'Factor':<20} {'Win Rate':>10} {'Contribution':>14} {'Trend':>8}")
+            for f in summary["factors"]:
+                name = f["factor"].replace("_", " ").title()
+                lines.append(
+                    f"  {name:<18} {f['win_rate']:>8.0f}% ${f['total_contribution']:>+12,.2f} {f['trend']:>8}"
+                )
+
+            suggestions = get_weight_suggestions(state.regime.value)
+            if suggestions:
+                lines.append("")
+                lines.append("Suggested Adjustments:")
+                for s in suggestions[:3]:
+                    name = s.factor.replace("_", " ").title()
+                    lines.append(f"  {name}: {s.current_weight:.0%} -> {s.suggested_weight:.0%} ({s.change_pct:+.1f}%) [{s.confidence}]")
+        else:
+            lines.append("  Insufficient closed trades for factor analysis")
+    except Exception as e:
+        lines.append("  Learning analysis unavailable")
     lines.append("")
 
     # Current Positions

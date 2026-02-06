@@ -32,6 +32,7 @@ from ai_review import (
     ProposedAction, ReviewedAction, ReviewDecision,
     review_proposed_actions, format_review_summary
 )
+from post_mortem import PostMortemAnalyzer, save_post_mortem
 from data_files import get_mode_indicator
 from portfolio_state import (
     load_portfolio_state,
@@ -352,6 +353,30 @@ def execute_approved_actions(analysis_result: dict) -> dict:
     if transactions:
         state = save_transactions_batch(state, transactions)
         save_positions(state)
+
+    # Generate post-mortems for sells
+    sell_data = [
+        (reviewed, tx)
+        for reviewed, tx in zip(actions_to_execute, transactions)
+        if reviewed.original.action_type == "SELL"
+    ]
+    if sell_data:
+        print("\n  Generating post-mortems...")
+        try:
+            analyzer = PostMortemAnalyzer()
+            for reviewed, sell_tx in sell_data:
+                ticker = sell_tx["ticker"]
+                buy_txns = state.transactions[
+                    (state.transactions["ticker"] == ticker) &
+                    (state.transactions["action"] == "BUY")
+                ]
+                if not buy_txns.empty:
+                    buy_txn = buy_txns.iloc[-1].to_dict()
+                    pm = analyzer.analyze_trade(sell_tx, buy_txn, analysis_result.get("regime", "UNKNOWN"))
+                    save_post_mortem(pm)
+                    print(f"    📝 {ticker}: {pm.summary}")
+        except Exception as e:
+            print(f"    [warn] Post-mortem generation failed: {e}")
 
     print(f"\n✅ Executed {len(transactions)} action(s)")
     return {"executed": len(transactions), "transactions": transactions}
