@@ -1,8 +1,9 @@
-/** Right panel — context tabs (Actions, Risk, Performance). */
+/** Right panel — context tabs, or position detail when a position is selected. */
 
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
+import PositionDetail from "./PositionDetail";
 import { useUIStore, type RightTab } from "../lib/store";
 
 function TabButton({
@@ -36,6 +37,12 @@ function TabButton({
 export default function RightPanel() {
   const activeTab = useUIStore((s) => s.rightTab);
   const setActiveTab = useUIStore((s) => s.setRightTab);
+  const selectedPosition = useUIStore((s) => s.selectedPosition);
+
+  // Position detail view takes over the right panel
+  if (selectedPosition) {
+    return <PositionDetail pos={selectedPosition} />;
+  }
 
   return (
     <div className="flex flex-col h-full">

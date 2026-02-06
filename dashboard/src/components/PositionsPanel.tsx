@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Position } from "../lib/types";
+import { useUIStore } from "../lib/store";
 
 type SortKey = "pnl_pct" | "ticker" | "weight" | "entry_date";
 
@@ -34,7 +35,7 @@ function ProgressBar({ pct }: { pct: number }) {
   );
 }
 
-function PositionRow({ pos, totalValue }: { pos: Position; totalValue: number }) {
+function PositionRow({ pos, totalValue, onClick }: { pos: Position; totalValue: number; onClick: () => void }) {
   const pnlColor =
     pos.unrealized_pnl_pct > 0
       ? "text-profit"
@@ -50,7 +51,7 @@ function PositionRow({ pos, totalValue }: { pos: Position; totalValue: number })
   const weight = totalValue > 0 ? (pos.market_value / totalValue) * 100 : 0;
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-elevated/50 transition-colors text-sm border-b border-border/50">
+    <div onClick={onClick} className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-elevated/50 cursor-pointer transition-colors text-sm border-b border-border/50">
       <span className="font-semibold text-text-primary w-14 shrink-0">
         {pos.ticker}
       </span>
@@ -80,6 +81,7 @@ export default function PositionsPanel({
   totalValue: number;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("pnl_pct");
+  const selectPosition = useUIStore((s) => s.selectPosition);
 
   const sorted = sortPositions(positions, sortKey);
 
@@ -124,6 +126,7 @@ export default function PositionsPanel({
               key={pos.ticker}
               pos={pos}
               totalValue={totalValue}
+              onClick={() => selectPosition(pos)}
             />
           ))
         )}

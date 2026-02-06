@@ -1,7 +1,7 @@
 /** Zustand store — shared UI state across components. */
 
 import { create } from "zustand";
-import type { AnalysisResult } from "./types";
+import type { AnalysisResult, Position } from "./types";
 import { api } from "./api";
 
 interface AnalysisStore {
@@ -21,11 +21,15 @@ export type RightTab = "actions" | "risk" | "performance";
 interface UIStore {
   rightTab: RightTab;
   setRightTab: (tab: RightTab) => void;
+  selectedPosition: Position | null;
+  selectPosition: (pos: Position | null) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
   rightTab: "actions",
-  setRightTab: (tab) => set({ rightTab: tab }),
+  setRightTab: (tab) => set({ rightTab: tab, selectedPosition: null }),
+  selectedPosition: null,
+  selectPosition: (pos) => set({ selectedPosition: pos }),
 }));
 
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({

@@ -2,6 +2,7 @@
 
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { usePortfolioState } from "./hooks/usePortfolioState";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import TopBar from "./components/TopBar";
 import PositionsPanel from "./components/PositionsPanel";
 import RightPanel from "./components/RightPanel";
@@ -10,6 +11,7 @@ import MommyCoPilot from "./components/MommyCoPilot";
 
 export default function App() {
   const { data: state, isLoading } = usePortfolioState();
+  useKeyboardShortcuts();
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary">
