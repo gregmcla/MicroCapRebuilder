@@ -75,9 +75,9 @@ function UpdatePricesButton() {
     try {
       const res = await api.updatePrices();
       updateTimestamp("positions");
-      setResult(`Updated ${res.updated} positions`);
+      setResult(`Updated ${res.num_positions} positions`);
       // Invalidate state query to refetch with new prices
-      queryClient.invalidateQueries({ queryKey: ["state"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
       setResult(e instanceof Error ? e.message : "Update failed");
@@ -98,6 +98,175 @@ function UpdatePricesButton() {
       </button>
       {result && (
         <span className="text-xs text-text-muted">{result}</span>
+      )}
+    </div>
+  );
+}
+
+function ModeToggle({ paperMode }: { paperMode: boolean }) {
+  const queryClient = useQueryClient();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleToggle = async () => {
+    setToggling(true);
+    setResult(null);
+    setShowConfirm(false);
+    try {
+      const res = await api.toggleMode();
+      setResult(res.message);
+      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+      setTimeout(() => setResult(null), 3000);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Toggle failed");
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const targetMode = paperMode ? "LIVE" : "PAPER";
+
+  return (
+    <div className="relative flex items-center gap-1.5">
+      <button
+        onClick={() => setShowConfirm(true)}
+        disabled={toggling}
+        className={`text-xs px-2 py-0.5 rounded font-semibold tracking-wider transition-colors disabled:opacity-50 ${
+          paperMode
+            ? "bg-warning/15 text-warning hover:bg-warning/25"
+            : "bg-loss/15 text-loss hover:bg-loss/25"
+        }`}
+      >
+        {toggling ? "..." : paperMode ? "PAPER" : "LIVE"}
+      </button>
+      {result && (
+        <span className="text-xs text-text-muted absolute left-full ml-2 whitespace-nowrap">
+          {result}
+        </span>
+      )}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-bg-elevated border border-border rounded-lg p-4 max-w-sm">
+            <h3 className="text-sm font-semibold text-text-primary mb-2">
+              Switch to {targetMode} Mode?
+            </h3>
+            <p className="text-xs text-text-muted mb-4">
+              {targetMode === "LIVE"
+                ? "This will enable LIVE trading with real money. Are you sure?"
+                : "This will switch to paper trading mode (simulated)."}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-3 py-1 text-xs font-semibold bg-bg-surface text-text-primary rounded hover:bg-border transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleToggle}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                  targetMode === "LIVE"
+                    ? "bg-loss/15 text-loss hover:bg-loss/25"
+                    : "bg-warning/15 text-warning hover:bg-warning/25"
+                }`}
+              >
+                Switch to {targetMode}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmergencyClose({ positions }: { positions: PortfolioState["positions"] }) {
+  const queryClient = useQueryClient();
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleClose = async () => {
+    setClosing(true);
+    setResult(null);
+    setShowConfirm(false);
+    try {
+      const res = await api.closeAll();
+      setResult(res.message);
+      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+      setTimeout(() => setResult(null), 5000);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Emergency close failed");
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  if (!positions || positions.length === 0) return null;
+
+  const totalValue = positions.reduce((sum, p) => sum + p.market_value, 0);
+
+  return (
+    <div className="relative flex items-center gap-1.5">
+      <button
+        onClick={() => setShowConfirm(true)}
+        disabled={closing}
+        className="text-xs px-2 py-0.5 rounded font-semibold tracking-wider bg-loss/15 text-loss hover:bg-loss/25 transition-colors disabled:opacity-50"
+      >
+        {closing ? "..." : "CLOSE ALL"}
+      </button>
+      {result && (
+        <span className="text-xs text-text-muted absolute left-full ml-2 whitespace-nowrap">
+          {result}
+        </span>
+      )}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-bg-elevated border border-border rounded-lg p-4 max-w-md">
+            <h3 className="text-sm font-semibold text-loss mb-2">
+              Emergency Close All Positions?
+            </h3>
+            <p className="text-xs text-text-muted mb-3">
+              You sure, sweetheart? Mommy will close everything if that's what you need. I've got you.
+            </p>
+            <div className="bg-bg-surface rounded p-2 mb-3 max-h-32 overflow-y-auto">
+              <div className="text-xs space-y-1">
+                {positions.map((p) => (
+                  <div key={p.ticker} className="flex justify-between items-center">
+                    <span className="font-semibold">{p.ticker}</span>
+                    <span className="text-text-muted">
+                      {p.shares} @ ${p.current_price.toFixed(2)} = ${p.market_value.toFixed(2)}
+                      <span className={p.unrealized_pnl >= 0 ? "text-profit ml-1" : "text-loss ml-1"}>
+                        ({p.unrealized_pnl >= 0 ? "+" : ""}{p.unrealized_pnl_pct.toFixed(1)}%)
+                      </span>
+                    </span>
+                  </div>
+                ))}
+                <div className="border-t border-border mt-2 pt-1 flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span>${totalValue.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-3 py-1 text-xs font-semibold bg-bg-surface text-text-secondary rounded hover:bg-border transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClose}
+                className="px-3 py-1 text-xs font-semibold bg-loss/15 text-loss rounded hover:bg-loss/25 transition-colors"
+              >
+                Yes, Close All
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -220,16 +389,11 @@ export default function TopBar({
         </span>
       )}
 
-      {/* Mode */}
-      <span
-        className={`text-xs px-2 py-0.5 rounded font-semibold tracking-wider ${
-          state.paper_mode
-            ? "bg-warning/15 text-warning"
-            : "bg-loss/15 text-loss"
-        }`}
-      >
-        {state.paper_mode ? "PAPER" : "LIVE"}
-      </span>
+      {/* Emergency Close */}
+      <EmergencyClose positions={state.positions} />
+
+      {/* Mode Toggle */}
+      <ModeToggle paperMode={state.paper_mode} />
     </header>
   );
 }

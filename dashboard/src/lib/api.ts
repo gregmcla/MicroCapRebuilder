@@ -44,5 +44,13 @@ export const api = {
   analyze: () => post<AnalysisResult>("/analyze"),
   execute: () => post<Record<string, unknown>>("/execute"),
   chat: (message: string) => post<{ response: string }>("/chat", { message }),
-  updatePrices: () => post<{ updated: number; total_equity: number; unrealized_pnl: number }>("/state/update"),
+  updatePrices: () => get<PortfolioState>("/state/refresh"),
+  toggleMode: () => post<{ paper_mode: boolean; message: string }>("/mode/toggle"),
+  closeAll: () => post<{
+    closed: number;
+    positions: Array<{ ticker: string; shares: number; price: number; total_value: number; unrealized_pnl: number; unrealized_pnl_pct: number }>;
+    total_value: number;
+    total_pnl: number;
+    message: string;
+  }>("/close-all"),
 };
