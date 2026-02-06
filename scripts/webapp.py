@@ -2,15 +2,18 @@
 """
 M O M M Y — Autonomous Trading Intelligence
 
-Tab-based navigation architecture for reduced cognitive load.
-Implements the design consultant's vision: distinct views with clear navigation.
+Single scrollable page for daily check-ins.
+All key information renders on one page — scroll, don't click tabs.
 
-Views:
-- Dashboard: At-a-glance summary, alerts, top positions needing attention
-- Positions: Full positions list with card/table toggle
-- Analysis: Portfolio composition, risk metrics, diversification
-- Activity: Recent trades, trade history/journal
-- Discover: Stock discovery/screening
+Sections:
+- Metrics strip: equity, P&L, cash, regime
+- Alerts: stale prices, near-stop, near-target positions
+- Positions: full positions list with card/table toggle
+- Analysis: ANALYZE/EXECUTE flow with results
+- Recent Activity: last trades (expandable)
+- Learning Insights: factor performance (collapsed by default)
+
+Mommy Chat lives in a persistent right sidebar.
 
 Run with: streamlit run scripts/webapp.py
 """
@@ -57,6 +60,7 @@ from unified_analysis import run_unified_analysis, execute_approved_actions
 from ai_review import ReviewDecision
 from strategy_health import get_strategy_health
 from strategy_pivot import analyze_pivot, apply_recommended_pivot
+from factor_learning import FactorLearner, get_weight_suggestions
 
 # Import design system
 from webapp_styles import inject_styles, COLORS
@@ -169,8 +173,6 @@ st.set_page_config(
 paper_mode = is_paper_mode()
 
 # Initialize session state
-if "current_tab" not in st.session_state:
-    st.session_state.current_tab = "Dashboard"
 if "unified_analysis" not in st.session_state:
     st.session_state.unified_analysis = None
 if "show_execute_confirm" not in st.session_state:
@@ -181,8 +183,6 @@ if "show_close_all_confirm" not in st.session_state:
     st.session_state.show_close_all_confirm = False
 if "last_refresh" not in st.session_state:
     st.session_state.last_refresh = datetime.now()
-if "chart_timeframe" not in st.session_state:
-    st.session_state.chart_timeframe = "1M"
 if "pivot_analysis" not in st.session_state:
     st.session_state.pivot_analysis = None
 if "view_mode" not in st.session_state:
@@ -207,6 +207,7 @@ total_equity = _state.total_equity
 num_positions = _state.num_positions
 regime = _state.regime.value
 regime_analysis = _state.regime_analysis
+stale_alerts = _state.stale_alerts
 
 starting_capital = config.get("starting_capital", 50000.0)
 total_return = total_equity - starting_capital
@@ -244,9 +245,9 @@ pnl_history = snapshots_df["day_pnl"].tolist()[-20:] if not snapshots_df.empty a
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# HEADER BAR (Logo + Nav Tabs + Controls)
+# HEADER BAR (Logo + Controls)
 # ═══════════════════════════════════════════════════════════════════════════════
-col_logo, col_nav, col_controls = st.columns([1.5, 3, 1.5])
+col_logo, col_spacer, col_controls = st.columns([1.5, 3, 1.5])
 
 with col_logo:
     logo_html = '<div style="display: flex; align-items: center; gap: 12px; padding: 4px 0;">'
@@ -254,18 +255,6 @@ with col_logo:
     logo_html += '<span style="font-family: Georgia, serif; font-size: 20px; font-weight: 600; color: #F7FAFC;">MOMMY</span>'
     logo_html += '</div>'
     st.markdown(logo_html, unsafe_allow_html=True)
-
-with col_nav:
-    # Navigation tabs
-    tabs = ["Dashboard", "Positions", "Analysis", "Activity", "Discover"]
-    nav_cols = st.columns(len(tabs))
-    for i, tab in enumerate(tabs):
-        with nav_cols[i]:
-            is_active = st.session_state.current_tab == tab
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(tab, key=f"nav_{tab}", use_container_width=True, type=btn_type):
-                st.session_state.current_tab = tab
-                st.rerun()
 
 with col_controls:
     ctrl_cols = st.columns([1, 1, 1])
@@ -484,368 +473,292 @@ with sidebar_col:
         st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ─── MAIN CONTENT (Tab-specific) ──────────────────────────────────────────────
+# ─── MAIN CONTENT (Single Scrollable Page) ──────────────────────────────────
 with main_col:
-    current_tab = st.session_state.current_tab
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # DASHBOARD VIEW
+    # ALERTS (stale prices, near-stop, near-target)
     # ═══════════════════════════════════════════════════════════════════════════
-    if current_tab == "Dashboard":
-        # Alerts section
-        if near_stop or near_target:
-            render_section_header("Alerts")
+    has_alerts = stale_alerts or near_stop or near_target
+    if has_alerts:
+        render_section_header("Alerts")
 
-            for pos in near_stop[:3]:
-                alert_html = f'<div class="alert-card danger">'
-                alert_html += f'<span class="alert-icon">⚠️</span>'
-                alert_html += f'<span class="alert-text"><strong>{pos["ticker"]}</strong> is only {pos["distance_pct"]:.1f}% from stop loss</span>'
-                alert_html += '</div>'
-                st.markdown(alert_html, unsafe_allow_html=True)
+        for ticker, days in stale_alerts.items():
+            alert_html = f'<div class="alert-card danger">'
+            alert_html += f'<span class="alert-icon">📡</span>'
+            alert_html += f'<span class="alert-text"><strong>{ticker}</strong> price stale for {days} consecutive days — may be delisted</span>'
+            alert_html += '</div>'
+            st.markdown(alert_html, unsafe_allow_html=True)
 
-            for pos in near_target[:3]:
-                alert_html = f'<div class="alert-card success">'
-                alert_html += f'<span class="alert-icon">🎯</span>'
-                alert_html += f'<span class="alert-text"><strong>{pos["ticker"]}</strong> is {pos["distance_pct"]:.1f}% from target</span>'
-                alert_html += '</div>'
-                st.markdown(alert_html, unsafe_allow_html=True)
+        for pos in near_stop[:3]:
+            alert_html = f'<div class="alert-card danger">'
+            alert_html += f'<span class="alert-icon">⚠️</span>'
+            alert_html += f'<span class="alert-text"><strong>{pos["ticker"]}</strong> is only {pos["distance_pct"]:.1f}% from stop loss</span>'
+            alert_html += '</div>'
+            st.markdown(alert_html, unsafe_allow_html=True)
 
-        # Positions Needing Attention (max 5)
-        render_section_header("Positions Needing Attention")
+        for pos in near_target[:3]:
+            alert_html = f'<div class="alert-card success">'
+            alert_html += f'<span class="alert-icon">🎯</span>'
+            alert_html += f'<span class="alert-text"><strong>{pos["ticker"]}</strong> is {pos["distance_pct"]:.1f}% from target</span>'
+            alert_html += '</div>'
+            st.markdown(alert_html, unsafe_allow_html=True)
 
-        if not positions_df.empty:
-            # Sort by priority: near stop first, then near target, then by P&L
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # POSITIONS
+    # ═══════════════════════════════════════════════════════════════════════════
+    winners = len(positions_df[positions_df['unrealized_pnl'] > 0]) if not positions_df.empty else 0
+    losers = len(positions_df[positions_df['unrealized_pnl'] <= 0]) if not positions_df.empty else 0
+
+    # Action bar
+    action_col1, action_col2, action_col3, action_col4 = st.columns([1, 1, 1, 3])
+
+    with action_col1:
+        if st.button("🔄 REFRESH", key="refresh_positions", use_container_width=True):
+            st.rerun()
+
+    with action_col2:
+        if st.button("📊 UPDATE", key="update_positions", use_container_width=True):
+            with st.spinner("Updating prices..."):
+                try:
+                    project_root = Path(__file__).parent.parent
+                    result = subprocess.run([sys.executable, "scripts/update_positions.py"], cwd=project_root, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0:
+                        st.success("Updated!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+    with action_col3:
+        view_toggle = st.selectbox("View", ["Cards", "Table"], label_visibility="collapsed", key="pos_view_toggle")
+        if view_toggle == "Cards":
+            st.session_state.view_mode = "cards"
+        else:
+            st.session_state.view_mode = "table"
+
+    render_section_header("Positions", f"{winners}W / {losers}L")
+
+    if not positions_df.empty:
+        if st.session_state.view_mode == "cards":
+            render_position_cards(positions_df)
+        else:
+            # Table view
             near_stop_tickers = {p['ticker'] for p in near_stop}
             near_target_tickers = {p['ticker'] for p in near_target}
 
-            priority_df = positions_df.copy()
-            priority_df['_priority'] = priority_df['ticker'].apply(
+            positions_sorted = positions_df.copy()
+            positions_sorted['_priority'] = positions_sorted['ticker'].apply(
                 lambda t: 0 if t in near_stop_tickers else (1 if t in near_target_tickers else 2)
             )
-            priority_df = priority_df.sort_values(['_priority', 'unrealized_pnl_pct'], ascending=[True, False])
+            positions_sorted = positions_sorted.sort_values(['_priority', 'unrealized_pnl_pct'], ascending=[True, False])
 
-            # Show only top 5
-            top_positions = priority_df.head(5)
-            render_position_cards(top_positions)
+            rows_html = ""
+            for _, row in positions_sorted.iterrows():
+                ticker = row['ticker']
+                shares = int(row.get('shares', 0))
+                entry_price = row['avg_cost_basis']
+                current_price = row['current_price']
+                market_value = row['market_value']
+                pnl = row['unrealized_pnl']
+                pnl_pct = row['unrealized_pnl_pct']
+                stop_loss = row.get('stop_loss', entry_price * 0.92)
+                take_profit = row.get('take_profit', entry_price * 1.20)
 
-            if len(positions_df) > 5:
-                st.markdown(f'<div class="view-all-link" onclick="document.querySelector(\'[data-testid=\"nav_Positions\"]\').click()">View All {len(positions_df)} Positions →</div>', unsafe_allow_html=True)
-                if st.button("View All Positions →", key="view_all_pos"):
-                    st.session_state.current_tab = "Positions"
+                port_weight = (market_value / total_equity) * 100 if total_equity > 0 else 0
+                progress = calculate_position_progress(row)
+                prog_pct = progress['progress_pct'] if progress else 50
+
+                if ticker in near_stop_tickers:
+                    row_bg = "rgba(245,101,101,0.08)"
+                elif pnl >= 0:
+                    row_bg = "rgba(72,187,120,0.05)"
+                else:
+                    row_bg = "rgba(245,101,101,0.03)"
+
+                pnl_color = COLORS["success"] if pnl >= 0 else COLORS["danger"]
+                pnl_sign = "+" if pnl >= 0 else ""
+                prog_color = COLORS["danger"] if prog_pct < 25 else COLORS["warning"] if prog_pct < 50 else COLORS["text_muted"] if prog_pct < 75 else COLORS["success"]
+
+                rows_html += f'<tr style="background: {row_bg};">'
+                rows_html += f'<td style="font-weight: 600; color: {COLORS["text_primary"]};">{ticker}</td>'
+                rows_html += f'<td style="color: {COLORS["text_secondary"]};">{shares}</td>'
+                rows_html += f'<td style="color: {COLORS["text_secondary"]};">${entry_price:.2f}</td>'
+                rows_html += f'<td style="color: {COLORS["text_secondary"]};">${current_price:.2f}</td>'
+                rows_html += f'<td style="color: {COLORS["text_secondary"]};">${market_value:,.0f}</td>'
+                rows_html += f'<td style="color: {pnl_color};">{pnl_sign}${abs(pnl):,.0f}</td>'
+                rows_html += f'<td style="color: {pnl_color};">{pnl_sign}{pnl_pct:.1f}%</td>'
+                rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">{port_weight:.1f}%</td>'
+                rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">${stop_loss:.0f}</td>'
+                rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">${take_profit:.0f}</td>'
+                rows_html += f'<td><div style="width: 60px; height: 6px; background: {COLORS["bg_hover"]}; border-radius: 3px;"><div style="width: {prog_pct}%; height: 100%; background: {prog_color}; border-radius: 3px;"></div></div></td>'
+                rows_html += '</tr>'
+
+            table_html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">'
+            table_html += f'<thead><tr style="border-bottom: 1px solid {COLORS["border"]};">'
+            for h in ['Ticker', 'Shares', 'Entry', 'Current', 'Value', 'P&L', '%', 'Weight', 'Stop', 'Target', 'Progress']:
+                table_html += f'<th style="text-align: left; padding: 8px 6px; font-size: 10px; font-weight: 500; color: {COLORS["text_muted"]}; text-transform: uppercase;">{h}</th>'
+            table_html += '</tr></thead>'
+            table_html += f'<tbody>{rows_html}</tbody></table>'
+            st.markdown(table_html, unsafe_allow_html=True)
+    else:
+        st.info("No open positions")
+
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ANALYSIS & ACTIONS
+    # ═══════════════════════════════════════════════════════════════════════════
+    render_section_header("Analysis & Actions")
+
+    action_col1, action_col2, action_col3 = st.columns([1, 1, 4])
+
+    analysis = st.session_state.unified_analysis
+    has_executable = analysis.get("summary", {}).get("can_execute", False) if analysis else False
+
+    with action_col1:
+        if st.button("🔍 ANALYZE", key="analyze_btn", type="primary", use_container_width=True):
+            with st.spinner("Running analysis..."):
+                try:
+                    result = run_unified_analysis(dry_run=True)
+                    st.session_state.unified_analysis = result
+                    st.session_state.show_execute_confirm = False
                     st.rerun()
-        else:
-            st.info("No open positions")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
-        # Compact Equity Curve
-        if not snapshots_df.empty:
-            render_section_header("Equity Curve")
+    with action_col2:
+        if st.button("▶️ EXECUTE", key="execute_btn", disabled=not has_executable, use_container_width=True):
+            st.session_state.show_execute_confirm = True
 
-            chart_df = snapshots_df.copy()
-            chart_df['date'] = pd.to_datetime(chart_df['date'])
-            # Default to 1 month view
-            chart_df = chart_df[chart_df['date'] >= pd.Timestamp.now() - pd.Timedelta(days=30)]
+    # Execute confirmation
+    if st.session_state.show_execute_confirm and analysis:
+        approved = analysis.get("approved", [])
+        modified = analysis.get("modified", [])
+        executable = approved + modified
 
-            if not chart_df.empty:
-                render_equity_curve(chart_df)
+        if executable:
+            st.markdown(f'<div style="background: {COLORS["bg_card"]}; border: 2px solid {COLORS["warning"]}; border-radius: 12px; padding: 20px; margin: 16px 0;">', unsafe_allow_html=True)
+            st.markdown(f'<div style="font-weight: 600; color: {COLORS["warning"]}; margin-bottom: 12px;">Confirm Execution</div>', unsafe_allow_html=True)
 
-        # Today's Activity (last 5)
-        render_section_header("Today's Activity")
-
-        if not transactions_df.empty:
-            recent = transactions_df.tail(5).iloc[::-1]
-
-            for _, tx in recent.iterrows():
-                action = tx["action"]
-                ticker = tx["ticker"]
-                shares = int(tx["shares"])
-                price = tx["price"]
-                date_str = str(tx["date"])
-                reason = tx.get("reason", "")
-
-                badge_color = COLORS["success"] if action == "BUY" else COLORS["danger"]
-                badge_bg = "rgba(72,187,120,0.15)" if action == "BUY" else "rgba(245,101,101,0.15)"
-
-                reason_html = ""
-                if action == "SELL" and reason in ["STOP_LOSS", "TAKE_PROFIT"]:
-                    reason_text = "(Stop)" if reason == "STOP_LOSS" else "(Target)"
-                    reason_color = COLORS["danger"] if reason == "STOP_LOSS" else COLORS["success"]
-                    reason_html = f'<span style="color: {reason_color}; font-size: 11px; margin-left: 6px;">{reason_text}</span>'
-
-                tx_html = f'<div style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid {COLORS["border"]}; gap: 10px;">'
-                tx_html += f'<span style="background: {badge_bg}; color: {badge_color}; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px;">{action}</span>'
-                tx_html += f'<span style="font-weight: 500; color: {COLORS["text_primary"]};">{ticker}</span>'
-                tx_html += f'<span style="color: {COLORS["text_secondary"]}; font-size: 12px; flex: 1;">{shares} @ ${price:.2f}{reason_html}</span>'
-                tx_html += f'<span style="color: {COLORS["text_muted"]}; font-size: 11px;">{date_str}</span>'
-                tx_html += '</div>'
-                st.markdown(tx_html, unsafe_allow_html=True)
-
-            if len(transactions_df) > 5:
-                if st.button("View All Activity →", key="view_all_activity"):
-                    st.session_state.current_tab = "Activity"
-                    st.rerun()
-        else:
-            st.info("No transactions yet")
-
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # POSITIONS VIEW
-    # ═══════════════════════════════════════════════════════════════════════════
-    elif current_tab == "Positions":
-        winners = len(positions_df[positions_df['unrealized_pnl'] > 0]) if not positions_df.empty else 0
-        losers = len(positions_df[positions_df['unrealized_pnl'] <= 0]) if not positions_df.empty else 0
-
-        # Action bar
-        action_col1, action_col2, action_col3, action_col4 = st.columns([1, 1, 1, 3])
-
-        with action_col1:
-            if st.button("🔄 REFRESH", key="refresh_positions", use_container_width=True):
-                st.rerun()
-
-        with action_col2:
-            if st.button("📊 UPDATE", key="update_positions", use_container_width=True):
-                with st.spinner("Updating prices..."):
-                    try:
-                        project_root = Path(__file__).parent.parent
-                        result = subprocess.run([sys.executable, "scripts/update_positions.py"], cwd=project_root, capture_output=True, text=True, timeout=120)
-                        if result.returncode == 0:
-                            st.success("Updated!")
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-        with action_col3:
-            view_toggle = st.selectbox("View", ["Cards", "Table"], label_visibility="collapsed", key="pos_view_toggle")
-            if view_toggle == "Cards":
-                st.session_state.view_mode = "cards"
-            else:
-                st.session_state.view_mode = "table"
-
-        render_section_header("Positions", f"{winners}W / {losers}L")
-
-        if not positions_df.empty:
-            if st.session_state.view_mode == "cards":
-                render_position_cards(positions_df)
-            else:
-                # Table view
-                near_stop_tickers = {p['ticker'] for p in near_stop}
-                near_target_tickers = {p['ticker'] for p in near_target}
-
-                positions_sorted = positions_df.copy()
-                positions_sorted['_priority'] = positions_sorted['ticker'].apply(
-                    lambda t: 0 if t in near_stop_tickers else (1 if t in near_target_tickers else 2)
-                )
-                positions_sorted = positions_sorted.sort_values(['_priority', 'unrealized_pnl_pct'], ascending=[True, False])
-
-                rows_html = ""
-                for _, row in positions_sorted.iterrows():
-                    ticker = row['ticker']
-                    shares = int(row.get('shares', 0))
-                    entry_price = row['avg_cost_basis']
-                    current_price = row['current_price']
-                    market_value = row['market_value']
-                    pnl = row['unrealized_pnl']
-                    pnl_pct = row['unrealized_pnl_pct']
-                    stop_loss = row.get('stop_loss', entry_price * 0.92)
-                    take_profit = row.get('take_profit', entry_price * 1.20)
-
-                    port_weight = (market_value / total_equity) * 100 if total_equity > 0 else 0
-                    progress = calculate_position_progress(row)
-                    prog_pct = progress['progress_pct'] if progress else 50
-
-                    if ticker in near_stop_tickers:
-                        row_bg = "rgba(245,101,101,0.08)"
-                    elif pnl >= 0:
-                        row_bg = "rgba(72,187,120,0.05)"
-                    else:
-                        row_bg = "rgba(245,101,101,0.03)"
-
-                    pnl_color = COLORS["success"] if pnl >= 0 else COLORS["danger"]
-                    pnl_sign = "+" if pnl >= 0 else ""
-                    prog_color = COLORS["danger"] if prog_pct < 25 else COLORS["warning"] if prog_pct < 50 else COLORS["text_muted"] if prog_pct < 75 else COLORS["success"]
-
-                    rows_html += f'<tr style="background: {row_bg};">'
-                    rows_html += f'<td style="font-weight: 600; color: {COLORS["text_primary"]};">{ticker}</td>'
-                    rows_html += f'<td style="color: {COLORS["text_secondary"]};">{shares}</td>'
-                    rows_html += f'<td style="color: {COLORS["text_secondary"]};">${entry_price:.2f}</td>'
-                    rows_html += f'<td style="color: {COLORS["text_secondary"]};">${current_price:.2f}</td>'
-                    rows_html += f'<td style="color: {COLORS["text_secondary"]};">${market_value:,.0f}</td>'
-                    rows_html += f'<td style="color: {pnl_color};">{pnl_sign}${abs(pnl):,.0f}</td>'
-                    rows_html += f'<td style="color: {pnl_color};">{pnl_sign}{pnl_pct:.1f}%</td>'
-                    rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">{port_weight:.1f}%</td>'
-                    rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">${stop_loss:.0f}</td>'
-                    rows_html += f'<td style="color: {COLORS["text_muted"]}; font-size: 12px;">${take_profit:.0f}</td>'
-                    rows_html += f'<td><div style="width: 60px; height: 6px; background: {COLORS["bg_hover"]}; border-radius: 3px;"><div style="width: {prog_pct}%; height: 100%; background: {prog_color}; border-radius: 3px;"></div></div></td>'
-                    rows_html += '</tr>'
-
-                table_html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">'
-                table_html += f'<thead><tr style="border-bottom: 1px solid {COLORS["border"]};">'
-                for h in ['Ticker', 'Shares', 'Entry', 'Current', 'Value', 'P&L', '%', 'Weight', 'Stop', 'Target', 'Progress']:
-                    table_html += f'<th style="text-align: left; padding: 8px 6px; font-size: 10px; font-weight: 500; color: {COLORS["text_muted"]}; text-transform: uppercase;">{h}</th>'
-                table_html += '</tr></thead>'
-                table_html += f'<tbody>{rows_html}</tbody></table>'
-                st.markdown(table_html, unsafe_allow_html=True)
-        else:
-            st.info("No open positions")
-
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # ANALYSIS VIEW
-    # ═══════════════════════════════════════════════════════════════════════════
-    elif current_tab == "Analysis":
-        # Action bar
-        action_col1, action_col2, action_col3 = st.columns([1, 1, 4])
-
-        analysis = st.session_state.unified_analysis
-        has_executable = analysis.get("summary", {}).get("can_execute", False) if analysis else False
-
-        with action_col1:
-            if st.button("🔍 ANALYZE", key="analyze_btn", type="primary", use_container_width=True):
-                with st.spinner("Running analysis..."):
-                    try:
-                        result = run_unified_analysis(dry_run=True)
-                        st.session_state.unified_analysis = result
-                        st.session_state.show_execute_confirm = False
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-        with action_col2:
-            if st.button("▶️ EXECUTE", key="execute_btn", disabled=not has_executable, use_container_width=True):
-                st.session_state.show_execute_confirm = True
-
-        # Execute confirmation
-        if st.session_state.show_execute_confirm and analysis:
-            approved = analysis.get("approved", [])
-            modified = analysis.get("modified", [])
-            executable = approved + modified
-
-            if executable:
-                st.markdown(f'<div style="background: {COLORS["bg_card"]}; border: 2px solid {COLORS["warning"]}; border-radius: 12px; padding: 20px; margin: 16px 0;">', unsafe_allow_html=True)
-                st.markdown(f'<div style="font-weight: 600; color: {COLORS["warning"]}; margin-bottom: 12px;">Confirm Execution</div>', unsafe_allow_html=True)
-
-                for r in executable:
-                    action = r.original
-                    shares = r.modified_shares or action.shares
-                    mod_note = " (modified)" if r.decision == ReviewDecision.MODIFY else ""
-                    st.markdown(f"- **{action.action_type}** {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("EXECUTE NOW", type="primary", key="exec_confirm"):
-                        with st.spinner("Executing..."):
-                            try:
-                                result = execute_approved_actions(analysis)
-                                executed = result.get("executed", 0)
-                                st.success(f"Executed {executed} action(s)")
-                                st.session_state.unified_analysis = None
-                                st.session_state.show_execute_confirm = False
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Error: {e}")
-                with col2:
-                    if st.button("CANCEL", key="exec_cancel"):
-                        st.session_state.show_execute_confirm = False
-                        st.rerun()
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
-        # Analysis Results
-        if analysis:
-            render_section_header("Analysis Results")
-            summary = analysis.get("summary", {})
-
-            summary_html = f'<div style="display: flex; gap: 24px; margin: 12px 0; font-size: 14px;">'
-            summary_html += f'<span style="color: {COLORS["text_muted"]};">Proposed: <strong style="color: {COLORS["text_primary"]};">{summary.get("total_proposed", 0)}</strong></span>'
-            summary_html += f'<span style="color: {COLORS["success"]};">Approved: <strong>{summary.get("approved", 0)}</strong></span>'
-            summary_html += f'<span style="color: {COLORS["warning"]};">Modified: <strong>{summary.get("modified", 0)}</strong></span>'
-            summary_html += f'<span style="color: {COLORS["danger"]};">Vetoed: <strong>{summary.get("vetoed", 0)}</strong></span>'
-            summary_html += '</div>'
-            st.markdown(summary_html, unsafe_allow_html=True)
-
-            reviewed = analysis.get("reviewed_actions", [])
-            for r in reviewed:
+            for r in executable:
                 action = r.original
-                decision = r.decision
-                ai_reason = r.ai_reasoning
-                confidence = r.confidence
+                shares = r.modified_shares or action.shares
+                mod_note = " (modified)" if r.decision == ReviewDecision.MODIFY else ""
+                st.markdown(f"- **{action.action_type}** {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
 
-                action_type = action.action_type
-                ticker = action.ticker
-                shares = action.shares
-                price = action.price
-                quant_score = action.quant_score
-                quant_reason = action.reason
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("EXECUTE NOW", type="primary", key="exec_confirm"):
+                    with st.spinner("Executing..."):
+                        try:
+                            result = execute_approved_actions(analysis)
+                            executed = result.get("executed", 0)
+                            st.success(f"Executed {executed} action(s)")
+                            st.session_state.unified_analysis = None
+                            st.session_state.show_execute_confirm = False
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            with col2:
+                if st.button("CANCEL", key="exec_cancel"):
+                    st.session_state.show_execute_confirm = False
+                    st.rerun()
 
-                action_color = COLORS["success"] if action_type == "BUY" else COLORS["danger"]
-                decision_color = COLORS["success"] if decision == ReviewDecision.APPROVE else COLORS["warning"] if decision == ReviewDecision.MODIFY else COLORS["danger"]
-                blocked_opacity = "0.5" if decision == ReviewDecision.VETO else "1"
-                conf_pct = int(confidence * 100)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-                card_html = f'<div style="background: {COLORS["bg_card"]}; border: 1px solid {COLORS["border"]}; border-radius: 12px; padding: 16px; margin-bottom: 12px; opacity: {blocked_opacity};">'
-                card_html += f'<div style="display: flex; justify-content: space-between; align-items: center;">'
-                card_html += f'<div><span style="font-weight: 600; color: {action_color};">{action_type}</span> <span style="font-weight: 500; color: {COLORS["text_primary"]};">{ticker}</span> <span style="color: {COLORS["text_secondary"]}; font-size: 13px;">{shares} @ ${price:.2f}</span></div>'
-                card_html += f'<div style="font-size: 13px; color: {decision_color}; font-weight: 500;">{decision}</div>'
-                card_html += '</div>'
-                card_html += f'<div style="font-size: 12px; color: {COLORS["text_muted"]}; margin-top: 6px;">Quant: {quant_score:.0f}/100 | Confidence: {conf_pct}%</div>'
-                card_html += f'<div style="font-size: 13px; color: {COLORS["text_secondary"]}; margin-top: 8px;">{ai_reason}</div>'
-                card_html += '</div>'
-                st.markdown(card_html, unsafe_allow_html=True)
+    # Analysis Results
+    if analysis:
+        summary = analysis.get("summary", {})
 
-        # Portfolio Composition
-        if not positions_df.empty and num_positions > 1:
-            render_section_header("Portfolio Composition")
-            render_portfolio_treemap(positions_df)
+        summary_html = f'<div style="display: flex; gap: 24px; margin: 12px 0; font-size: 14px;">'
+        summary_html += f'<span style="color: {COLORS["text_muted"]};">Proposed: <strong style="color: {COLORS["text_primary"]};">{summary.get("total_proposed", 0)}</strong></span>'
+        summary_html += f'<span style="color: {COLORS["success"]};">Approved: <strong>{summary.get("approved", 0)}</strong></span>'
+        summary_html += f'<span style="color: {COLORS["warning"]};">Modified: <strong>{summary.get("modified", 0)}</strong></span>'
+        summary_html += f'<span style="color: {COLORS["danger"]};">Vetoed: <strong>{summary.get("vetoed", 0)}</strong></span>'
+        summary_html += '</div>'
+        st.markdown(summary_html, unsafe_allow_html=True)
 
-        # Risk Metrics
-        render_section_header("Risk Metrics")
+        reviewed = analysis.get("reviewed_actions", [])
+        for r in reviewed:
+            action = r.original
+            decision = r.decision
+            ai_reason = r.ai_reasoning
+            confidence = r.confidence
 
-        metrics_html = '<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">'
+            action_type = action.action_type
+            ticker = action.ticker
+            shares = action.shares
+            price = action.price
+            quant_score = action.quant_score
+            quant_reason = action.reason
 
-        def metric_card(label, value, color=None):
-            val_color = color or COLORS["text_primary"]
-            return f'<div style="background: {COLORS["bg_card"]}; border: 1px solid {COLORS["border"]}; border-radius: 10px; padding: 14px; text-align: center;"><div style="font-size: 10px; color: {COLORS["text_muted"]}; text-transform: uppercase; letter-spacing: 0.5px;">{label}</div><div style="font-size: 18px; font-weight: 600; color: {val_color}; margin-top: 4px;">{value}</div></div>'
+            action_color = COLORS["success"] if action_type == "BUY" else COLORS["danger"]
+            decision_color = COLORS["success"] if decision == ReviewDecision.APPROVE else COLORS["warning"] if decision == ReviewDecision.MODIFY else COLORS["danger"]
+            blocked_opacity = "0.5" if decision == ReviewDecision.VETO else "1"
+            conf_pct = int(confidence * 100)
 
-        sharpe_color = COLORS["success"] if sharpe_ratio > 1 else COLORS["warning"] if sharpe_ratio > 0 else COLORS["danger"]
-        dd_color = COLORS["success"] if max_drawdown < 5 else COLORS["warning"] if max_drawdown < 10 else COLORS["danger"]
-        wr_color = COLORS["success"] if win_rate > 50 else COLORS["warning"] if win_rate > 40 else COLORS["danger"]
-        pf_color = COLORS["success"] if profit_factor > 1.5 else COLORS["warning"] if profit_factor > 1 else COLORS["danger"]
+            card_html = f'<div style="background: {COLORS["bg_card"]}; border: 1px solid {COLORS["border"]}; border-radius: 12px; padding: 16px; margin-bottom: 12px; opacity: {blocked_opacity};">'
+            card_html += f'<div style="display: flex; justify-content: space-between; align-items: center;">'
+            card_html += f'<div><span style="font-weight: 600; color: {action_color};">{action_type}</span> <span style="font-weight: 500; color: {COLORS["text_primary"]};">{ticker}</span> <span style="color: {COLORS["text_secondary"]}; font-size: 13px;">{shares} @ ${price:.2f}</span></div>'
+            card_html += f'<div style="font-size: 13px; color: {decision_color}; font-weight: 500;">{decision}</div>'
+            card_html += '</div>'
+            card_html += f'<div style="font-size: 12px; color: {COLORS["text_muted"]}; margin-top: 6px;">Quant: {quant_score:.0f}/100 | Confidence: {conf_pct}%</div>'
+            card_html += f'<div style="font-size: 13px; color: {COLORS["text_secondary"]}; margin-top: 8px;">{ai_reason}</div>'
+            card_html += '</div>'
+            st.markdown(card_html, unsafe_allow_html=True)
 
-        metrics_html += metric_card("Sharpe", f"{sharpe_ratio:.2f}", sharpe_color)
-        metrics_html += metric_card("Max DD", f"{max_drawdown:.1f}%", dd_color)
-        metrics_html += metric_card("Win Rate", f"{win_rate:.0f}%", wr_color)
-        metrics_html += metric_card("Profit Factor", f"{profit_factor:.2f}", pf_color)
-        avg_win_loss = f"${avg_win:.0f}/${abs(avg_loss):.0f}" if avg_loss != 0 else "N/A"
-        metrics_html += metric_card("Avg W/L", avg_win_loss)
+    # Portfolio Composition
+    if not positions_df.empty and num_positions > 1:
+        render_section_header("Portfolio Composition")
+        render_portfolio_treemap(positions_df)
 
-        metrics_html += '</div>'
-        st.markdown(metrics_html, unsafe_allow_html=True)
+    # Risk Metrics
+    render_section_header("Risk Metrics")
 
-        # Diversification
-        if not positions_df.empty:
-            render_section_header("Diversification")
+    metrics_html = '<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">'
 
-            largest_pos = positions_df.nlargest(1, 'market_value')['market_value'].iloc[0] if not positions_df.empty else 0
-            largest_pct = (largest_pos / total_equity) * 100 if total_equity > 0 else 0
-            top3_pct = (positions_df.nlargest(3, 'market_value')['market_value'].sum() / total_equity) * 100 if total_equity > 0 else 0
-            cash_pct = (cash / total_equity) * 100 if total_equity > 0 else 0
+    def metric_card(label, value, color=None):
+        val_color = color or COLORS["text_primary"]
+        return f'<div style="background: {COLORS["bg_card"]}; border: 1px solid {COLORS["border"]}; border-radius: 10px; padding: 14px; text-align: center;"><div style="font-size: 10px; color: {COLORS["text_muted"]}; text-transform: uppercase; letter-spacing: 0.5px;">{label}</div><div style="font-size: 18px; font-weight: 600; color: {val_color}; margin-top: 4px;">{value}</div></div>'
 
-            div_html = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">'
-            div_html += metric_card("Largest Position", f"{largest_pct:.1f}%")
-            div_html += metric_card("Top 3 Concentration", f"{top3_pct:.1f}%")
-            div_html += metric_card("Cash Reserve", f"{cash_pct:.1f}%")
-            div_html += metric_card("Position Count", f"{num_positions}")
-            div_html += '</div>'
-            st.markdown(div_html, unsafe_allow_html=True)
+    sharpe_color = COLORS["success"] if sharpe_ratio > 1 else COLORS["warning"] if sharpe_ratio > 0 else COLORS["danger"]
+    dd_color = COLORS["success"] if max_drawdown < 5 else COLORS["warning"] if max_drawdown < 10 else COLORS["danger"]
+    wr_color = COLORS["success"] if win_rate > 50 else COLORS["warning"] if win_rate > 40 else COLORS["danger"]
+    pf_color = COLORS["success"] if profit_factor > 1.5 else COLORS["warning"] if profit_factor > 1 else COLORS["danger"]
+
+    metrics_html += metric_card("Sharpe", f"{sharpe_ratio:.2f}", sharpe_color)
+    metrics_html += metric_card("Max DD", f"{max_drawdown:.1f}%", dd_color)
+    metrics_html += metric_card("Win Rate", f"{win_rate:.0f}%", wr_color)
+    metrics_html += metric_card("Profit Factor", f"{profit_factor:.2f}", pf_color)
+    avg_win_loss = f"${avg_win:.0f}/${abs(avg_loss):.0f}" if avg_loss != 0 else "N/A"
+    metrics_html += metric_card("Avg W/L", avg_win_loss)
+
+    metrics_html += '</div>'
+    st.markdown(metrics_html, unsafe_allow_html=True)
+
+    # Diversification
+    if not positions_df.empty:
+        render_section_header("Diversification")
+
+        largest_pos = positions_df.nlargest(1, 'market_value')['market_value'].iloc[0] if not positions_df.empty else 0
+        largest_pct = (largest_pos / total_equity) * 100 if total_equity > 0 else 0
+        top3_pct = (positions_df.nlargest(3, 'market_value')['market_value'].sum() / total_equity) * 100 if total_equity > 0 else 0
+        cash_pct = (cash / total_equity) * 100 if total_equity > 0 else 0
+
+        div_html = '<div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">'
+        div_html += metric_card("Largest Position", f"{largest_pct:.1f}%")
+        div_html += metric_card("Top 3 Concentration", f"{top3_pct:.1f}%")
+        div_html += metric_card("Cash Reserve", f"{cash_pct:.1f}%")
+        div_html += metric_card("Position Count", f"{num_positions}")
+        div_html += '</div>'
+        st.markdown(div_html, unsafe_allow_html=True)
 
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # ACTIVITY VIEW
+    # RECENT ACTIVITY (expandable)
     # ═══════════════════════════════════════════════════════════════════════════
-    elif current_tab == "Activity":
-        render_section_header("Recent Activity")
-
+    with st.expander("Recent Activity", expanded=True):
         if not transactions_df.empty:
-            # All transactions
             all_tx = transactions_df.sort_values('date', ascending=False)
 
             for _, tx in all_tx.head(20).iterrows():
@@ -873,12 +786,9 @@ with main_col:
                 tx_html += f'<span style="color: {COLORS["text_muted"]}; font-size: 12px;">{date_str}</span>'
                 tx_html += '</div>'
                 st.markdown(tx_html, unsafe_allow_html=True)
-        else:
-            st.info("No transactions yet")
 
-        # Trade History / Journal
-        with st.expander("Trade History / Journal", expanded=False):
-            if not transactions_df.empty:
+            # Trade History / Journal
+            with st.expander("Trade History / Journal", expanded=False):
                 sells = transactions_df[transactions_df['action'] == 'SELL'].copy()
                 if not sells.empty:
                     sells = sells.sort_values('date', ascending=False)
@@ -903,49 +813,62 @@ with main_col:
                         st.markdown(hist_html, unsafe_allow_html=True)
                 else:
                     st.info("No closed trades yet")
+        else:
+            st.info("No transactions yet")
+
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # LEARNING INSIGHTS (collapsed by default)
+    # ═══════════════════════════════════════════════════════════════════════════
+    with st.expander("Learning Insights", expanded=False):
+        try:
+            learner = FactorLearner()
+            summary = learner.get_factor_summary()
+            if summary.get("status") == "ok" and summary.get("factors"):
+                st.markdown(f'<div style="font-size: 13px; color: {COLORS["text_secondary"]}; margin-bottom: 12px;">Trades Analyzed: {summary.get("total_analyzed_trades", 0)}</div>', unsafe_allow_html=True)
+
+                # Factor performance table
+                header_html = f'<div style="display: grid; grid-template-columns: 2fr 1fr 1.5fr 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid {COLORS["border"]}; font-size: 10px; color: {COLORS["text_muted"]}; text-transform: uppercase; letter-spacing: 0.5px;">'
+                header_html += '<span>Factor</span><span style="text-align: right;">Win Rate</span><span style="text-align: right;">Contribution</span><span style="text-align: right;">Trend</span>'
+                header_html += '</div>'
+                st.markdown(header_html, unsafe_allow_html=True)
+
+                for f in summary["factors"]:
+                    name = f["factor"].replace("_", " ").title()
+                    wr = f["win_rate"]
+                    contrib = f["total_contribution"]
+                    trend = f["trend"]
+                    wr_color = COLORS["success"] if wr >= 50 else COLORS["danger"]
+                    contrib_color = COLORS["success"] if contrib >= 0 else COLORS["danger"]
+                    contrib_sign = "+" if contrib >= 0 else ""
+
+                    row_html = f'<div style="display: grid; grid-template-columns: 2fr 1fr 1.5fr 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid {COLORS["border"]}; font-size: 13px;">'
+                    row_html += f'<span style="color: {COLORS["text_primary"]};">{name}</span>'
+                    row_html += f'<span style="text-align: right; color: {wr_color};">{wr:.0f}%</span>'
+                    row_html += f'<span style="text-align: right; color: {contrib_color};">{contrib_sign}${abs(contrib):,.0f}</span>'
+                    row_html += f'<span style="text-align: right; color: {COLORS["text_muted"]};">{trend}</span>'
+                    row_html += '</div>'
+                    st.markdown(row_html, unsafe_allow_html=True)
+
+                # Weight adjustment suggestions
+                suggestions = get_weight_suggestions(regime)
+                if suggestions:
+                    st.markdown(f'<div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid {COLORS["border"]};">', unsafe_allow_html=True)
+                    st.markdown(f'<div style="font-size: 11px; color: {COLORS["text_muted"]}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Suggested Adjustments</div>', unsafe_allow_html=True)
+                    for s in suggestions[:3]:
+                        name = s.factor.replace("_", " ").title()
+                        change_color = COLORS["success"] if s.change_pct > 0 else COLORS["danger"]
+                        sug_html = f'<div style="font-size: 13px; color: {COLORS["text_secondary"]}; padding: 4px 0;">'
+                        sug_html += f'{name}: {s.current_weight:.0%} → {s.suggested_weight:.0%} '
+                        sug_html += f'<span style="color: {change_color};">({s.change_pct:+.1f}%)</span> '
+                        sug_html += f'<span style="color: {COLORS["text_muted"]};">[{s.confidence}]</span>'
+                        sug_html += '</div>'
+                        st.markdown(sug_html, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
             else:
-                st.info("No trade history")
-
-
-    # ═══════════════════════════════════════════════════════════════════════════
-    # DISCOVER VIEW
-    # ═══════════════════════════════════════════════════════════════════════════
-    elif current_tab == "Discover":
-        render_section_header("Stock Discovery")
-
-        col1, col2 = st.columns([1, 3])
-
-        with col1:
-            if st.button("🔍 RUN DISCOVERY", key="discover_btn", type="primary", use_container_width=True):
-                with st.spinner("Discovering new candidates..."):
-                    try:
-                        project_root = Path(__file__).parent.parent
-                        result = subprocess.run(
-                            [sys.executable, "scripts/watchlist_manager.py", "--update"],
-                            cwd=project_root,
-                            capture_output=True,
-                            text=True,
-                            timeout=300
-                        )
-                        if result.returncode == 0:
-                            st.success("Discovery complete!")
-                            if result.stdout:
-                                st.code(result.stdout[-2000:], language=None)
-                        else:
-                            st.warning("Discovery had issues")
-                            if result.stderr:
-                                st.code(result.stderr[-500:], language=None)
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-
-        st.markdown(f'''
-        <div style="background: {COLORS["bg_card"]}; border: 1px solid {COLORS["border"]}; border-radius: 12px; padding: 24px; margin-top: 16px;">
-            <div style="font-family: Georgia, serif; font-size: 16px; color: {COLORS["text_primary"]}; margin-bottom: 12px;">About Discovery</div>
-            <div style="color: {COLORS["text_secondary"]}; font-size: 14px; line-height: 1.6;">
-                The discovery system scans the expanded universe of small-cap stocks looking for momentum breakouts, oversold bounces, and sector leaders. Results are added to your watchlist for the next analysis cycle.
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
+                st.info("Insufficient closed trades for factor analysis")
+        except Exception:
+            st.info("Learning analysis unavailable")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -953,6 +876,6 @@ with main_col:
 # ═══════════════════════════════════════════════════════════════════════════════
 mode_indicator = "PAPER MODE" if paper_mode else "LIVE"
 footer_html = f'<div style="text-align: center; padding: 24px 0 16px; font-size: 10px; color: {COLORS["text_muted"]}; letter-spacing: 1px; text-transform: uppercase; border-top: 1px solid {COLORS["border"]}; margin-top: 32px;">'
-footer_html += f'{mode_indicator} | Tab-Based Navigation | Not Financial Advice'
+footer_html += f'{mode_indicator} | Single Page Dashboard | Not Financial Advice'
 footer_html += '</div>'
 st.markdown(footer_html, unsafe_allow_html=True)

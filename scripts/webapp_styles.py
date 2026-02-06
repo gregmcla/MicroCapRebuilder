@@ -913,38 +913,6 @@ footer {{ visibility: hidden; }}
     color: var(--text-primary);
 }}
 
-/* ─── Navigation Tabs ───────────────────────────────────────────────────── */
-.nav-tabs {{
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    background: var(--bg-card);
-    border-radius: var(--radius-full);
-    padding: 4px;
-}}
-
-.nav-tab {{
-    padding: 8px 20px;
-    border-radius: var(--radius-full);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: none;
-    background: transparent;
-}}
-
-.nav-tab:hover {{
-    color: var(--text-primary);
-    background: rgba(255,255,255,0.05);
-}}
-
-.nav-tab.active {{
-    background: var(--accent);
-    color: var(--bg-primary);
-}}
-
 /* ─── Header Controls ───────────────────────────────────────────────────── */
 .header-controls {{
     display: flex;

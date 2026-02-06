@@ -139,7 +139,10 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
     # Fetch prices and update positions if requested
     price_cache = {}
     price_failures = []
-    stale_alerts = {}
+
+    # Always load stale alerts from tracker (even without fresh price fetch)
+    stale_tracker = _load_stale_tracker()
+    stale_alerts = {t: days for t, days in stale_tracker.items() if days >= 2}
 
     if fetch_prices and not positions.empty:
         tickers = positions["ticker"].tolist()
