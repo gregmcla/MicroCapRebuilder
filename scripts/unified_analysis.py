@@ -42,6 +42,7 @@ from portfolio_state import (
     remove_position,
     save_positions,
 )
+from risk_layer import RiskLayer
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -94,53 +95,48 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
 
     proposed_actions = []
 
-    # ─── Step 1: Check Stop Loss / Take Profit Triggers ───────────────────────
-    print("Checking stop loss / take profit triggers...")
+    # ─── Step 1: Layer 1 Risk Management (Dynamic Stops + Re-evaluation) ─────
+    print("Running Layer 1: Risk Management...")
 
-    if not state.positions.empty:
-        risk_manager = RiskManager()
+    layer1 = RiskLayer(config)
+    layer1_output = layer1.process(state)
 
-        for _, pos in state.positions.iterrows():
-            ticker = pos["ticker"]
-            current_price = state.price_cache.get(ticker, pos["current_price"])
-            stop_loss = pos.get("stop_loss", 0)
-            take_profit = pos.get("take_profit", 0)
-            shares = pos["shares"]
+    # Convert SellProposal objects to ProposedAction objects
+    for sell_proposal in layer1_output["sell_proposals"]:
+        proposed_actions.append(ProposedAction(
+            action_type="SELL",
+            ticker=sell_proposal.ticker,
+            shares=sell_proposal.shares,
+            price=sell_proposal.current_price,
+            stop_loss=sell_proposal.stop_loss,
+            take_profit=sell_proposal.take_profit,
+            quant_score=0,  # N/A for sells
+            factor_scores={},
+            regime=regime.value,
+            reason=sell_proposal.reason
+        ))
 
-            # Check stop loss
-            if stop_loss > 0 and current_price <= stop_loss:
-                proposed_actions.append(ProposedAction(
-                    action_type="SELL",
-                    ticker=ticker,
-                    shares=int(shares),
-                    price=current_price,
-                    stop_loss=stop_loss,
-                    take_profit=take_profit,
-                    quant_score=0,  # N/A for sells
-                    factor_scores={},
-                    regime=regime.value,
-                    reason=f"STOP LOSS triggered: ${current_price:.2f} <= ${stop_loss:.2f}"
-                ))
-                print(f"  🔴 {ticker}: Stop loss triggered at ${current_price:.2f}")
+        # Print with appropriate emoji based on urgency
+        emoji = "🚨" if sell_proposal.urgency_score >= 90 else \
+                "🔴" if sell_proposal.urgency_score >= 70 else \
+                "🟡" if sell_proposal.urgency_score >= 50 else "🟢"
+        print(f"  {emoji} {sell_proposal.ticker}: {sell_proposal.reason} (urgency={sell_proposal.urgency_score})")
 
-            # Check take profit
-            elif take_profit > 0 and current_price >= take_profit:
-                proposed_actions.append(ProposedAction(
-                    action_type="SELL",
-                    ticker=ticker,
-                    shares=int(shares),
-                    price=current_price,
-                    stop_loss=stop_loss,
-                    take_profit=take_profit,
-                    quant_score=0,
-                    factor_scores={},
-                    regime=regime.value,
-                    reason=f"TAKE PROFIT triggered: ${current_price:.2f} >= ${take_profit:.2f}"
-                ))
-                print(f"  🟢 {ticker}: Take profit triggered at ${current_price:.2f}")
+    # Report deterioration alerts (warnings, not sells)
+    if layer1_output["deterioration_alerts"]:
+        print(f"\n  ⚠️  {len(layer1_output['deterioration_alerts'])} position(s) deteriorating:")
+        for alert in layer1_output["deterioration_alerts"]:
+            print(f"     {alert.ticker}: Score dropped {alert.score_drop:.0f} points ({alert.entry_score:.0f} → {alert.current_score:.0f})")
+
+    # Report updated stops
+    if layer1_output["updated_stops"]:
+        print(f"\n  📊 Dynamic stops calculated for {len(layer1_output['updated_stops'])} position(s)")
+        for ticker, stops in layer1_output["updated_stops"].items():
+            if stops.stop_type != "fixed":
+                print(f"     {ticker}: ${stops.recommended_stop:.2f} ({stops.stop_type} stop)")
 
     num_sells = len([a for a in proposed_actions if a.action_type == "SELL"])
-    print(f"  Found {num_sells} sell trigger(s)")
+    print(f"\n  Found {num_sells} sell trigger(s)")
     print()
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
