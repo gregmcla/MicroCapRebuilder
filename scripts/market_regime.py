@@ -94,14 +94,18 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
             regime_strength="unknown",
         )
 
-    current_price = df["Close"].iloc[-1]
-    sma_50 = df["Close"].iloc[-50:].mean()
+    # Handle multi-level columns from yfinance
+    from portfolio_state import flatten_yf_close
+    close_col = flatten_yf_close(df)
+
+    current_price = float(close_col.iloc[-1])
+    sma_50 = float(close_col.iloc[-50:].mean())
 
     # Use available data for 200 SMA, or fall back to what we have
     if len(df) >= 200:
-        sma_200 = df["Close"].iloc[-200:].mean()
+        sma_200 = float(close_col.iloc[-200:].mean())
     else:
-        sma_200 = df["Close"].mean()  # Use all available data
+        sma_200 = float(close_col.mean())  # Use all available data
 
     above_50 = current_price > sma_50
     above_200 = current_price > sma_200

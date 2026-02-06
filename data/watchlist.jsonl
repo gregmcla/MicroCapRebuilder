@@ -1,66 +1,98 @@
-{"ticker": "CRDO"}
-{"ticker": "MOD"}
-{"ticker": "EAT"}
-{"ticker": "JBT"}
-{"ticker": "OKLO"}
-{"ticker": "AVAV"}
-{"ticker": "IDCC"}
-{"ticker": "SMR"}
-{"ticker": "ITRI"}
-{"ticker": "UPST"}
-{"ticker": "GH"}
-{"ticker": "FOLD"}
-{"ticker": "ADMA"}
-{"ticker": "AXSM"}
-{"ticker": "ARWR"}
-{"ticker": "ADUS"}
-{"ticker": "CRSP"}
-{"ticker": "SFBS"}
-{"ticker": "WSBC"}
-{"ticker": "BOH"}
-{"ticker": "CBU"}
-{"ticker": "BANF"}
-{"ticker": "PFSI"}
-{"ticker": "ANF"}
-{"ticker": "URBN"}
-{"ticker": "SMPL"}
-{"ticker": "FUN"}
-{"ticker": "AEO"}
-{"ticker": "CAKE"}
-{"ticker": "GOLF"}
-{"ticker": "SM"}
-{"ticker": "MGY"}
-{"ticker": "TDW"}
-{"ticker": "CRC"}
-{"ticker": "BTU"}
-{"ticker": "TEX"}
-{"ticker": "KTB"}
-{"ticker": "HASI"}
-{"ticker": "SBRA"}
-{"ticker": "OUT"}
-{"ticker": "KRG"}
-{"ticker": "AWR"}
-{"ticker": "ALE"}
-{"ticker": "MGEE"}
-{"ticker": "WDFC"}
-{"ticker": "AGYS"}
-{"ticker": "CALX"}
-{"ticker": "MGRC"}
-{"ticker": "ABM"}
-{"ticker": "RIOT"}
-{"ticker": "AI"}
-{"ticker": "LMND"}
-{"ticker": "AX"}
-{"ticker": "BANR"}
-{"ticker": "IDYA"}
-{"ticker": "VAC"}
-{"ticker": "HURN"}
-{"ticker": "MTRN"}
-{"ticker": "KFY"}
-{"ticker": "ACLS"}
-{"ticker": "SYNA"}
-{"ticker": "MGNI"}
-{"ticker": "BELFB"}
-{"ticker": "GFF"}
-{"ticker": "VC"}
-{"ticker": "EXTR"}
+{"ticker": "CRDO", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MOD", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 95.3, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "EAT", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "JBT", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "OKLO", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AVAV", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "IDCC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 94.1, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "SMR", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ITRI", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "UPST", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "GH", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "FOLD", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ADMA", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AXSM", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ARWR", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ADUS", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "CRSP", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "SFBS", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "WSBC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "BOH", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "CBU", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "BANF", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "PFSI", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ANF", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 65.8, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "URBN", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "SMPL", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "FUN", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AEO", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 76.1, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "CAKE", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "GOLF", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "SM", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MGY", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 100, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "TDW", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 100, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "CRC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 100, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "BTU", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 90.5, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "TEX", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "KTB", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "HASI", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "SBRA", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 88.9, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "OUT", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "KRG", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 91.9, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "AWR", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ALE", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MGEE", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "WDFC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AGYS", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "CALX", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MGRC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ABM", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "RIOT", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AI", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "LMND", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AX", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "BANR", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "IDYA", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 78.7, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": ""}
+{"ticker": "VAC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "HURN", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MTRN", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "KFY", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "ACLS", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "SYNA", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "MGNI", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "BELFB", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "GFF", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 100, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": ""}
+{"ticker": "VC", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "EXTR", "added_date": "2026-01-30", "source": "CORE", "discovery_score": 0.0, "sector": "", "market_cap_m": 0.0, "avg_volume": 0, "last_checked": "2026-01-30", "status": "ACTIVE", "notes": ""}
+{"ticker": "AEIS", "added_date": "2026-02-02", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Industrials", "market_cap_m": 9882.5, "avg_volume": 896415, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high, Volume surge"}
+{"ticker": "CRUS", "added_date": "2026-02-02", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Technology", "market_cap_m": 6700.4, "avg_volume": 561698, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "ENS", "added_date": "2026-02-02", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Industrials", "market_cap_m": 6978.6, "avg_volume": 425471, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high, Overbought"}
+{"ticker": "EPR", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 98.8, "sector": "Real Estate", "market_cap_m": 4083.4, "avg_volume": 827179, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "BJRI", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 90.1, "sector": "Consumer Cyclical", "market_cap_m": 950.7, "avg_volume": 342234, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "BURL", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 89.3, "sector": "Consumer Cyclical", "market_cap_m": 18795.0, "avg_volume": 823822, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "DIN", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 88.2, "sector": "Consumer Cyclical", "market_cap_m": 542.9, "avg_volume": 414705, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "ACAD", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 85.0, "sector": "Healthcare", "market_cap_m": 4420.7, "avg_volume": 1242066, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "CTRE", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 81.4, "sector": "Real Estate", "market_cap_m": 8130.4, "avg_volume": 1790283, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "BOOT", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 77.4, "sector": "Consumer Cyclical", "market_cap_m": 5602.1, "avg_volume": 737123, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "AROC", "added_date": "2026-02-02", "source": "SECTOR_LEADER", "discovery_score": 83.7, "sector": "Energy", "market_cap_m": 5173.4, "avg_volume": 1398736, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Near 52wk high, Overbought"}
+{"ticker": "AKR", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 72.9, "sector": "Real Estate", "market_cap_m": 2811.4, "avg_volume": 1537092, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "AWI", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 79.3, "sector": "Industrials", "market_cap_m": 8079.8, "avg_volume": 525805, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "BEAM", "added_date": "2026-02-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 71.0, "sector": "Healthcare", "market_cap_m": 2833.2, "avg_volume": 2151802, "last_checked": "2026-02-02", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "AXTA", "added_date": "2026-02-05", "source": "OVERSOLD_BOUNCE", "discovery_score": 95.9, "sector": "Basic Materials", "market_cap_m": 7191.8, "avg_volume": 3719725, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "DLTR", "added_date": "2026-02-05", "source": "OVERSOLD_BOUNCE", "discovery_score": 60.6, "sector": "Consumer Defensive", "market_cap_m": 24462.9, "avg_volume": 3210889, "last_checked": "2026-02-05", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "GPRK", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Energy", "market_cap_m": 422.1, "avg_volume": 821590, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "HLX", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Energy", "market_cap_m": 1189.9, "avg_volume": 2059355, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high"}
+{"ticker": "LBRT", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Energy", "market_cap_m": 3843.9, "avg_volume": 5038255, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum"}
+{"ticker": "NVT", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Industrials", "market_cap_m": 18374.0, "avg_volume": 2111240, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "HUN", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 100, "sector": "Basic Materials", "market_cap_m": 2293.5, "avg_volume": 5891695, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high"}
+{"ticker": "GPOR", "added_date": "2026-02-06", "source": "SECTOR_LEADER", "discovery_score": 100, "sector": "Energy", "market_cap_m": 3989.7, "avg_volume": 269945, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum"}
+{"ticker": "NOG", "added_date": "2026-02-06", "source": "SECTOR_LEADER", "discovery_score": 100, "sector": "Energy", "market_cap_m": 2385.4, "avg_volume": 2099635, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "LPX", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 96.6, "sector": "Industrials", "market_cap_m": 6534.6, "avg_volume": 1190410, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "IPGP", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 96.3, "sector": "Technology", "market_cap_m": 4192.4, "avg_volume": 454210, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high, Overbought"}
+{"ticker": "KMT", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 96.3, "sector": "Industrials", "market_cap_m": 2918.2, "avg_volume": 1393685, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high, Overbought"}
+{"ticker": "MWA", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 92.6, "sector": "Industrials", "market_cap_m": 4367.1, "avg_volume": 1268080, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high, Overbought"}
+{"ticker": "LZB", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 89.3, "sector": "Consumer Cyclical", "market_cap_m": 1588.5, "avg_volume": 410385, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "FSS", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 88.5, "sector": "Industrials", "market_cap_m": 6835.5, "avg_volume": 409700, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high"}
+{"ticker": "GDEN", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 86.8, "sector": "Consumer Cyclical", "market_cap_m": 721.9, "avg_volume": 362300, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Standard candidate"}
+{"ticker": "NJR", "added_date": "2026-02-06", "source": "MOMENTUM_BREAKOUT", "discovery_score": 86.2, "sector": "Utilities", "market_cap_m": 5321.6, "avg_volume": 591265, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Near 52wk high, Overbought"}
+{"ticker": "MUR", "added_date": "2026-02-06", "source": "OVERSOLD_BOUNCE", "discovery_score": 66.6, "sector": "Energy", "market_cap_m": 4355.0, "avg_volume": 3048505, "last_checked": "2026-02-06", "status": "ACTIVE", "notes": "Standard candidate"}

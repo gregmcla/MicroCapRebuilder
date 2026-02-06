@@ -1,0 +1,135 @@
+{
+  "version": "2.0",
+  "last_updated": "2026-02-01",
+  "description": "Hand-curated small/mid-cap stocks for Mommy Bot universe",
+  "sectors": {
+    "Technology": {
+      "tier_1_core": [
+        "CRDO", "MOD", "OKLO", "AVAV", "IDCC", "CALX", "ACLS", "AGYS",
+        "EXTR", "SYNA", "MGNI", "PLAB", "CEVA", "ONTO"
+      ],
+      "tier_2_extended": [
+        "AEHR", "AMKR", "CRUS", "DIOD", "FORM", "ICHR", "IPGP", "LSCC",
+        "MKSI", "NOVT", "OLED", "POWI", "RMBS", "SITM", "SMTC", "VECO"
+      ]
+    },
+    "Healthcare": {
+      "tier_1_core": [
+        "GH", "FOLD", "ADMA", "AXSM", "ARWR", "ADUS", "CRSP", "IDYA"
+      ],
+      "tier_2_extended": [
+        "ABCL", "ACAD", "ALKS", "ARVN", "BEAM", "BGNE", "BPMC", "CARA",
+        "DCPH", "FATE", "GTHX", "HALO", "IMVT", "INSM", "IONS", "IRWD",
+        "KRTX", "LGND", "MIRM", "NBIX", "PCVX", "PTCT", "RARE", "RCKT",
+        "SGEN", "SRPT", "TGTX", "UTHR", "VKTX", "XENE"
+      ]
+    },
+    "Financials": {
+      "tier_1_core": [
+        "SFBS", "WSBC", "BOH", "CBU", "BANF", "PFSI", "BANR", "AX"
+      ],
+      "tier_2_extended": [
+        "AMAL", "BHLB", "CADE", "CASH", "CVBF", "DCOM", "EGBN", "ESGR",
+        "FBIZ", "FFBC", "FMBH", "FRME", "GBCI", "HAFC", "HBAN", "HOPE",
+        "HTLF", "IBOC", "INDB", "LCNB", "MBWM", "NBTB", "OCFC", "ONBP",
+        "PEBO", "PPBI", "PRAA", "RBCAA", "SBCF", "TCBK", "TOWN", "UBSI",
+        "UFCS", "UVSP", "WABC", "WSFS"
+      ]
+    },
+    "Consumer_Discretionary": {
+      "tier_1_core": [
+        "ANF", "URBN", "AEO", "CAKE", "EAT", "FUN", "GOLF", "SMPL"
+      ],
+      "tier_2_extended": [
+        "BJRI", "BLMN", "BOOT", "BURL", "CHUY", "COLM", "DECK", "DIN",
+        "DKS", "DNKN", "DXLG", "EXPR", "FIZZ", "FOXF", "FWRD", "GCO",
+        "GIII", "HIBB", "JACK", "JILL", "KTB", "LAKE", "LZB", "MCFT",
+        "PLAY", "PLNT", "PRDO", "RVLV", "SCVL", "SHAK", "SIG", "SKX",
+        "SONO", "TXRH", "WING", "WOOF"
+      ]
+    },
+    "Energy": {
+      "tier_1_core": [
+        "CRC", "BTU", "MGY", "SM", "TDW"
+      ],
+      "tier_2_extended": [
+        "AROC", "BCEI", "BRY", "CEIX", "CHRD", "CNX", "CPE", "CRK",
+        "DINO", "DRQ", "ERF", "GPOR", "HLX", "HP", "LBRT", "MTDR",
+        "MUR", "NEXT", "NOG", "OII", "PTEN", "RES", "RRC", "SLCA",
+        "SWN", "TALO", "TTI", "VTLE", "WHD", "WTI", "XPRO"
+      ]
+    },
+    "Industrials": {
+      "tier_1_core": [
+        "JBT", "TEX", "ABM", "HURN", "GFF", "VC", "MTRN", "KFY"
+      ],
+      "tier_2_extended": [
+        "AEIS", "AGCO", "AIMC", "ALG", "ASTE", "ATKR", "AWI", "AYI",
+        "B", "BWXT", "CBZ", "CMC", "CW", "EBC", "ECPG", "ENS", "ESAB",
+        "ESE", "FELE", "FLS", "FSS", "GBX", "GGG", "GHC", "GVA", "HI",
+        "HNI", "HUBB", "KBR", "KMT", "LII", "MDU", "MHK", "MLI", "MWA",
+        "NPO", "NVT", "PRIM", "RBC", "RRX", "TNC", "TRN", "WMS"
+      ]
+    },
+    "REITs": {
+      "tier_1_core": [
+        "SBRA", "KRG", "OUT", "HASI"
+      ],
+      "tier_2_extended": [
+        "AAT", "ACRE", "ADC", "AIRC", "AKR", "BDN", "BNL", "BRX",
+        "CTRE", "DEA", "DEI", "DHC", "ELME", "EPRT", "EPR", "EQC",
+        "ESRT", "GTY", "HIW", "IRT", "JBGS", "KRC", "LTC", "MAC",
+        "NHI", "NNN", "OFC", "OHI", "PINE", "PGRE", "PSTL", "RLJ",
+        "ROIC", "RPT", "SITC", "SKT", "SLG", "SRC", "SUI", "UE"
+      ]
+    },
+    "Utilities": {
+      "tier_1_core": [
+        "AWR", "ALE", "MGEE"
+      ],
+      "tier_2_extended": [
+        "AEE", "AVA", "BKH", "CPK", "EVRG", "HE", "IDA", "MSEX",
+        "NJR", "NWE", "NWN", "OGE", "OGS", "PNM", "POR", "SJW",
+        "SWX", "UTMD", "UTL", "YORW"
+      ]
+    },
+    "Materials": {
+      "tier_1_core": [
+        "WDFC", "BELFB"
+      ],
+      "tier_2_extended": [
+        "AMRS", "ATI", "AXTA", "CBT", "CC", "CLF", "CMC", "DOOR",
+        "GCP", "GEF", "GPRK", "GPK", "HUN", "HWKN", "IOSP", "KOP",
+        "KWR", "LPX", "LSB", "MERC", "MTX", "OC", "OI", "OLN",
+        "RYAM", "SLVM", "SMG", "SON", "STLD", "SUM", "SWM", "SXT",
+        "TROX", "USLM", "VALE", "WOR", "ZEUS"
+      ]
+    },
+    "Communication_Services": {
+      "tier_1_core": [
+        "MGRC"
+      ],
+      "tier_2_extended": [
+        "BAND", "CABO", "CARS", "CCO", "CNK", "CODI", "CXM", "DLTR",
+        "EVC", "GDEN", "GDYN", "GTN", "IRDM", "LBRDK", "LGF.A", "LILA",
+        "MSG", "MSGN", "NXST", "REZI", "SATS", "SCI", "SSP", "TGNA",
+        "TRCO", "TRI", "USM", "WOW", "ZD"
+      ]
+    },
+    "High_Growth_Speculative": {
+      "tier_1_core": [
+        "UPST", "AI", "RIOT", "LMND", "SMR", "ITRI"
+      ],
+      "tier_2_extended": [
+        "AFRM", "APP", "ASAN", "BILL", "CFLT", "COIN", "DOCN", "DOMO",
+        "GTLB", "HUBS", "IONQ", "MARA", "MNDY", "NET", "PATH", "PLTR",
+        "RKLB", "ROKU", "SHOP", "SNAP", "SQ", "STEM", "TWLO", "U",
+        "UPWK", "WDAY", "ZI", "ZS"
+      ]
+    }
+  },
+  "notes": {
+    "tier_1_core": "Hand-picked quality stocks, scanned daily. Strong fundamentals + technicals.",
+    "tier_2_extended": "Broader universe from sector leaders and ETF overlaps. Scanned on 3-day rotation."
+  }
+}

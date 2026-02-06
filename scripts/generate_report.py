@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Daily Report Generator for MicroCapRebuilder.
+Daily Report Generator for Mommy Bot.
 
 Generates a comprehensive text report with:
 - Portfolio summary
@@ -14,7 +14,6 @@ Usage: python scripts/generate_report.py
 Output: reports/daily_report.txt
 """
 
-import json
 from datetime import date
 from pathlib import Path
 
@@ -22,43 +21,13 @@ import pandas as pd
 
 from analytics import PortfolioAnalytics
 from trade_analyzer import TradeAnalyzer
+from risk_scoreboard import get_risk_scoreboard
+from attribution import get_daily_attribution
+from factor_learning import FactorLearner, get_weight_suggestions
+from portfolio_state import load_portfolio_state
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
 REPORTS_DIR = Path(__file__).parent.parent / "reports"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-DAILY_SNAPSHOTS_FILE = DATA_DIR / "daily_snapshots.csv"
-CONFIG_FILE = DATA_DIR / "config.json"
-
-
-def load_config() -> dict:
-    """Load configuration."""
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
-            return json.load(f)
-    return {"starting_capital": 5000.0}
-
-
-def load_positions() -> pd.DataFrame:
-    """Load current positions."""
-    if not POSITIONS_FILE.exists():
-        return pd.DataFrame()
-    return pd.read_csv(POSITIONS_FILE)
-
-
-def load_transactions() -> pd.DataFrame:
-    """Load all transactions."""
-    if not TRANSACTIONS_FILE.exists():
-        return pd.DataFrame()
-    return pd.read_csv(TRANSACTIONS_FILE)
-
-
-def load_snapshots() -> pd.DataFrame:
-    """Load daily snapshots."""
-    if not DAILY_SNAPSHOTS_FILE.exists():
-        return pd.DataFrame()
-    return pd.read_csv(DAILY_SNAPSHOTS_FILE)
 
 
 def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:
@@ -69,23 +38,20 @@ def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
 def generate_report() -> str:
     """Generate the daily report text."""
-    config = load_config()
-    positions_df = load_positions()
-    transactions_df = load_transactions()
-    snapshots_df = load_snapshots()
+    # Load portfolio state
+    state = load_portfolio_state(fetch_prices=False)
+
+    # Extract what we need
+    config = state.config
+    positions_df = state.positions
+    transactions_df = state.transactions
+    snapshots_df = state.snapshots
+    cash = state.cash
+    positions_value = state.positions_value
+    total_equity = state.total_equity
 
     today = date.today().isoformat()
     starting_capital = config.get("starting_capital", 5000.0)
-
-    # Calculate current values
-    positions_value = positions_df["market_value"].sum() if not positions_df.empty else 0
-    cash = starting_capital
-    if not transactions_df.empty:
-        buys = transactions_df[transactions_df["action"] == "BUY"]["total_value"].sum()
-        sells = transactions_df[transactions_df["action"] == "SELL"]["total_value"].sum()
-        cash = starting_capital - buys + sells
-
-    total_equity = positions_value + cash
     total_return = ((total_equity - starting_capital) / starting_capital) * 100
 
     # Get analytics
@@ -104,7 +70,7 @@ def generate_report() -> str:
     # Build report
     lines = []
     lines.append("=" * 60)
-    lines.append(f"  DAILY REPORT: {today}")
+    lines.append(f"  MOMMY BOT - DAILY REPORT: {today}")
     lines.append("=" * 60)
     lines.append("")
 
@@ -127,6 +93,59 @@ def generate_report() -> str:
         sell_value = today_sells["total_value"].sum() if not today_sells.empty else 0
         lines.append(f"Buys:   {len(today_buys):>3} trades  ${buy_value:>10,.2f}")
         lines.append(f"Sells:  {len(today_sells):>3} trades  ${sell_value:>10,.2f}")
+    lines.append("")
+
+    # Risk Assessment
+    lines.append("RISK ASSESSMENT")
+    lines.append("-" * 40)
+    try:
+        risk = get_risk_scoreboard()
+        lines.append(f"Overall Risk Score: {risk.overall_score:.0f}/100 ({risk.risk_level})")
+        for c in risk.components:
+            status_icon = "✓" if c.status == "OK" else ("⚠" if c.status == "WARNING" else "✗")
+            lines.append(f"  {c.name:<15} {c.score:>5.0f}/100 {status_icon}")
+        lines.append("")
+        lines.append(f"Assessment: {risk.narrative}")
+        if risk.recommended_actions:
+            lines.append("")
+            lines.append("Recommendations:")
+            for rec in risk.recommended_actions[:3]:
+                lines.append(f"  - {rec}")
+    except Exception as e:
+        lines.append("  Risk calculation unavailable")
+    lines.append("")
+
+    # Performance Attribution (Why Today Happened)
+    lines.append("WHY TODAY HAPPENED")
+    lines.append("-" * 40)
+    try:
+        attribution = get_daily_attribution()
+        if attribution and (attribution.total_return != 0 or attribution.top_contributors):
+            lines.append(f"Day P&L: ${attribution.total_return:+,.2f} ({attribution.total_return_pct:+.2f}%)")
+            lines.append("")
+
+            if attribution.factor_details:
+                lines.append("Factor Attribution:")
+                for f in attribution.factor_details[:5]:
+                    sign = "+" if f.contribution >= 0 else ""
+                    lines.append(f"  {f.factor:<18} {sign}${f.contribution:>8,.2f}")
+                lines.append("")
+
+            if attribution.top_contributors:
+                top = attribution.top_contributors[0]
+                lines.append(f"Top Contributor:  {top.ticker} ${top.pnl:+,.2f} ({top.pnl_pct:+.1f}%)")
+
+            if attribution.bottom_contributors and attribution.bottom_contributors[0].pnl < 0:
+                bottom = attribution.bottom_contributors[0]
+                lines.append(f"Bottom:           {bottom.ticker} ${bottom.pnl:+,.2f} ({bottom.pnl_pct:+.1f}%)")
+
+            if attribution.narrative:
+                lines.append("")
+                lines.append(f"Summary: {attribution.narrative}")
+        else:
+            lines.append("  No performance data for attribution")
+    except Exception as e:
+        lines.append("  Attribution calculation unavailable")
     lines.append("")
 
     # Risk Metrics
@@ -155,6 +174,35 @@ def generate_report() -> str:
     else:
         lines.append(f"  No completed trades yet")
         lines.append(f"  Open positions: {trade_stats.open_positions if trade_stats else len(positions_df)}")
+    lines.append("")
+
+    # Learning Insights
+    lines.append("LEARNING INSIGHTS")
+    lines.append("-" * 40)
+    try:
+        learner = FactorLearner()
+        summary = learner.get_factor_summary()
+        if summary.get("status") == "ok" and summary.get("factors"):
+            lines.append(f"Trades Analyzed: {summary.get('total_analyzed_trades', 0)}")
+            lines.append("")
+            lines.append(f"{'Factor':<20} {'Win Rate':>10} {'Contribution':>14} {'Trend':>8}")
+            for f in summary["factors"]:
+                name = f["factor"].replace("_", " ").title()
+                lines.append(
+                    f"  {name:<18} {f['win_rate']:>8.0f}% ${f['total_contribution']:>+12,.2f} {f['trend']:>8}"
+                )
+
+            suggestions = get_weight_suggestions(state.regime.value)
+            if suggestions:
+                lines.append("")
+                lines.append("Suggested Adjustments:")
+                for s in suggestions[:3]:
+                    name = s.factor.replace("_", " ").title()
+                    lines.append(f"  {name}: {s.current_weight:.0%} -> {s.suggested_weight:.0%} ({s.change_pct:+.1f}%) [{s.confidence}]")
+        else:
+            lines.append("  Insufficient closed trades for factor analysis")
+    except Exception as e:
+        lines.append("  Learning analysis unavailable")
     lines.append("")
 
     # Current Positions

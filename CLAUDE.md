@@ -1,262 +1,244 @@
-# CLAUDE.md - AI Assistant Guide for MicroCapRebuilder
+# CLAUDE.md — MicroCapRebuilder (Mommy Bot)
+
+## Rules for AI Assistants
+
+### Workflow Rules
+- **Plan before coding.** For anything beyond a trivial fix, enter plan mode first. Outline the approach, get approval, then implement.
+- **Verify before claiming success.** After making changes, run the dev server or relevant script and check output for errors. Do NOT claim something works without proof.
+- **Preserve existing functionality.** When rewriting or refactoring, enumerate what currently works and confirm with the user what should be kept. Never silently remove features.
+- **Don't deploy unless asked.** If asked to implement or fix something, do exactly that. Don't push, deploy, or change scope without explicit approval.
+- **Update this file.** After completing a major feature or phase, update this CLAUDE.md to reflect the current state of the project.
+- **Use python3**, not python, on this machine.
+- **Always `except Exception as e:`** — never bare `except:`. It hides real bugs.
+
+### Code Conventions
+- Python 3 shebang: `#!/usr/bin/env python3`
+- Use `pathlib.Path` for all file paths: `Path(__file__).parent.parent / "data"`
+- Imports from `schema.py` for consistent column names
+- All parameters from `data/config.json` — don't hardcode
+- TypeScript for all frontend code (React dashboard)
 
 ## Project Overview
 
-MicroCapRebuilder is an **intelligent, risk-managed portfolio trading system** for microcap stocks. The system features:
+MicroCapRebuilder (aka **Mommy Bot**) is an intelligent, adaptive portfolio trading system for microcap stocks. Currently in **PAPER mode**.
 
-- **Multi-factor stock scoring** (momentum, volatility, volume, relative strength)
-- **Market regime detection** (bull/bear/sideways adaptation)
-- **Automated risk management** (stop losses, take profits, position limits)
-- **Professional analytics** (Sharpe ratio, drawdown, win rate)
-- **Daily reporting** with comprehensive metrics
+**Core capabilities:**
+- Multi-factor stock scoring (momentum, volatility, volume, relative strength, RSI, mean reversion)
+- Market regime detection (bull/bear/sideways)
+- Automated risk management (stop losses, take profits, position sizing)
+- Unified analysis pipeline with optional AI review
+- Learning pipeline (factor scores at entry, post-mortems at exit, weight adjustment)
+- Risk scoreboard and early warning system
+- React dashboard with FastAPI backend ("Mommy" co-pilot personality)
+
+## Architecture
+
+The system has three layers:
+
+### 1. Python Backend (`scripts/`)
+Core trading logic, analysis, and data management.
+
+**Single source of truth:** `portfolio_state.py`
+```python
+from portfolio_state import load_portfolio_state, PortfolioState
+state = load_portfolio_state(fetch_prices=True)  # or False for cached
+```
+All scripts consume `PortfolioState` — no direct CSV reads/writes for trading data. Regime cached with 1hr TTL. Price fetching uses yfinance batch download.
+
+### 2. FastAPI API (`api/`)
+Thin REST layer over existing Python modules. No business logic here.
+
+### 3. React Dashboard (`dashboard/`)
+Vite + React 19 + Tailwind v4 + TanStack Query + Zustand.
 
 ## Directory Structure
 
 ```
 MicroCapRebuilder/
-├── scripts/                    # Python execution scripts
-│   ├── pick_from_watchlist.py  # Intelligent stock picker with scoring
-│   ├── execute_sells.py        # Stop loss / take profit execution
-│   ├── update_positions.py     # Position updates with live prices
-│   ├── stock_scorer.py         # Multi-factor scoring module
-│   ├── market_regime.py        # Bull/bear/sideways detection
-│   ├── risk_manager.py         # Risk management module
-│   ├── analytics.py            # Risk-adjusted metrics (Sharpe, etc.)
-│   ├── trade_analyzer.py       # Trade performance analysis
-│   ├── generate_report.py      # Daily text report generation
-│   ├── generate_graph.py       # Performance chart generation
-│   ├── overlay_stats.py        # Statistics overlay on charts
-│   ├── schema.py               # Centralized data schemas
-│   ├── migrate_data.py         # Legacy data migration (one-time)
-│   ├── set_roi_baseline.py     # ROI baseline recording
-│   └── build_watchlist.py      # Watchlist generator
-├── data/                       # Data files
-│   ├── config.json             # Centralized configuration
-│   ├── watchlist.jsonl         # Stock watchlist (66 tickers)
-│   ├── transactions.csv        # Unified transaction ledger
-│   ├── positions.csv           # Current holdings
-│   └── daily_snapshots.csv     # Daily equity snapshots
-├── reports/                    # Generated reports
-│   └── daily_report.txt        # Daily summary report
-├── charts/                     # Generated charts
-├── backup/                     # Data backups
-├── run_daily.sh                # Main orchestration script
-├── requirements.txt            # Python dependencies
-└── .gitignore                  # Version control rules
+├── scripts/                     # Python backend (all trading logic)
+│   ├── portfolio_state.py       # ⭐ Single source of truth for all portfolio data
+│   ├── unified_analysis.py      # ANALYZE → EXECUTE pipeline
+│   ├── ai_review.py             # AI review layer (APPROVE/MODIFY/VETO)
+│   ├── execute_sells.py         # Stop loss / take profit execution
+│   ├── pick_from_watchlist.py   # Multi-factor scoring and buy proposals
+│   ├── update_positions.py      # Position price updates + daily snapshot
+│   ├── stock_scorer.py          # 6-factor scoring model
+│   ├── market_regime.py         # Bull/bear/sideways detection
+│   ├── risk_manager.py          # Position sizing, concentration limits
+│   ├── risk_scoreboard.py       # Overall risk score (5 components)
+│   ├── analytics.py             # Sharpe, drawdown, CAGR, etc.
+│   ├── trade_analyzer.py        # Completed trade analysis
+│   ├── strategy_health.py       # Strategy A-F grading
+│   ├── strategy_pivot.py        # PIVOT recommendations
+│   ├── early_warning.py         # Proactive risk alerts
+│   ├── factor_learning.py       # Factor weight adjustment from real trades
+│   ├── post_mortem.py           # Trade post-mortem generation
+│   ├── capital_preservation.py  # Capital preservation system
+│   ├── portfolio_chat.py        # Mommy chat interface
+│   ├── data_provider.py         # Centralized yfinance data access
+│   ├── schema.py                # Column constants and enums
+│   ├── explainability.py        # Trade rationale generation
+│   ├── attribution.py           # Factor attribution analysis
+│   ├── pattern_detector.py      # Pattern detection from trade history
+│   ├── generate_report.py       # Daily text report
+│   ├── generate_graph.py        # Performance chart generation
+│   ├── webapp.py                # Legacy Streamlit dashboard (being replaced)
+│   └── paper_trading.py         # Paper trading mode
+├── api/                         # FastAPI REST layer
+│   ├── main.py                  # App, CORS, lifespan
+│   ├── deps.py                  # Shared dependencies (state loading)
+│   └── routes/
+│       ├── state.py             # GET /api/state, /api/state/refresh
+│       ├── analysis.py          # POST /api/analyze, /api/execute
+│       ├── risk.py              # GET /api/risk, /api/warnings
+│       ├── performance.py       # GET /api/performance, /api/learning
+│       ├── chat.py              # POST /api/chat, GET /api/mommy/insight
+│       └── controls.py          # Paper/live mode, close-all
+├── dashboard/                   # React SPA
+│   ├── src/
+│   │   ├── App.tsx              # Four-panel layout shell
+│   │   ├── components/          # TopBar, PositionsPanel, RightPanel, etc.
+│   │   ├── hooks/               # usePortfolioState, useRisk, usePerformance
+│   │   └── lib/                 # api.ts, types.ts, store.ts
+│   ├── vite.config.ts
+│   └── package.json
+├── data/                        # Data files (CSVs gitignored)
+│   ├── config.json              # ⭐ All trading parameters
+│   ├── positions.csv            # Current holdings
+│   ├── transactions.csv         # Unified transaction ledger
+│   └── daily_snapshots.csv      # Equity curve data
+├── docs/plans/                  # Design documents
+├── run_dashboard.sh             # Launches API (8000) + React dev (5173)
+├── run_daily.sh                 # Daily trading pipeline
+└── requirements.txt
 ```
 
-## Key Configuration (`data/config.json`)
+## Trading Flow
 
-```json
-{
-  "starting_capital": 5000.0,
-  "risk_per_trade_pct": 10.0,
-  "max_position_pct": 15.0,
-  "max_positions": 15,
-  "default_stop_loss_pct": 8.0,
-  "default_take_profit_pct": 20.0,
-  "volatility_lookback_days": 20,
-  "benchmark_symbol": "^RUT",
-  "fallback_benchmark": "IWM",
-  "chart_days": 30
+### Daily Pipeline (`run_daily.sh`)
+```
+load_portfolio_state()
+    → execute_sells(state)      # Check stop/target triggers
+    → pick_from_watchlist(state) # Score candidates, propose buys
+    → update_positions(state)    # Update prices, save snapshot
+    → generate_graph()           # Performance chart
+```
+
+### ANALYZE → EXECUTE Flow (Dashboard)
+```
+ANALYZE button → run_unified_analysis(dry_run=True)
+    1. Check stop/target triggers → proposed sells
+    2. Score watchlist → proposed buys (limited by remaining cash)
+    3. AI reviews proposals (batched, 10 at a time)
+    → Show results with quant scores + AI reasoning
+EXECUTE button → execute_approved_actions()
+```
+
+### Key Configuration (`data/config.json`)
+- Starting capital: $50,000
+- Risk per trade: 10%
+- Max position: 15% of portfolio
+- Max positions: 15
+- Stop loss: 8%, Take profit: 20%
+- Benchmark: ^RUT (fallback: IWM)
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/state` | Portfolio state (fetch_prices=False) |
+| GET | `/api/state/refresh` | Portfolio state (fetch_prices=True) |
+| POST | `/api/analyze` | Run unified analysis (dry run) |
+| POST | `/api/execute` | Execute approved actions |
+| GET | `/api/risk` | Risk scoreboard + components |
+| GET | `/api/warnings` | Early warnings |
+| GET | `/api/performance` | Strategy health, analytics, attribution |
+| GET | `/api/learning` | Factor summary + weight suggestions |
+| POST | `/api/chat` | Mommy chat |
+| GET | `/api/mommy/insight` | Context-aware rotating insight |
+
+## React Dashboard
+
+**Launch:** `./run_dashboard.sh` (starts API on 8000 + React on 5173)
+
+**Stack:** Vite + React 19 + Tailwind v4 + TanStack Query + Zustand
+
+**Layout:** Four persistent panels — positions (left), context tabs (right), activity feed (bottom-left), Mommy co-pilot (bottom-right). Top bar always visible with equity, day P&L, risk score, regime, action badges.
+
+**Keyboard shortcuts:** A = analyze, E = execute, R = refresh, Escape = close detail
+
+**Note:** `react-resizable-panels` v4 uses `Group`, `Panel`, `Separator` — NOT PanelGroup/PanelResizeHandle.
+
+## Scoring Model
+
+6 factors (weights in parentheses):
+- **Momentum (30%)**: 20-day price change
+- **Relative Strength (25%)**: Performance vs Russell 2000
+- **Volatility (20%)**: Lower volatility = higher score
+- **Volume (15%)**: Recent vs average volume (liquidity)
+- **Mean Reversion (10%)**: Distance from 20-day SMA
+- **RSI**: Overbought filter (score of 10.0 for overbought stocks)
+
+ATR% calculated for volatility-adjusted position sizing.
+
+**StockScore is a dataclass with individual attributes, not a dict:**
+```python
+factor_scores = {
+    "momentum": s.momentum_score,
+    "volatility": s.volatility_score,
+    "volume": s.volume_score,
+    "relative_strength": s.relative_strength_score,
+    "mean_reversion": s.mean_reversion_score,
+    "rsi": s.rsi_score,
 }
 ```
 
-## Core Scripts
+## Learning Pipeline
 
-### Trading Logic
+- Factor scores recorded as JSON on each BUY transaction
+- Post-mortems generated on each SELL (`data/post_mortems.csv`)
+- `factor_learning.py` correlates entry scores with trade outcomes, adjusts weights +/-5% per cycle
+- Minimum 20 completed trades before any adjustment
+- No factor below 5% or above 40% weight
 
-#### `pick_from_watchlist.py` - Intelligent Stock Picker
-Scores and ranks watchlist candidates, then executes buys with risk management.
+## Risk & Strategy Systems
 
-**Workflow:**
-1. Check market regime (skip buying in bear markets)
-2. Load current positions and cash
-3. Score all candidates using multi-factor model
-4. Select top picks that pass portfolio limits
-5. Calculate volatility-adjusted position sizes
-6. Set stop loss (-8%) and take profit (+20%) at entry
-7. Record transactions to `transactions.csv`
+- **Risk Scoreboard** (`risk_scoreboard.py`): Overall score from 5 components — Concentration, Drawdown, Exposure, Volatility, Stop Proximity
+- **Early Warnings** (`early_warning.py`): Regime shifts, drawdown thresholds, losing streaks, concentration risk
+- **Strategy Health** (`strategy_health.py`): A-F grading across Performance, Risk Control, Trading Edge, Factor Alignment, Market Fit
+- **PIVOT Analysis** (`strategy_pivot.py`): Recommends Consolidation/Defensive/Cash/Aggressive/Regime Adaptation modes
+- **Capital Preservation** (`capital_preservation.py`): `PreservationStatus` is a dataclass — use `.active` not `.get()`
 
-#### `execute_sells.py` - Automated Sell Execution
-Checks all positions for stop loss and take profit triggers.
+## Known Gotchas
 
-**Workflow:**
-1. Load positions with stop/take profit levels
-2. Fetch current prices
-3. Check for triggered stops or targets
-4. Execute sells and record to `transactions.csv`
-5. Remove sold positions from `positions.csv`
-
-#### `update_positions.py` - Position Updates
-Updates positions with current prices and records daily snapshot.
-
-**Workflow:**
-1. Fetch current prices for all positions
-2. Calculate unrealized P&L
-3. Update `positions.csv` with current values
-4. Append daily snapshot to `daily_snapshots.csv`
-
-### Scoring & Analysis
-
-#### `stock_scorer.py` - Multi-Factor Scoring
-Scores stocks on 5 factors (weights in parentheses):
-- **Momentum (30%)**: 20-day price change
-- **Volatility (20%)**: Lower volatility = higher score
-- **Volume (15%)**: Recent vs average volume (liquidity)
-- **Relative Strength (25%)**: Performance vs Russell 2000
-- **Mean Reversion (10%)**: Distance from 20-day SMA
-
-Also calculates ATR% for volatility-adjusted position sizing.
-
-#### `market_regime.py` - Market Regime Detection
-Detects market conditions using benchmark moving averages:
-- **BULL**: Above 50-day and 200-day SMA → 100% position size
-- **SIDEWAYS**: Mixed signals → 50% position size
-- **BEAR**: Below both SMAs → No new buys
-
-#### `risk_manager.py` - Risk Management
-- Stop loss checking
-- Take profit checking
-- Volatility-adjusted position sizing
-- Portfolio concentration limits
-
-#### `analytics.py` - Portfolio Analytics
-Calculates professional metrics:
-- Sharpe Ratio, Sortino Ratio
-- Maximum Drawdown, Current Drawdown
-- Calmar Ratio, CAGR
-- Annual Volatility, Exposure %
-
-#### `trade_analyzer.py` - Trade Analysis
-Analyzes completed trades:
-- Win rate, Profit factor
-- Average win/loss
-- Best/worst trades
-- Stats by exit reason (stop loss vs take profit)
-
-### Reporting
-
-#### `generate_report.py` - Daily Report
-Generates comprehensive text report (`reports/daily_report.txt`):
-- Portfolio summary (equity, cash, positions)
-- Today's activity
-- Performance metrics
-- Trade statistics
-- Current positions with stops/targets
-- Recent trade history
+- `ALE` ticker appears delisted — fails price fetch consistently
+- `stale_alerts` must load from tracker file even when `fetch_prices=False`
+- `FactorLearner.get_factor_summary()` is a method, not a module-level function
+- AI JSON responses need cleaning: strip markdown blocks, find JSON boundaries, remove trailing commas, batch 10 max
+- Cash must be tracked as buys are proposed — each position capped by remaining cash
+- Pandas Series vs scalar: `.iloc[0]` when you expect a scalar from a filtered DataFrame
 
 ## Data Schemas
 
-### `transactions.csv` (Unified Ledger)
-```csv
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason
-d08b2cc8,2026-01-27,CRDO,BUY,1,117.96,117.96,108.52,141.55,SIGNAL
+### transactions.csv
+```
+transaction_id, date, ticker, action, shares, price, total_value,
+stop_loss, take_profit, reason, factor_scores, regime_at_entry
+```
+Actions: `BUY`, `SELL` | Reasons: `SIGNAL`, `STOP_LOSS`, `TAKE_PROFIT`, `MANUAL`, `MIGRATION`
+
+### positions.csv
+```
+ticker, shares, avg_cost_basis, current_price, market_value,
+unrealized_pnl, unrealized_pnl_pct, stop_loss, take_profit, entry_date
 ```
 
-Actions: `BUY`, `SELL`
-Reasons: `SIGNAL`, `STOP_LOSS`, `TAKE_PROFIT`, `MANUAL`, `MIGRATION`
-
-### `positions.csv` (Current Holdings)
-```csv
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
-CRDO,2,118.87,120.50,241.00,4.26,1.80,109.36,142.64,2026-01-27
+### daily_snapshots.csv
+```
+date, cash, positions_value, total_equity, day_pnl, day_pnl_pct, benchmark_value
 ```
 
-### `daily_snapshots.csv` (Equity Curve)
-```csv
-date,cash,positions_value,total_equity,day_pnl,day_pnl_pct,benchmark_value
-2026-01-27,2484.30,2515.50,4999.80,-0.20,-0.00,
-```
-
-## Daily Workflow
-
-Run the orchestration script:
-```bash
-./run_daily.sh
-```
-
-**Execution Order:**
-1. `execute_sells.py` - Check stop loss / take profit triggers
-2. `pick_from_watchlist.py` - Score and buy new positions
-3. `update_positions.py` - Update prices and daily snapshot
-4. `generate_graph.py` - Create performance chart
-5. `overlay_stats.py` - Add statistics to chart
-
-## Setup
-
-### Environment Setup
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Initial Migration (One-Time)
-If starting with legacy data:
-```bash
-python scripts/migrate_data.py
-```
-
-## Code Conventions
-
-### Style
-- Python 3 shebang: `#!/usr/bin/env python3`
-- Imports from `schema.py` for consistent column names
-- Section comments: `# ─── Section Name ───`
-- Emoji feedback: `✅` success, `⚠️` warning, `🐂` bull, `🐻` bear
-
-### Path Handling
-- Use `pathlib.Path` for all file paths
-- Navigate from script: `Path(__file__).parent.parent / "data"`
-
-### Module Imports
-```python
-from schema import TRANSACTION_COLUMNS, Action, Reason
-from risk_manager import RiskManager
-from stock_scorer import StockScorer
-from market_regime import get_market_regime, MarketRegime
-```
-
-## Important Notes for AI Assistants
-
-### Configuration
-- All parameters are in `data/config.json` - don't hardcode
-- Starting capital: $5,000 (configurable)
-- Risk per trade: 10% (configurable)
-- Stop loss: 8%, Take profit: 20% (configurable)
-
-### Data Integrity
-- Always use `schema.py` column constants
-- Transactions are the source of truth for positions
-- Cash is calculated from transactions, not stored directly
-
-### Risk Management
-- Stop losses and take profits are set at entry
-- Position sizes are volatility-adjusted
-- Market regime affects position sizing (0-100%)
-- Max 15 positions, max 15% per position
-
-### Files That Are Gitignored
-- `data/*.csv` (except config.json via `!data/config.json`)
+## Files That Are Gitignored
+- `data/*.csv` (config.json is tracked via `!data/config.json`)
 - `charts/`, `reports/`, `backup/`, `logs/`
-- `.venv/`, `__pycache__/`
-
-## Dependencies
-
-```
-yfinance       # Stock price data
-pandas         # Data manipulation
-numpy          # Analytics calculations
-matplotlib     # Chart generation
-python-dotenv  # Environment variables
-```
-
-## Testing
-
-Manual verification:
-1. Run `./run_daily.sh` and check output
-2. Review `reports/daily_report.txt`
-3. Verify `data/transactions.csv` for new trades
-4. Check `data/positions.csv` for current state
-5. Verify `charts/performance.png` is generated
+- `.venv/`, `__pycache__/`, `node_modules/`

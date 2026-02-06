@@ -2,44 +2,31 @@
 """
 Execute Sells - Daily script to check and execute stop loss / take profit triggers.
 
-Workflow:
-1. Load current positions from positions.csv
-2. Fetch current prices via yfinance
-3. Check each position against stop_loss and take_profit levels
-4. Execute sells by writing SELL transactions to transactions.csv
-5. Update positions.csv to remove/reduce sold positions
-6. Print summary of sells executed
+1. Load portfolio state (with current prices)
+2. Check each position against stop_loss and take_profit levels
+3. Execute sells by writing SELL transactions to transactions.csv
+4. Update positions.csv to remove sold positions
+5. Generate post-mortems for closed trades
 
 Usage: python scripts/execute_sells.py
 """
 
 import uuid
 from datetime import date
-from pathlib import Path
 
 import pandas as pd
-import yfinance as yf
 
-from schema import TRANSACTION_COLUMNS, POSITION_COLUMNS, Action, Reason
+from schema import TRANSACTION_COLUMNS, Action, Reason
 from risk_manager import RiskManager, SellSignal
-
-# ─── Paths ────────────────────────────────────────────────────────────────────
-DATA_DIR = Path(__file__).parent.parent / "data"
-POSITIONS_FILE = DATA_DIR / "positions.csv"
-TRANSACTIONS_FILE = DATA_DIR / "transactions.csv"
-
-
-def fetch_current_prices(tickers: list) -> dict:
-    """Fetch current prices for a list of tickers."""
-    prices = {}
-    for ticker in tickers:
-        try:
-            df = yf.download(ticker, period="1d", progress=False, auto_adjust=True)
-            if not df.empty:
-                prices[ticker] = df["Close"].iloc[-1].item()
-        except Exception as e:
-            print(f"  [warn] Failed to fetch {ticker}: {e}")
-    return prices
+from market_regime import get_market_regime
+from post_mortem import PostMortemAnalyzer, save_post_mortem
+from data_files import get_mode_indicator, get_transactions_file
+from portfolio_state import (
+    load_portfolio_state,
+    save_transactions_batch,
+    remove_position,
+    save_positions,
+)
 
 
 def record_sell_transaction(signal: SellSignal) -> dict:
@@ -55,72 +42,51 @@ def record_sell_transaction(signal: SellSignal) -> dict:
         "stop_loss": "",
         "take_profit": "",
         "reason": signal.reason,
+        # Explainability columns (empty for sells - data comes from original buy)
+        "regime_at_entry": "",
+        "composite_score": "",
+        "factor_scores": "",
+        "signal_rank": "",
     }
 
 
-def append_transactions(transactions: list):
-    """Append new transactions to transactions.csv."""
-    if not transactions:
-        return
+def get_buy_transaction_for_ticker(ticker: str, transactions_df: pd.DataFrame) -> dict:
+    """Find the original BUY transaction for a ticker from state."""
+    if transactions_df.empty:
+        return {}
 
-    df_new = pd.DataFrame(transactions, columns=TRANSACTION_COLUMNS)
+    buys = transactions_df[(transactions_df["ticker"] == ticker) & (transactions_df["action"] == "BUY")]
+    if buys.empty:
+        return {}
 
-    if TRANSACTIONS_FILE.exists():
-        df_existing = pd.read_csv(TRANSACTIONS_FILE)
-        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
-    else:
-        df_combined = df_new
-
-    df_combined.to_csv(TRANSACTIONS_FILE, index=False)
-
-
-def update_positions_after_sells(signals: list):
-    """
-    Update positions.csv after sells.
-    For full sells, remove the position.
-    For partial sells, reduce shares (not implemented yet - sells are full position).
-    """
-    if not signals:
-        return
-
-    if not POSITIONS_FILE.exists():
-        return
-
-    df = pd.read_csv(POSITIONS_FILE)
-    sold_tickers = [s.ticker for s in signals]
-
-    # Remove sold positions
-    df = df[~df["ticker"].isin(sold_tickers)]
-    df.to_csv(POSITIONS_FILE, index=False)
+    # Return the most recent buy as a dict
+    return buys.iloc[-1].to_dict()
 
 
 def main():
-    print("\n─── Execute Sells ───\n")
+    mode_indicator = get_mode_indicator()
+    print(f"\n─── Execute Sells {mode_indicator} ───\n")
 
-    # Check if positions file exists
-    if not POSITIONS_FILE.exists():
-        print("  No positions.csv found, nothing to check")
-        return
+    # Load portfolio state with current prices
+    state = load_portfolio_state(fetch_prices=True)
 
-    # Load positions
-    df_positions = pd.read_csv(POSITIONS_FILE)
-    if df_positions.empty:
+    if state.num_positions == 0:
         print("  No positions to check")
         return
 
-    print(f"  Checking {len(df_positions)} positions for stop loss / take profit...")
+    print(f"  Checking {state.num_positions} positions for stop loss / take profit...")
 
-    # Fetch current prices
-    tickers = df_positions["ticker"].tolist()
-    current_prices = fetch_current_prices(tickers)
+    if state.price_failures:
+        for ticker in state.price_failures:
+            print(f"    [warn] No price for {ticker} - using last known price")
 
-    if not current_prices:
-        print("  [warn] Could not fetch any prices, skipping sell checks")
-        return
+    if state.stale_alerts:
+        for ticker, days in state.stale_alerts.items():
+            print(f"    ⚠️  STALE PRICE: {ticker} - no price for {days} consecutive days")
 
-    # Initialize risk manager and check for signals
+    # Check for sell signals using price cache
     rm = RiskManager()
-    signals = rm.get_all_sell_signals(df_positions, current_prices)
+    signals = rm.get_all_sell_signals(state.positions, state.price_cache)
 
     if not signals:
         print("  ✅ No stop loss or take profit triggers")
@@ -144,19 +110,40 @@ def main():
         transactions.append(record_sell_transaction(signal))
         total_value += signal.shares * signal.current_price
 
-    # Record transactions
+    # Save transactions
     print("  Recording transactions...")
-    append_transactions(transactions)
+    state = save_transactions_batch(state, transactions)
 
-    # Update positions
+    # Remove sold positions
     print("  Updating positions...")
-    update_positions_after_sells(signals)
+    for signal in signals:
+        state = remove_position(state, signal.ticker)
+    save_positions(state)
+
+    # Generate post-mortems for closed trades
+    print("  Generating post-mortems...")
+    try:
+        regime = state.regime
+        analyzer = PostMortemAnalyzer()
+
+        for signal, sell_txn in zip(signals, transactions):
+            buy_txn = get_buy_transaction_for_ticker(signal.ticker, state.transactions)
+            if buy_txn:
+                pm = analyzer.analyze_trade(
+                    sell_txn=sell_txn,
+                    buy_txn=buy_txn,
+                    current_regime=regime.value if regime else "UNKNOWN"
+                )
+                save_post_mortem(pm)
+                print(f"    📝 Post-mortem: {signal.ticker} - {pm.summary}")
+    except Exception as e:
+        print(f"    [warn] Post-mortem generation failed: {e}")
 
     # Summary
     stop_count = sum(1 for s in signals if s.reason == Reason.STOP_LOSS)
     take_count = sum(1 for s in signals if s.reason == Reason.TAKE_PROFIT)
 
-    print("\n─" * 40)
+    print("\n" + "─" * 40)
     print(f"✅ Executed {len(signals)} sell(s)")
     print(f"   Stop losses:  {stop_count}")
     print(f"   Take profits: {take_count}")
