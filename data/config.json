@@ -108,7 +108,104 @@
     "min_trades_for_adjustment": 10,
     "confidence_multiplier_enabled": true,
     "confidence_min": 0.5,
-    "confidence_max": 1.5
+    "confidence_max": 1.5,
+    "fast_pattern_learning": {
+      "enabled": true,
+      "min_trades_for_pattern": 5,
+      "pattern_confidence_threshold": 0.6
+    },
+    "conviction_calibration": {
+      "enabled": true,
+      "recalibrate_every_n_trades": 10,
+      "adjustment_step_pct": 10.0
+    },
+    "stop_optimization": {
+      "enabled": true,
+      "track_trailing_vs_fixed": true,
+      "track_volatility_adjusted": true
+    },
+    "auto_tuning": {
+      "enabled": true,
+      "poor_performance_threshold": 0.5,
+      "high_volatility_threshold": 3.0,
+      "adjustment_magnitude": 5.0
+    }
+  },
+  "enhanced_trading": {
+    "enable_layers": true,
+    "layer1": {
+      "enable_reeval": true,
+      "aggressiveness": "moderate",
+      "min_score_drop_for_alert": 20,
+      "min_score_drop_for_sell": 30,
+      "enable_trailing_stops": true,
+      "enable_volatility_stops": true,
+      "trailing_stop_trigger_pct": 10.0,
+      "trailing_stop_distance_pct": 8.0,
+      "volatility_stop_high_atr": 10.0,
+      "volatility_stop_low_atr": 6.0,
+      "volatility_stop_atr_threshold_high": 5.0,
+      "volatility_stop_atr_threshold_low": 2.0,
+      "regime_stops": {
+        "BULL": 8.0,
+        "SIDEWAYS": 7.0,
+        "BEAR": 6.0
+      }
+    },
+    "layer2": {
+      "enable_conviction": true,
+      "min_conviction": 60,
+      "enable_pattern_detection": true,
+      "conviction_multiplier_max": 2.0,
+      "conviction_thresholds": {
+        "exceptional": 90,
+        "strong": 80,
+        "good": 70,
+        "acceptable": 60
+      },
+      "conviction_multipliers": {
+        "exceptional": 2.0,
+        "strong": 1.5,
+        "good": 1.0,
+        "acceptable": 0.75
+      },
+      "conviction_adjustments": {
+        "multiple_confirmations": 0.3,
+        "breakout_pattern": 0.2,
+        "fresh_high": 0.2,
+        "regime_alignment": 0.2,
+        "low_volatility": 0.1
+      },
+      "position_sizing": {
+        "high_conviction_pct": 12.0,
+        "medium_conviction_pct": 8.0,
+        "low_conviction_pct": 5.0
+      }
+    },
+    "layer3": {
+      "enable_composition": true,
+      "sector_limit_pct": 40.0,
+      "correlation_threshold": 0.7,
+      "max_correlated_positions": 3,
+      "top3_limit_pct": 45.0,
+      "correlation_lookback_days": 60,
+      "enable_rebalancing": true,
+      "rebalance_trigger_pct": 20.0,
+      "rebalance_target_pct": 15.0
+    },
+    "layer4": {
+      "enable_sequencing": true,
+      "priorities": {
+        "emergency_sell": 100,
+        "deteriorating_sell_high": 90,
+        "deteriorating_sell_medium": 70,
+        "quality_degradation_sell": 60,
+        "rebalancing_sell": 50,
+        "high_conviction_buy": 85,
+        "medium_conviction_buy": 65,
+        "low_conviction_buy": 45
+      }
+    }
   },
   "data_provider": {
     "primary": "yfinance",
