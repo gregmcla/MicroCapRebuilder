@@ -1,35 +1,66 @@
 @import "tailwindcss";
 
 @theme {
-  /* Background */
-  --color-bg-primary: #0B0E14;
-  --color-bg-surface: #141920;
-  --color-bg-elevated: #1A2030;
+  /* Cyberpunk Backgrounds */
+  --color-bg-primary: #000000;
+  --color-bg-surface: #0A0A0A;
+  --color-bg-elevated: #141414;
 
   /* Borders */
   --color-border: #1E2530;
   --color-border-hover: #2A3545;
 
-  /* Accent */
+  /* Cyberpunk Accents */
+  --color-cyber-cyan: #22D3EE;
+  --color-cyber-magenta: #E879F9;
+  --color-cyber-green: #10B981;
   --color-accent: #22D3EE;
   --color-accent-dim: #0E7490;
 
-  /* Semantic */
-  --color-profit: #34D399;
+  /* Status Colors */
+  --color-profit: #10B981;
   --color-profit-dim: #065F46;
-  --color-loss: #F87171;
+  --color-loss: #EF4444;
   --color-loss-dim: #7F1D1D;
-  --color-warning: #FBBF24;
+  --color-warning: #F59E0B;
   --color-warning-dim: #78350F;
 
-  /* Text */
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-muted: #475569;
+  /* Text Colors */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #A1A1AA;
+  --color-text-muted: #52525B;
 
   /* Typography */
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Glow Shadows */
+  --shadow-glow-cyan: 0 0 10px rgba(34, 211, 238, 0.5), 0 0 20px rgba(34, 211, 238, 0.3);
+  --shadow-glow-cyan-lg: 0 0 20px rgba(34, 211, 238, 0.6), 0 0 40px rgba(34, 211, 238, 0.4), 0 0 60px rgba(34, 211, 238, 0.2);
+  --shadow-glow-magenta: 0 0 10px rgba(232, 121, 249, 0.5), 0 0 20px rgba(232, 121, 249, 0.3);
+  --shadow-glow-green: 0 0 10px rgba(16, 185, 129, 0.5), 0 0 20px rgba(16, 185, 129, 0.3);
+
+  /* Animations */
+  --animate-pulse-slow: pulse-slow 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-pulse-fast: pulse-fast 0.7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse-fast {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 /* Base styles */
