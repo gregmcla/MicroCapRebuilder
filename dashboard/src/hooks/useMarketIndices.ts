@@ -6,7 +6,7 @@ import type { MarketIndices } from "../lib/types";
 export function useMarketIndices() {
   const updateTimestamp = useFreshnessStore((s) => s.updateTimestamp);
 
-  return useQuery<MarketIndices>({
+  const query = useQuery<MarketIndices>({
     queryKey: ["marketIndices"],
     queryFn: async () => {
       const data = await api.getMarketIndices();
@@ -16,4 +16,10 @@ export function useMarketIndices() {
     refetchInterval: 60_000, // Auto-refresh every minute
     staleTime: 50_000,
   });
+
+  return {
+    ...query,
+    isError: query.isError,
+    error: query.error,
+  };
 }

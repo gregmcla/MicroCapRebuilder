@@ -70,6 +70,7 @@ def get_market_indices():
 
         except Exception as e:
             # Graceful degradation on error
+            print(f"Error fetching {key}: {e}")
             result[key] = {
                 "name": info["name"],
                 "value": 0.0,
