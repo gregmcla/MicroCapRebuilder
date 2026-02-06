@@ -1,27 +1,74 @@
 /** Mini sparkline for position rows - 20-day price history */
 
+import { memo, useMemo } from "react";
 import { useChartData } from "../hooks/useChartData";
 
-export default function PositionRowSparkline({ ticker }: { ticker: string }) {
-  const { data } = useChartData(ticker, "20D");
+// Constants for dimensions
+const WIDTH = 60;
+const HEIGHT = 30;
+const PADDING = 5;
 
-  if (!data || data.data.length === 0) {
-    return <div className="w-[60px] h-[30px] bg-bg-surface rounded" />;
+interface PositionRowSparklineProps {
+  ticker: string;
+}
+
+function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
+  const { data, isLoading, error } = useChartData(ticker, "20D");
+
+  // Calculate sparkline points
+  const points = useMemo(() => {
+    if (!data || data.data.length === 0) return null;
+
+    const prices = data.data.map((d) => d.close);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const range = maxPrice - minPrice;
+
+    // Handle flat prices (range === 0)
+    if (range === 0) {
+      const centerY = HEIGHT / 2;
+      return prices.map((_, i) => {
+        const x = (i / (prices.length - 1)) * WIDTH;
+        return `${x},${centerY}`;
+      }).join(' ');
+    }
+
+    return prices.map((price, i) => {
+      const x = (i / (prices.length - 1)) * WIDTH;
+      const y = HEIGHT - ((price - minPrice) / range) * (HEIGHT - PADDING * 2) - PADDING;
+      return `${x},${y}`;
+    }).join(' ');
+  }, [data]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="w-[60px] h-[30px] bg-bg-surface rounded animate-pulse" />
+    );
   }
 
-  const prices = data.data.map((d: any) => d.close);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const range = maxPrice - minPrice || 1;
+  // Error state
+  if (error) {
+    return (
+      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-40" />
+    );
+  }
 
-  const points = prices.map((price: number, i: number) => {
-    const x = (i / (prices.length - 1)) * 60;
-    const y = 30 - ((price - minPrice) / range) * 25;
-    return `${x},${y}`;
-  }).join(' ');
+  // No data state
+  if (!points) {
+    return (
+      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-40" />
+    );
+  }
 
   return (
-    <svg width="60" height="30" className="opacity-80 group-hover:opacity-100 transition-opacity">
+    <svg
+      width={WIDTH}
+      height={HEIGHT}
+      className="opacity-80 group-hover:opacity-100 transition-opacity"
+      role="img"
+      aria-label={`20-day price history for ${ticker}`}
+    >
       <defs>
         <linearGradient id={`sparkline-${ticker}`} x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.2" />
@@ -36,9 +83,11 @@ export default function PositionRowSparkline({ ticker }: { ticker: string }) {
         className="drop-shadow-[0_0_1px_rgba(34,211,238,0.4)]"
       />
       <polygon
-        points={`0,30 ${points} 60,30`}
+        points={`0,${HEIGHT} ${points} ${WIDTH},${HEIGHT}`}
         fill={`url(#sparkline-${ticker})`}
       />
     </svg>
   );
 }
+
+export default memo(PositionRowSparkline);

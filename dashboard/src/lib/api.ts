@@ -9,6 +9,7 @@ import type {
   PerformanceData,
   LearningData,
   MarketIndices,
+  ChartData,
 } from "./types";
 
 const BASE = "/api";
@@ -39,7 +40,7 @@ export const api = {
   getLearning: () => get<LearningData>("/learning"),
   getMarketIndices: () => get<MarketIndices>("/market/indices"),
   getChartData: (ticker: string, range: string = "1M") =>
-    get<{ ticker: string; range: string; data: any[]; indicators: any }>(`/market/chart/${ticker}?range=${range}`),
+    get<ChartData>(`/market/chart/${ticker}?range=${range}`),
   analyze: () => post<AnalysisResult>("/analyze"),
   execute: () => post<Record<string, unknown>>("/execute"),
   chat: (message: string) => post<{ response: string }>("/chat", { message }),

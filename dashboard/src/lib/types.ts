@@ -221,6 +221,30 @@ export interface MarketIndices {
   vix: MarketIndex;
 }
 
+// --- Chart data types ---
+
+export interface ChartDataPoint {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface ChartIndicators {
+  rsi: (number | null)[];
+  sma_20: (number | null)[];
+  sma_50: (number | null)[];
+}
+
+export interface ChartData {
+  ticker: string;
+  range: string;
+  data: ChartDataPoint[];
+  indicators: ChartIndicators;
+}
+
 // --- Analysis types ---
 
 export interface FactorScores {
