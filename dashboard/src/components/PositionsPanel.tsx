@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Position } from "../lib/types";
 import { useUIStore } from "../lib/store";
+import PositionRowSparkline from "./PositionRowSparkline";
 
 type SortKey = "pnl_pct" | "ticker" | "weight" | "entry_date";
 
@@ -35,7 +36,7 @@ function ProgressBar({ pct }: { pct: number }) {
   );
 }
 
-function PositionRow({ pos, totalValue, onClick }: { pos: Position; totalValue: number; onClick: () => void }) {
+function PositionRow({ pos, onClick }: { pos: Position; totalValue: number; onClick: () => void }) {
   const pnlColor =
     pos.unrealized_pnl_pct > 0
       ? "text-profit"
@@ -48,27 +49,56 @@ function PositionRow({ pos, totalValue, onClick }: { pos: Position; totalValue: 
   const progress =
     range > 0 ? ((pos.current_price - pos.stop_loss) / range) * 100 : 50;
 
-  const weight = totalValue > 0 ? (pos.market_value / totalValue) * 100 : 0;
+  // Calculate days held
+  const daysHeld = Math.floor(
+    (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // Calculate annualized return (APR)
+  const apr = daysHeld > 0
+    ? (pos.unrealized_pnl_pct / daysHeld) * 365
+    : 0;
+
+  const aprColor = apr > 100 ? "text-cyber-magenta" : pnlColor;
 
   return (
-    <div onClick={onClick} className="flex items-center gap-2 px-3 py-1.5 hover:bg-bg-elevated/50 cursor-pointer transition-colors text-sm border-b border-border/50">
-      <span className="font-semibold text-text-primary w-14 shrink-0">
-        {pos.ticker}
-      </span>
-      <span className="font-mono text-text-secondary w-10 text-right shrink-0">
-        {pos.shares}
-      </span>
-      <span className="font-mono text-text-muted w-16 text-right shrink-0">
-        ${pos.current_price.toFixed(2)}
-      </span>
-      <span className={`font-mono w-16 text-right shrink-0 font-medium ${pnlColor}`}>
-        {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
-        {pos.unrealized_pnl_pct.toFixed(1)}%
-      </span>
+    <div onClick={onClick} className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated/50 transition-colors border-b border-border/50">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="font-bold text-sm text-text-primary w-14">
+          {pos.ticker}
+        </span>
+
+        <PositionRowSparkline ticker={pos.ticker} />
+
+        <span className="font-mono text-xs text-text-muted text-right w-10">
+          {pos.shares}
+        </span>
+
+        <div className="flex flex-col items-end">
+          <span className="font-mono text-sm text-text-primary">
+            ${pos.current_price.toFixed(2)}
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">
+            (Entry: ${pos.avg_cost_basis.toFixed(2)})
+          </span>
+        </div>
+
+        <span className={`font-mono text-sm font-semibold ${pnlColor} w-16 text-right`}>
+          {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
+          {pos.unrealized_pnl_pct.toFixed(1)}%
+        </span>
+
+        <span className={`font-mono text-xs ${aprColor} text-right w-16`}>
+          {apr >= 0 ? "+" : ""}
+          {apr.toFixed(0)}% APR
+        </span>
+
+        <span className="font-mono text-xs text-text-muted text-right w-10">
+          {daysHeld}d
+        </span>
+      </div>
+
       <ProgressBar pct={progress} />
-      <span className="font-mono text-text-muted w-12 text-right shrink-0 text-xs">
-        {weight.toFixed(1)}%
-      </span>
     </div>
   );
 }
@@ -107,11 +137,12 @@ export default function PositionsPanel({
       {/* Column headers */}
       <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider border-b border-border/50">
         <span className="w-14">Ticker</span>
+        <span className="flex-1">Trend</span>
         <span className="w-10 text-right">Qty</span>
-        <span className="w-16 text-right">Price</span>
+        <span className="w-20 text-right">Price</span>
         <span className="w-16 text-right">P&L</span>
-        <span className="w-16">Progress</span>
-        <span className="w-12 text-right">Wt</span>
+        <span className="w-16 text-right">APR</span>
+        <span className="w-10 text-right">Days</span>
       </div>
 
       {/* Rows */}
