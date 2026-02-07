@@ -27,6 +27,7 @@ from schema import Action, Reason
 from stock_scorer import StockScorer
 from market_regime import MarketRegime, get_position_size_multiplier
 from risk_manager import RiskManager
+from opportunity_layer import OpportunityLayer
 from capital_preservation import get_preservation_status
 from ai_review import (
     ProposedAction, ReviewedAction, ReviewDecision,
@@ -140,99 +141,134 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     print()
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
-    print("Scoring watchlist candidates...")
+    # Use Layer 2 (Opportunity Management) if enabled, otherwise fallback to basic scoring
+    if config.get("enhanced_trading", {}).get("enable_layers", False):
+        print("\nRunning Layer 2: Opportunity Management...")
+        layer2 = OpportunityLayer(config)
+        layer2_output = layer2.process(state, layer1_output)
 
-    # Skip buying in bear markets or preservation mode
-    if regime == MarketRegime.BEAR:
-        print("  ⚠️  Bear market - skipping new buys")
-    elif preservation_active:
-        print("  ⚠️  Preservation mode - skipping new buys")
-    elif state.num_positions >= config.get("max_positions", 15):
-        print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
+        # Convert BuyProposal to ProposedAction for AI review
+        stop_loss_pct = config.get("default_stop_loss_pct", 8.0)
+        take_profit_pct = config.get("default_take_profit_pct", 20.0)
+
+        for buy_proposal in layer2_output["buy_proposals"]:
+            conviction = buy_proposal.conviction_score
+
+            proposed_actions.append(ProposedAction(
+                action_type="BUY",
+                ticker=buy_proposal.ticker,
+                shares=buy_proposal.shares,
+                price=buy_proposal.price,
+                stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
+                take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
+                quant_score=conviction.composite_score,
+                factor_scores=conviction.factors,
+                regime=regime.value,
+                reason=buy_proposal.rationale
+            ))
+
+            # Enhanced display with conviction info
+            patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
+            print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
+
+        num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
+        print(f"  Found {num_buys} buy candidate(s)")
+        print()
     else:
-        watchlist = load_watchlist()
-        current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
-        candidates = [t for t in watchlist if t not in current_tickers]
+        # Fallback to basic scoring if Layer 2 disabled
+        print("Scoring watchlist candidates...")
 
-        if candidates:
-            scorer = StockScorer()
-            scored_results = scorer.score_watchlist(candidates)
-            # Convert StockScore objects to dicts with factor_scores built from individual attributes
-            scored = []
-            for s in scored_results:
-                if s:
-                    scored.append({
-                        "ticker": s.ticker,
-                        "composite_score": s.composite_score,
-                        "current_price": s.current_price,
-                        "factor_scores": {
-                            "momentum": s.momentum_score,
-                            "volatility": s.volatility_score,
-                            "volume": s.volume_score,
-                            "relative_strength": s.relative_strength_score,
-                            "mean_reversion": s.mean_reversion_score,
-                            "rsi": s.rsi_score,
-                        }
-                    })
+        # Skip buying in bear markets or preservation mode
+        if regime == MarketRegime.BEAR:
+            print("  ⚠️  Bear market - skipping new buys")
+        elif preservation_active:
+            print("  ⚠️  Preservation mode - skipping new buys")
+        elif state.num_positions >= config.get("max_positions", 15):
+            print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
+        else:
+            watchlist = load_watchlist()
+            current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+            candidates = [t for t in watchlist if t not in current_tickers]
 
-            # Filter to top candidates with score >= 60
-            top_candidates = [s for s in scored if s.get("composite_score", 0) >= 60]
-            top_candidates = sorted(top_candidates, key=lambda x: x.get("composite_score", 0), reverse=True)
+            if candidates:
+                scorer = StockScorer()
+                scored_results = scorer.score_watchlist(candidates)
+                # Convert StockScore objects to dicts with factor_scores built from individual attributes
+                scored = []
+                for s in scored_results:
+                    if s:
+                        scored.append({
+                            "ticker": s.ticker,
+                            "composite_score": s.composite_score,
+                            "current_price": s.current_price,
+                            "factor_scores": {
+                                "momentum": s.momentum_score,
+                                "volatility": s.volatility_score,
+                                "volume": s.volume_score,
+                                "relative_strength": s.relative_strength_score,
+                                "mean_reversion": s.mean_reversion_score,
+                                "rsi": s.rsi_score,
+                            }
+                        })
 
-            # Calculate position size
-            risk_per_trade = config.get("risk_per_trade_pct", 10.0) / 100
-            max_position_value = state.total_equity * risk_per_trade * position_multiplier
-            stop_loss_pct = config.get("default_stop_loss_pct", 8.0) / 100
-            take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
+                # Filter to top candidates with score >= 60
+                top_candidates = [s for s in scored if s.get("composite_score", 0) >= 60]
+                top_candidates = sorted(top_candidates, key=lambda x: x.get("composite_score", 0), reverse=True)
 
-            slots_available = config.get("max_positions", 15) - state.num_positions
-            remaining_cash = state.cash  # Track how much cash is left as we propose buys
+                # Calculate position size
+                risk_per_trade = config.get("risk_per_trade_pct", 10.0) / 100
+                max_position_value = state.total_equity * risk_per_trade * position_multiplier
+                stop_loss_pct = config.get("default_stop_loss_pct", 8.0) / 100
+                take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
 
-            for i, candidate in enumerate(top_candidates[:slots_available]):
-                ticker = candidate["ticker"]
-                price = candidate.get("current_price", 0)
-                score = candidate.get("composite_score", 0)
-                factor_scores = candidate.get("factor_scores", {})
+                slots_available = config.get("max_positions", 15) - state.num_positions
+                remaining_cash = state.cash  # Track how much cash is left as we propose buys
 
-                if price <= 0:
-                    continue
+                for i, candidate in enumerate(top_candidates[:slots_available]):
+                    ticker = candidate["ticker"]
+                    price = candidate.get("current_price", 0)
+                    score = candidate.get("composite_score", 0)
+                    factor_scores = candidate.get("factor_scores", {})
 
-                # Calculate position size (capped by remaining cash)
-                position_value = min(max_position_value, remaining_cash)
-                shares = int(position_value / price)
-                if shares < 1:
-                    print(f"  ⏸️ Skipping {ticker} - insufficient cash (${remaining_cash:.0f} remaining)")
-                    continue
-
-                actual_cost = shares * price
-                if actual_cost > remaining_cash:
-                    # Reduce shares to fit remaining cash
-                    shares = int(remaining_cash / price)
-                    if shares < 1:
+                    if price <= 0:
                         continue
+
+                    # Calculate position size (capped by remaining cash)
+                    position_value = min(max_position_value, remaining_cash)
+                    shares = int(position_value / price)
+                    if shares < 1:
+                        print(f"  ⏸️ Skipping {ticker} - insufficient cash (${remaining_cash:.0f} remaining)")
+                        continue
+
                     actual_cost = shares * price
+                    if actual_cost > remaining_cash:
+                        # Reduce shares to fit remaining cash
+                        shares = int(remaining_cash / price)
+                        if shares < 1:
+                            continue
+                        actual_cost = shares * price
 
-                stop_loss = round(price * (1 - stop_loss_pct), 2)
-                take_profit = round(price * (1 + take_profit_pct), 2)
+                    stop_loss = round(price * (1 - stop_loss_pct), 2)
+                    take_profit = round(price * (1 + take_profit_pct), 2)
 
-                proposed_actions.append(ProposedAction(
-                    action_type="BUY",
-                    ticker=ticker,
-                    shares=shares,
-                    price=price,
-                    stop_loss=stop_loss,
-                    take_profit=take_profit,
-                    quant_score=score,
-                    factor_scores=factor_scores,
-                    regime=regime.value,
-                    reason=f"Quant score {score:.0f}/100 - Rank #{i+1}"
-                ))
-                remaining_cash -= actual_cost
-                print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f} (${actual_cost:.0f}, ${remaining_cash:.0f} remaining)")
+                    proposed_actions.append(ProposedAction(
+                        action_type="BUY",
+                        ticker=ticker,
+                        shares=shares,
+                        price=price,
+                        stop_loss=stop_loss,
+                        take_profit=take_profit,
+                        quant_score=score,
+                        factor_scores=factor_scores,
+                        regime=regime.value,
+                        reason=f"Quant score {score:.0f}/100 - Rank #{i+1}"
+                    ))
+                    remaining_cash -= actual_cost
+                    print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f} (${actual_cost:.0f}, ${remaining_cash:.0f} remaining)")
 
-    num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
-    print(f"  Found {num_buys} buy candidate(s)")
-    print()
+        num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
+        print(f"  Found {num_buys} buy candidate(s)")
+        print()
 
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
