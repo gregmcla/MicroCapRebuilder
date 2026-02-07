@@ -45,8 +45,8 @@ def get_market_indices():
                 }
                 continue
 
-            # Handle MultiIndex columns from yfinance
-            if isinstance(data.columns, pd.MultiIndex):
+            # Handle MultiIndex columns from yfinance (only when ticker key exists)
+            if isinstance(data.columns, pd.MultiIndex) and ticker in data["Close"].columns:
                 closes = data["Close"][ticker].dropna()
             else:
                 closes = data["Close"].dropna()
@@ -124,8 +124,9 @@ def get_chart_data(ticker: str, range: str = "1M", interval: Optional[str] = Non
                 "indicators": {"rsi": [], "sma_20": [], "sma_50": []}
             }
 
-        # Handle MultiIndex columns
-        if isinstance(data.columns, pd.MultiIndex):
+        # Handle MultiIndex columns (only when ticker key exists in MultiIndex)
+        # When downloading single ticker, yfinance typically returns simple columns
+        if isinstance(data.columns, pd.MultiIndex) and ticker in data["Close"].columns:
             df = pd.DataFrame({
                 "time": data.index,
                 "open": data["Open"][ticker].values,
@@ -135,6 +136,7 @@ def get_chart_data(ticker: str, range: str = "1M", interval: Optional[str] = Non
                 "volume": data["Volume"][ticker].values,
             })
         else:
+            # Simple columns (single ticker download)
             df = pd.DataFrame({
                 "time": data.index,
                 "open": data["Open"].values,
