@@ -55,8 +55,9 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
   );
 
   // Calculate annualized return (APR)
+  const pnlPct = pos.unrealized_pnl_pct ?? 0;
   const apr = daysHeld > 0
-    ? (pos.unrealized_pnl_pct / daysHeld) * 365
+    ? (pnlPct / daysHeld) * 365
     : 0;
 
   const aprColor = apr > 100 ? "text-cyber-magenta" : pnlColor;
@@ -84,17 +85,17 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
         </div>
 
         <span className={`font-mono text-sm font-semibold ${pnlColor} w-16 text-right`}>
-          {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
-          {pos.unrealized_pnl_pct.toFixed(1)}%
+          {(pos.unrealized_pnl_pct ?? 0) >= 0 ? "+" : ""}
+          {(pos.unrealized_pnl_pct ?? 0).toFixed(1)}%
         </span>
 
         <span className={`font-mono text-xs ${aprColor} text-right w-16`}>
-          {apr >= 0 ? "+" : ""}
-          {apr.toFixed(0)}% APR
+          {(apr ?? 0) >= 0 ? "+" : ""}
+          {(apr ?? 0).toFixed(0)}% APR
         </span>
 
         <span className="font-mono text-xs text-text-muted text-right w-10">
-          {daysHeld}d
+          {daysHeld ?? 0}d
         </span>
       </div>
 
