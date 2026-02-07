@@ -139,9 +139,12 @@ class ExecutionSequencer:
             if "emergency" in reason_lower or "stop" in reason_lower:
                 return self.priorities["emergency_sell"], "Emergency/stop loss sell"
             elif "deteriorat" in reason_lower:
-                # Use urgency score if available (from Layer 1)
-                # For now, use medium priority
-                return self.priorities["deteriorating_sell_medium"], "Deteriorating position"
+                # Check if source_proposal has urgency_score
+                urgency = getattr(action.source_proposal, 'urgency_score', None) if action.source_proposal else None
+                if urgency and urgency >= 80:
+                    return self.priorities["deteriorating_sell_high"], f"High urgency sell (urgency {urgency})"
+                else:
+                    return self.priorities["deteriorating_sell_medium"], "Deteriorating position"
             elif "rebalanc" in reason_lower:
                 return self.priorities["rebalancing_sell"], "Rebalancing sell"
             else:
@@ -186,8 +189,20 @@ class ExecutionSequencer:
             buys = [a for a in actions if a.action.action_type == "BUY"]
 
             if sells and buys:
-                # Sell + Buy collision: Keep sell, skip buy
-                resolved.extend(sells)
+                # First deduplicate sells, then add and skip buys
+                if len(sells) > 1:
+                    best_sell = max(sells, key=lambda x: x.priority)
+                    resolved.append(best_sell)
+                    for sell in sells:
+                        if sell != best_sell:
+                            skipped.append({
+                                "action": sell.action,
+                                "reason": f"Duplicate SELL {ticker} (combined into single sell)"
+                            })
+                else:
+                    resolved.extend(sells)
+
+                # Skip all buy actions
                 for buy in buys:
                     skipped.append({
                         "action": buy.action,
