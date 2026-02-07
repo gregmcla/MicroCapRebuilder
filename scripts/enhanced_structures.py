@@ -135,18 +135,25 @@ class PortfolioConstraint:
 
 @dataclass
 class ProposedAction:
-    """Generic action proposal that can represent any action type."""
-    action_type: str  # "BUY" or "SELL"
+    """
+    A proposed action from the quant system or layer outputs.
+
+    This is the canonical action representation used across:
+    - AI review workflow (ai_review.py)
+    - Layer 4 execution sequencing (execution_sequencer.py)
+    - Unified analysis pipeline (unified_analysis.py)
+    """
+    action_type: str  # "BUY", "SELL", or "HOLD"
     ticker: str
     shares: int
     price: float
-    stop_loss: float = 0.0
-    take_profit: float = 0.0
-    reason: str = ""
-    quant_score: float = 0.0
-    factor_scores: Dict[str, float] = field(default_factory=dict)
-    regime: str = ""
-    # Link back to original typed proposal (SellProposal or BuyProposal)
+    stop_loss: float
+    take_profit: float
+    quant_score: float
+    factor_scores: dict  # Dict[str, float] but use dict for compatibility
+    regime: str
+    reason: str
+    # Optional: Link back to original typed proposal (SellProposal or BuyProposal)
     source_proposal: Optional[object] = None
 
 

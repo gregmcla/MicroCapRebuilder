@@ -30,8 +30,9 @@ from risk_manager import RiskManager
 from opportunity_layer import OpportunityLayer
 from composition_layer import CompositionLayer
 from capital_preservation import get_preservation_status
+from enhanced_structures import ProposedAction
 from ai_review import (
-    ProposedAction, ReviewedAction, ReviewDecision,
+    ReviewedAction, ReviewDecision,
     review_proposed_actions, format_review_summary
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem

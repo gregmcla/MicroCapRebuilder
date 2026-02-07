@@ -21,6 +21,9 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
+# Import ProposedAction from centralized data structures
+from enhanced_structures import ProposedAction
+
 # Load environment
 try:
     from dotenv import load_dotenv
@@ -40,21 +43,6 @@ class ReviewDecision:
     APPROVE = "APPROVE"
     MODIFY = "MODIFY"
     VETO = "VETO"
-
-
-@dataclass
-class ProposedAction:
-    """A proposed action from the quant system."""
-    action_type: str  # BUY, SELL, HOLD
-    ticker: str
-    shares: int
-    price: float
-    stop_loss: float
-    take_profit: float
-    quant_score: float
-    factor_scores: dict
-    regime: str
-    reason: str  # Why the quant system proposed this
 
 
 @dataclass
