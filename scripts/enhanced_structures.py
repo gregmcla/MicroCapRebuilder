@@ -104,6 +104,26 @@ class BuyProposal:
 
 
 @dataclass
+class CompositionViolation:
+    """Portfolio composition limit violation."""
+    ticker: str
+    violation_type: str  # "SECTOR", "CORRELATION", "TOP3"
+    current_value: float
+    limit_value: float
+    description: str
+
+
+@dataclass
+class RebalanceTrigger:
+    """Rebalancing action trigger."""
+    ticker: str
+    current_pct: float  # % of portfolio
+    target_pct: float
+    trim_amount: float  # Dollar amount to trim
+    reason: str
+
+
+@dataclass
 class PortfolioConstraint:
     """Portfolio composition constraint violation."""
     constraint_type: str  # "sector_limit", "correlation_cluster", "position_overgrowth"
