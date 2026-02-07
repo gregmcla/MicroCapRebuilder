@@ -29,8 +29,7 @@ export default function MommyCoPilot() {
   const chatMutation = useMutation({
     mutationFn: (message: string) => api.chat(message),
     onSuccess: (data) => {
-      const text = typeof data === "string" ? data : data.response;
-      setChatResponse(text);
+      setChatResponse(data.message);
       queryClient.invalidateQueries({ queryKey: ["mommyInsight"] });
     },
   });
