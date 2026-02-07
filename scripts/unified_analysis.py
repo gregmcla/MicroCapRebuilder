@@ -46,6 +46,7 @@ from portfolio_state import (
     save_positions,
 )
 from risk_layer import RiskLayer
+from execution_sequencer import ExecutionSequencer
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -317,6 +318,31 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
         num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
         print(f"  Found {num_buys} buy candidate(s)")
         print()
+
+    # ─── Run Layer 4: Execution Sequencer (if layers enabled) ────────────────
+    if config.get("enhanced_trading", {}).get("enable_layers", False):
+        print("\nRunning Layer 4: Execution Sequencer...")
+        sequencer = ExecutionSequencer(config)
+        execution_plan = sequencer.process(state, proposed_actions)
+
+        # Display execution plan
+        if execution_plan.sequenced_actions:
+            print(f"\n  📋 Execution Plan ({len(execution_plan.sequenced_actions)} actions):")
+            for paction in execution_plan.sequenced_actions:
+                action = paction.action
+                priority_badge = f"[{paction.priority}]"
+                action_str = f"{action.action_type} {action.ticker}"
+                print(f"  {paction.execution_order}. {priority_badge} {action_str} - {paction.priority_reason}")
+
+        # Display skipped actions
+        if execution_plan.skipped_actions:
+            print(f"\n  ⏭️  Skipped {len(execution_plan.skipped_actions)} action(s):")
+            for skipped in execution_plan.skipped_actions:
+                action = skipped["action"]
+                print(f"  - {action.action_type} {action.ticker}: {skipped['reason']}")
+
+        # Update proposed_actions to only include sequenced actions
+        proposed_actions = [pa.action for pa in execution_plan.sequenced_actions]
 
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
