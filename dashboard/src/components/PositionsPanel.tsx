@@ -36,7 +36,7 @@ function ProgressBar({ pct }: { pct: number }) {
   );
 }
 
-function PositionRow({ pos, onClick }: { pos: Position; totalValue: number; onClick: () => void }) {
+function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
   const pnlColor =
     pos.unrealized_pnl_pct > 0
       ? "text-profit"
