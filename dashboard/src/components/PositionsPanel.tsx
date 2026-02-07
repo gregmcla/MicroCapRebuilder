@@ -69,13 +69,15 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
           {pos.ticker}
         </span>
 
-        <PositionRowSparkline ticker={pos.ticker} />
+        <div className="flex-1 flex items-center justify-center">
+          <PositionRowSparkline ticker={pos.ticker} />
+        </div>
 
         <span className="font-mono text-xs text-text-muted text-right w-10">
           {pos.shares}
         </span>
 
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-end w-20">
           <span className="font-mono text-sm text-text-primary">
             ${pos.current_price.toFixed(2)}
           </span>
