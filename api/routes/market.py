@@ -49,7 +49,7 @@ def get_market_indices():
             if isinstance(data.columns, pd.MultiIndex) and ticker in data["Close"].columns:
                 closes = data["Close"][ticker].dropna()
             else:
-                closes = data["Close"].dropna()
+                closes = data["Close"].squeeze().dropna()
 
             closes_list = closes.tolist()
 
@@ -137,13 +137,14 @@ def get_chart_data(ticker: str, range: str = "1M", interval: Optional[str] = Non
             })
         else:
             # Simple columns (single ticker download)
+            # Use squeeze() to ensure 1D arrays (handles both Series and DataFrame columns)
             df = pd.DataFrame({
                 "time": data.index,
-                "open": data["Open"].values,
-                "high": data["High"].values,
-                "low": data["Low"].values,
-                "close": data["Close"].values,
-                "volume": data["Volume"].values,
+                "open": data["Open"].squeeze().values,
+                "high": data["High"].squeeze().values,
+                "low": data["Low"].squeeze().values,
+                "close": data["Close"].squeeze().values,
+                "volume": data["Volume"].squeeze().values,
             })
 
         # Calculate RSI (14-period)

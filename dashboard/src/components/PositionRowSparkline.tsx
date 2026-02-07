@@ -15,9 +15,6 @@ interface PositionRowSparklineProps {
 function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
   const { data, isLoading, error } = useChartData(ticker, "20D");
 
-  // Temporary debug - log what state each sparkline is in
-  console.log(`${ticker}: loading=${isLoading}, error=${!!error}, hasData=${!!data}, dataLen=${data?.data?.length ?? 'N/A'}`);
-
   // Calculate sparkline points
   const points = useMemo(() => {
     if (!data || data.data.length === 0) return null;
