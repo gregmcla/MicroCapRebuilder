@@ -69,11 +69,11 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
           {pos.ticker}
         </span>
 
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1">
           <PositionRowSparkline ticker={pos.ticker} />
         </div>
 
-        <span className="font-mono text-xs text-text-muted text-right w-10">
+        <span className="font-mono text-xs text-gray-400 text-right w-10">
           {pos.shares}
         </span>
 
