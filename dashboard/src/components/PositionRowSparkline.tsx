@@ -1,6 +1,6 @@
 /** Mini sparkline for position rows - 20-day price history */
 
-import { memo, useMemo } from "react";
+import { useMemo } from "react";
 import { useChartData } from "../hooks/useChartData";
 
 // Constants for dimensions
@@ -90,4 +90,4 @@ function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
   );
 }
 
-export default memo(PositionRowSparkline);
+export default PositionRowSparkline;
