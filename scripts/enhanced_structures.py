@@ -134,18 +134,29 @@ class PortfolioConstraint:
 
 
 @dataclass
-class PrioritizedAction:
-    """Action with execution priority."""
+class ProposedAction:
+    """Generic action proposal that can represent any action type."""
     action_type: str  # "BUY" or "SELL"
     ticker: str
     shares: int
     price: float
-    priority_score: int  # 0-100 (higher = execute first)
-    reason: str
     stop_loss: float = 0.0
     take_profit: float = 0.0
-    # Link back to original proposal
-    original_proposal: Optional[object] = None
+    reason: str = ""
+    quant_score: float = 0.0
+    factor_scores: Dict[str, float] = field(default_factory=dict)
+    regime: str = ""
+    # Link back to original typed proposal (SellProposal or BuyProposal)
+    source_proposal: Optional[object] = None
+
+
+@dataclass
+class PrioritizedAction:
+    """Action with assigned priority for execution sequencing."""
+    action: ProposedAction
+    priority: int  # 0-100
+    priority_reason: str
+    execution_order: int  # Assigned during sequencing
 
 
 @dataclass
