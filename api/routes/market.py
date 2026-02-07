@@ -185,6 +185,9 @@ def get_chart_data(ticker: str, range: str = "1M", interval: Optional[str] = Non
 
     except Exception as e:
         # Graceful degradation on error
+        print(f"ERROR fetching chart data for {ticker} (range={range}): {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "ticker": ticker,
             "range": range,
