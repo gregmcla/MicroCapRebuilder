@@ -12,6 +12,7 @@ export function useChartData(ticker: string, range: string = "20D") {
       updateTimestamp(`chart:${ticker}`);
       return data;
     },
-    staleTime: 300_000, // 5 minutes
+    staleTime: 0, // Always refetch (temporary fix for cache issues)
+    gcTime: 60_000, // Keep in cache for 1 minute
   });
 }
