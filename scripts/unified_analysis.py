@@ -28,6 +28,7 @@ from stock_scorer import StockScorer
 from market_regime import MarketRegime, get_position_size_multiplier
 from risk_manager import RiskManager
 from opportunity_layer import OpportunityLayer
+from composition_layer import CompositionLayer
 from capital_preservation import get_preservation_status
 from ai_review import (
     ProposedAction, ReviewedAction, ReviewDecision,
@@ -170,6 +171,52 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
             # Enhanced display with conviction info
             patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
             print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
+
+        # Run Layer 3: Portfolio Composition
+        print("\nRunning Layer 3: Portfolio Composition...")
+        layer3 = CompositionLayer(config)
+        layer3_output = layer3.process(state, layer1_output, layer2_output)
+
+        # Remove originally proposed buys and add only filtered buys
+        proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
+
+        # Add filtered buys back
+        for buy_proposal in layer3_output["filtered_buys"]:
+            conviction = buy_proposal.conviction_score
+            proposed_actions.append(ProposedAction(
+                action_type="BUY",
+                ticker=buy_proposal.ticker,
+                shares=buy_proposal.shares,
+                price=buy_proposal.price,
+                stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
+                take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
+                quant_score=conviction.composite_score,
+                factor_scores=conviction.factors,
+                regime=regime.value,
+                reason=buy_proposal.rationale
+            ))
+
+        # Add rebalancing sells
+        for rebalance_sell in layer3_output["rebalance_sells"]:
+            proposed_actions.append(ProposedAction(
+                action_type="SELL",
+                ticker=rebalance_sell.ticker,
+                shares=rebalance_sell.shares,
+                price=rebalance_sell.current_price,
+                reason=rebalance_sell.reason,
+                stop_loss=0.0,
+                take_profit=0.0,
+            ))
+
+        # Display composition warnings
+        for warning in layer3_output["warnings"]:
+            print(f"  ⚠️  {warning}")
+
+        # Display blocked buys
+        for blocked in layer3_output["blocked_buys"]:
+            violation = next((v for v in layer3_output["violations"] if v.ticker == blocked.ticker), None)
+            if violation:
+                print(f"  🚫 Blocked {blocked.ticker}: {violation.description}")
 
         num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
         print(f"  Found {num_buys} buy candidate(s)")
