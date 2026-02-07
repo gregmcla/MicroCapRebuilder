@@ -78,6 +78,8 @@ function UpdatePricesButton() {
       setResult(`Updated ${res.num_positions} positions`);
       // Invalidate state query to refetch with new prices
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+      // Also invalidate chart data to refresh sparklines
+      queryClient.invalidateQueries({ queryKey: ["chartData"] });
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
       setResult(e instanceof Error ? e.message : "Update failed");

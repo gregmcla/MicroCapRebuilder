@@ -39,10 +39,10 @@ function ProgressBar({ pct }: { pct: number }) {
 function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
   const pnlColor =
     pos.unrealized_pnl_pct > 0
-      ? "text-profit"
+      ? "text-green-400"
       : pos.unrealized_pnl_pct < 0
-        ? "text-loss"
-        : "text-text-primary";
+        ? "text-red-400"
+        : "text-white";
 
   // Progress: 0% at stop loss, 100% at take profit
   const range = pos.take_profit - pos.stop_loss;
@@ -60,7 +60,7 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
     ? (pnlPct / daysHeld) * 365
     : 0;
 
-  const aprColor = apr > 100 ? "text-cyber-magenta" : pnlColor;
+  const aprColor = apr > 100 ? "text-purple-400" : pnlColor;
 
   return (
     <div onClick={onClick} className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)] transition-all border-b border-border/50">
@@ -96,7 +96,7 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
           {(apr ?? 0).toFixed(0)}% APR
         </span>
 
-        <span className="font-mono text-xs text-text-muted text-right w-10">
+        <span className="font-mono text-xs text-gray-400 text-right w-10">
           {daysHeld ?? 0}d
         </span>
       </div>

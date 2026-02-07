@@ -1,7 +1,7 @@
 {
   "mode": "live",
   "paper_trading": {
-    "enabled": false,
+    "enabled": true,
     "simulated_fill_delay_pct": 0.1,
     "simulated_slippage_pct": 0.05,
     "paper_data_suffix": "_paper"
