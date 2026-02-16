@@ -94,6 +94,7 @@ class PortfolioState:
     price_failures: list = field(default_factory=list)
     stale_alerts: dict = field(default_factory=dict)  # ticker -> consecutive_days (>= 2)
     paper_mode: bool = False
+    portfolio_id: str = ""
 
     class Config:
         # Allow pandas DataFrames in frozen dataclass
@@ -108,7 +109,7 @@ class PortfolioState:
 
 # ─── Loading ─────────────────────────────────────────────────────────────────
 
-def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
+def load_portfolio_state(fetch_prices: bool = True, portfolio_id: str | None = None) -> PortfolioState:
     """
     Single entry point to load complete portfolio state.
 
@@ -117,17 +118,22 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
 
     Args:
         fetch_prices: If True, fetch current prices for all positions via yfinance.
+        portfolio_id: Portfolio to load. If None, resolves from registry default.
 
     Returns:
         PortfolioState with all data loaded.
     """
-    config = _load_config_from_file()
-    paper_mode = is_paper_mode()
+    if portfolio_id is None:
+        from portfolio_registry import get_default_portfolio_id
+        portfolio_id = get_default_portfolio_id() or ""
+
+    config = _load_config_from_file(portfolio_id)
+    paper_mode = is_paper_mode(portfolio_id)
 
     # Load CSVs
-    positions = _load_csv(get_positions_file(), POSITION_COLUMNS)
-    transactions = _load_csv(get_transactions_file(), TRANSACTION_COLUMNS)
-    snapshots = _load_csv(get_daily_snapshots_file(), DAILY_SNAPSHOT_COLUMNS)
+    positions = _load_csv(get_positions_file(portfolio_id), POSITION_COLUMNS)
+    transactions = _load_csv(get_transactions_file(portfolio_id), TRANSACTION_COLUMNS)
+    snapshots = _load_csv(get_daily_snapshots_file(portfolio_id), DAILY_SNAPSHOT_COLUMNS)
 
     # Calculate cash from transactions
     cash = calculate_cash(transactions, config["starting_capital"])
@@ -141,19 +147,19 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
     price_failures = []
 
     # Always load stale alerts from tracker (even without fresh price fetch)
-    stale_tracker = _load_stale_tracker()
+    stale_tracker = _load_stale_tracker(portfolio_id)
     stale_alerts = {t: days for t, days in stale_tracker.items() if days >= 2}
 
     if fetch_prices and not positions.empty:
         tickers = positions["ticker"].tolist()
-        price_cache, price_failures = fetch_prices_batch(tickers)
+        price_cache, price_failures, prev_close_cache = fetch_prices_batch(tickers)
 
-        # Update positions with fetched prices
-        positions = _update_positions_with_prices(positions, price_cache)
+        # Update positions with fetched prices and day change
+        positions = _update_positions_with_prices(positions, price_cache, prev_close_cache)
 
         # Track consecutive price fetch failures
         successful = [t for t in tickers if t not in price_failures]
-        stale_alerts = update_stale_tracker(price_failures, successful)
+        stale_alerts = update_stale_tracker(price_failures, successful, portfolio_id)
 
     # Calculate derived values
     positions_value = float(positions["market_value"].sum()) if not positions.empty else 0.0
@@ -176,6 +182,7 @@ def load_portfolio_state(fetch_prices: bool = True) -> PortfolioState:
         price_failures=price_failures,
         stale_alerts=stale_alerts,
         paper_mode=paper_mode,
+        portfolio_id=portfolio_id,
     )
 
 
@@ -188,9 +195,17 @@ def _load_csv(path, columns) -> pd.DataFrame:
     return pd.DataFrame(columns=columns)
 
 
-def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict) -> pd.DataFrame:
+def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, prev_close_cache: dict = None) -> pd.DataFrame:
     """Update positions DataFrame with fetched prices and recalculate P&L."""
     df = positions.copy()
+    if prev_close_cache is None:
+        prev_close_cache = {}
+
+    # Ensure day_change columns exist
+    if "day_change" not in df.columns:
+        df["day_change"] = 0.0
+    if "day_change_pct" not in df.columns:
+        df["day_change_pct"] = 0.0
 
     for idx, row in df.iterrows():
         ticker = row["ticker"]
@@ -211,6 +226,14 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict) ->
         df.at[idx, "market_value"] = round(market_value, 2)
         df.at[idx, "unrealized_pnl"] = round(unrealized_pnl, 2)
         df.at[idx, "unrealized_pnl_pct"] = round(unrealized_pnl_pct, 2)
+
+        # Day change from previous close
+        prev_close = prev_close_cache.get(ticker)
+        if prev_close and prev_close > 0:
+            day_change = (current_price - prev_close) * shares
+            day_change_pct = ((current_price - prev_close) / prev_close) * 100
+            df.at[idx, "day_change"] = round(day_change, 2)
+            df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
 
     return df
 
@@ -266,44 +289,60 @@ def flatten_yf_close(df: pd.DataFrame) -> pd.Series:
 
 # ─── Price Fetching ──────────────────────────────────────────────────────────
 
-def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
+def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
     """
-    Fetch current prices for multiple tickers in a single yfinance call.
+    Fetch current and previous close prices for multiple tickers in a single yfinance call.
 
     Args:
         tickers: List of ticker symbols.
 
     Returns:
-        Tuple of (price_cache dict, failed_tickers list).
+        Tuple of (price_cache dict, failed_tickers list, prev_close_cache dict).
     """
     if not tickers:
-        return {}, []
+        return {}, [], {}
 
     prices = {}
+    prev_closes = {}
     failures = []
 
-    # yfinance supports batch downloads
+    def _extract_prices(close_col, ticker, is_series=False):
+        """Extract current price and previous close from close column."""
+        if is_series:
+            vals = close_col.dropna()
+        else:
+            if ticker not in close_col.columns:
+                return None, None
+            vals = close_col[ticker].dropna()
+        if len(vals) == 0:
+            return None, None
+        current = float(vals.iloc[-1])
+        prev = float(vals.iloc[-2]) if len(vals) >= 2 else None
+        return current, prev
+
+    # Use 5d to ensure we get at least 2 trading days for prev close
     try:
-        df = yf.download(tickers, period="1d", progress=False, auto_adjust=True)
+        df = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
         if not df.empty:
             close_col = df["Close"]
             if isinstance(close_col, pd.Series):
                 # Single ticker - close_col is a Series
                 if len(tickers) == 1:
-                    price = float(close_col.iloc[-1])
-                    if pd.notna(price) and price > 0:
-                        prices[tickers[0]] = price
+                    current, prev = _extract_prices(close_col, tickers[0], is_series=True)
+                    if current and current > 0:
+                        prices[tickers[0]] = current
+                        if prev and prev > 0:
+                            prev_closes[tickers[0]] = prev
                     else:
                         failures.append(tickers[0])
             else:
                 # Multiple tickers - close_col is a DataFrame
                 for ticker in tickers:
-                    if ticker in close_col.columns:
-                        val = close_col[ticker].iloc[-1]
-                        if pd.notna(val) and float(val) > 0:
-                            prices[ticker] = float(val)
-                        else:
-                            failures.append(ticker)
+                    current, prev = _extract_prices(close_col, ticker)
+                    if current and current > 0:
+                        prices[ticker] = current
+                        if prev and prev > 0:
+                            prev_closes[ticker] = prev
                     else:
                         failures.append(ticker)
     except Exception as e:
@@ -311,12 +350,14 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
         # Fall back to individual fetches
         for ticker in tickers:
             try:
-                single_df = yf.download(ticker, period="1d", progress=False, auto_adjust=True)
+                single_df = yf.download(ticker, period="5d", progress=False, auto_adjust=True)
                 if not single_df.empty:
                     close_col = flatten_yf_close(single_df)
-                    price = float(close_col.iloc[-1])
-                    if pd.notna(price) and price > 0:
-                        prices[ticker] = price
+                    current, prev = _extract_prices(close_col, ticker, is_series=True)
+                    if current and current > 0:
+                        prices[ticker] = current
+                        if prev and prev > 0:
+                            prev_closes[ticker] = prev
                     else:
                         failures.append(ticker)
                 else:
@@ -324,7 +365,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
             except Exception:
                 failures.append(ticker)
 
-    return prices, failures
+    return prices, failures, prev_closes
 
 
 # ─── Stale Price Tracking ───────────────────────────────────────────────────
@@ -332,27 +373,37 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list]:
 _STALE_TRACKER_FILE = Path(__file__).parent.parent / "data" / "stale_prices.json"
 
 
-def _load_stale_tracker() -> dict:
+def _get_stale_tracker_file(portfolio_id: str = "") -> Path:
+    """Get the stale tracker file path, portfolio-aware."""
+    if portfolio_id:
+        from portfolio_registry import get_portfolio_dir
+        return get_portfolio_dir(portfolio_id) / "stale_prices.json"
+    return _STALE_TRACKER_FILE
+
+
+def _load_stale_tracker(portfolio_id: str = "") -> dict:
     """Load stale price tracker: {ticker: consecutive_failures}."""
-    if _STALE_TRACKER_FILE.exists():
-        with open(_STALE_TRACKER_FILE) as f:
+    tracker_file = _get_stale_tracker_file(portfolio_id)
+    if tracker_file.exists():
+        with open(tracker_file) as f:
             return json.load(f)
     return {}
 
 
-def _save_stale_tracker(tracker: dict) -> None:
+def _save_stale_tracker(tracker: dict, portfolio_id: str = "") -> None:
     """Persist stale tracker to disk."""
-    with open(_STALE_TRACKER_FILE, "w") as f:
+    tracker_file = _get_stale_tracker_file(portfolio_id)
+    with open(tracker_file, "w") as f:
         json.dump(tracker, f, indent=2)
 
 
-def update_stale_tracker(price_failures: list, successful_tickers: list) -> dict:
+def update_stale_tracker(price_failures: list, successful_tickers: list, portfolio_id: str = "") -> dict:
     """
     Update stale price tracker after a price fetch.
 
     Returns dict of {ticker: consecutive_days} for tickers stale >= 2 days.
     """
-    tracker = _load_stale_tracker()
+    tracker = _load_stale_tracker(portfolio_id)
 
     # Reset successful fetches
     for t in successful_tickers:
@@ -362,7 +413,7 @@ def update_stale_tracker(price_failures: list, successful_tickers: list) -> dict
     for t in price_failures:
         tracker[t] = tracker.get(t, 0) + 1
 
-    _save_stale_tracker(tracker)
+    _save_stale_tracker(tracker, portfolio_id)
     return {t: days for t, days in tracker.items() if days >= 2}
 
 
@@ -462,7 +513,7 @@ def save_transactions_batch(state: PortfolioState, transactions: list) -> Portfo
         validate_transaction(txn, state)
 
     df_new = pd.DataFrame(transactions)
-    tx_file = get_transactions_file()
+    tx_file = get_transactions_file(state.portfolio_id)
 
     # Combine with existing
     if not state.transactions.empty:
@@ -591,7 +642,7 @@ def remove_position(state: PortfolioState, ticker: str) -> PortfolioState:
 
 def save_positions(state: PortfolioState) -> None:
     """Persist current positions to CSV."""
-    positions_file = get_positions_file()
+    positions_file = get_positions_file(state.portfolio_id)
     state.positions.to_csv(positions_file, index=False)
 
 
@@ -614,15 +665,17 @@ def save_snapshot(state: PortfolioState, benchmark_value: Optional[float] = None
     if benchmark_value is None:
         benchmark_value = fetch_benchmark_value(state.config)
 
-    # Calculate day's P&L from previous snapshot
+    # Calculate day's P&L from previous day's snapshot (skip today's row)
     day_pnl = 0.0
     day_pnl_pct = 0.0
 
     if not state.snapshots.empty:
-        prev_equity = state.snapshots.iloc[-1]["total_equity"]
-        if prev_equity and prev_equity > 0:
-            day_pnl = state.total_equity - prev_equity
-            day_pnl_pct = (day_pnl / prev_equity) * 100
+        prior = state.snapshots[state.snapshots["date"] != today]
+        if not prior.empty:
+            prev_equity = prior.iloc[-1]["total_equity"]
+            if prev_equity and prev_equity > 0:
+                day_pnl = state.total_equity - prev_equity
+                day_pnl_pct = (day_pnl / prev_equity) * 100
 
     snapshot = {
         "date": today,
@@ -635,7 +688,7 @@ def save_snapshot(state: PortfolioState, benchmark_value: Optional[float] = None
     }
 
     # Load existing snapshots, remove today's entry if exists, append new
-    snapshots_file = get_daily_snapshots_file()
+    snapshots_file = get_daily_snapshots_file(state.portfolio_id)
     if snapshots_file.exists():
         df = pd.read_csv(snapshots_file)
         df = df[df["date"] != today]
@@ -664,8 +717,8 @@ def refresh_prices(state: PortfolioState) -> PortfolioState:
         return state
 
     tickers = state.positions["ticker"].tolist()
-    price_cache, price_failures = fetch_prices_batch(tickers)
-    positions = _update_positions_with_prices(state.positions, price_cache)
+    price_cache, price_failures, prev_close_cache = fetch_prices_batch(tickers)
+    positions = _update_positions_with_prices(state.positions, price_cache, prev_close_cache)
     positions_value = float(positions["market_value"].sum())
 
     return replace(
@@ -681,9 +734,9 @@ def refresh_prices(state: PortfolioState) -> PortfolioState:
 
 # ─── Watchlist ───────────────────────────────────────────────────────────────
 
-def load_watchlist() -> list:
+def load_watchlist(portfolio_id: str = "") -> list:
     """Load tickers from watchlist.jsonl."""
-    watchlist_path = get_watchlist_file()
+    watchlist_path = get_watchlist_file(portfolio_id)
     if not watchlist_path.exists():
         return []
 
@@ -696,10 +749,13 @@ def load_watchlist() -> list:
 # ─── Main (for testing) ─────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    print("Loading portfolio state...")
-    state = load_portfolio_state(fetch_prices=False)
+    import sys
+    pid = sys.argv[1] if len(sys.argv) > 1 else None
+    print(f"Loading portfolio state (portfolio_id={pid!r})...")
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=pid)
 
-    print(f"\n  Mode:       {'PAPER' if state.paper_mode else 'LIVE'}")
+    print(f"\n  Portfolio:  {state.portfolio_id or '(default)'}")
+    print(f"  Mode:       {'PAPER' if state.paper_mode else 'LIVE'}")
     print(f"  Cash:       ${state.cash:,.2f}")
     print(f"  Positions:  {state.num_positions}")
     print(f"  Pos Value:  ${state.positions_value:,.2f}")
