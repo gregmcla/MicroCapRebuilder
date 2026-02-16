@@ -6,6 +6,7 @@ data/*.csv
 data/*.json
 !data/config.json
 !data/curated_universe.json
+!data/portfolios.json
 logs/
 reports/
 charts/

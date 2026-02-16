@@ -1,0 +1,13 @@
+{
+  "default_portfolio": "microcap",
+  "portfolios": {
+    "microcap": {
+      "id": "microcap",
+      "name": "Micro-Cap Portfolio",
+      "universe": "microcap",
+      "created": "2026-02-16T12:30:20",
+      "starting_capital": 50000.0,
+      "active": true
+    }
+  }
+}
