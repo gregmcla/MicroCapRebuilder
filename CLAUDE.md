@@ -93,7 +93,8 @@ MicroCapRebuilder/
 │       ├── risk.py              # GET /api/risk, /api/warnings
 │       ├── performance.py       # GET /api/performance, /api/learning
 │       ├── chat.py              # POST /api/chat, GET /api/mommy/insight
-│       └── controls.py          # Paper/live mode, close-all
+│       ├── controls.py          # Paper/live mode, close-all, manual sell
+│       └── discovery.py         # POST /api/scan (watchlist discovery)
 ├── dashboard/                   # React SPA
 │   ├── src/
 │   │   ├── App.tsx              # Four-panel layout shell
@@ -138,8 +139,9 @@ EXECUTE button → execute_approved_actions()
 - Starting capital: $50,000
 - Risk per trade: 10%
 - Max position: 15% of portfolio
-- Max positions: 15
-- Stop loss: 8%, Take profit: 20%
+- Max positions: 999 (uncapped — system is selective via scoring + AI review)
+- Stop loss: 8% (dynamic: trailing, volatility-adjusted, regime-adjusted)
+- No hard take profit ceiling — trailing stops let winners run
 - Benchmark: ^RUT (fallback: IWM)
 
 ## API Endpoints
@@ -154,8 +156,10 @@ EXECUTE button → execute_approved_actions()
 | GET | `/api/warnings` | Early warnings |
 | GET | `/api/performance` | Strategy health, analytics, attribution |
 | GET | `/api/learning` | Factor summary + weight suggestions |
+| POST | `/api/sell/{ticker}` | Manual sell single position |
 | POST | `/api/chat` | Mommy chat |
 | GET | `/api/mommy/insight` | Context-aware rotating insight |
+| POST | `/api/scan` | Trigger watchlist discovery scan |
 
 ## React Dashboard
 
@@ -163,7 +167,15 @@ EXECUTE button → execute_approved_actions()
 
 **Stack:** Vite + React 19 + Tailwind v4 + TanStack Query + Zustand
 
-**Layout:** Four persistent panels — positions (left), context tabs (right), activity feed (bottom-left), Mommy co-pilot (bottom-right). Top bar always visible with equity, day P&L, risk score, regime, action badges.
+**Layout:** Four persistent panels — positions (left), context tabs (right), activity feed (bottom-left), Mommy co-pilot (bottom-right). Top bar always visible with equity, day P&L, overall P&L, return %, risk score, regime, action badges.
+
+**Positions panel:** Each row shows ticker, sparkline, shares, price, unrealized P&L %, day P&L ($+%), days held. Sortable by P&L, Day P&L, ticker, weight, entry date.
+
+**Position detail:** Click a position to see full chart, stop/target progress, and manual SELL button with confirmation modal.
+
+**UPDATE button:** Fetches live prices via yfinance, saves to positions.csv and daily_snapshots.csv, then reloads state. Day P&L compares against previous day's snapshot (skips today's row to avoid zeroing on repeat updates).
+
+**SCAN button:** Triggers `watchlist_manager.update_watchlist(run_discovery=True)` to find new stock candidates. Run before ANALYZE to refresh the watchlist. Shows "Found X, added Y" result.
 
 **Keyboard shortcuts:** A = analyze, E = execute, R = refresh, Escape = close detail
 
@@ -217,6 +229,13 @@ factor_scores = {
 - AI JSON responses need cleaning: strip markdown blocks, find JSON boundaries, remove trailing commas, batch 10 max
 - Cash must be tracked as buys are proposed — each position capped by remaining cash
 - Pandas Series vs scalar: `.iloc[0]` when you expect a scalar from a filtered DataFrame
+- `fetch_prices_batch` returns 3-tuple: `(prices, failures, prev_closes)` — uses `period="5d"` for prev close data
+- `save_snapshot` must compare against previous *day's* snapshot, not today's — filter `df[df["date"] != today]` before computing day P&L
+- `run_dashboard.sh` uses `wait` not `wait -n` for macOS bash compatibility
+- `OpportunityLayer.process()` must filter out held tickers before scoring — otherwise only existing positions match and AI vetoes them
+- `OpportunityLayer._generate_buy_proposals()` needs `price_map` from scorer results — `state.price_cache` only has held position prices, not watchlist candidate prices
+- `JBT` ticker appears delisted — fails price fetch like `ALE`
+- ANALYZE pipeline takes ~27s: state load (2s) + risk layer (3s) + scoring 100 tickers (16s) + composition (1s) + AI review (6s)
 
 ## Data Schemas
 

@@ -250,21 +250,11 @@ class RiskLayer:
                 ))
                 continue
 
-            # Check take profit
-            if take_profit > 0 and current_price >= take_profit:
-                sell_proposals.append(SellProposal(
-                    ticker=ticker,
-                    shares=int(pos["shares"]),
-                    current_price=current_price,
-                    reason=f"TAKE PROFIT triggered: ${current_price:.2f} >= ${take_profit:.2f}",
-                    urgency_level=UrgencyLevel.LOW,
-                    urgency_score=50,
-                    stop_loss=effective_stop,
-                    take_profit=take_profit
-                ))
-                continue
+            # No hard take profit ceiling — trailing stops let winners run.
+            # The trailing stop (calculated above) rises with the price,
+            # protecting gains while allowing continued upside.
 
-            # Re-evaluation: Check score deterioration (same as before)
+            # Re-evaluation: Check score deterioration
             current_score_obj = score_map.get(ticker)
             if not current_score_obj:
                 continue

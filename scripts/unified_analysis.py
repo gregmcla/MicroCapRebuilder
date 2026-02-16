@@ -51,7 +51,7 @@ from execution_sequencer import ExecutionSequencer
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
 
-def run_unified_analysis(dry_run: bool = True) -> dict:
+def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict:
     """
     Run the complete unified analysis pipeline.
 
@@ -77,7 +77,7 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     print(f"{'='*60}\n")
 
     # Single state load replaces 5 separate loads
-    state = load_portfolio_state(fetch_prices=True)
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
     config = state.config
     regime = state.regime
     position_multiplier = get_position_size_multiplier(regime)
@@ -235,7 +235,7 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
         elif state.num_positions >= config.get("max_positions", 15):
             print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
         else:
-            watchlist = load_watchlist()
+            watchlist = load_watchlist(portfolio_id=state.portfolio_id)
             current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
             candidates = [t for t in watchlist if t not in current_tickers]
 
@@ -394,7 +394,7 @@ def run_unified_analysis(dry_run: bool = True) -> dict:
     return result
 
 
-def execute_approved_actions(analysis_result: dict) -> dict:
+def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) -> dict:
     """
     Execute the approved and modified actions from unified analysis.
 
@@ -409,7 +409,7 @@ def execute_approved_actions(analysis_result: dict) -> dict:
         return {"executed": 0, "message": "No actions to execute"}
 
     # Load fresh state for execution
-    state = load_portfolio_state(fetch_prices=False)
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     transactions = []
 
     print(f"\n{'='*60}")
@@ -496,9 +496,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Unified Analysis Engine")
     parser.add_argument("--execute", action="store_true", help="Execute approved actions")
     parser.add_argument("--dry-run", action="store_true", help="Show recommendations without executing")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
     args = parser.parse_args()
 
-    result = run_unified_analysis(dry_run=not args.execute)
+    result = run_unified_analysis(dry_run=not args.execute, portfolio_id=args.portfolio)
 
     print(f"\n{'='*60}")
     print("SUMMARY")
@@ -510,4 +511,4 @@ if __name__ == "__main__":
     print(f"Can Execute: {result['summary']['can_execute']}")
 
     if args.execute and result['summary']['can_execute']:
-        execute_approved_actions(result)
+        execute_approved_actions(result, portfolio_id=args.portfolio)

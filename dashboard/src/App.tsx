@@ -3,70 +3,78 @@
 import { Panel, Group, Separator } from "react-resizable-panels";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { usePortfolioStore } from "./lib/store";
 import MarketTickerBanner from "./components/MarketTickerBanner";
 import TopBar from "./components/TopBar";
 import PositionsPanel from "./components/PositionsPanel";
 import RightPanel from "./components/RightPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import MommyCoPilot from "./components/MommyCoPilot";
+import OverviewPage from "./components/OverviewPage";
 
 export default function App() {
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
   useKeyboardShortcuts();
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary">
       <MarketTickerBanner />
-      <TopBar state={state} isLoading={isLoading} />
+      <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
 
-      <Group orientation="horizontal" className="flex-1">
-        {/* Left column */}
-        <Panel defaultSize={35} minSize={25}>
-          <Group orientation="vertical">
-            {/* Positions */}
-            <Panel defaultSize={65} minSize={30}>
-              <div className="h-full bg-bg-surface border-r border-border">
-                <PositionsPanel
-                  positions={state?.positions ?? []}
-                  totalValue={state?.positions_value ?? 0}
-                />
-              </div>
-            </Panel>
+      {isOverview ? (
+        <OverviewPage />
+      ) : (
+        <Group orientation="horizontal" className="flex-1">
+          {/* Left column */}
+          <Panel defaultSize={35} minSize={25}>
+            <Group orientation="vertical">
+              {/* Positions */}
+              <Panel defaultSize={65} minSize={30}>
+                <div className="h-full bg-bg-surface border-r border-border">
+                  <PositionsPanel
+                    positions={state?.positions ?? []}
+                    totalValue={state?.positions_value ?? 0}
+                  />
+                </div>
+              </Panel>
 
-            <Separator />
+              <Separator />
 
-            {/* Activity Feed */}
-            <Panel defaultSize={35} minSize={15}>
-              <div className="h-full bg-bg-surface border-r border-t border-border">
-                <ActivityFeed transactions={state?.transactions ?? []} />
-              </div>
-            </Panel>
-          </Group>
-        </Panel>
+              {/* Activity Feed */}
+              <Panel defaultSize={35} minSize={15}>
+                <div className="h-full bg-bg-surface border-r border-t border-border">
+                  <ActivityFeed transactions={state?.transactions ?? []} />
+                </div>
+              </Panel>
+            </Group>
+          </Panel>
 
-        <Separator />
+          <Separator />
 
-        {/* Right column */}
-        <Panel defaultSize={65} minSize={35}>
-          <Group orientation="vertical">
-            {/* Context Tabs */}
-            <Panel defaultSize={65} minSize={30}>
-              <div className="h-full bg-bg-surface">
-                <RightPanel />
-              </div>
-            </Panel>
+          {/* Right column */}
+          <Panel defaultSize={65} minSize={35}>
+            <Group orientation="vertical">
+              {/* Context Tabs */}
+              <Panel defaultSize={65} minSize={30}>
+                <div className="h-full bg-bg-surface">
+                  <RightPanel />
+                </div>
+              </Panel>
 
-            <Separator />
+              <Separator />
 
-            {/* Mommy Co-Pilot */}
-            <Panel defaultSize={35} minSize={20}>
-              <div className="h-full bg-bg-surface border-t border-border">
-                <MommyCoPilot />
-              </div>
-            </Panel>
-          </Group>
-        </Panel>
-      </Group>
+              {/* Mommy Co-Pilot */}
+              <Panel defaultSize={35} minSize={20}>
+                <div className="h-full bg-bg-surface border-t border-border">
+                  <MommyCoPilot />
+                </div>
+              </Panel>
+            </Group>
+          </Panel>
+        </Group>
+      )}
     </div>
   );
 }

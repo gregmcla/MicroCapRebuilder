@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAnalysisStore, useUIStore } from "../lib/store";
+import { useAnalysisStore, useUIStore, usePortfolioStore } from "../lib/store";
 
 export function useKeyboardShortcuts() {
   const queryClient = useQueryClient();
@@ -12,12 +12,16 @@ export function useKeyboardShortcuts() {
   const isExecuting = useAnalysisStore((s) => s.isExecuting);
   const result = useAnalysisStore((s) => s.result);
   const setRightTab = useUIStore((s) => s.setRightTab);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       // Skip if typing in an input/textarea
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      // Shortcuts disabled on overview page
+      if (portfolioId === "overview") return;
 
       switch (e.key.toLowerCase()) {
         case "a":
@@ -27,7 +31,7 @@ export function useKeyboardShortcuts() {
           if (!isExecuting && result?.summary.can_execute) runExecute();
           break;
         case "r":
-          queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+          queryClient.invalidateQueries({ queryKey: ["portfolioState", portfolioId] });
           break;
         case "1":
           setRightTab("actions");
@@ -43,5 +47,5 @@ export function useKeyboardShortcuts() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isAnalyzing, isExecuting, result, runAnalysis, runExecute, queryClient, setRightTab]);
+  }, [isAnalyzing, isExecuting, result, runAnalysis, runExecute, queryClient, setRightTab, portfolioId]);
 }

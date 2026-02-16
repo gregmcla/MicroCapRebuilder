@@ -1,5 +1,50 @@
 /** TypeScript interfaces for API responses. */
 
+// --- Portfolio types ---
+
+export interface PortfolioMeta {
+  id: string;
+  name: string;
+  universe: string;
+  created: string;
+  starting_capital: number;
+  active: boolean;
+}
+
+export interface PortfolioList {
+  portfolios: PortfolioMeta[];
+  default_portfolio: string;
+}
+
+export interface PortfolioSummary {
+  id: string;
+  name: string;
+  universe: string;
+  equity: number;
+  cash: number;
+  positions_value: number;
+  num_positions: number;
+  regime: string | null;
+  paper_mode: boolean;
+  error?: string;
+}
+
+export interface OverviewData {
+  total_equity: number;
+  total_cash: number;
+  total_day_pnl: number;
+  portfolios: PortfolioSummary[];
+}
+
+export interface CreatePortfolioRequest {
+  id: string;
+  name: string;
+  universe: string;
+  starting_capital: number;
+}
+
+// --- Existing types ---
+
 export interface Position {
   ticker: string;
   shares: number;
@@ -11,6 +56,8 @@ export interface Position {
   stop_loss: number;
   take_profit: number;
   entry_date: string;
+  day_change?: number;
+  day_change_pct?: number;
 }
 
 export interface Transaction {
@@ -243,6 +290,18 @@ export interface ChartData {
   range: string;
   data: ChartDataPoint[];
   indicators: ChartIndicators;
+}
+
+// --- Scan/Discovery types ---
+
+export interface ScanResult {
+  discovered: number;
+  added: number;
+  marked_stale: number;
+  removed: number;
+  poor_performers_removed: number;
+  sector_balanced: Record<string, number>;
+  total_active: number;
 }
 
 // --- Analysis types ---

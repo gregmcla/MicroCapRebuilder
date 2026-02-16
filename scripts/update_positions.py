@@ -19,13 +19,13 @@ from portfolio_state import (
 )
 
 
-def main():
+def main(portfolio_id: str = None):
     mode_indicator = get_mode_indicator()
     print(f"\n─── Updating Positions {mode_indicator} ───\n")
 
     # Load complete state with current prices
     print("Step 1: Loading portfolio state and fetching prices...")
-    state = load_portfolio_state(fetch_prices=True)
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
 
     if state.price_failures:
         for ticker in state.price_failures:
@@ -60,4 +60,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Update positions with live prices")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
+    args = parser.parse_args()
+
+    main(portfolio_id=args.portfolio)

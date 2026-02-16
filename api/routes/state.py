@@ -3,9 +3,9 @@
 from fastapi import APIRouter
 from api.deps import serialize
 
-from portfolio_state import load_portfolio_state
+from portfolio_state import load_portfolio_state, save_positions, save_snapshot, invalidate_regime_cache
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/{portfolio_id}")
 
 
 def _serialize_state(state):
@@ -57,14 +57,19 @@ def _serialize_state(state):
 
 
 @router.get("/state")
-def get_state():
+def get_state(portfolio_id: str):
     """Portfolio state without refreshing prices (fast)."""
-    state = load_portfolio_state(fetch_prices=False)
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     return _serialize_state(state)
 
 
 @router.get("/state/refresh")
-def get_state_refresh():
+def get_state_refresh(portfolio_id: str):
     """Portfolio state with fresh prices (slower)."""
-    state = load_portfolio_state(fetch_prices=True)
+    invalidate_regime_cache()
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
+    save_positions(state)
+    save_snapshot(state)
+    # Reload so _serialize_state reads the updated snapshot for day_pnl
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     return _serialize_state(state)

@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { useAnalysisStore, useFreshnessStore } from "../lib/store";
+import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
 import { useRisk } from "../hooks/useRisk";
 import { api } from "../lib/api";
 import FreshnessIndicator from "./FreshnessIndicator";
+import PortfolioSwitcher from "./PortfolioSwitcher";
 
 function MetricPill({
   label,
@@ -66,6 +67,7 @@ function RiskBadge() {
 function UpdatePricesButton() {
   const queryClient = useQueryClient();
   const updateTimestamp = useFreshnessStore((s) => s.updateTimestamp);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [updating, setUpdating] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
@@ -73,7 +75,7 @@ function UpdatePricesButton() {
     setUpdating(true);
     setResult(null);
     try {
-      const res = await api.updatePrices();
+      const res = await api.updatePrices(portfolioId);
       updateTimestamp("positions");
       setResult(`Updated ${res.num_positions} positions`);
       // Invalidate state query to refetch with new prices
@@ -107,6 +109,7 @@ function UpdatePricesButton() {
 
 function ModeToggle({ paperMode }: { paperMode: boolean }) {
   const queryClient = useQueryClient();
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -116,7 +119,7 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
     setResult(null);
     setShowConfirm(false);
     try {
-      const res = await api.toggleMode();
+      const res = await api.toggleMode(portfolioId);
       setResult(res.message);
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       setTimeout(() => setResult(null), 3000);
@@ -186,6 +189,7 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
 
 function EmergencyClose({ positions }: { positions: PortfolioState["positions"] }) {
   const queryClient = useQueryClient();
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [showConfirm, setShowConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -195,7 +199,7 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
     setResult(null);
     setShowConfirm(false);
     try {
-      const res = await api.closeAll();
+      const res = await api.closeAll(portfolioId);
       setResult(res.message);
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       setTimeout(() => setResult(null), 5000);
@@ -274,6 +278,44 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
   );
 }
 
+function ScanButton() {
+  const queryClient = useQueryClient();
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleScan = async () => {
+    setScanning(true);
+    setResult(null);
+    try {
+      const res = await api.scan(portfolioId);
+      setResult(`Found ${res.discovered}, added ${res.added}`);
+      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+      setTimeout(() => setResult(null), 5000);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Scan failed");
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={handleScan}
+        disabled={scanning}
+        className="px-3 py-1 text-xs font-semibold bg-bg-elevated text-text-primary rounded hover:bg-border disabled:opacity-50 transition-colors"
+      >
+        {scanning ? "Scanning..." : "SCAN"}
+      </button>
+      {result && (
+        <span className="text-xs text-text-muted">{result}</span>
+      )}
+    </div>
+  );
+}
+
 function AnalyzeExecuteButtons() {
   const { result, isAnalyzing, isExecuting, runAnalysis, runExecute } =
     useAnalysisStore();
@@ -286,6 +328,7 @@ function AnalyzeExecuteButtons() {
     <div className="flex items-center gap-1.5">
       <FreshnessIndicator />
       <UpdatePricesButton />
+      <ScanButton />
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
@@ -313,16 +356,22 @@ export default function TopBar({
   state: PortfolioState | undefined;
   isLoading: boolean;
 }) {
+  // Minimal header when loading or on overview
   if (isLoading || !state) {
     return (
-      <header className="h-12 flex items-center px-4 bg-bg-surface border-b border-border shrink-0">
-        <span className="font-semibold text-accent tracking-tight">M</span>
-        <span className="ml-1 text-sm font-semibold text-text-secondary tracking-widest">
-          MOMMY
-        </span>
-        <span className="ml-4 text-xs text-text-muted animate-pulse">
-          Loading...
-        </span>
+      <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+        <div className="flex items-center gap-1 mr-2">
+          <span className="text-lg font-bold text-accent">M</span>
+          <span className="text-xs font-semibold text-text-secondary tracking-widest">
+            MOMMY
+          </span>
+        </div>
+        <PortfolioSwitcher />
+        {isLoading && (
+          <span className="ml-4 text-xs text-text-muted animate-pulse">
+            Loading...
+          </span>
+        )}
       </header>
     );
   }
@@ -331,6 +380,14 @@ export default function TopBar({
     state.day_pnl > 0
       ? "text-profit"
       : state.day_pnl < 0
+        ? "text-loss"
+        : "text-text-primary";
+
+  const overallPnl = state.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0);
+  const overallPnlColor =
+    overallPnl > 0
+      ? "text-profit"
+      : overallPnl < 0
         ? "text-loss"
         : "text-text-primary";
 
@@ -351,6 +408,9 @@ export default function TopBar({
         </span>
       </div>
 
+      {/* Portfolio Switcher */}
+      <PortfolioSwitcher />
+
       {/* Metrics */}
       <MetricPill
         label="Equity"
@@ -362,9 +422,18 @@ export default function TopBar({
         color={pnlColor}
       />
       <MetricPill
+        label="P&L"
+        value={`${overallPnl >= 0 ? "+" : ""}$${overallPnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+        color={overallPnlColor}
+      />
+      <MetricPill
         label="Return"
         value={`${state.total_return_pct >= 0 ? "+" : ""}${state.total_return_pct.toFixed(1)}%`}
         color={returnColor}
+      />
+      <MetricPill
+        label="Cash"
+        value={`$${state.cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
       />
 
       {/* Risk badge */}

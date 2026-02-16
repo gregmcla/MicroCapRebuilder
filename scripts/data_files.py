@@ -96,6 +96,21 @@ def get_watchlist_file(portfolio_id: Optional[str] = None) -> Path:
     return _resolve_data_dir(portfolio_id) / "watchlist.jsonl"
 
 
+def get_core_watchlist_file(portfolio_id: Optional[str] = None) -> Path:
+    """Get the core watchlist file path."""
+    return _resolve_data_dir(portfolio_id) / "core_watchlist.jsonl"
+
+
+def get_post_mortems_file(portfolio_id: Optional[str] = None) -> Path:
+    """Get the post-mortems file path."""
+    return _resolve_data_dir(portfolio_id) / "post_mortems.csv"
+
+
+def get_factor_performance_file(portfolio_id: Optional[str] = None) -> Path:
+    """Get the factor performance file path."""
+    return _resolve_data_dir(portfolio_id) / "factor_performance.csv"
+
+
 def get_all_data_files(portfolio_id: Optional[str] = None) -> dict:
     """Get all data file paths for current mode."""
     suffix = get_file_suffix(portfolio_id)

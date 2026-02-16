@@ -4,6 +4,18 @@ import { create } from "zustand";
 import type { AnalysisResult, Position } from "./types";
 import { api } from "./api";
 
+// --- Portfolio Store ---
+
+interface PortfolioStore {
+  activePortfolioId: string;
+  setPortfolio: (id: string) => void;
+}
+
+export const usePortfolioStore = create<PortfolioStore>((set) => ({
+  activePortfolioId: "overview",
+  setPortfolio: (id) => set({ activePortfolioId: id }),
+}));
+
 interface AnalysisStore {
   result: AnalysisResult | null;
   isAnalyzing: boolean;
@@ -40,9 +52,11 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   lastAnalyzedAt: null,
 
   runAnalysis: async () => {
+    const portfolioId = usePortfolioStore.getState().activePortfolioId;
+    if (portfolioId === "overview") return;
     set({ isAnalyzing: true, error: null });
     try {
-      const result = await api.analyze();
+      const result = await api.analyze(portfolioId);
       set({
         result,
         isAnalyzing: false,
@@ -57,10 +71,12 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
   },
 
   runExecute: async () => {
+    const portfolioId = usePortfolioStore.getState().activePortfolioId;
+    if (portfolioId === "overview") return;
     if (!get().result?.summary.can_execute) return;
     set({ isExecuting: true, error: null });
     try {
-      await api.execute();
+      await api.execute(portfolioId);
       set({ isExecuting: false, result: null, lastAnalyzedAt: null });
     } catch (e) {
       set({

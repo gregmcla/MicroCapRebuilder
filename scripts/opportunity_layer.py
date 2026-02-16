@@ -107,24 +107,31 @@ class OpportunityLayer:
                 - conviction_scores: Dict[ticker, ConvictionScore]
                 - buy_proposals: List[BuyProposal]
         """
-        # Score all watchlist candidates
+        # Score all watchlist candidates (exclude tickers we already hold)
         watchlist = load_watchlist()
         if not watchlist:
             return {"conviction_scores": {}, "buy_proposals": []}
 
+        current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+        candidates = [t for t in watchlist if t not in current_tickers]
+        if not candidates:
+            return {"conviction_scores": {}, "buy_proposals": []}
+
         # Use StockScorer to get base composite scores
         scorer = StockScorer(regime=state.regime)
-        stock_scores = scorer.score_watchlist(watchlist)
+        stock_scores = scorer.score_watchlist(candidates)
 
         # Calculate conviction scores with multipliers
         conviction_scores = {}
+        price_map = {}
         for stock_score in stock_scores:
             conviction = self.calculate_conviction(stock_score, state.regime)
             if conviction.final_conviction >= self.min_conviction:
                 conviction_scores[conviction.ticker] = conviction
+                price_map[conviction.ticker] = stock_score.current_price
 
         # Generate buy proposals from high-conviction candidates
-        buy_proposals = self._generate_buy_proposals(conviction_scores, state)
+        buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map)
 
         return {
             "conviction_scores": conviction_scores,
@@ -296,7 +303,8 @@ class OpportunityLayer:
     def _generate_buy_proposals(
         self,
         conviction_scores: Dict[str, ConvictionScore],
-        state: PortfolioState
+        state: PortfolioState,
+        price_map: Dict[str, float] = None
     ) -> List[BuyProposal]:
         """
         Generate BuyProposal objects from conviction scores.
@@ -320,8 +328,8 @@ class OpportunityLayer:
         )
 
         for conviction in sorted_scores:
-            # Get current price from state's price cache
-            price = state.price_cache.get(conviction.ticker)
+            # Get current price from scoring results (price_map) or state cache
+            price = (price_map or {}).get(conviction.ticker) or state.price_cache.get(conviction.ticker)
             if price is None:
                 continue  # Skip if no price available
 

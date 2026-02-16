@@ -42,5 +42,5 @@ echo -e "${CYAN}Keyboard shortcuts: A=analyze  E=execute  R=refresh  1/2/3=tabs$
 echo -e "Press Ctrl+C to stop."
 echo ""
 
-# Wait for either process to exit
-wait -n $API_PID $VITE_PID
+# Wait for both processes (macOS bash lacks wait -n)
+wait $API_PID $VITE_PID

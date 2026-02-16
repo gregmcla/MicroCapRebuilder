@@ -63,12 +63,12 @@ def get_buy_transaction_for_ticker(ticker: str, transactions_df: pd.DataFrame) -
     return buys.iloc[-1].to_dict()
 
 
-def main():
+def main(portfolio_id: str = None):
     mode_indicator = get_mode_indicator()
     print(f"\n─── Execute Sells {mode_indicator} ───\n")
 
     # Load portfolio state with current prices
-    state = load_portfolio_state(fetch_prices=True)
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
 
     if state.num_positions == 0:
         print("  No positions to check")
@@ -152,4 +152,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Execute stop loss / take profit sells")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
+    args = parser.parse_args()
+
+    main(portfolio_id=args.portfolio)

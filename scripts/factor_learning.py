@@ -28,6 +28,11 @@ POST_MORTEMS_FILE = DATA_DIR / "post_mortems.csv"
 FACTOR_PERFORMANCE_FILE = DATA_DIR / "factor_performance.csv"
 CONFIG_FILE = DATA_DIR / "config.json"
 
+from data_files import (
+    get_transactions_file, get_post_mortems_file,
+    get_factor_performance_file, load_config as load_config_from_files,
+)
+
 
 class PerformanceTrend(Enum):
     """Factor performance trend."""
@@ -76,9 +81,13 @@ class FactorLearner:
 
     FACTOR_NAMES = ["momentum", "volatility", "volume", "relative_strength", "mean_reversion"]
 
-    def __init__(self):
-        self.config = self._load_config()
+    def __init__(self, portfolio_id: str = None):
+        self.portfolio_id = portfolio_id
+        self.config = load_config_from_files(portfolio_id) if portfolio_id else self._load_config()
         self.learning_config = self.config.get("learning", {})
+        self._transactions_file = get_transactions_file(portfolio_id) if portfolio_id else TRANSACTIONS_FILE
+        self._post_mortems_file = get_post_mortems_file(portfolio_id) if portfolio_id else POST_MORTEMS_FILE
+        self._factor_performance_file = get_factor_performance_file(portfolio_id) if portfolio_id else FACTOR_PERFORMANCE_FILE
         self.transactions_df = self._load_transactions()
         self.post_mortems_df = self._load_post_mortems()
 
@@ -91,18 +100,18 @@ class FactorLearner:
 
     def _load_transactions(self) -> pd.DataFrame:
         """Load transactions with factor scores."""
-        if not TRANSACTIONS_FILE.exists():
+        if not self._transactions_file.exists():
             return pd.DataFrame()
-        df = pd.read_csv(TRANSACTIONS_FILE)
+        df = pd.read_csv(self._transactions_file)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
         return df
 
     def _load_post_mortems(self) -> pd.DataFrame:
         """Load post-mortems for outcome data."""
-        if not POST_MORTEMS_FILE.exists():
+        if not self._post_mortems_file.exists():
             return pd.DataFrame()
-        return pd.read_csv(POST_MORTEMS_FILE)
+        return pd.read_csv(self._post_mortems_file)
 
     def calculate_factor_performance(self) -> List[FactorPerformance]:
         """Calculate performance metrics for each factor."""
@@ -223,9 +232,9 @@ class FactorLearner:
         Compares current performance to historical baseline.
         """
         # Load historical performance if available
-        if FACTOR_PERFORMANCE_FILE.exists():
+        if self._factor_performance_file.exists():
             try:
-                df = pd.read_csv(FACTOR_PERFORMANCE_FILE)
+                df = pd.read_csv(self._factor_performance_file)
                 historical = df[df["factor"] == factor]
                 if not historical.empty and len(historical) >= 2:
                     prev_win_rate = historical.iloc[-2].get("win_rate", current_win_rate)
@@ -447,7 +456,7 @@ class FactorLearner:
         }
 
 
-def save_factor_performance(performances: List[FactorPerformance]):
+def save_factor_performance(performances: List[FactorPerformance], portfolio_id: str = None):
     """Save factor performance data to CSV."""
     if not performances:
         return
@@ -459,44 +468,46 @@ def save_factor_performance(performances: List[FactorPerformance]):
 
     df_new = pd.DataFrame(data)
 
-    if FACTOR_PERFORMANCE_FILE.exists():
-        df_existing = pd.read_csv(FACTOR_PERFORMANCE_FILE)
+    perf_file = get_factor_performance_file(portfolio_id) if portfolio_id else FACTOR_PERFORMANCE_FILE
+    if perf_file.exists():
+        df_existing = pd.read_csv(perf_file)
         # Keep history, append new
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new
 
-    df_combined.to_csv(FACTOR_PERFORMANCE_FILE, index=False)
+    df_combined.to_csv(perf_file, index=False)
 
 
-def get_factor_performance() -> List[FactorPerformance]:
+def get_factor_performance(portfolio_id: str = None) -> List[FactorPerformance]:
     """Get current factor performance metrics."""
-    learner = FactorLearner()
+    learner = FactorLearner(portfolio_id=portfolio_id)
     performances = learner.calculate_factor_performance()
 
     # Save for historical tracking
     if performances:
-        save_factor_performance(performances)
+        save_factor_performance(performances, portfolio_id=portfolio_id)
 
     return performances
 
 
-def get_weight_suggestions(regime: str = None) -> List[WeightSuggestion]:
+def get_weight_suggestions(regime: str = None, portfolio_id: str = None) -> List[WeightSuggestion]:
     """Get weight adjustment suggestions."""
-    learner = FactorLearner()
+    learner = FactorLearner(portfolio_id=portfolio_id)
     return learner.suggest_weight_adjustments(regime)
 
 
 def get_confidence_multiplier(
     factor_scores: Dict[str, float],
-    regime: str = None
+    regime: str = None,
+    portfolio_id: str = None,
 ) -> float:
     """
     Get confidence multiplier for position sizing.
 
     Returns float between 0.5 and 1.5.
     """
-    learner = FactorLearner()
+    learner = FactorLearner(portfolio_id=portfolio_id)
     confidence = learner.calculate_confidence_multiplier(factor_scores, regime)
     return confidence.score
 
@@ -533,9 +544,15 @@ def format_factor_performance_text(performances: List[FactorPerformance]) -> str
 
 # ─── CLI for Testing ───
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Factor Learning")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
+    args = parser.parse_args()
+
     print("\n─── Factor Learning Demo ───\n")
 
-    learner = FactorLearner()
+    learner = FactorLearner(portfolio_id=args.portfolio)
 
     # Get factor performance
     performances = learner.calculate_factor_performance()

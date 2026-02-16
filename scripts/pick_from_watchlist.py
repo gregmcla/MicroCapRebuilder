@@ -65,13 +65,13 @@ def record_buy_transaction(
     }
 
 
-def main():
+def main(portfolio_id: str = None):
     mode_indicator = get_mode_indicator()
     print(f"\n─── Intelligent Stock Picker {mode_indicator} ───\n")
 
     # Step 1: Load portfolio state (includes regime detection)
     print("Step 1: Loading portfolio state and analyzing regime...")
-    state = load_portfolio_state(fetch_prices=False)
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     config = state.config
     regime = state.regime
     regime_multiplier = get_position_size_multiplier(regime)
@@ -119,7 +119,7 @@ def main():
 
     # Step 3: Score watchlist candidates
     print("\nStep 3: Scoring watchlist candidates...")
-    all_tickers = load_watchlist()
+    all_tickers = load_watchlist(portfolio_id=state.portfolio_id)
 
     # Filter out tickers we already own
     candidates = [t for t in all_tickers if t not in current_tickers]
@@ -280,4 +280,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Intelligent Stock Picker")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
+    args = parser.parse_args()
+
+    main(portfolio_id=args.portfolio)

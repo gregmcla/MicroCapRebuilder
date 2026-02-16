@@ -8,7 +8,7 @@ from portfolio_chat import chat as portfolio_chat
 from portfolio_state import load_portfolio_state
 from early_warning import get_warnings
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api/{portfolio_id}")
 
 
 class ChatRequest(BaseModel):
@@ -16,16 +16,16 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/chat")
-def chat(req: ChatRequest):
+def chat(portfolio_id: str, req: ChatRequest):
     """User question -> Mommy response."""
     response = portfolio_chat(req.message)
     return serialize(response)
 
 
 @router.get("/mommy/insight")
-def mommy_insight():
+def mommy_insight(portfolio_id: str):
     """Context-aware insight based on current portfolio state."""
-    state = load_portfolio_state(fetch_prices=False)
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     warning_list = get_warnings()
 
     # Build context-aware insight

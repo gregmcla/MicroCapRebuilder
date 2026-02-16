@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { useUIStore } from "../lib/store";
+import { useUIStore, usePortfolioStore } from "../lib/store";
 import type { MommyInsight } from "../lib/types";
 import MommyAvatar from "./MommyAvatar";
 
@@ -19,15 +19,17 @@ export default function MommyCoPilot() {
   const [chatFadeTimer, setChatFadeTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
   const queryClient = useQueryClient();
   const setRightTab = useUIStore((s) => s.setRightTab);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
   const { data: insight } = useQuery<MommyInsight>({
-    queryKey: ["mommyInsight"],
-    queryFn: api.getMommyInsight,
+    queryKey: ["mommyInsight", portfolioId],
+    queryFn: () => api.getMommyInsight(portfolioId),
     refetchInterval: 60_000,
+    enabled: portfolioId !== "overview",
   });
 
   const chatMutation = useMutation({
-    mutationFn: (message: string) => api.chat(message),
+    mutationFn: (message: string) => api.chat(portfolioId, message),
     onSuccess: (data) => {
       setChatResponse(data.message);
       queryClient.invalidateQueries({ queryKey: ["mommyInsight"] });

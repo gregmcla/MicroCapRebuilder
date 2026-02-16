@@ -191,7 +191,7 @@ def get_position_size_multiplier(regime: MarketRegime) -> float:
     multipliers = {
         MarketRegime.BULL: 1.0,      # Full size in bull market
         MarketRegime.SIDEWAYS: 0.5,  # Half size in sideways market
-        MarketRegime.BEAR: 0.0,      # No new positions in bear market
+        MarketRegime.BEAR: 0.25,     # Quarter size — buy oversold setups, but small
         MarketRegime.UNKNOWN: 0.5,   # Conservative if unknown
     }
     return multipliers.get(regime, 0.5)

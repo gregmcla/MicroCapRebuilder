@@ -1,8 +1,10 @@
 /** Position detail view — shown in right panel when a position is clicked. */
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
-import { useUIStore } from "../lib/store";
+import { useUIStore, usePortfolioStore } from "../lib/store";
+import { api } from "../lib/api";
 import CandlestickChart from "./CandlestickChart";
 
 function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -51,6 +53,97 @@ function ProgressVisualization({ pos }: { pos: Position }) {
   );
 }
 
+function SellButton({ pos }: { pos: Position }) {
+  const queryClient = useQueryClient();
+  const selectPosition = useUIStore((s) => s.selectPosition);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [selling, setSelling] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleSell = async () => {
+    setSelling(true);
+    setShowConfirm(false);
+    try {
+      const res = await api.sellPosition(portfolioId, pos.ticker);
+      setResult(res.message);
+      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+      queryClient.invalidateQueries({ queryKey: ["chartData"] });
+      setTimeout(() => {
+        setResult(null);
+        selectPosition(null);
+      }, 3000);
+    } catch (e) {
+      setResult(e instanceof Error ? e.message : "Sell failed");
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setSelling(false);
+    }
+  };
+
+  const pnlColor = pos.unrealized_pnl >= 0 ? "text-profit" : "text-loss";
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowConfirm(true)}
+        disabled={selling}
+        className="px-3 py-1 text-xs font-semibold rounded bg-loss/15 text-loss hover:bg-loss/25 transition-colors disabled:opacity-50"
+      >
+        {selling ? "Selling..." : "SELL"}
+      </button>
+
+      {result && (
+        <span className="ml-2 text-xs text-text-muted">{result}</span>
+      )}
+
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-bg-elevated border border-border rounded-lg p-4 max-w-sm">
+            <h3 className="text-sm font-semibold text-text-primary mb-2">
+              Sell {pos.ticker}?
+            </h3>
+            <div className="bg-bg-surface rounded p-3 mb-3 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-text-muted">Shares</span>
+                <span className="font-mono">{pos.shares}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-muted">Price</span>
+                <span className="font-mono">${pos.current_price.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-text-muted">Value</span>
+                <span className="font-mono">${pos.market_value.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-t border-border pt-1 mt-1">
+                <span className="text-text-muted">P&L</span>
+                <span className={`font-mono font-semibold ${pnlColor}`}>
+                  {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)} ({pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(1)}%)
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="px-3 py-1 text-xs font-semibold bg-bg-surface text-text-primary rounded hover:bg-border transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSell}
+                className="px-3 py-1 text-xs font-semibold bg-loss/15 text-loss rounded hover:bg-loss/25 transition-colors"
+              >
+                Confirm Sell
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PositionDetail({ pos }: { pos: Position }) {
   const clearSelection = useUIStore((s) => s.selectPosition);
   const [range, setRange] = useState("1M");
@@ -77,12 +170,15 @@ export default function PositionDetail({ pos }: { pos: Position }) {
             {pos.unrealized_pnl_pct.toFixed(2)}%
           </span>
         </div>
-        <button
-          onClick={() => clearSelection(null)}
-          className="text-xs text-text-muted hover:text-text-secondary transition-colors px-2 py-1 rounded border border-border hover:border-accent"
-        >
-          Back
-        </button>
+        <div className="flex items-center gap-2">
+          <SellButton pos={pos} />
+          <button
+            onClick={() => clearSelection(null)}
+            className="text-xs text-text-muted hover:text-text-secondary transition-colors px-2 py-1 rounded border border-border hover:border-accent"
+          >
+            Back
+          </button>
+        </div>
       </div>
 
       {/* Content */}

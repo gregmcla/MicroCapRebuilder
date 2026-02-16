@@ -10,6 +10,11 @@ import type {
   LearningData,
   MarketIndices,
   ChartData,
+  ScanResult,
+  PortfolioList,
+  OverviewData,
+  CreatePortfolioRequest,
+  PortfolioMeta,
 } from "./types";
 
 const BASE = "/api";
@@ -30,27 +35,58 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 export const api = {
-  getState: () => get<PortfolioState>("/state"),
-  refreshState: () => get<PortfolioState>("/state/refresh"),
-  getRisk: () => get<RiskScoreboard>("/risk"),
-  getWarnings: () => get<Warning[]>("/warnings"),
-  getMommyInsight: () => get<MommyInsight>("/mommy/insight"),
-  getPerformance: () => get<PerformanceData>("/performance"),
-  getLearning: () => get<LearningData>("/learning"),
+  // --- Portfolio management (no portfolio_id prefix) ---
+  getPortfolios: () => get<PortfolioList>("/portfolios"),
+  getOverview: () => get<OverviewData>("/portfolios/overview"),
+  getUniverses: () => get<Record<string, { label: string }>>("/portfolios/universes"),
+  createPortfolio: (req: CreatePortfolioRequest) =>
+    post<{ portfolio: PortfolioMeta; message: string }>("/portfolios", req),
+  deletePortfolio: (id: string) =>
+    del<{ message: string }>(`/portfolios/${id}`),
+
+  // --- Portfolio-scoped endpoints ---
+  getState: (pid: string) => get<PortfolioState>(`/${pid}/state`),
+  refreshState: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
+  getRisk: (pid: string) => get<RiskScoreboard>(`/${pid}/risk`),
+  getWarnings: (pid: string) => get<Warning[]>(`/${pid}/warnings`),
+  getMommyInsight: (pid: string) => get<MommyInsight>(`/${pid}/mommy/insight`),
+  getPerformance: (pid: string) => get<PerformanceData>(`/${pid}/performance`),
+  getLearning: (pid: string) => get<LearningData>(`/${pid}/learning`),
+  analyze: (pid: string) => post<AnalysisResult>(`/${pid}/analyze`),
+  execute: (pid: string) => post<Record<string, unknown>>(`/${pid}/execute`),
+  chat: (pid: string, message: string) =>
+    post<{ message: string; success: boolean; error: string | null }>(`/${pid}/chat`, { message }),
+  updatePrices: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
+  scan: (pid: string) => post<ScanResult>(`/${pid}/scan`),
+  sellPosition: (pid: string, ticker: string) =>
+    post<{
+      ticker: string;
+      shares: number;
+      price: number;
+      total_value: number;
+      unrealized_pnl: number;
+      unrealized_pnl_pct: number;
+      message: string;
+    }>(`/${pid}/sell/${ticker}`),
+  toggleMode: (pid: string) => post<{ paper_mode: boolean; message: string }>(`/${pid}/mode/toggle`),
+  closeAll: (pid: string) =>
+    post<{
+      closed: number;
+      positions: Array<{ ticker: string; shares: number; price: number; total_value: number; unrealized_pnl: number; unrealized_pnl_pct: number }>;
+      total_value: number;
+      total_pnl: number;
+      message: string;
+    }>(`/${pid}/close-all`),
+
+  // --- Market endpoints (global, not portfolio-scoped) ---
   getMarketIndices: () => get<MarketIndices>("/market/indices"),
   getChartData: (ticker: string, range: string = "1M") =>
     get<ChartData>(`/market/chart/${ticker}?range=${range}`),
-  analyze: () => post<AnalysisResult>("/analyze"),
-  execute: () => post<Record<string, unknown>>("/execute"),
-  chat: (message: string) => post<{ message: string; success: boolean; error: string | null }>("/chat", { message }),
-  updatePrices: () => get<PortfolioState>("/state/refresh"),
-  toggleMode: () => post<{ paper_mode: boolean; message: string }>("/mode/toggle"),
-  closeAll: () => post<{
-    closed: number;
-    positions: Array<{ ticker: string; shares: number; price: number; total_value: number; unrealized_pnl: number; unrealized_pnl_pct: number }>;
-    total_value: number;
-    total_pnl: number;
-    message: string;
-  }>("/close-all"),
 };

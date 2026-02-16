@@ -31,6 +31,13 @@ CONFIG_FILE = DATA_DIR / "config.json"
 WATCHLIST_FILE = DATA_DIR / "watchlist.jsonl"
 CORE_WATCHLIST_FILE = DATA_DIR / "core_watchlist.jsonl"
 
+from data_files import (
+    get_watchlist_file, get_core_watchlist_file,
+    get_transactions_file as get_transactions_file_for_portfolio,
+    load_config as load_config_from_files,
+    _resolve_data_dir,
+)
+
 
 @dataclass
 class WatchlistEntry:
@@ -70,17 +77,21 @@ class WatchlistManager:
     - Discovered tickers: Added from discovery scans, can expire
     """
 
-    def __init__(self):
-        self.config = load_config()
+    def __init__(self, portfolio_id: str = None):
+        self.portfolio_id = portfolio_id
+        self.config = load_config_from_files(portfolio_id) if portfolio_id else load_config()
         self.discovery_config = self.config.get("discovery", {}).get("watchlist", {})
         self.max_tickers = self.discovery_config.get("max_tickers", 150)
         self.stale_days = self.discovery_config.get("stale_days_threshold", 30)
+        # Resolve paths based on portfolio
+        self._watchlist_file = get_watchlist_file(portfolio_id) if portfolio_id else WATCHLIST_FILE
+        self._core_watchlist_file = get_core_watchlist_file(portfolio_id) if portfolio_id else CORE_WATCHLIST_FILE
 
     def _load_watchlist(self) -> List[WatchlistEntry]:
         """Load watchlist from JSONL file."""
         entries = []
-        if WATCHLIST_FILE.exists():
-            with open(WATCHLIST_FILE) as f:
+        if self._watchlist_file.exists():
+            with open(self._watchlist_file) as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -96,13 +107,13 @@ class WatchlistManager:
     def _save_watchlist(self, entries: List[WatchlistEntry]):
         """Save watchlist to JSONL file."""
         # Backup existing
-        if WATCHLIST_FILE.exists():
+        if self._watchlist_file.exists():
             BACKUP_DIR.mkdir(exist_ok=True)
             backup_path = BACKUP_DIR / f"watchlist_{date.today().isoformat()}.jsonl"
-            shutil.copy(WATCHLIST_FILE, backup_path)
+            shutil.copy(self._watchlist_file, backup_path)
 
         # Save new
-        with open(WATCHLIST_FILE, "w") as f:
+        with open(self._watchlist_file, "w") as f:
             for entry in entries:
                 f.write(json.dumps(asdict(entry)) + "\n")
 
@@ -111,8 +122,8 @@ class WatchlistManager:
         core_tickers = set()
 
         # First check for dedicated core file
-        if CORE_WATCHLIST_FILE.exists():
-            with open(CORE_WATCHLIST_FILE) as f:
+        if self._core_watchlist_file.exists():
+            with open(self._core_watchlist_file) as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -378,9 +389,7 @@ class WatchlistManager:
         Returns:
             Number of tickers removed
         """
-        from data_files import get_transactions_file
-
-        tx_file = get_transactions_file()
+        tx_file = get_transactions_file_for_portfolio(self.portfolio_id)
         if not tx_file.exists():
             return 0
 
@@ -550,28 +559,29 @@ class WatchlistManager:
         return missing
 
 
-def get_watchlist_tickers() -> List[str]:
+def get_watchlist_tickers(portfolio_id: str = None) -> List[str]:
     """
     Convenience function to get active watchlist tickers.
 
     Returns:
         List of ticker symbols
     """
-    manager = WatchlistManager()
+    manager = WatchlistManager(portfolio_id=portfolio_id)
     return manager.get_active_tickers()
 
 
-def update_watchlist(run_discovery: bool = True) -> Dict:
+def update_watchlist(run_discovery: bool = True, portfolio_id: str = None) -> Dict:
     """
     Convenience function to update the watchlist.
 
     Args:
         run_discovery: Whether to run discovery scans
+        portfolio_id: Portfolio ID (default: registry default)
 
     Returns:
         Update statistics
     """
-    manager = WatchlistManager()
+    manager = WatchlistManager(portfolio_id=portfolio_id)
     return manager.update_watchlist(run_discovery)
 
 
@@ -627,9 +637,10 @@ if __name__ == "__main__":
     parser.add_argument("--update", action="store_true", help="Run full watchlist update")
     parser.add_argument("--status", action="store_true", help="Show watchlist status")
     parser.add_argument("--list", action="store_true", help="List all active tickers")
+    parser.add_argument("--portfolio", default=None, help="Portfolio ID (default: registry default)")
     args = parser.parse_args()
 
-    manager = WatchlistManager()
+    manager = WatchlistManager(portfolio_id=args.portfolio)
 
     if args.update:
         print("\n─── Running Watchlist Update ───\n")
