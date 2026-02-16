@@ -108,7 +108,7 @@ class OpportunityLayer:
                 - buy_proposals: List[BuyProposal]
         """
         # Score all watchlist candidates (exclude tickers we already hold)
-        watchlist = load_watchlist()
+        watchlist = load_watchlist(portfolio_id=state.portfolio_id)
         if not watchlist:
             return {"conviction_scores": {}, "buy_proposals": []}
 

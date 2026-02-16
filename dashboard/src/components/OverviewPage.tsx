@@ -1,8 +1,12 @@
 /** Overview page — shown when activePortfolioId === "overview". */
 
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
+import { api } from "../lib/api";
 import type { PortfolioSummary } from "../lib/types";
+import CreatePortfolioModal from "./CreatePortfolioModal";
 
 const UNIVERSE_COLORS: Record<string, string> = {
   microcap: "bg-purple-500/20 text-purple-400 border-purple-500/30",
@@ -55,76 +59,108 @@ function AggregateBar({
 }
 
 function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
+  const queryClient = useQueryClient();
   const universeClass = UNIVERSE_COLORS[summary.universe] ?? UNIVERSE_COLORS.custom;
 
+  const deleteMutation = useMutation({
+    mutationFn: () => api.deletePortfolio(summary.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      setConfirmDelete(false);
+    },
+  });
+
   return (
-    <button
-      onClick={() => setPortfolio(summary.id)}
-      className="text-left bg-bg-surface border border-border rounded-lg p-4 hover:border-accent/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.1)] transition-all group"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-text-primary group-hover:text-accent transition-colors">
-          {summary.name}
-        </h3>
-        <div className="flex items-center gap-1.5">
-          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${universeClass}`}>
-            {summary.universe}
-          </span>
-          <span
-            className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-              summary.paper_mode
-                ? "bg-yellow-500/15 text-yellow-400"
-                : "bg-red-500/15 text-red-400"
-            }`}
-          >
-            {summary.paper_mode ? "PAPER" : "LIVE"}
-          </span>
-        </div>
-      </div>
+    <div className="relative text-left bg-bg-surface border border-border rounded-lg p-4 hover:border-accent/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.1)] transition-all group">
+      {/* Delete button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (confirmDelete) {
+            deleteMutation.mutate();
+          } else {
+            setConfirmDelete(true);
+            setTimeout(() => setConfirmDelete(false), 3000);
+          }
+        }}
+        className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+          confirmDelete
+            ? "bg-red-500/20 text-red-400 font-semibold"
+            : "text-text-muted/0 group-hover:text-text-muted/60 hover:!text-red-400"
+        }`}
+      >
+        {deleteMutation.isPending ? "..." : confirmDelete ? "Confirm?" : "\u00D7"}
+      </button>
 
-      {/* Error state */}
-      {summary.error ? (
-        <div className="text-xs text-red-400 bg-red-500/10 rounded p-2">
-          {summary.error}
-        </div>
-      ) : (
-        <>
-          {/* Equity */}
-          <p className="font-mono text-xl font-bold text-text-primary mb-2">
-            ${summary.equity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          </p>
-
-          {/* Stats row */}
-          <div className="flex items-center gap-4 text-xs text-text-muted">
-            <span>
-              {summary.num_positions} position{summary.num_positions !== 1 ? "s" : ""}
+      {/* Clickable card body */}
+      <button onClick={() => setPortfolio(summary.id)} className="w-full text-left">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3 pr-4">
+          <h3 className="text-sm font-bold text-text-primary group-hover:text-accent transition-colors">
+            {summary.name}
+          </h3>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${universeClass}`}>
+              {summary.universe}
             </span>
-            <span>
-              Cash: ${summary.cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                summary.paper_mode
+                  ? "bg-yellow-500/15 text-yellow-400"
+                  : "bg-red-500/15 text-red-400"
+              }`}
+            >
+              {summary.paper_mode ? "PAPER" : "LIVE"}
             </span>
-            {summary.regime && (
-              <span
-                className={
-                  summary.regime === "BULL"
-                    ? "text-green-400"
-                    : summary.regime === "BEAR"
-                      ? "text-red-400"
-                      : "text-yellow-400"
-                }
-              >
-                {summary.regime}
-              </span>
-            )}
           </div>
-        </>
-      )}
-    </button>
+        </div>
+
+        {/* Error state */}
+        {summary.error ? (
+          <div className="text-xs text-red-400 bg-red-500/10 rounded p-2">
+            {summary.error}
+          </div>
+        ) : (
+          <>
+            {/* Equity */}
+            <p className="font-mono text-xl font-bold text-text-primary mb-2">
+              ${summary.equity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+
+            {/* Stats row */}
+            <div className="flex items-center gap-4 text-xs text-text-muted">
+              <span>
+                {summary.num_positions} position{summary.num_positions !== 1 ? "s" : ""}
+              </span>
+              <span>
+                Cash: ${summary.cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </span>
+              {summary.regime && (
+                <span
+                  className={
+                    summary.regime === "BULL"
+                      ? "text-green-400"
+                      : summary.regime === "BEAR"
+                        ? "text-red-400"
+                        : "text-yellow-400"
+                  }
+                >
+                  {summary.regime}
+                </span>
+              )}
+            </div>
+          </>
+        )}
+      </button>
+    </div>
   );
 }
 
 export default function OverviewPage() {
+  const [showCreate, setShowCreate] = useState(false);
   const { data: overview, isLoading: overviewLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
 
@@ -171,9 +207,20 @@ export default function OverviewPage() {
             {enriched.map((s) => (
               <PortfolioCard key={s.id} summary={s} />
             ))}
+
+            {/* Add portfolio card */}
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex flex-col items-center justify-center border border-dashed border-border rounded-lg p-4 hover:border-accent/50 hover:bg-accent/5 transition-all min-h-[120px]"
+            >
+              <span className="text-2xl text-text-muted mb-1">+</span>
+              <span className="text-xs text-text-muted font-semibold">New Portfolio</span>
+            </button>
           </div>
         )}
       </div>
+
+      {showCreate && <CreatePortfolioModal onClose={() => setShowCreate(false)} />}
     </div>
   );
 }

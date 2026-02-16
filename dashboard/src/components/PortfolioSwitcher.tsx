@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { usePortfolioStore } from "../lib/store";
 import { usePortfolios } from "../hooks/usePortfolios";
+import CreatePortfolioModal from "./CreatePortfolioModal";
 
 const UNIVERSE_COLORS: Record<string, string> = {
   microcap: "bg-purple-500/20 text-purple-400",
@@ -14,6 +15,7 @@ const UNIVERSE_COLORS: Record<string, string> = {
 
 export default function PortfolioSwitcher() {
   const [open, setOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const activeId = usePortfolioStore((s) => s.activePortfolioId);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
@@ -74,8 +76,21 @@ export default function PortfolioSwitcher() {
               </span>
             </button>
           ))}
+
+          <div className="border-t border-border" />
+
+          {/* Create new */}
+          <button
+            onClick={() => { setOpen(false); setShowCreate(true); }}
+            className="w-full text-left px-3 py-2 text-xs hover:bg-bg-surface transition-colors flex items-center gap-2 text-accent"
+          >
+            <span>+</span>
+            <span className="font-semibold">New Portfolio</span>
+          </button>
         </div>
       )}
+
+      {showCreate && <CreatePortfolioModal onClose={() => setShowCreate(false)} />}
     </div>
   );
 }

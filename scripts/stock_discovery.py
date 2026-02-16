@@ -65,8 +65,11 @@ class DiscoveredStock:
     notes: str
 
 
-def load_config() -> dict:
-    """Load configuration."""
+def load_config(portfolio_id: str = None) -> dict:
+    """Load configuration, optionally portfolio-scoped."""
+    if portfolio_id:
+        from data_files import load_config as load_config_from_files
+        return load_config_from_files(portfolio_id)
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE) as f:
             return json.load(f)
@@ -114,14 +117,16 @@ class StockDiscovery:
         "Consumer Staples": "XLP",
     }
 
-    def __init__(self, universe: List[str] = None):
+    def __init__(self, universe: List[str] = None, portfolio_id: str = None):
         """
         Initialize the discovery engine.
 
         Args:
             universe: Optional list of tickers to scan. If None, uses UniverseProvider.
+            portfolio_id: Optional portfolio ID for portfolio-scoped config/universe.
         """
-        self.config = load_config()
+        self.portfolio_id = portfolio_id
+        self.config = load_config(portfolio_id)
         self.discovery_config = self.config.get("discovery", {})
         self._price_cache: Dict[str, pd.DataFrame] = {}
         self._info_cache: Dict[str, dict] = {}
@@ -136,7 +141,7 @@ class StockDiscovery:
         """Get the scan universe from UniverseProvider."""
         try:
             from universe_provider import UniverseProvider
-            provider = UniverseProvider()
+            provider = UniverseProvider(portfolio_id=self.portfolio_id)
             universe = provider.get_todays_scan_universe()
             stats = provider.get_stats()
             print(f"Universe: {stats['core_count']} core + {len(provider.get_todays_extended_batch())} extended = {len(universe)} tickers today")
@@ -172,6 +177,11 @@ class StockDiscovery:
                 return None
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
+            # Deduplicate columns and squeeze 2D columns to 1D
+            df = df.loc[:, ~df.columns.duplicated()]
+            for col in ["Close", "High", "Low", "Volume", "Open"]:
+                if col in df.columns and hasattr(df[col], "ndim") and df[col].ndim > 1:
+                    df[col] = df[col].iloc[:, 0]
             self._price_cache[cache_key] = df
             return df
         except Exception:
@@ -598,14 +608,17 @@ class StockDiscovery:
         return result
 
 
-def discover_stocks() -> List[DiscoveredStock]:
+def discover_stocks(portfolio_id: str = None) -> List[DiscoveredStock]:
     """
     Convenience function to run discovery scans.
+
+    Args:
+        portfolio_id: Optional portfolio ID for portfolio-scoped config/universe.
 
     Returns:
         List of discovered stock candidates
     """
-    discovery = StockDiscovery()
+    discovery = StockDiscovery(portfolio_id=portfolio_id)
     return discovery.run_all_scans()
 
 

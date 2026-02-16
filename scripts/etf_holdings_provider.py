@@ -51,8 +51,11 @@ DEFAULT_ETFS = [
 ]
 
 
-def load_config() -> dict:
-    """Load configuration from config.json."""
+def load_config(portfolio_id: str = None) -> dict:
+    """Load configuration, optionally portfolio-scoped."""
+    if portfolio_id:
+        from data_files import load_config as load_config_from_files
+        return load_config_from_files(portfolio_id)
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE) as f:
             return json.load(f)
@@ -67,14 +70,16 @@ class ETFHoldingsProvider:
     Includes filtering by market cap, volume, and price.
     """
 
-    def __init__(self, etf_symbols: List[str] = None):
+    def __init__(self, etf_symbols: List[str] = None, portfolio_id: str = None):
         """
         Initialize the provider.
 
         Args:
-            etf_symbols: List of ETF symbols to fetch. Defaults to IWM, IJR, VB.
+            etf_symbols: List of ETF symbols to fetch. Defaults to config-based ETFs.
+            portfolio_id: Optional portfolio ID for portfolio-scoped config.
         """
-        self.config = load_config()
+        self.portfolio_id = portfolio_id
+        self.config = load_config(portfolio_id)
         self.universe_config = self.config.get("universe", {})
         self.filters = self.universe_config.get("filters", {})
 
@@ -93,13 +98,20 @@ class ETFHoldingsProvider:
             if sym not in self.etf_configs:
                 self.etf_configs[sym] = ETFConfig(sym, f"{sym} ETF", "unknown", 100)
 
+        # Portfolio-scoped cache file
+        if portfolio_id:
+            from data_files import _resolve_data_dir
+            self._cache_file = _resolve_data_dir(portfolio_id) / "etf_holdings_cache.json"
+        else:
+            self._cache_file = CACHE_FILE
+
         self._cache = self._load_cache()
 
     def _load_cache(self) -> dict:
         """Load cached holdings."""
-        if CACHE_FILE.exists():
+        if self._cache_file.exists():
             try:
-                with open(CACHE_FILE) as f:
+                with open(self._cache_file) as f:
                     return json.load(f)
             except (json.JSONDecodeError, IOError):
                 pass
@@ -108,7 +120,7 @@ class ETFHoldingsProvider:
     def _save_cache(self):
         """Save holdings to cache."""
         try:
-            with open(CACHE_FILE, "w") as f:
+            with open(self._cache_file, "w") as f:
                 json.dump(self._cache, f, indent=2)
         except IOError as e:
             print(f"Warning: Could not save cache: {e}")
@@ -312,6 +324,7 @@ class ETFHoldingsProvider:
 # These are used when yfinance can't fetch live holdings
 
 FALLBACK_HOLDINGS = {
+    # --- Small-cap / Micro-cap ETFs ---
     "IWM": [
         "SMCI", "MSTR", "CORT", "INSM", "FTAI", "CRDO", "SPR", "LNTH", "GKOS", "NBIX",
         "ANF", "JANX", "FN", "BOOT", "MARA", "CIVI", "EXAS", "EME", "CVLT", "STEP",
@@ -329,21 +342,72 @@ FALLBACK_HOLDINGS = {
         "ANF", "BOOT", "JANX", "FN", "EME", "MARA", "CIVI", "STEP", "EXAS", "CVLT",
         "RIOT", "SIGI", "SFM", "PIPR", "PRIM", "VNT", "ABG", "WULF", "MOD", "RUN",
         "RDNT", "CNX", "TMDX", "ONTO", "SHAK", "ITCI", "ACLX", "VIRT", "VERA", "OSCR"
-    ]
+    ],
+    # --- Large-cap ETFs (S&P 500 components) ---
+    "SPY": [
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "BRK-B", "AVGO", "LLY", "JPM",
+        "TSLA", "UNH", "V", "XOM", "MA", "COST", "PG", "JNJ", "HD", "ABBV",
+        "WMT", "NFLX", "BAC", "CRM", "CVX", "MRK", "KO", "ORCL", "AMD", "PEP",
+        "ACN", "TMO", "LIN", "MCD", "CSCO", "ADBE", "ABT", "WFC", "DHR", "GE",
+        "PM", "ISRG", "TXN", "QCOM", "INTU", "CAT", "BKNG", "AMGN", "AMAT", "PFE",
+        "CMCSA", "GS", "NOW", "VZ", "RTX", "NEE", "T", "LOW", "SYK", "BLK",
+        "HON", "SPGI", "UNP", "ELV", "DE", "BA", "PLD", "MDLZ", "LMT", "CB",
+        "ADP", "SCHW", "GILD", "MMC", "VRTX", "BMY", "CI", "SO", "DUK", "AMT",
+    ],
+    "IVV": [
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "BRK-B", "AVGO", "LLY", "JPM",
+        "TSLA", "UNH", "V", "XOM", "MA", "COST", "PG", "JNJ", "HD", "ABBV",
+        "WMT", "NFLX", "BAC", "CRM", "CVX", "MRK", "KO", "ORCL", "AMD", "PEP",
+        "ACN", "TMO", "LIN", "MCD", "CSCO", "ADBE", "ABT", "WFC", "DHR", "GE",
+    ],
+    "VOO": [
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "BRK-B", "AVGO", "LLY", "JPM",
+        "TSLA", "UNH", "V", "XOM", "MA", "COST", "PG", "JNJ", "HD", "ABBV",
+        "WMT", "NFLX", "BAC", "CRM", "CVX", "MRK", "KO", "ORCL", "AMD", "PEP",
+        "ACN", "TMO", "LIN", "MCD", "CSCO", "ADBE", "ABT", "WFC", "DHR", "GE",
+    ],
+    # --- Mid-cap ETFs ---
+    "IJH": [
+        "SMCI", "WSM", "TRGP", "EQT", "IBKR", "RCL", "BURL", "DECK", "NCLH", "TOL",
+        "CZR", "RPM", "CLH", "JBL", "POOL", "EXEL", "MANH", "FNF", "NTNX", "HLI",
+        "WSO", "ATI", "UFPI", "OC", "GPK", "DTM", "LECO", "CHE", "MTZ", "FHN",
+        "RBC", "SAIA", "PCVX", "LPX", "SNX", "FMC", "MIDD", "THC", "PNW", "WH",
+    ],
+    "VO": [
+        "CRH", "WEC", "FAST", "VRSK", "CTVA", "EFX", "XYL", "ANSS", "DOV", "AWK",
+        "GPN", "BR", "WRB", "ZBRA", "TDY", "FTV", "STT", "WAT", "NTRS", "BAX",
+        "DGX", "LH", "TRMB", "STE", "ALGN", "HOLX", "PKG", "WMS", "JBHT", "EXPD",
+        "PTC", "MKTX", "FFIV", "WAB", "IEX", "DPZ", "CHRW", "TER", "AKAM", "TECH",
+    ],
+    "MDY": [
+        "SMCI", "WSM", "TRGP", "EQT", "IBKR", "RCL", "BURL", "DECK", "NCLH", "TOL",
+        "CZR", "RPM", "CLH", "JBL", "POOL", "EXEL", "MANH", "FNF", "NTNX", "HLI",
+        "WSO", "ATI", "UFPI", "OC", "GPK", "DTM", "LECO", "CHE", "MTZ", "FHN",
+    ],
 }
 
 
-def seed_cache_with_fallbacks():
-    """Seed the cache with fallback holdings if empty."""
-    provider = ETFHoldingsProvider()
+def seed_cache_with_fallbacks(portfolio_id: str = None):
+    """Seed the cache with fallback holdings if empty.
 
+    Args:
+        portfolio_id: Optional portfolio ID for portfolio-scoped cache.
+    """
+    provider = ETFHoldingsProvider(portfolio_id=portfolio_id)
+
+    # Only seed ETFs that this provider is configured to use
+    configured_etfs = set(provider.etf_configs.keys())
+
+    seeded = 0
     for etf, holdings in FALLBACK_HOLDINGS.items():
-        if not provider._is_cache_fresh(etf):
+        if etf in configured_etfs and not provider._is_cache_fresh(etf):
             provider._cache.setdefault("holdings", {})[etf] = holdings
             provider._cache.setdefault("last_updated", {})[etf] = datetime.now().isoformat()
+            seeded += 1
 
-    provider._save_cache()
-    print("Seeded cache with fallback holdings")
+    if seeded > 0:
+        provider._save_cache()
+        print(f"Seeded cache with fallback holdings for {seeded} ETFs ({', '.join(configured_etfs)})")
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────

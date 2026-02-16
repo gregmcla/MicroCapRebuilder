@@ -153,6 +153,12 @@ class StockScorer:
             # Flatten multi-level columns if present (newer yfinance versions)
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = df.columns.get_level_values(0)
+            # Deduplicate columns — yfinance can return duplicate "Close" etc.
+            df = df.loc[:, ~df.columns.duplicated()]
+            # Ensure key columns are scalar (not Series) by squeezing
+            for col in ["Close", "High", "Low", "Volume", "Open"]:
+                if col in df.columns and hasattr(df[col], "ndim") and df[col].ndim > 1:
+                    df[col] = df[col].iloc[:, 0]
             return df
         except Exception:
             return None

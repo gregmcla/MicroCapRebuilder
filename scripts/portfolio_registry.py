@@ -34,6 +34,14 @@ UNIVERSE_PRESETS = {
         },
         "benchmark_symbol": "^RUT",
         "fallback_benchmark": "IWM",
+        "discovery_filters": {
+            "min_market_cap_m": 50,
+            "max_market_cap_m": 2000,
+            "min_avg_volume": 100000,
+            "min_price": 2.0,
+            "max_price": 500.0,
+        },
+        "etf_sources": ["IWM", "IJR", "VB"],
     },
     "smallcap": {
         "label": "Small-Cap ($300M–$2B)",
@@ -50,6 +58,14 @@ UNIVERSE_PRESETS = {
         },
         "benchmark_symbol": "^RUT",
         "fallback_benchmark": "IWM",
+        "discovery_filters": {
+            "min_market_cap_m": 300,
+            "max_market_cap_m": 5000,
+            "min_avg_volume": 200000,
+            "min_price": 5.0,
+            "max_price": 500.0,
+        },
+        "etf_sources": ["IWM", "IJR", "VB"],
     },
     "midcap": {
         "label": "Mid-Cap ($2B–$10B)",
@@ -66,6 +82,14 @@ UNIVERSE_PRESETS = {
         },
         "benchmark_symbol": "^MID",
         "fallback_benchmark": "MDY",
+        "discovery_filters": {
+            "min_market_cap_m": 2000,
+            "max_market_cap_m": 15000,
+            "min_avg_volume": 300000,
+            "min_price": 10.0,
+            "max_price": 1000.0,
+        },
+        "etf_sources": ["IJH", "VO", "MDY"],
     },
     "largecap": {
         "label": "Large-Cap ($10B+)",
@@ -82,6 +106,14 @@ UNIVERSE_PRESETS = {
         },
         "benchmark_symbol": "^GSPC",
         "fallback_benchmark": "SPY",
+        "discovery_filters": {
+            "min_market_cap_m": 10000,
+            "max_market_cap_m": 999999,
+            "min_avg_volume": 500000,
+            "min_price": 20.0,
+            "max_price": 5000.0,
+        },
+        "etf_sources": ["SPY", "IVV", "VOO"],
     },
     "custom": {
         "label": "Custom Universe",
@@ -98,6 +130,14 @@ UNIVERSE_PRESETS = {
         },
         "benchmark_symbol": "^RUT",
         "fallback_benchmark": "IWM",
+        "discovery_filters": {
+            "min_market_cap_m": 300,
+            "max_market_cap_m": 50000,
+            "min_avg_volume": 200000,
+            "min_price": 5.0,
+            "max_price": 1000.0,
+        },
+        "etf_sources": ["IWM", "IJR", "VB"],
     },
 }
 
@@ -204,6 +244,21 @@ def create_portfolio(
     if "scoring" not in config:
         config["scoring"] = {}
     config["scoring"]["default_weights"] = dict(preset["scoring_weights"])
+
+    # Apply discovery filters
+    if "discovery" not in config:
+        config["discovery"] = {}
+    config["discovery"]["filters"] = dict(preset["discovery_filters"])
+
+    # Apply universe ETF sources and filters
+    if "universe" not in config:
+        config["universe"] = {}
+    if "sources" not in config["universe"]:
+        config["universe"]["sources"] = {}
+    if "etf_holdings" not in config["universe"]["sources"]:
+        config["universe"]["sources"]["etf_holdings"] = {}
+    config["universe"]["sources"]["etf_holdings"]["etfs"] = list(preset["etf_sources"])
+    config["universe"]["filters"] = dict(preset["discovery_filters"])
 
     # Write portfolio config
     config_path = portfolio_dir / "config.json"

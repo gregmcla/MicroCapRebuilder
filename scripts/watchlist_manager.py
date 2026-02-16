@@ -337,7 +337,7 @@ class WatchlistManager:
         if run_discovery:
             try:
                 from stock_discovery import discover_stocks
-                discovered = discover_stocks()
+                discovered = discover_stocks(portfolio_id=self.portfolio_id)
                 stats["discovered"] = len(discovered)
                 stats["added"] = self.add_discovered_stocks(discovered)
             except Exception as e:

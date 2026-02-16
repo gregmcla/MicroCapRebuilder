@@ -55,8 +55,11 @@ class UniverseTicker:
     added_date: str = ""
 
 
-def load_config() -> dict:
-    """Load configuration."""
+def load_config(portfolio_id: str = None) -> dict:
+    """Load configuration, optionally portfolio-scoped."""
+    if portfolio_id:
+        from data_files import load_config as load_config_from_files
+        return load_config_from_files(portfolio_id)
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE) as f:
             return json.load(f)
@@ -83,9 +86,10 @@ class UniverseProvider:
     - Configurable via config.json
     """
 
-    def __init__(self):
+    def __init__(self, portfolio_id: str = None):
         """Initialize the universe provider."""
-        self.config = load_config()
+        self.portfolio_id = portfolio_id
+        self.config = load_config(portfolio_id)
         self.universe_config = self.config.get("universe", {})
 
         # Default settings if not in config
@@ -122,7 +126,21 @@ class UniverseProvider:
         self._save_cache()
 
     def _load_curated(self):
-        """Load tickers from curated universe file."""
+        """Load tickers from curated universe file.
+
+        The curated universe file is microcap-specific. Skip it for
+        non-microcap portfolios to avoid polluting their universe.
+        """
+        if self.portfolio_id:
+            try:
+                from portfolio_registry import load_registry
+                registry = load_registry()
+                universe = registry.get("portfolios", {}).get(self.portfolio_id, {}).get("universe", "microcap")
+                if universe not in ("microcap", "smallcap"):
+                    return  # Skip curated file for mid/large-cap portfolios
+            except Exception:
+                pass  # If we can't determine universe, load curated as fallback
+
         curated = load_curated_universe()
 
         for sector, tickers in curated.items():
@@ -147,10 +165,10 @@ class UniverseProvider:
         try:
             from etf_holdings_provider import ETFHoldingsProvider, seed_cache_with_fallbacks
 
-            # Ensure we have fallback data
-            seed_cache_with_fallbacks()
+            # Ensure we have fallback data for this portfolio's ETFs
+            seed_cache_with_fallbacks(portfolio_id=self.portfolio_id)
 
-            provider = ETFHoldingsProvider()
+            provider = ETFHoldingsProvider(portfolio_id=self.portfolio_id)
             holdings = provider.get_all_holdings(use_cache=True)
 
             for ticker in holdings:
@@ -339,15 +357,15 @@ class UniverseProvider:
 
 # ─── Convenience Functions ────────────────────────────────────────────────────
 
-def get_todays_scan_universe() -> List[str]:
+def get_todays_scan_universe(portfolio_id: str = None) -> List[str]:
     """Get today's scan universe (convenience function)."""
-    provider = UniverseProvider()
+    provider = UniverseProvider(portfolio_id=portfolio_id)
     return provider.get_todays_scan_universe()
 
 
-def get_universe_stats() -> Dict:
+def get_universe_stats(portfolio_id: str = None) -> Dict:
     """Get universe statistics (convenience function)."""
-    provider = UniverseProvider()
+    provider = UniverseProvider(portfolio_id=portfolio_id)
     return provider.get_stats()
 
 
