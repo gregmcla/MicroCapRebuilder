@@ -15,6 +15,9 @@ import type {
   OverviewData,
   CreatePortfolioRequest,
   PortfolioMeta,
+  GenerateStrategyRequest,
+  GeneratedStrategy,
+  TradingStyle,
 } from "./types";
 
 const BASE = "/api";
@@ -50,6 +53,10 @@ export const api = {
     post<{ portfolio: PortfolioMeta; message: string }>("/portfolios", req),
   deletePortfolio: (id: string) =>
     del<{ message: string }>(`/portfolios/${id}`),
+  generateStrategy: (req: GenerateStrategyRequest) =>
+    post<GeneratedStrategy>("/portfolios/generate-strategy", req),
+  getTradingStyles: () => get<Record<string, TradingStyle>>("/portfolios/trading-styles"),
+  getSectors: () => get<{ sectors: string[] }>("/portfolios/sectors"),
 
   // --- Portfolio-scoped endpoints ---
   getState: (pid: string) => get<PortfolioState>(`/${pid}/state`),

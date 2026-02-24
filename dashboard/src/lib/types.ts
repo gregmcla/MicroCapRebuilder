@@ -41,6 +41,9 @@ export interface CreatePortfolioRequest {
   name: string;
   universe: string;
   starting_capital: number;
+  sectors?: string[];
+  trading_style?: string;
+  ai_config?: AiConfig;
 }
 
 // --- Existing types ---
@@ -356,4 +359,45 @@ export interface AnalysisResult {
   portfolio_context: Record<string, unknown>;
   regime: string;
   timestamp: string;
+}
+
+// --- Strategy generation types ---
+
+export interface AiConfig {
+  sectors?: string[];
+  trading_style?: string;
+  scoring_weights?: Record<string, number>;
+  stop_loss_pct?: number;
+  risk_per_trade_pct?: number;
+  max_position_pct?: number;
+  scan_types?: Record<string, boolean>;
+  etf_sources?: string[];
+  strategy_name?: string;
+  rationale?: string;
+  prompt?: string;
+}
+
+export interface GenerateStrategyRequest {
+  prompt: string;
+  universe: string;
+  starting_capital: number;
+}
+
+export interface GeneratedStrategy {
+  sectors: string[];
+  trading_style: string | null;
+  scoring_weights: Record<string, number>;
+  stop_loss_pct: number;
+  risk_per_trade_pct: number;
+  max_position_pct: number;
+  scan_types: Record<string, boolean>;
+  etf_sources: string[];
+  strategy_name: string;
+  rationale: string;
+  prompt: string;
+}
+
+export interface TradingStyle {
+  label: string;
+  description: string;
 }
