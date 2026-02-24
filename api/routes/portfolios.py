@@ -8,7 +8,9 @@ from api.deps import serialize
 from portfolio_registry import (
     list_portfolios, create_portfolio,
     archive_portfolio, get_default_portfolio_id, UNIVERSE_PRESETS,
+    TRADING_STYLES, SECTOR_ETF_MAP, ALL_SECTORS,
 )
+from strategy_generator import generate_strategy
 from portfolio_state import load_portfolio_state
 from dataclasses import asdict
 
@@ -20,6 +22,9 @@ class CreatePortfolioRequest(BaseModel):
     name: str
     universe: str
     starting_capital: float
+    sectors: list[str] | None = None
+    trading_style: str | None = None
+    ai_config: dict | None = None
 
 
 @router.get("")
@@ -38,10 +43,52 @@ def create_new_portfolio(req: CreatePortfolioRequest):
         meta = create_portfolio(
             portfolio_id=req.id, name=req.name,
             universe=req.universe, starting_capital=req.starting_capital,
+            sectors=req.sectors, trading_style=req.trading_style,
+            ai_config=req.ai_config,
         )
         return {"portfolio": asdict(meta), "message": f"Created portfolio '{req.name}'"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class GenerateStrategyRequest(BaseModel):
+    prompt: str
+    universe: str
+    starting_capital: float
+
+
+@router.post("/generate-strategy")
+def generate_strategy_endpoint(req: GenerateStrategyRequest):
+    """Use AI to generate a portfolio strategy from a text description."""
+    try:
+        strategy = generate_strategy(req.prompt, req.universe, req.starting_capital)
+        return {
+            "sectors": strategy.sectors,
+            "trading_style": strategy.trading_style,
+            "scoring_weights": strategy.scoring_weights,
+            "stop_loss_pct": strategy.stop_loss_pct,
+            "risk_per_trade_pct": strategy.risk_per_trade_pct,
+            "max_position_pct": strategy.max_position_pct,
+            "scan_types": strategy.scan_types,
+            "etf_sources": strategy.etf_sources,
+            "strategy_name": strategy.strategy_name,
+            "rationale": strategy.rationale,
+            "prompt": strategy.prompt,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trading-styles")
+def get_trading_styles():
+    return {k: {"label": v["label"], "description": v["description"]} for k, v in TRADING_STYLES.items()}
+
+
+@router.get("/sectors")
+def get_sectors():
+    return {"sectors": ALL_SECTORS}
 
 
 @router.delete("/{portfolio_id}")
