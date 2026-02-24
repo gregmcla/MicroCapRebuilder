@@ -226,6 +226,14 @@ class StockDiscovery:
             if current_price < min_price or current_price > max_price:
                 return False
 
+        # Sector filter (for strategy-focused portfolios)
+        sector_filter = self.discovery_config.get("sector_filter")
+        if sector_filter:
+            stock_info = self._get_stock_info(ticker)
+            stock_sector = stock_info.get("sector", "")
+            if stock_sector not in sector_filter:
+                return False
+
         return True
 
     def _calculate_discovery_score(
@@ -362,14 +370,19 @@ class StockDiscovery:
         """
         Find stocks breaking out with momentum.
 
-        Criteria:
-        - Within 10% of 52-week high
-        - 20-day momentum > 10%
-        - Volume ratio > 1.3x average
+        Criteria (configurable via discovery.scan_thresholds):
+        - Within X% of 52-week high (default 10%)
+        - 20-day momentum > X% (default 10%)
+        - Volume ratio > Xx average (default 1.3x)
         """
         print("  Scanning for momentum breakouts...")
         universe = universe or self.scan_universe
         candidates = []
+
+        thresholds = self.discovery_config.get("scan_thresholds", {}).get("momentum_breakouts", {})
+        max_pct_from_high = thresholds.get("max_pct_from_high", 10)
+        min_momentum_20d = thresholds.get("min_momentum_20d", 10)
+        min_volume_ratio = thresholds.get("min_volume_ratio", 1.3)
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "1y")
@@ -382,13 +395,13 @@ class StockDiscovery:
 
             # Check if near 52-week high
             pct_from_high = ((high_52wk - current) / high_52wk) * 100
-            if pct_from_high > 10:
+            if pct_from_high > max_pct_from_high:
                 continue
 
             # Check momentum
             if len(close) >= 20:
                 mom_20d = ((current - close.iloc[-20]) / close.iloc[-20]) * 100
-                if mom_20d < 10:
+                if mom_20d < min_momentum_20d:
                     continue
             else:
                 continue
@@ -397,7 +410,7 @@ class StockDiscovery:
             if "Volume" in df.columns:
                 recent_vol = df["Volume"].iloc[-5:].mean()
                 avg_vol = df["Volume"].iloc[-20:].mean()
-                if avg_vol > 0 and recent_vol / avg_vol < 1.3:
+                if avg_vol > 0 and recent_vol / avg_vol < min_volume_ratio:
                     continue
 
             discovered = self._analyze_stock(ticker, DiscoverySource.MOMENTUM_BREAKOUT)
@@ -411,14 +424,17 @@ class StockDiscovery:
         """
         Find quality stocks at oversold levels starting to recover.
 
-        Criteria:
-        - RSI recently < 35, now crossing above
+        Criteria (configurable via discovery.scan_thresholds):
+        - RSI recently < threshold (default 35), now crossing above
         - Still above 200-day SMA (uptrend intact)
         - Volume pickup on recovery
         """
         print("  Scanning for oversold bounces...")
         universe = universe or self.scan_universe
         candidates = []
+
+        thresholds = self.discovery_config.get("scan_thresholds", {}).get("oversold_bounces", {})
+        rsi_oversold = thresholds.get("rsi_oversold", 35)
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "1y")
@@ -439,8 +455,8 @@ class StockDiscovery:
                 continue
 
             # Was recently oversold and now recovering
-            was_oversold = rsi_series.iloc[:-1].min() < 35
-            now_recovering = rsi_series.iloc[-1] > 35
+            was_oversold = rsi_series.iloc[:-1].min() < rsi_oversold
+            now_recovering = rsi_series.iloc[-1] > rsi_oversold
 
             if not (was_oversold and now_recovering):
                 continue
@@ -456,14 +472,17 @@ class StockDiscovery:
         """
         Find top performers in leading sectors.
 
-        Criteria:
-        - Sector ETF showing positive 1-month momentum
+        Criteria (configurable via discovery.scan_thresholds):
+        - Sector ETF showing positive 1-month momentum > threshold (default 5%)
         - Stock outperforming its sector ETF
         - Strong relative strength
         """
         print("  Scanning for sector leaders...")
         universe = universe or self.scan_universe
         candidates = []
+
+        thresholds = self.discovery_config.get("scan_thresholds", {}).get("sector_leaders", {})
+        min_sector_momentum = thresholds.get("min_sector_momentum", 5)
 
         # First, identify leading sectors
         leading_sectors = []
@@ -473,7 +492,7 @@ class StockDiscovery:
                 continue
             close = df["Close"]
             mom = ((close.iloc[-1] - close.iloc[-20]) / close.iloc[-20]) * 100
-            if mom > 5:  # Sector showing positive momentum
+            if mom > min_sector_momentum:  # Sector showing positive momentum
                 leading_sectors.append((sector, etf, mom))
 
         # Sort by momentum
@@ -520,14 +539,17 @@ class StockDiscovery:
         """
         Find stocks with unusual volume activity (potential accumulation).
 
-        Criteria:
-        - Recent volume > 2.5x 20-day average
+        Criteria (configurable via discovery.scan_thresholds):
+        - Recent volume > Xx 20-day average (default 2.5x)
         - Price up (not distribution)
         - Consistent over multiple days
         """
         print("  Scanning for volume anomalies...")
         universe = universe or self.scan_universe
         candidates = []
+
+        thresholds = self.discovery_config.get("scan_thresholds", {}).get("volume_anomalies", {})
+        min_volume_ratio = thresholds.get("min_volume_ratio", 2.5)
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "3mo")
@@ -548,7 +570,7 @@ class StockDiscovery:
                 continue
 
             vol_ratio = recent_vol / avg_vol
-            if vol_ratio < 2.5:
+            if vol_ratio < min_volume_ratio:
                 continue
 
             # Check price action (should be up)
