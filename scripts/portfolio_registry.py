@@ -141,6 +141,121 @@ UNIVERSE_PRESETS = {
     },
 }
 
+# ─── Sector ETF Map ──────────────────────────────────────────────────────────
+# Maps GICS sectors to ETF tickers used as data sources for stock discovery.
+# We never buy ETFs — these are used to find individual stocks.
+SECTOR_ETF_MAP = {
+    "Technology": ["XLK", "SOXX"],
+    "Communication": ["XLC"],
+    "Healthcare": ["XLV", "XBI"],
+    "Financials": ["XLF"],
+    "Consumer Discretionary": ["XLY"],
+    "Consumer Staples": ["XLP"],
+    "Industrials": ["XLI"],
+    "Energy": ["XLE", "XOP"],
+    "Materials": ["XLB"],
+    "Utilities": ["XLU"],
+    "Real Estate": ["XLRE"],
+}
+
+ALL_SECTORS = list(SECTOR_ETF_MAP.keys())
+
+# ─── Trading Style Presets ────────────────────────────────────────────────────
+TRADING_STYLES = {
+    "aggressive_momentum": {
+        "label": "Aggressive Momentum",
+        "description": "High momentum + relative strength, tight stops, larger positions",
+        "scoring_weights": {
+            "momentum": 0.35,
+            "volatility": 0.05,
+            "volume": 0.15,
+            "relative_strength": 0.25,
+            "mean_reversion": 0.05,
+            "rsi": 0.15,
+        },
+        "default_stop_loss_pct": 5.0,
+        "risk_per_trade_pct": 5.0,
+        "max_position_pct": 10.0,
+        "trailing_stop_trigger_pct": 8.0,
+        "trailing_stop_distance_pct": 5.0,
+        "scan_types": {
+            "momentum_breakouts": True,
+            "oversold_bounces": False,
+            "sector_leaders": True,
+            "volume_anomalies": True,
+        },
+    },
+    "balanced": {
+        "label": "Balanced",
+        "description": "Even factor weights, moderate risk, all scan types",
+        "scoring_weights": {
+            "momentum": 0.20,
+            "volatility": 0.15,
+            "volume": 0.15,
+            "relative_strength": 0.20,
+            "mean_reversion": 0.15,
+            "rsi": 0.15,
+        },
+        "default_stop_loss_pct": 7.0,
+        "risk_per_trade_pct": 3.0,
+        "max_position_pct": 8.0,
+        "trailing_stop_trigger_pct": 12.0,
+        "trailing_stop_distance_pct": 7.0,
+        "scan_types": {
+            "momentum_breakouts": True,
+            "oversold_bounces": True,
+            "sector_leaders": True,
+            "volume_anomalies": True,
+        },
+    },
+    "conservative_value": {
+        "label": "Conservative Value",
+        "description": "Low volatility preference, wide stops, smaller positions",
+        "scoring_weights": {
+            "momentum": 0.10,
+            "volatility": 0.25,
+            "volume": 0.10,
+            "relative_strength": 0.15,
+            "mean_reversion": 0.20,
+            "rsi": 0.20,
+        },
+        "default_stop_loss_pct": 8.0,
+        "risk_per_trade_pct": 2.0,
+        "max_position_pct": 6.0,
+        "trailing_stop_trigger_pct": 15.0,
+        "trailing_stop_distance_pct": 8.0,
+        "scan_types": {
+            "momentum_breakouts": False,
+            "oversold_bounces": True,
+            "sector_leaders": True,
+            "volume_anomalies": False,
+        },
+    },
+    "mean_reversion": {
+        "label": "Mean Reversion",
+        "description": "Buy dips in quality stocks, oversold bounces, moderate risk",
+        "scoring_weights": {
+            "momentum": 0.10,
+            "volatility": 0.15,
+            "volume": 0.15,
+            "relative_strength": 0.10,
+            "mean_reversion": 0.35,
+            "rsi": 0.15,
+        },
+        "default_stop_loss_pct": 6.0,
+        "risk_per_trade_pct": 3.0,
+        "max_position_pct": 8.0,
+        "trailing_stop_trigger_pct": 10.0,
+        "trailing_stop_distance_pct": 6.0,
+        "scan_types": {
+            "momentum_breakouts": False,
+            "oversold_bounces": True,
+            "sector_leaders": False,
+            "volume_anomalies": True,
+        },
+    },
+}
+
 
 # ─── Data Classes ─────────────────────────────────────────────────────────────
 @dataclass
@@ -207,23 +322,28 @@ def create_portfolio(
     name: str,
     universe: str,
     starting_capital: float,
+    sectors: list[str] = None,
+    trading_style: str = None,
+    ai_config: dict = None,
 ) -> PortfolioMeta:
     """Create a new portfolio: directory, config, and registry entry.
 
-    Clones the current data/config.json and applies universe preset overrides.
+    Clones the current data/config.json and applies:
+    1. Universe preset overrides (cap size)
+    2. Trading style overrides (scoring weights, risk params, scan types)
+    3. Sector focus (ETF sources, sector filter)
+    4. AI-generated config overrides (if provided)
     """
-    # Validate universe
     if universe not in UNIVERSE_PRESETS:
         raise ValueError(
             f"Unknown universe '{universe}'. "
             f"Valid options: {', '.join(UNIVERSE_PRESETS.keys())}"
         )
 
-    # Create portfolio directory
     portfolio_dir = get_portfolio_dir(portfolio_id)
     portfolio_dir.mkdir(parents=True, exist_ok=True)
 
-    # Clone and customize config
+    # Clone base config
     base_config_file = Path(__file__).parent.parent / "data" / "config.json"
     if base_config_file.exists():
         with open(base_config_file) as f:
@@ -231,7 +351,7 @@ def create_portfolio(
     else:
         config = {}
 
-    # Apply universe preset overrides
+    # --- Layer 1: Universe preset (cap size) ---
     preset = UNIVERSE_PRESETS[universe]
     config["starting_capital"] = starting_capital
     config["default_stop_loss_pct"] = preset["default_stop_loss_pct"]
@@ -240,17 +360,14 @@ def create_portfolio(
     config["benchmark_symbol"] = preset["benchmark_symbol"]
     config["fallback_benchmark"] = preset["fallback_benchmark"]
 
-    # Apply scoring weights
     if "scoring" not in config:
         config["scoring"] = {}
     config["scoring"]["default_weights"] = dict(preset["scoring_weights"])
 
-    # Apply discovery filters
     if "discovery" not in config:
         config["discovery"] = {}
     config["discovery"]["filters"] = dict(preset["discovery_filters"])
 
-    # Apply universe ETF sources and filters
     if "universe" not in config:
         config["universe"] = {}
     if "sources" not in config["universe"]:
@@ -260,12 +377,90 @@ def create_portfolio(
     config["universe"]["sources"]["etf_holdings"]["etfs"] = list(preset["etf_sources"])
     config["universe"]["filters"] = dict(preset["discovery_filters"])
 
-    # Write portfolio config
+    # --- Layer 2: Trading style overrides ---
+    if trading_style and trading_style in TRADING_STYLES:
+        style = TRADING_STYLES[trading_style]
+        config["scoring"]["default_weights"] = dict(style["scoring_weights"])
+        config["default_stop_loss_pct"] = style["default_stop_loss_pct"]
+        config["risk_per_trade_pct"] = style["risk_per_trade_pct"]
+        config["max_position_pct"] = style["max_position_pct"]
+        config["discovery"]["scan_types"] = dict(style["scan_types"])
+
+        # Apply trailing stop settings
+        if "enhanced_trading" not in config:
+            config["enhanced_trading"] = {}
+        if "layer1" not in config["enhanced_trading"]:
+            config["enhanced_trading"]["layer1"] = {}
+        config["enhanced_trading"]["layer1"]["trailing_stop_trigger_pct"] = style["trailing_stop_trigger_pct"]
+        config["enhanced_trading"]["layer1"]["trailing_stop_distance_pct"] = style["trailing_stop_distance_pct"]
+
+    # --- Layer 3: Sector focus ---
+    if sectors and len(sectors) < len(ALL_SECTORS):
+        # Build ETF sources from selected sectors + cap-size base ETF
+        sector_etfs = []
+        for sector in sectors:
+            sector_etfs.extend(SECTOR_ETF_MAP.get(sector, []))
+        # Keep first cap-size ETF for breadth
+        base_etf = preset["etf_sources"][0] if preset["etf_sources"] else None
+        if base_etf and base_etf not in sector_etfs:
+            sector_etfs.insert(0, base_etf)
+        # Deduplicate while preserving order
+        seen = set()
+        unique_etfs = []
+        for etf in sector_etfs:
+            if etf not in seen:
+                seen.add(etf)
+                unique_etfs.append(etf)
+        config["universe"]["sources"]["etf_holdings"]["etfs"] = unique_etfs
+        config["discovery"]["sector_filter"] = list(sectors)
+    else:
+        # "All" sectors — no filter
+        config["discovery"].pop("sector_filter", None)
+
+    # --- Layer 4: AI-generated overrides ---
+    if ai_config:
+        if "scoring_weights" in ai_config:
+            config["scoring"]["default_weights"] = ai_config["scoring_weights"]
+        if "stop_loss_pct" in ai_config:
+            config["default_stop_loss_pct"] = ai_config["stop_loss_pct"]
+        if "risk_per_trade_pct" in ai_config:
+            config["risk_per_trade_pct"] = ai_config["risk_per_trade_pct"]
+        if "max_position_pct" in ai_config:
+            config["max_position_pct"] = ai_config["max_position_pct"]
+        if "scan_types" in ai_config:
+            config["discovery"]["scan_types"] = ai_config["scan_types"]
+        if "sectors" in ai_config:
+            sector_etfs = []
+            for sector in ai_config["sectors"]:
+                sector_etfs.extend(SECTOR_ETF_MAP.get(sector, []))
+            base_etf = preset["etf_sources"][0] if preset["etf_sources"] else None
+            if base_etf and base_etf not in sector_etfs:
+                sector_etfs.insert(0, base_etf)
+            config["universe"]["sources"]["etf_holdings"]["etfs"] = list(dict.fromkeys(sector_etfs))
+            config["discovery"]["sector_filter"] = ai_config["sectors"]
+        if "etf_sources" in ai_config:
+            existing = config["universe"]["sources"]["etf_holdings"]["etfs"]
+            for etf in ai_config["etf_sources"]:
+                if etf not in existing:
+                    existing.append(etf)
+
+    # Store strategy metadata
+    config["strategy"] = {
+        "name": (TRADING_STYLES[trading_style]["label"] if trading_style and trading_style in TRADING_STYLES
+                 else ai_config.get("strategy_name", "Custom") if ai_config else "Default"),
+        "sectors": sectors or [],
+        "trading_style": trading_style or (ai_config.get("trading_style") if ai_config else None),
+        "created_via": "ai" if ai_config else "wizard",
+        "ai_prompt": ai_config.get("prompt") if ai_config else None,
+        "ai_rationale": ai_config.get("rationale") if ai_config else None,
+    }
+
+    # Write config
     config_path = portfolio_dir / "config.json"
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
-    # Create portfolio metadata
+    # Register
     meta = PortfolioMeta(
         id=portfolio_id,
         name=name,
@@ -274,8 +469,6 @@ def create_portfolio(
         starting_capital=starting_capital,
         active=True,
     )
-
-    # Register in portfolios.json
     registry = load_registry()
     registry["portfolios"][portfolio_id] = asdict(meta)
     if registry.get("default_portfolio") is None:
