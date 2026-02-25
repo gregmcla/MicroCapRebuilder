@@ -366,6 +366,42 @@ FALLBACK_HOLDINGS = {
         "WMT", "NFLX", "BAC", "CRM", "CVX", "MRK", "KO", "ORCL", "AMD", "PEP",
         "ACN", "TMO", "LIN", "MCD", "CSCO", "ADBE", "ABT", "WFC", "DHR", "GE",
     ],
+    # --- Large-cap Growth/Value/Nasdaq ETFs ---
+    "QQQ": [
+        "AAPL", "MSFT", "NVDA", "AMZN", "META", "AVGO", "TSLA", "GOOGL", "COST", "NFLX",
+        "AMD", "ADBE", "PEP", "CSCO", "LIN", "QCOM", "INTU", "ISRG", "TXN", "AMAT",
+        "BKNG", "AMGN", "CMCSA", "HON", "PANW", "LRCX", "MU", "ADP", "GILD", "MELI",
+        "ADI", "KLAC", "SBUX", "MDLZ", "SNPS", "CDNS", "PYPL", "REGN", "CRWD", "MAR",
+        "CTAS", "CEG", "MRVL", "ABNB", "ORLY", "FTNT", "WDAY", "DASH", "CSX", "PCAR",
+        "ROP", "TTD", "TEAM", "NXPI", "MNST", "DXCM", "FANG", "FAST", "ODFL", "EXC",
+        "KDP", "CTSH", "VRSK", "BKR", "KHC", "GEHC", "ON", "ANSS", "CDW", "DDOG",
+        "BIIB", "GFS", "TTWO", "ILMN", "ZS", "XEL", "IDXX", "WBD", "DLTR", "EA",
+    ],
+    "DIA": [
+        "UNH", "GS", "MSFT", "HD", "CAT", "SHW", "V", "AMGN", "CRM", "MCD",
+        "AXP", "TRV", "AAPL", "JPM", "AMZN", "BA", "HON", "IBM", "JNJ", "PG",
+        "CVX", "MRK", "DIS", "NKE", "KO", "WMT", "CSCO", "INTC", "DOW", "MMM",
+    ],
+    "VTV": [
+        "BRK-B", "JPM", "XOM", "UNH", "JNJ", "PG", "ABBV", "HD", "CVX", "MRK",
+        "BAC", "KO", "PEP", "WFC", "CSCO", "ABT", "PM", "GE", "RTX", "LOW",
+        "HON", "SPGI", "UNP", "DE", "BA", "LMT", "CB", "MMC", "CI", "SO",
+        "DUK", "BMY", "PFE", "ICE", "BDX", "CL", "CME", "USB", "PNC", "TGT",
+        "EMR", "AON", "WM", "NSC", "SLB", "SPG", "EQIX", "APD", "MET", "AIG",
+        "F", "GM", "COP", "EOG", "PSX", "VLO", "MPC", "HES", "OXY", "DVN",
+        "PRU", "TFC", "ALL", "AJG", "D", "SRE", "ED", "WEC", "PPL", "FE",
+        "ETR", "AEP", "XEL", "CMS", "ES", "EVRG", "PEG", "AWK", "ATO", "NI",
+    ],
+    "VUG": [
+        "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "AVGO", "LLY", "TSLA", "V",
+        "MA", "COST", "NFLX", "CRM", "ORCL", "AMD", "ACN", "TMO", "LIN", "ADBE",
+        "NOW", "ISRG", "TXN", "QCOM", "INTU", "BKNG", "AMAT", "PLD", "VRTX", "PANW",
+        "LRCX", "MU", "SNPS", "CDNS", "KLAC", "CRWD", "ADP", "GILD", "ADI", "MELI",
+        "ROP", "CTAS", "CEG", "ABNB", "ORLY", "FTNT", "WDAY", "MRVL", "DASH", "MNST",
+        "MCO", "NXPI", "MSCI", "TTD", "DXCM", "IT", "CPRT", "FANG", "ODFL", "ANSS",
+        "CDW", "EW", "TEAM", "GWW", "MPWR", "ON", "FAST", "VRSK", "DDOG", "ZS",
+        "HLT", "MAR", "CMG", "UBER", "SPOT", "SQ", "SHOP", "SNOW", "NET", "COIN",
+    ],
     # --- Mid-cap ETFs ---
     "IJH": [
         "SMCI", "WSM", "TRGP", "EQT", "IBKR", "RCL", "BURL", "DECK", "NCLH", "TOL",
@@ -383,6 +419,69 @@ FALLBACK_HOLDINGS = {
         "SMCI", "WSM", "TRGP", "EQT", "IBKR", "RCL", "BURL", "DECK", "NCLH", "TOL",
         "CZR", "RPM", "CLH", "JBL", "POOL", "EXEL", "MANH", "FNF", "NTNX", "HLI",
         "WSO", "ATI", "UFPI", "OC", "GPK", "DTM", "LECO", "CHE", "MTZ", "FHN",
+    ],
+    # --- Sector ETFs ---
+    "XLK": [
+        "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "ACN",
+        "IBM", "INTU", "TXN", "QCOM", "AMAT", "NOW", "PANW", "ADI", "LRCX", "KLAC",
+        "SNPS", "CDNS", "CRWD", "FTNT", "MCHP", "MU", "MSI", "APH", "NXPI", "TEL",
+    ],
+    "SOXX": [
+        "NVDA", "AVGO", "AMD", "QCOM", "TXN", "AMAT", "LRCX", "KLAC", "ADI", "MCHP",
+        "MU", "NXPI", "MRVL", "ON", "MPWR", "INTC", "GFS", "SWKS", "QRVO", "ENTG",
+    ],
+    "XLC": [
+        "META", "GOOG", "GOOGL", "NFLX", "TMUS", "CMCSA", "DIS", "T", "VZ", "CHTR",
+        "EA", "TTWO", "OMC", "IPG", "LYV", "WBD", "MTCH", "PARA", "FOXA", "FOX",
+    ],
+    "XLV": [
+        "LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "AMGN", "PFE", "DHR",
+        "ISRG", "SYK", "BSX", "GILD", "VRTX", "MDT", "ELV", "CI", "ZTS", "BDX",
+        "REGN", "HCA", "MCK", "IDXX", "A", "IQV", "EW", "DXCM", "MTD", "BAX",
+    ],
+    "XBI": [
+        "MRNA", "EXAS", "PCVX", "CYTK", "IONS", "SRPT", "ALNY", "BMRN", "HALO", "INCY",
+        "RPRX", "NBIX", "CRNX", "INSM", "ITCI", "CORT", "NUVB", "KRYS", "GPCR", "DAWN",
+    ],
+    "XLF": [
+        "BRK-B", "JPM", "V", "MA", "BAC", "WFC", "GS", "MS", "SPGI", "BLK",
+        "C", "AXP", "PGR", "CB", "MMC", "SCHW", "ICE", "CME", "AON", "MCO",
+        "USB", "TFC", "PNC", "MET", "AIG", "AFL", "TRV", "ALL", "PRU", "MSCI",
+    ],
+    "XLY": [
+        "AMZN", "TSLA", "HD", "MCD", "NKE", "LOW", "SBUX", "TJX", "BKNG", "CMG",
+        "ORLY", "AZO", "ROST", "MAR", "HLT", "GM", "F", "DHI", "LEN", "GPC",
+        "ULTA", "DRI", "POOL", "BBY", "EBAY",
+    ],
+    "XLP": [
+        "PG", "COST", "KO", "PEP", "WMT", "PM", "MO", "MDLZ", "CL", "EL",
+        "KMB", "GIS", "SYY", "HSY", "ADM", "STZ", "K", "MKC", "CHD", "CAG",
+        "CLX", "SJM", "TSN", "KHC", "HRL",
+    ],
+    "XLI": [
+        "GE", "CAT", "RTX", "UNP", "HON", "DE", "BA", "UPS", "LMT", "ADP",
+        "WM", "ETN", "ITW", "EMR", "NOC", "GD", "FDX", "CSX", "NSC", "PCAR",
+        "TT", "PH", "CTAS", "ROK", "AME", "CARR", "FAST", "ODFL", "VRSK", "IR",
+    ],
+    "XLE": [
+        "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PXD", "PSX", "VLO", "OKE",
+        "WMB", "HES", "KMI", "FANG", "DVN", "HAL", "BKR", "TRGP", "CTRA", "OXY",
+    ],
+    "XOP": [
+        "COP", "EOG", "PXD", "DVN", "FANG", "CTRA", "OVV", "MRO", "APA", "EQT",
+        "RRC", "AR", "SM", "CHRD", "MGY", "MTDR", "PR", "CRGY", "CPG", "NOG",
+    ],
+    "XLB": [
+        "LIN", "APD", "SHW", "ECL", "FCX", "NEM", "NUE", "VMC", "MLM", "DOW",
+        "DD", "PPG", "CE", "EMN", "IFF", "ALB", "CF", "MOS", "FMC", "BALL",
+    ],
+    "XLU": [
+        "NEE", "SO", "DUK", "CEG", "SRE", "D", "AEP", "PCG", "EXC", "XEL",
+        "ED", "PEG", "WEC", "AWK", "ES", "ETR", "FE", "DTE", "PPL", "CMS",
+    ],
+    "XLRE": [
+        "PLD", "AMT", "EQIX", "CCI", "PSA", "O", "SPG", "WELL", "DLR", "VICI",
+        "AVB", "EQR", "SBAC", "WY", "ARE", "VTR", "MAA", "UDR", "ESS", "INVH",
     ],
 }
 
