@@ -5,13 +5,6 @@ import { usePortfolioStore } from "../lib/store";
 import { usePortfolios } from "../hooks/usePortfolios";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 
-const UNIVERSE_COLORS: Record<string, string> = {
-  microcap: "bg-purple-500/20 text-purple-400",
-  smallcap: "bg-blue-500/20 text-blue-400",
-  midcap: "bg-teal-500/20 text-teal-400",
-  largecap: "bg-green-500/20 text-green-400",
-  custom: "bg-gray-500/20 text-gray-400",
-};
 
 export default function PortfolioSwitcher() {
   const [open, setOpen] = useState(false);
@@ -39,7 +32,6 @@ export default function PortfolioSwitcher() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-bg-elevated text-text-primary rounded hover:bg-border transition-colors"
       >
-        <span className="text-accent">{activeId === "overview" ? "\u{1F4CA}" : "\u{1F4BC}"}</span>
         <span>{label}</span>
         <span className="text-text-muted text-[10px]">{open ? "\u25B2" : "\u25BC"}</span>
       </button>
@@ -50,12 +42,11 @@ export default function PortfolioSwitcher() {
           <button
             onClick={() => { setPortfolio("overview"); setOpen(false); }}
             className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-surface transition-colors flex items-center gap-2 ${
-              activeId === "overview" ? "bg-accent/10 text-accent" : "text-text-primary"
+              activeId === "overview" ? "text-accent" : "text-text-primary"
             }`}
           >
-            <span>{"\u{1F4CA}"}</span>
             <span className="font-semibold">Overview</span>
-            <span className="text-text-muted ml-auto">All portfolios</span>
+            <span className="text-text-muted ml-auto text-[10px]">All portfolios</span>
           </button>
 
           <div className="border-t border-border" />
@@ -66,12 +57,11 @@ export default function PortfolioSwitcher() {
               key={p.id}
               onClick={() => { setPortfolio(p.id); setOpen(false); }}
               className={`w-full text-left px-3 py-2 text-xs hover:bg-bg-surface transition-colors flex items-center gap-2 ${
-                activeId === p.id ? "bg-accent/10 text-accent" : "text-text-primary"
+                activeId === p.id ? "text-accent" : "text-text-primary"
               }`}
             >
-              <span>{"\u{1F4BC}"}</span>
               <span className="font-semibold">{p.name}</span>
-              <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${UNIVERSE_COLORS[p.universe] ?? UNIVERSE_COLORS.custom}`}>
+              <span className="ml-auto text-[10px] text-text-muted">
                 {p.universe}
               </span>
             </button>
@@ -82,10 +72,9 @@ export default function PortfolioSwitcher() {
           {/* Create new */}
           <button
             onClick={() => { setOpen(false); setShowCreate(true); }}
-            className="w-full text-left px-3 py-2 text-xs hover:bg-bg-surface transition-colors flex items-center gap-2 text-accent"
+            className="w-full text-left px-3 py-2 text-xs hover:bg-bg-surface transition-colors flex items-center gap-2 text-text-muted hover:text-text-secondary"
           >
-            <span>+</span>
-            <span className="font-semibold">New Portfolio</span>
+            <span>+ New Portfolio</span>
           </button>
         </div>
       )}
