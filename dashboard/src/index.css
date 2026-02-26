@@ -1,44 +1,44 @@
 @import "tailwindcss";
 
 @theme {
-  /* Cyberpunk Backgrounds */
+  /* Backgrounds — true black foundation */
   --color-bg-primary: #000000;
   --color-bg-surface: #0A0A0A;
-  --color-bg-elevated: #141414;
+  --color-bg-elevated: #111111;
 
-  /* Borders */
-  --color-border: #1E2530;
-  --color-border-hover: #2A3545;
+  /* Borders — felt, not seen */
+  --color-border: #1E1E1E;
+  --color-border-hover: #2A2A2A;
 
-  /* Cyberpunk Accents */
-  --color-cyber-cyan: #22D3EE;
-  --color-cyber-magenta: #E879F9;
-  --color-cyber-green: #10B981;
-  --color-accent: #22D3EE;
-  --color-accent-dim: #0E7490;
+  /* Jade accent — also IS profit */
+  --color-cyber-cyan: #00D488;
+  --color-cyber-magenta: #00A86B;
+  --color-cyber-green: #00D488;
+  --color-accent: #00D488;
+  --color-accent-dim: #003D27;
 
   /* Status Colors */
-  --color-profit: #10B981;
-  --color-profit-dim: #065F46;
-  --color-loss: #EF4444;
-  --color-loss-dim: #7F1D1D;
+  --color-profit: #00D488;
+  --color-profit-dim: #003D27;
+  --color-loss: #FF4458;
+  --color-loss-dim: #4D0010;
   --color-warning: #F59E0B;
   --color-warning-dim: #78350F;
 
-  /* Text Colors */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A1A1AA;
-  --color-text-muted: #52525B;
+  /* Text */
+  --color-text-primary: #F5F5F5;
+  --color-text-secondary: #6A6A6A;
+  --color-text-muted: #3A3A3A;
 
   /* Typography */
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  /* Glow Shadows */
-  --shadow-glow-cyan: 0 0 10px rgba(34, 211, 238, 0.5), 0 0 20px rgba(34, 211, 238, 0.3);
-  --shadow-glow-cyan-lg: 0 0 20px rgba(34, 211, 238, 0.6), 0 0 40px rgba(34, 211, 238, 0.4), 0 0 60px rgba(34, 211, 238, 0.2);
-  --shadow-glow-magenta: 0 0 10px rgba(232, 121, 249, 0.5), 0 0 20px rgba(232, 121, 249, 0.3);
-  --shadow-glow-green: 0 0 10px rgba(16, 185, 129, 0.5), 0 0 20px rgba(16, 185, 129, 0.3);
+  /* Glow Shadows — whisper level only */
+  --shadow-glow-cyan: 0 0 0 1px rgba(0, 212, 136, 0.4);
+  --shadow-glow-cyan-lg: 0 0 8px rgba(0, 212, 136, 0.12);
+  --shadow-glow-magenta: 0 0 0 1px rgba(0, 212, 136, 0.2);
+  --shadow-glow-green: 0 0 6px rgba(0, 212, 136, 0.12);
 
   /* Animations */
   --animate-pulse-slow: pulse-slow 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -90,20 +90,25 @@ html, body, #root {
   font-family: var(--font-mono);
 }
 
+/* Tabular numbers for financial data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
+  background: #1E1E1E;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-hover);
+  background: var(--color-accent);
 }
 
 /* Panel resize separators (react-resizable-panels v4) */
