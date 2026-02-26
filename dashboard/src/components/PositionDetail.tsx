@@ -34,7 +34,7 @@ function ProgressVisualization({ pos }: { pos: Position }) {
         <div className="absolute right-0 top-0 h-full w-[20%] bg-profit/10 rounded-r-full" />
         {/* Current price marker */}
         <div
-          className="absolute top-0 h-full w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(0,212,136,0.5)]"
+          className="absolute top-0 h-full w-1.5 rounded-full bg-accent"
           style={{ left: `calc(${clamped}% - 3px)` }}
         />
       </div>

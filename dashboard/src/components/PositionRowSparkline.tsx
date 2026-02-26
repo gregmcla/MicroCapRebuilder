@@ -66,7 +66,7 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
     <svg
       width={WIDTH}
       height={height}
-      className="opacity-80 group-hover:opacity-100 transition-opacity"
+      className="opacity-70"
       role="img"
       aria-label={`20-day price history for ${ticker}`}
     >

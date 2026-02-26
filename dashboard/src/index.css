@@ -11,9 +11,6 @@
   --color-border-hover:  #222222;
 
   /* Jade — UI chrome ONLY (ANALYZE button + selected position) */
-  --color-cyber-cyan:    #00D488;
-  --color-cyber-magenta: #00D488;
-  --color-cyber-green:   #00D488;
   --color-accent:        #00D488;
   --color-accent-dim:    #003D27;
 
@@ -111,12 +108,3 @@ html, body, #root {
   background: var(--color-accent);
 }
 
-/* Panel resize separators (react-resizable-panels v4) */
-[data-separator] {
-  background: var(--color-border);
-  transition: background 150ms;
-}
-[data-separator]:hover,
-[data-separator][data-separator="active"] {
-  background: var(--color-accent);
-}

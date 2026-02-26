@@ -46,6 +46,9 @@ export function useKeyboardShortcuts() {
         case "f":
           toggleActivity();
           break;
+        case "escape":
+          if (useUIStore.getState().activityOpen) toggleActivity();
+          break;
       }
     }
 

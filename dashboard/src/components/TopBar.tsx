@@ -112,10 +112,10 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
       <button
         onClick={() => setShowConfirm(true)}
         disabled={toggling}
-        className={`text-xs px-2 py-0.5 rounded font-semibold tracking-wider transition-colors disabled:opacity-50 ${
+        className={`text-xs px-2 py-0.5 rounded-sm font-semibold tracking-wider transition-colors disabled:opacity-50 ${
           paperMode
-            ? "bg-warning/15 text-warning hover:bg-warning/25"
-            : "bg-loss/15 text-loss hover:bg-loss/25"
+            ? "text-warning hover:text-warning/80"
+            : "text-loss hover:text-loss/80"
         }`}
       >
         {toggling ? "..." : paperMode ? "PAPER" : "LIVE"}
