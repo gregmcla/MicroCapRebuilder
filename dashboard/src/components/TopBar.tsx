@@ -1,6 +1,6 @@
 /** Top bar — always pinned, key metrics + action buttons. */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
 import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
@@ -96,7 +96,7 @@ function UpdatePricesButton() {
       <button
         onClick={handleUpdate}
         disabled={updating}
-        className="px-3 py-1 text-xs font-semibold bg-bg-elevated text-text-primary rounded hover:bg-border disabled:opacity-50 transition-colors"
+        className="px-3 py-1 text-xs font-semibold border border-border text-text-secondary rounded-sm hover:border-border-hover hover:text-text-primary disabled:opacity-50 transition-colors"
       >
         {updating ? "Updating..." : "UPDATE"}
       </button>
@@ -220,7 +220,7 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
       <button
         onClick={() => setShowConfirm(true)}
         disabled={closing}
-        className="text-xs px-2 py-0.5 rounded font-semibold tracking-wider bg-loss/15 text-loss hover:bg-loss/25 transition-colors disabled:opacity-50"
+        className="text-xs px-2 py-0.5 rounded-sm font-semibold tracking-wider border border-loss/40 text-loss hover:bg-loss/10 transition-colors disabled:opacity-50"
       >
         {closing ? "..." : "CLOSE ALL"}
       </button>
@@ -283,21 +283,55 @@ function ScanButton() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
   const handleScan = async () => {
     setScanning(true);
     setResult(null);
     try {
-      const res = await api.scan(portfolioId);
-      setResult(`Found ${res.discovered}, added ${res.added}`);
-      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-      setTimeout(() => setResult(null), 5000);
+      await api.scan(portfolioId);
     } catch (e) {
+      setScanning(false);
       setResult(e instanceof Error ? e.message : "Scan failed");
       setTimeout(() => setResult(null), 5000);
-    } finally {
-      setScanning(false);
+      return;
     }
+
+    // Poll for completion every 10s, max 10 minutes
+    const startedAt = Date.now();
+    const MAX_POLL_MS = 10 * 60 * 1000;
+    pollRef.current = setInterval(async () => {
+      try {
+        const status = await api.scanStatus(portfolioId);
+        if (status.status === "complete" && status.result) {
+          stopPolling();
+          setScanning(false);
+          setResult(`Found ${status.result.discovered}, added ${status.result.added}`);
+          queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+          setTimeout(() => setResult(null), 5000);
+        } else if (status.status === "error") {
+          stopPolling();
+          setScanning(false);
+          setResult(status.error ?? "Scan failed");
+          setTimeout(() => setResult(null), 5000);
+        } else if (status.status === "idle" || Date.now() - startedAt > MAX_POLL_MS) {
+          // Server restarted (lost job state) or timed out
+          stopPolling();
+          setScanning(false);
+          setResult(Date.now() - startedAt > MAX_POLL_MS ? "Scan timed out" : "Scan lost (server restarted)");
+          setTimeout(() => setResult(null), 5000);
+        }
+      } catch {
+        // network hiccup — keep polling
+      }
+    }, 10_000);
   };
 
   return (
@@ -305,7 +339,7 @@ function ScanButton() {
       <button
         onClick={handleScan}
         disabled={scanning}
-        className="px-3 py-1 text-xs font-semibold bg-bg-elevated text-text-primary rounded hover:bg-border disabled:opacity-50 transition-colors"
+        className="px-3 py-1 text-xs font-semibold border border-border text-text-secondary rounded-sm hover:border-border-hover hover:text-text-primary disabled:opacity-50 transition-colors"
       >
         {scanning ? "Scanning..." : "SCAN"}
       </button>
@@ -332,7 +366,7 @@ function AnalyzeExecuteButtons() {
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
-        className="px-3 py-1 text-xs font-semibold bg-accent/15 text-accent rounded hover:bg-accent/25 shadow-[0_0_8px_rgba(34,211,238,0.5)] disabled:opacity-50 transition-colors"
+        className="px-3 py-1 text-xs font-bold bg-accent text-black rounded-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
       >
         {isAnalyzing ? "Analyzing..." : "ANALYZE"}
       </button>
@@ -340,7 +374,7 @@ function AnalyzeExecuteButtons() {
         <button
           onClick={runExecute}
           disabled={isExecuting}
-          className="px-3 py-1 text-xs font-semibold bg-profit/15 text-profit rounded hover:bg-profit/25 shadow-[0_0_8px_rgba(16,185,129,0.5)] disabled:opacity-50 transition-colors"
+          className="px-3 py-1 text-xs font-semibold border border-accent/40 text-accent rounded-sm hover:bg-accent/10 disabled:opacity-40 transition-colors"
         >
           {isExecuting ? "Executing..." : `EXECUTE ${actionCount}`}
         </button>
