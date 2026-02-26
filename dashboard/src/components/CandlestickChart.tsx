@@ -40,12 +40,12 @@ export default function CandlestickChart({ ticker, range, position }: Props) {
       height: 300,
       crosshair: {
         vertLine: {
-          color: '#22D3EE',
+          color: '#00D488',
           width: 1,
           style: LineStyle.Dashed,
         },
         horzLine: {
-          color: '#22D3EE',
+          color: '#00D488',
           width: 1,
           style: LineStyle.Dashed,
         },
