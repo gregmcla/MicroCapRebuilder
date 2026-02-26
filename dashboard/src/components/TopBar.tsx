@@ -9,34 +9,15 @@ import { api } from "../lib/api";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
 
-function MetricPill({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-bg-surface">
-      <span className="text-xs text-text-muted">{label}</span>
-      <span className={`font-mono text-sm font-semibold ${color ?? "text-text-primary"}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
 function RegimeBadge({ regime }: { regime: string }) {
   const cfg: Record<string, { icon: string; cls: string }> = {
-    BULL: { icon: "\u{1F402}", cls: "bg-profit/15 text-profit" },
-    BEAR: { icon: "\u{1F43B}", cls: "bg-loss/15 text-loss" },
-    SIDEWAYS: { icon: "\u{2194}\u{FE0F}", cls: "bg-warning/15 text-warning" },
+    BULL: { icon: "🐂", cls: "text-profit" },
+    BEAR: { icon: "🐻", cls: "text-loss" },
+    SIDEWAYS: { icon: "↔️", cls: "text-warning" },
   };
   const { icon, cls } = cfg[regime] ?? cfg.SIDEWAYS;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${cls}`}>
+    <span className={`text-xs font-semibold ${cls}`}>
       {icon} {regime}
     </span>
   );
@@ -46,21 +27,14 @@ function RiskBadge() {
   const { data: risk } = useRisk();
   const score = risk?.overall_score;
   const color =
-    score == null
-      ? "text-text-muted border-border"
-      : score >= 70
-        ? "text-profit border-profit/40"
-        : score >= 40
-          ? "text-warning border-warning/40"
-          : "text-loss border-loss/40";
-
+    score == null ? "text-text-muted"
+    : score >= 70 ? "text-profit"
+    : score >= 40 ? "text-warning"
+    : "text-loss";
   return (
-    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded border ${color}`}>
-      <span className="text-xs text-text-muted">Risk</span>
-      <span className="font-mono text-sm font-semibold">
-        {score != null ? Math.round(score) : "--"}
-      </span>
-    </div>
+    <span className={`font-mono text-xs ${color}`}>
+      {score != null ? Math.round(score) : "--"}
+    </span>
   );
 }
 
@@ -96,7 +70,7 @@ function UpdatePricesButton() {
       <button
         onClick={handleUpdate}
         disabled={updating}
-        className="px-3 py-1 text-xs font-semibold border border-border text-text-secondary rounded-sm hover:border-border-hover hover:text-text-primary disabled:opacity-50 transition-colors"
+        className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-40 transition-colors"
       >
         {updating ? "Updating..." : "UPDATE"}
       </button>
@@ -339,7 +313,7 @@ function ScanButton() {
       <button
         onClick={handleScan}
         disabled={scanning}
-        className="px-3 py-1 text-xs font-semibold border border-border text-text-secondary rounded-sm hover:border-border-hover hover:text-text-primary disabled:opacity-50 transition-colors"
+        className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
       >
         {scanning ? "Scanning..." : "SCAN"}
       </button>
@@ -360,9 +334,6 @@ function AnalyzeExecuteButtons() {
 
   return (
     <div className="flex items-center gap-1.5">
-      <FreshnessIndicator />
-      <UpdatePricesButton />
-      <ScanButton />
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
@@ -390,114 +361,59 @@ export default function TopBar({
   state: PortfolioState | undefined;
   isLoading: boolean;
 }) {
-  // Minimal header when loading or on overview
   if (isLoading || !state) {
     return (
-      <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
-        <div className="flex items-center gap-1 mr-2">
-          <span className="text-lg font-bold text-accent">M</span>
-          <span className="text-xs font-semibold text-text-secondary tracking-widest">
-            MOMMY
-          </span>
+      <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-bold text-accent font-mono">M</span>
+          <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
         </div>
+        <span className="text-border text-xs">|</span>
         <PortfolioSwitcher />
-        {isLoading && (
-          <span className="ml-4 text-xs text-text-muted animate-pulse">
-            Loading...
-          </span>
-        )}
+        {isLoading && <span className="text-[10px] text-text-muted animate-pulse">Loading...</span>}
       </header>
     );
   }
 
-  const pnlColor =
-    state.day_pnl > 0
-      ? "text-profit"
-      : state.day_pnl < 0
-        ? "text-loss"
-        : "text-text-primary";
-
-  const overallPnl = state.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0);
-  const overallPnlColor =
-    overallPnl > 0
-      ? "text-profit"
-      : overallPnl < 0
-        ? "text-loss"
-        : "text-text-primary";
-
-  const returnColor =
-    state.total_return_pct > 0
-      ? "text-profit"
-      : state.total_return_pct < 0
-        ? "text-loss"
-        : "text-text-primary";
+  const pnlColor = state.day_pnl >= 0 ? "text-profit" : "text-loss";
+  const returnColor = state.total_return_pct >= 0 ? "text-profit" : "text-loss";
 
   return (
-    <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
-      {/* Logo */}
-      <div className="flex items-center gap-1 mr-2">
-        <span className="text-lg font-bold text-accent">M</span>
-        <span className="text-xs font-semibold text-text-secondary tracking-widest">
-          MOMMY
-        </span>
+    <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="text-sm font-bold text-accent font-mono">M</span>
+        <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
       </div>
-
-      {/* Portfolio Switcher */}
+      <span className="text-text-muted text-xs">|</span>
       <PortfolioSwitcher />
-
-      {/* Metrics */}
-      <MetricPill
-        label="Equity"
-        value={`$${state.total_equity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-      />
-      <MetricPill
-        label="Day P&L"
-        value={`${state.day_pnl >= 0 ? "+" : ""}$${state.day_pnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-        color={pnlColor}
-      />
-      <MetricPill
-        label="P&L"
-        value={`${overallPnl >= 0 ? "+" : ""}$${overallPnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-        color={overallPnlColor}
-      />
-      <MetricPill
-        label="Return"
-        value={`${state.total_return_pct >= 0 ? "+" : ""}${state.total_return_pct.toFixed(1)}%`}
-        color={returnColor}
-      />
-      <MetricPill
-        label="Cash"
-        value={`$${state.cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-      />
-
-      {/* Risk badge */}
-      <RiskBadge />
-
-      {/* Regime */}
+      <span className="text-text-muted text-xs">·</span>
+      <span className="font-mono text-xs text-text-primary tabular-nums">
+        ${state.total_equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </span>
+      <span className={`font-mono text-xs tabular-nums ${pnlColor}`}>
+        {state.day_pnl >= 0 ? "+" : ""}${state.day_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </span>
+      <span className={`font-mono text-xs tabular-nums ${returnColor}`}>
+        {state.total_return_pct >= 0 ? "+" : ""}{state.total_return_pct.toFixed(1)}%
+      </span>
+      <span className="text-text-muted text-xs">·</span>
       <RegimeBadge regime={state.regime ?? "SIDEWAYS"} />
-
-      {/* Action buttons */}
-      <AnalyzeExecuteButtons />
-
-      {/* Spacer */}
+      <RiskBadge />
+      <span className="text-text-muted text-xs">·</span>
+      <FreshnessIndicator />
+      <div className="flex items-center gap-2">
+        <UpdatePricesButton />
+        <ScanButton />
+        <AnalyzeExecuteButtons />
+      </div>
       <div className="flex-1" />
-
-      {/* Warnings */}
       {state.stale_alerts.length > 0 && (
-        <span className="text-xs px-2 py-0.5 rounded bg-warning/15 text-warning font-medium">
-          {state.stale_alerts.length} stale
-        </span>
+        <span className="text-[10px] text-warning">{state.stale_alerts.length} stale</span>
       )}
       {state.price_failures.length > 0 && (
-        <span className="text-xs px-2 py-0.5 rounded bg-loss/15 text-loss font-medium">
-          {state.price_failures.length} failed
-        </span>
+        <span className="text-[10px] text-loss">{state.price_failures.length} failed</span>
       )}
-
-      {/* Emergency Close */}
       <EmergencyClose positions={state.positions} />
-
-      {/* Mode Toggle */}
       <ModeToggle paperMode={state.paper_mode} />
     </header>
   );
