@@ -28,13 +28,13 @@ function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
     if (range === 0) {
       const centerY = HEIGHT / 2;
       return prices.map((_, i) => {
-        const x = (i / (prices.length - 1)) * WIDTH;
+        const x = prices.length > 1 ? (i / (prices.length - 1)) * WIDTH : WIDTH / 2;
         return `${x},${centerY}`;
       }).join(' ');
     }
 
     return prices.map((price, i) => {
-      const x = (i / (prices.length - 1)) * WIDTH;
+      const x = prices.length > 1 ? (i / (prices.length - 1)) * WIDTH : WIDTH / 2;
       const y = HEIGHT - ((price - minPrice) / range) * (HEIGHT - PADDING * 2) - PADDING;
       return `${x},${y}`;
     }).join(' ');
@@ -50,7 +50,7 @@ function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
   // Error state
   if (error) {
     return (
-      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-40" />
+      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-30 border border-loss/30" />
     );
   }
 
@@ -71,16 +71,16 @@ function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
     >
       <defs>
         <linearGradient id={`sparkline-${ticker}`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#22D3EE" stopOpacity="0" />
+          <stop offset="0%" stopColor="#00D488" stopOpacity="0.15" />
+          <stop offset="100%" stopColor="#00D488" stopOpacity="0" />
         </linearGradient>
       </defs>
       <polyline
         points={points}
         fill="none"
-        stroke="#22D3EE"
+        stroke="#00D488"
         strokeWidth="1.5"
-        className="drop-shadow-[0_0_1px_rgba(34,211,238,0.4)]"
+        className="drop-shadow-[0_0_1px_rgba(0,212,136,0.3)]"
       />
       <polygon
         points={`0,${HEIGHT} ${points} ${WIDTH},${HEIGHT}`}
