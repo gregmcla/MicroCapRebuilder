@@ -34,7 +34,7 @@ function ProgressVisualization({ pos }: { pos: Position }) {
         <div className="absolute right-0 top-0 h-full w-[20%] bg-profit/10 rounded-r-full" />
         {/* Current price marker */}
         <div
-          className="absolute top-0 h-full w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(34,211,238,0.5)]"
+          className="absolute top-0 h-full w-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(0,212,136,0.5)]"
           style={{ left: `calc(${clamped}% - 3px)` }}
         />
       </div>
@@ -211,8 +211,8 @@ export default function PositionDetail({ pos }: { pos: Position }) {
               onClick={() => setRange(r)}
               className={`px-2 py-1 text-xs rounded transition-colors ${
                 range === r
-                  ? 'bg-cyber-cyan text-black font-semibold'
-                  : 'text-text-muted border border-border hover:border-cyber-cyan'
+                  ? 'bg-accent text-black font-semibold'
+                  : 'text-text-muted border border-border hover:border-accent'
               }`}
             >
               {r}

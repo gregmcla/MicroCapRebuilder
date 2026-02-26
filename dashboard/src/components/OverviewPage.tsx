@@ -74,7 +74,7 @@ function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
   });
 
   return (
-    <div className="relative text-left bg-bg-surface border border-border rounded-lg p-4 hover:border-accent/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.1)] transition-all group">
+    <div className="relative text-left bg-bg-surface border border-border rounded-lg p-4 hover:border-accent/50 hover:shadow-[0_0_12px_rgba(0,212,136,0.1)] transition-all group">
       {/* Delete button */}
       <button
         onClick={(e) => {
@@ -83,7 +83,6 @@ function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
             deleteMutation.mutate();
           } else {
             setConfirmDelete(true);
-            setTimeout(() => setConfirmDelete(false), 3000);
           }
         }}
         className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded transition-colors ${
