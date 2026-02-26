@@ -5,14 +5,15 @@ import { useChartData } from "../hooks/useChartData";
 
 // Constants for dimensions
 const WIDTH = 60;
-const HEIGHT = 30;
-const PADDING = 5;
+const PADDING = 2;
 
 interface PositionRowSparklineProps {
   ticker: string;
+  height?: number;
 }
 
-function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
+function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps) {
+  const HEIGHT = height;
   const { data, isLoading, error } = useChartData(ticker, "20D");
 
   // Calculate sparkline points
@@ -43,28 +44,28 @@ function PositionRowSparkline({ ticker }: PositionRowSparklineProps) {
   // Loading state
   if (isLoading) {
     return (
-      <div className="w-[60px] h-[30px] bg-bg-surface rounded animate-pulse" />
+      <div className="w-[60px] bg-bg-surface rounded animate-pulse" style={{ height }} />
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-30 border border-loss/30" />
+      <div className="w-[60px] bg-bg-surface rounded opacity-30 border border-loss/30" style={{ height }} />
     );
   }
 
   // No data state
   if (!points) {
     return (
-      <div className="w-[60px] h-[30px] bg-bg-surface rounded opacity-40" />
+      <div className="w-[60px] bg-bg-surface rounded opacity-40" style={{ height }} />
     );
   }
 
   return (
     <svg
       width={WIDTH}
-      height={HEIGHT}
+      height={height}
       className="opacity-80 group-hover:opacity-100 transition-opacity"
       role="img"
       aria-label={`20-day price history for ${ticker}`}
