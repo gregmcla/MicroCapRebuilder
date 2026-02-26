@@ -23,27 +23,13 @@ function sortPositions(positions: Position[], key: SortKey): Position[] {
   }
 }
 
-function ProgressBar({ pct }: { pct: number }) {
-  // Progress from stop loss (0%) to take profit (100%)
-  const clamped = Math.max(0, Math.min(100, pct));
-  const color =
-    clamped > 60 ? "bg-profit" : clamped > 30 ? "bg-accent" : "bg-loss";
-  return (
-    <div className="w-16 h-1.5 rounded-full bg-bg-primary overflow-hidden">
-      <div
-        className={`h-full rounded-full ${color}`}
-        style={{ width: `${clamped}%` }}
-      />
-    </div>
-  );
-}
 
 function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
   const pnlColor =
     pos.unrealized_pnl_pct > 0
-      ? "text-green-400"
+      ? "text-profit"
       : pos.unrealized_pnl_pct < 0
-        ? "text-red-400"
+        ? "text-loss"
         : "text-white";
 
   // Progress: 0% at stop loss, 100% at take profit
@@ -61,13 +47,17 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
   const dayChangePct = pos.day_change_pct ?? 0;
   const dayColor =
     dayChange > 0
-      ? "text-green-400"
+      ? "text-profit"
       : dayChange < 0
-        ? "text-red-400"
-        : "text-gray-400";
+        ? "text-loss"
+        : "text-text-muted";
 
   return (
-    <div onClick={onClick} className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated/50 hover:shadow-[0_0_12px_rgba(34,211,238,0.4)] transition-all border-b border-border/50">
+    <div
+      onClick={onClick}
+      className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated transition-colors"
+      style={{ borderBottom: `1px solid ${progress > 60 ? 'rgba(0,212,136,0.5)' : progress > 30 ? '#1E1E1E' : 'rgba(255,68,88,0.4)'}` }}
+    >
       <div className="flex items-center gap-2 mb-1">
         <span className="font-bold text-sm text-text-primary w-14">
           {pos.ticker}
@@ -82,24 +72,24 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
         </span>
 
         <div className="flex flex-col items-end w-20">
-          <span className="font-mono text-sm text-text-primary">
+          <span className="font-mono text-sm text-text-primary tabular-nums">
             ${pos.current_price.toFixed(2)}
           </span>
-          <span className="font-mono text-[10px] text-text-muted">
+          <span className="font-mono text-[10px] text-text-muted tabular-nums">
             (Entry: ${pos.avg_cost_basis.toFixed(2)})
           </span>
         </div>
 
-        <span className={`font-mono text-sm font-semibold ${pnlColor} w-16 text-right`}>
+        <span className={`font-mono text-sm font-semibold tabular-nums ${pnlColor} w-16 text-right`}>
           {(pos.unrealized_pnl_pct ?? 0) >= 0 ? "+" : ""}
           {(pos.unrealized_pnl_pct ?? 0).toFixed(1)}%
         </span>
 
         <div className={`flex flex-col items-end w-20 ${dayColor}`}>
-          <span className="font-mono text-xs font-semibold">
+          <span className="font-mono text-xs font-semibold tabular-nums">
             {dayChange >= 0 ? "+" : ""}${dayChange.toFixed(0)}
           </span>
-          <span className="font-mono text-[10px]">
+          <span className="font-mono text-[10px] tabular-nums">
             {dayChangePct >= 0 ? "+" : ""}{dayChangePct.toFixed(1)}%
           </span>
         </div>
@@ -109,17 +99,16 @@ function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
         </span>
       </div>
 
-      <ProgressBar pct={progress} />
     </div>
   );
 }
 
 export default function PositionsPanel({
   positions,
-  totalValue,
+  isLoading = false,
 }: {
   positions: Position[];
-  totalValue: number;
+  isLoading?: boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("pnl_pct");
   const selectPosition = useUIStore((s) => s.selectPosition);
@@ -159,7 +148,24 @@ export default function PositionsPanel({
 
       {/* Rows */}
       <div className="flex-1 overflow-y-auto">
-        {sorted.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-px">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="px-3 py-2 border-b border-border/50 animate-pulse">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-4 w-14 bg-bg-elevated rounded" />
+                  <div className="flex-1 h-[30px] bg-bg-elevated rounded" />
+                  <div className="h-4 w-10 bg-bg-elevated rounded" />
+                  <div className="h-4 w-20 bg-bg-elevated rounded" />
+                  <div className="h-4 w-16 bg-bg-elevated rounded" />
+                  <div className="h-4 w-20 bg-bg-elevated rounded" />
+                  <div className="h-4 w-10 bg-bg-elevated rounded" />
+                </div>
+                <div className="h-1.5 w-full bg-bg-elevated rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : sorted.length === 0 ? (
           <div className="p-4 text-center text-text-muted text-sm">
             No positions
           </div>
@@ -168,7 +174,6 @@ export default function PositionsPanel({
             <PositionRow
               key={pos.ticker}
               pos={pos}
-              totalValue={totalValue}
               onClick={() => selectPosition(pos)}
             />
           ))
