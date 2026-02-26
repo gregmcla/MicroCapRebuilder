@@ -35,6 +35,10 @@ interface UIStore {
   setRightTab: (tab: RightTab) => void;
   selectedPosition: Position | null;
   selectPosition: (pos: Position | null) => void;
+  mommyExpanded: boolean;
+  toggleMommy: () => void;
+  activityOpen: boolean;
+  toggleActivity: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -42,6 +46,10 @@ export const useUIStore = create<UIStore>((set) => ({
   setRightTab: (tab) => set({ rightTab: tab, selectedPosition: null }),
   selectedPosition: null,
   selectPosition: (pos) => set({ selectedPosition: pos }),
+  mommyExpanded: false,
+  toggleMommy: () => set((s) => ({ mommyExpanded: !s.mommyExpanded })),
+  activityOpen: false,
+  toggleActivity: () => set((s) => ({ activityOpen: !s.activityOpen })),
 }));
 
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
