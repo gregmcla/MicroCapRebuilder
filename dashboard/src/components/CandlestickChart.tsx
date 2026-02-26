@@ -33,8 +33,8 @@ export default function CandlestickChart({ ticker, range, position }: Props) {
         textColor: '#FFFFFF',
       },
       grid: {
-        vertLines: { color: 'rgba(34, 211, 238, 0.1)' },
-        horzLines: { color: 'rgba(34, 211, 238, 0.1)' },
+        vertLines: { color: 'rgba(0, 212, 136, 0.1)' },
+        horzLines: { color: 'rgba(0, 212, 136, 0.1)' },
       },
       width: chartContainerRef.current.clientWidth,
       height: 300,
