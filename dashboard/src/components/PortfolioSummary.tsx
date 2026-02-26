@@ -1,8 +1,55 @@
 /** Default focus pane state — portfolio hero metrics + nav. */
 
+import { useMemo } from "react";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
 import { useUIStore } from "../lib/store";
+import type { Snapshot } from "../lib/types";
+
+function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
+  const W = 400;
+  const H = 64;
+  const PAD = 2;
+
+  const points = useMemo(() => {
+    if (snapshots.length < 2) return null;
+    // Last 30 days
+    const recent = snapshots.slice(-30);
+    const equities = recent.map((s) => s.total_equity ?? s.cash + s.positions_value);
+    const min = Math.min(...equities);
+    const max = Math.max(...equities);
+    const range = max - min || 1;
+    return recent.map((_, i) => {
+      const x = (i / (recent.length - 1)) * W;
+      const y = H - PAD - ((equities[i] - min) / range) * (H - PAD * 2);
+      return `${x},${y}`;
+    }).join(" ");
+  }, [snapshots]);
+
+  if (!points) return null;
+
+  return (
+    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block">
+      <defs>
+        <linearGradient id="equity-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#4ADE80" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="#4ADE80" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon
+        points={`0,${H} ${points} ${W},${H}`}
+        fill="url(#equity-fill)"
+      />
+      <polyline
+        points={points}
+        fill="none"
+        stroke="#4ADE80"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
 
 function NavLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -74,6 +121,13 @@ export default function PortfolioSummary() {
           <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Cash</div>
         </div>
       </div>
+
+      {/* 30-day equity curve */}
+      {(state?.snapshots.length ?? 0) >= 2 && (
+        <div className="w-full overflow-hidden">
+          <EquityCurve snapshots={state!.snapshots} />
+        </div>
+      )}
 
       {/* Divider */}
       <div className="border-t border-border" />
