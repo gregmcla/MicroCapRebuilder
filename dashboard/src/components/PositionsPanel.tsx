@@ -24,81 +24,37 @@ function sortPositions(positions: Position[], key: SortKey): Position[] {
 }
 
 
-function PositionRow({ pos, onClick }: { pos: Position; onClick: () => void }) {
-  const pnlColor =
-    pos.unrealized_pnl_pct > 0
-      ? "text-profit"
-      : pos.unrealized_pnl_pct < 0
-        ? "text-loss"
-        : "text-white";
+function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () => void; isSelected: boolean }) {
+  const pnlColor = pos.unrealized_pnl_pct > 0 ? "text-profit" : pos.unrealized_pnl_pct < 0 ? "text-loss" : "text-text-secondary";
 
-  // Progress: 0% at stop loss, 100% at take profit
   const range = pos.take_profit - pos.stop_loss;
-  const progress =
-    range > 0 ? ((pos.current_price - pos.stop_loss) / range) * 100 : 50;
-
-  // Calculate days held
-  const daysHeld = Math.floor(
-    (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // Day change
-  const dayChange = pos.day_change ?? 0;
-  const dayChangePct = pos.day_change_pct ?? 0;
-  const dayColor =
-    dayChange > 0
-      ? "text-profit"
-      : dayChange < 0
-        ? "text-loss"
-        : "text-text-muted";
+  const progress = range > 0 ? ((pos.current_price - pos.stop_loss) / range) * 100 : 50;
+  const dotColor = progress > 60 ? "#4ADE80" : progress > 30 ? "#282828" : "#F87171";
 
   return (
     <div
       onClick={onClick}
-      className="group px-3 py-2 cursor-pointer hover:bg-bg-elevated transition-colors"
-      style={{ borderBottom: `1px solid ${progress > 60 ? 'rgba(0,212,136,0.5)' : progress > 30 ? '#1E1E1E' : 'rgba(255,68,88,0.4)'}` }}
+      className={`flex items-center h-7 px-3 gap-2 cursor-pointer transition-colors ${
+        isSelected
+          ? "bg-bg-elevated border-l-2 border-accent"
+          : "hover:bg-bg-elevated border-l-2 border-transparent"
+      }`}
     >
-      <div className="flex items-center gap-2 mb-1">
-        <span className="font-bold text-sm text-text-primary w-14">
-          {pos.ticker}
-        </span>
-
-        <div className="flex-1">
-          <PositionRowSparkline ticker={pos.ticker} />
-        </div>
-
-        <span className="font-mono text-xs text-gray-400 text-right w-10">
-          {pos.shares}
-        </span>
-
-        <div className="flex flex-col items-end w-20">
-          <span className="font-mono text-sm text-text-primary tabular-nums">
-            ${pos.current_price.toFixed(2)}
-          </span>
-          <span className="font-mono text-[10px] text-text-muted tabular-nums">
-            (Entry: ${pos.avg_cost_basis.toFixed(2)})
-          </span>
-        </div>
-
-        <span className={`font-mono text-sm font-semibold tabular-nums ${pnlColor} w-16 text-right`}>
-          {(pos.unrealized_pnl_pct ?? 0) >= 0 ? "+" : ""}
-          {(pos.unrealized_pnl_pct ?? 0).toFixed(1)}%
-        </span>
-
-        <div className={`flex flex-col items-end w-20 ${dayColor}`}>
-          <span className="font-mono text-xs font-semibold tabular-nums">
-            {dayChange >= 0 ? "+" : ""}${dayChange.toFixed(0)}
-          </span>
-          <span className="font-mono text-[10px] tabular-nums">
-            {dayChangePct >= 0 ? "+" : ""}{dayChangePct.toFixed(1)}%
-          </span>
-        </div>
-
-        <span className="font-mono text-xs text-gray-400 text-right w-10">
-          {daysHeld ?? 0}d
-        </span>
+      <span className="w-12 font-mono text-[13px] font-bold text-text-primary shrink-0">
+        {pos.ticker}
+      </span>
+      <div className="flex-1 min-w-0">
+        <PositionRowSparkline ticker={pos.ticker} height={22} />
       </div>
-
+      <span className="w-20 font-mono text-[13px] text-text-primary text-right tabular-nums shrink-0">
+        ${pos.current_price.toFixed(2)}
+      </span>
+      <span className={`w-14 font-mono text-[13px] font-semibold text-right tabular-nums shrink-0 ${pnlColor}`}>
+        {pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(1)}%
+      </span>
+      <div className="w-3 flex items-center justify-center shrink-0">
+        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
+      </div>
     </div>
   );
 }
@@ -111,9 +67,10 @@ export default function PositionsPanel({
   isLoading?: boolean;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("pnl_pct");
-  const selectPosition = useUIStore((s) => s.selectPosition);
 
   const sorted = sortPositions(positions, sortKey);
+  const selectedPosition = useUIStore((s) => s.selectedPosition);
+  const selectPosition = useUIStore((s) => s.selectPosition);
 
   return (
     <div className="flex flex-col h-full">
@@ -136,32 +93,27 @@ export default function PositionsPanel({
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider border-b border-border/50">
-        <span className="w-14">Ticker</span>
+      <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider border-b border-border">
+        <span className="w-12">Ticker</span>
         <span className="flex-1">Trend</span>
-        <span className="w-10 text-right">Qty</span>
         <span className="w-20 text-right">Price</span>
-        <span className="w-16 text-right">P&L</span>
-        <span className="w-20 text-right">Day</span>
-        <span className="w-10 text-right">Days</span>
+        <span className="w-14 text-right">P&L</span>
+        <span className="w-3" />
       </div>
 
       {/* Rows */}
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="space-y-px">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="px-3 py-2 border-b border-border/50 animate-pulse">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-4 w-14 bg-bg-elevated rounded" />
-                  <div className="flex-1 h-[30px] bg-bg-elevated rounded" />
-                  <div className="h-4 w-10 bg-bg-elevated rounded" />
-                  <div className="h-4 w-20 bg-bg-elevated rounded" />
-                  <div className="h-4 w-16 bg-bg-elevated rounded" />
-                  <div className="h-4 w-20 bg-bg-elevated rounded" />
-                  <div className="h-4 w-10 bg-bg-elevated rounded" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center h-7 px-3 gap-2 border-l-2 border-transparent">
+                <div className="h-3 w-12 bg-bg-elevated rounded animate-pulse" />
+                <div className="flex-1 h-4 bg-bg-elevated rounded animate-pulse" />
+                <div className="h-3 w-20 bg-bg-elevated rounded animate-pulse" />
+                <div className="h-3 w-14 bg-bg-elevated rounded animate-pulse" />
+                <div className="w-3 flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 rounded-full bg-bg-elevated animate-pulse" />
                 </div>
-                <div className="h-1.5 w-full bg-bg-elevated rounded-full" />
               </div>
             ))}
           </div>
@@ -174,7 +126,8 @@ export default function PositionsPanel({
             <PositionRow
               key={pos.ticker}
               pos={pos}
-              onClick={() => selectPosition(pos)}
+              isSelected={selectedPosition?.ticker === pos.ticker}
+              onClick={() => selectPosition(selectedPosition?.ticker === pos.ticker ? null : pos)}
             />
           ))
         )}
