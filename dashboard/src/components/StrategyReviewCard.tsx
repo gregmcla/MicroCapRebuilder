@@ -23,7 +23,7 @@ interface Props {
 
 export default function StrategyReviewCard({
   sectors,
-  tradingStyle,
+  tradingStyle: _tradingStyle,
   tradingStyleLabel,
   scoringWeights,
   stopLoss,

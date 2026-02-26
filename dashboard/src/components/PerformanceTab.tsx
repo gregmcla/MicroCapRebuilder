@@ -138,13 +138,22 @@ function FactorLearningRow({ factor }: { factor: { factor: string; win_rate: num
 }
 
 export default function PerformanceTab() {
-  const { data: perf, isLoading: perfLoading } = usePerformance();
+  const { data: perf, isLoading: perfLoading, error: perfError } = usePerformance();
   const { data: learning, isLoading: learnLoading } = useLearning();
 
   if (perfLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (perfError) {
+    return (
+      <div className="p-6 text-center text-text-muted">
+        <p className="text-loss mb-2">Failed to load performance data</p>
+        <button onClick={() => window.location.reload()} className="text-xs text-accent hover:underline">Retry</button>
       </div>
     );
   }
@@ -220,9 +229,9 @@ export default function PerformanceTab() {
             Key Metrics
           </h3>
           <div className="grid grid-cols-4 gap-2">
-            <MetricCard label="Sharpe" value={metrics.sharpe_ratio.toFixed(2)} />
-            <MetricCard label="Sortino" value={metrics.sortino_ratio.toFixed(2)} />
-            <MetricCard label="Max DD" value={`${metrics.max_drawdown_pct.toFixed(1)}`} suffix="%" />
+            <MetricCard label="Sharpe" value={metrics.sharpe_ratio?.toFixed(2) ?? "N/A"} />
+            <MetricCard label="Sortino" value={metrics.sortino_ratio?.toFixed(2) ?? "N/A"} />
+            <MetricCard label="Max DD" value={`${metrics.max_drawdown_pct?.toFixed(1) ?? "N/A"}`} suffix={metrics.max_drawdown_pct != null ? "%" : ""} />
             <MetricCard label="Volatility" value={`${metrics.volatility_annual.toFixed(1)}`} suffix="%" />
             <MetricCard label="Return" value={`${metrics.total_return_pct >= 0 ? "+" : ""}${metrics.total_return_pct.toFixed(1)}`} suffix="%" />
             <MetricCard label="Alpha" value={`${metrics.alpha_pct >= 0 ? "+" : ""}${metrics.alpha_pct.toFixed(1)}`} suffix="%" />

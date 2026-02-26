@@ -10,7 +10,7 @@ import type {
   LearningData,
   MarketIndices,
   ChartData,
-  ScanResult,
+  ScanJobStatus,
   PortfolioList,
   OverviewData,
   CreatePortfolioRequest,
@@ -71,7 +71,8 @@ export const api = {
   chat: (pid: string, message: string) =>
     post<{ message: string; success: boolean; error: string | null }>(`/${pid}/chat`, { message }),
   updatePrices: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
-  scan: (pid: string) => post<ScanResult>(`/${pid}/scan`),
+  scan: (pid: string) => post<ScanJobStatus>(`/${pid}/scan`),
+  scanStatus: (pid: string) => get<ScanJobStatus>(`/${pid}/scan/status`),
   sellPosition: (pid: string, ticker: string) =>
     post<{
       ticker: string;

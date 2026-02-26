@@ -108,13 +108,22 @@ function WarningCard({ warning }: { warning: Warning }) {
 }
 
 export default function RiskTab() {
-  const { data: risk, isLoading: riskLoading } = useRisk();
-  const { data: warnings, isLoading: warningsLoading } = useWarnings();
+  const { data: risk, isLoading: riskLoading, error: riskError } = useRisk();
+  const { data: warnings, isLoading: warningsLoading, error: warningsError } = useWarnings();
 
   if (riskLoading || warningsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (riskError || warningsError) {
+    return (
+      <div className="p-6 text-center text-text-muted">
+        <p className="text-loss mb-2">Failed to load risk data</p>
+        <button onClick={() => window.location.reload()} className="text-xs text-accent hover:underline">Retry</button>
       </div>
     );
   }

@@ -307,6 +307,15 @@ export interface ScanResult {
   total_active: number;
 }
 
+export interface ScanJobStatus {
+  status: "idle" | "running" | "complete" | "error";
+  started_at?: string;
+  finished_at?: string;
+  result?: ScanResult | null;
+  error?: string | null;
+  message?: string;
+}
+
 // --- Analysis types ---
 
 export interface FactorScores {

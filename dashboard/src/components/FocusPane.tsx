@@ -38,7 +38,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
       <div className={`overflow-y-auto ${className}`}>
         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
           <button
-            onClick={() => setRightTab("actions")}
+            onClick={() => setRightTab("summary")}
             className="text-[10px] text-text-muted hover:text-text-secondary uppercase tracking-wider transition-colors"
           >
             ← Summary
@@ -55,7 +55,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
       <div className={`overflow-y-auto ${className}`}>
         <div className="flex items-center gap-2 px-4 pt-3 pb-1">
           <button
-            onClick={() => setRightTab("actions")}
+            onClick={() => setRightTab("summary")}
             className="text-[10px] text-text-muted hover:text-text-secondary uppercase tracking-wider transition-colors"
           >
             ← Summary

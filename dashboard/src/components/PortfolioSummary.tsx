@@ -79,7 +79,7 @@ export default function PortfolioSummary() {
     <div className="flex flex-col h-full p-4 gap-4">
       {/* Nav links */}
       <div className="flex items-center gap-4">
-        <NavLink label="Summary" active={rightTab === "actions"} onClick={() => setRightTab("actions")} />
+        <NavLink label="Summary" active={rightTab === "summary"} onClick={() => setRightTab("summary")} />
         <NavLink label="Risk" active={rightTab === "risk"} onClick={() => setRightTab("risk")} />
         <NavLink label="Performance" active={rightTab === "performance"} onClick={() => setRightTab("performance")} />
       </div>

@@ -141,6 +141,31 @@ export default function ActionsTab() {
   const { approved, modified, vetoed, summary } = result;
   const actionable = [...approved, ...modified];
 
+  // Analysis ran but found nothing
+  if (summary.total_proposed === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-text-muted">
+        <div className="text-4xl">&#x1F937;</div>
+        <p className="text-sm font-medium text-text-secondary">No opportunities found</p>
+        <p className="text-xs text-center max-w-xs">
+          Mommy scanned the watchlist but didn't find any trades worth making right now.
+          Try running SCAN first to refresh candidates.
+        </p>
+        {lastAnalyzedAt && (
+          <p className="text-xs text-text-muted">
+            Analyzed at {lastAnalyzedAt}
+          </p>
+        )}
+        <button
+          onClick={runAnalysis}
+          className="px-3 py-1 text-xs font-medium bg-bg-surface text-text-secondary border border-border rounded hover:border-accent hover:text-accent transition-colors"
+        >
+          Re-analyze
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Summary bar */}

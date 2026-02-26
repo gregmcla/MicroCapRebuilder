@@ -8,9 +8,9 @@ import type { MommyInsight } from "../lib/types";
 import MommyAvatar from "./MommyAvatar";
 
 const QUICK_CHIPS = [
-  { label: "Health", tab: "performance" as const, icon: "\u2764\uFE0F" },
+  { label: "Summary", tab: "summary" as const, icon: "\u26A1" },
   { label: "Risk", tab: "risk" as const, icon: "\u{1F6E1}\uFE0F" },
-  { label: "Actions", tab: "actions" as const, icon: "\u26A1" },
+  { label: "Health", tab: "performance" as const, icon: "\u2764\uFE0F" },
 ] as const;
 
 export default function MommyCoPilot() {
@@ -57,7 +57,7 @@ export default function MommyCoPilot() {
     setInput("");
   };
 
-  const handleChipClick = (tab: "actions" | "risk" | "performance") => {
+  const handleChipClick = (tab: "summary" | "risk" | "performance") => {
     setRightTab(tab);
   };
 

@@ -35,7 +35,7 @@ export function useKeyboardShortcuts() {
           queryClient.invalidateQueries({ queryKey: ["portfolioState", portfolioId] });
           break;
         case "1":
-          setRightTab("actions");
+          setRightTab("summary");
           break;
         case "2":
           setRightTab("risk");

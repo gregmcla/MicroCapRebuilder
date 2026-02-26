@@ -12,6 +12,7 @@ import StrategyReviewCard from "./StrategyReviewCard";
 // ---------------------------------------------------------------------------
 
 const UNIVERSES = [
+  { id: "allcap", label: "Everything", desc: "All caps, no size filter — widest possible universe" },
   { id: "microcap", label: "Micro Cap", desc: "<$300M — High volatility, aggressive momentum" },
   { id: "smallcap", label: "Small Cap", desc: "$300M-$2B — Moderate volatility, balanced factors" },
   { id: "midcap", label: "Mid Cap", desc: "$2B-$10B — Lower volatility, mean-reversion bias" },
@@ -203,6 +204,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
         starting_capital: parseFloat(capital),
         ai_config: {
           ...generatedStrategy,
+          trading_style: generatedStrategy.trading_style ?? undefined,
           prompt: aiPrompt,
         },
       });
