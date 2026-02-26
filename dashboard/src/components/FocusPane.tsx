@@ -5,6 +5,7 @@ import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
 import PositionDetail from "./PositionDetail";
+import PortfolioSummary from "./PortfolioSummary";
 
 interface FocusPaneProps {
   className?: string;
@@ -68,7 +69,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
 
   return (
     <div className={`overflow-y-auto ${className}`}>
-      <ActionsTab />
+      <PortfolioSummary />
     </div>
   );
 }
