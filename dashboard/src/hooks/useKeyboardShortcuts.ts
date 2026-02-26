@@ -12,6 +12,7 @@ export function useKeyboardShortcuts() {
   const isExecuting = useAnalysisStore((s) => s.isExecuting);
   const result = useAnalysisStore((s) => s.result);
   const setRightTab = useUIStore((s) => s.setRightTab);
+  const toggleActivity = useUIStore((s) => s.toggleActivity);
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
   useEffect(() => {
@@ -42,10 +43,13 @@ export function useKeyboardShortcuts() {
         case "3":
           setRightTab("performance");
           break;
+        case "f":
+          toggleActivity();
+          break;
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isAnalyzing, isExecuting, result, runAnalysis, runExecute, queryClient, setRightTab, portfolioId]);
+  }, [isAnalyzing, isExecuting, result, runAnalysis, runExecute, queryClient, setRightTab, toggleActivity, portfolioId]);
 }
