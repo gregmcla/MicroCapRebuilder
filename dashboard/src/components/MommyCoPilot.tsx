@@ -152,3 +152,37 @@ export default function MommyCoPilot() {
     </div>
   );
 }
+
+/** Collapsed 36px strip — always visible at bottom of right column. */
+export function MommyStrip() {
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const toggleMommy = useUIStore((s) => s.toggleMommy);
+  const mommyExpanded = useUIStore((s) => s.mommyExpanded);
+
+  const { data: insight } = useQuery<MommyInsight>({
+    queryKey: ["mommyInsight", portfolioId],
+    queryFn: () => api.getMommyInsight(portfolioId),
+    refetchInterval: 60_000,
+    enabled: portfolioId !== "overview",
+  });
+
+  const text = insight?.insight ?? "Mommy's watching the market...";
+
+  return (
+    <div className="h-9 flex items-center gap-2 px-3 border-t border-border bg-bg-surface shrink-0">
+      <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+      <span className="text-[10px] text-text-muted uppercase tracking-wider shrink-0">MOMMY</span>
+      <span className="text-[10px] text-text-muted shrink-0">—</span>
+      <span className="flex-1 text-[11px] text-text-secondary italic truncate min-w-0">
+        {text}
+      </span>
+      <button
+        onClick={toggleMommy}
+        className="shrink-0 text-[10px] text-text-muted hover:text-text-secondary transition-colors px-1"
+        title={mommyExpanded ? "Collapse chat" : "Expand chat"}
+      >
+        {mommyExpanded ? "↓" : "↑"}
+      </button>
+    </div>
+  );
+}
