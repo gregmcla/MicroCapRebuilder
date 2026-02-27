@@ -1,4 +1,7 @@
-/** Position detail view — shown in right panel when a position is clicked. */
+/** Position detail — two exports:
+ *  PositionDetailChart  → right FocusPane (chart view, SELL button, Back)
+ *  PositionDetailInfo   → left column below PositionsPanel (compact trade details)
+ */
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,6 +9,10 @@ import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import CandlestickChart from "./CandlestickChart";
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
 function DetailRow({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
@@ -144,7 +151,11 @@ function SellButton({ pos }: { pos: Position }) {
   );
 }
 
-export default function PositionDetail({ pos }: { pos: Position }) {
+// ---------------------------------------------------------------------------
+// PositionDetailChart — shown in the right FocusPane
+// ---------------------------------------------------------------------------
+
+export function PositionDetailChart({ pos }: { pos: Position }) {
   const clearSelection = useUIStore((s) => s.selectPosition);
   const [range, setRange] = useState("1M");
 
@@ -154,10 +165,6 @@ export default function PositionDetail({ pos }: { pos: Position }) {
       : pos.unrealized_pnl_pct < 0
         ? "text-loss"
         : "text-text-primary";
-
-  const daysHeld = Math.floor(
-    (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
-  );
 
   return (
     <div className="flex flex-col h-full">
@@ -183,7 +190,7 @@ export default function PositionDetail({ pos }: { pos: Position }) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* P&L summary */}
+        {/* P&L summary cards */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-bg-elevated/50 rounded-lg p-3 border border-border/50">
             <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">
@@ -204,7 +211,7 @@ export default function PositionDetail({ pos }: { pos: Position }) {
         </div>
 
         {/* Time Range Selector */}
-        <div className="flex gap-1 mb-3">
+        <div className="flex gap-1">
           {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
             <button
               key={r}
@@ -222,21 +229,55 @@ export default function PositionDetail({ pos }: { pos: Position }) {
 
         {/* Candlestick Chart */}
         <CandlestickChart ticker={pos.ticker} range={range} position={pos} />
+      </div>
+    </div>
+  );
+}
 
-        {/* Stop/Target progress */}
-        <div className="mt-3">
-          <ProgressVisualization pos={pos} />
+// ---------------------------------------------------------------------------
+// PositionDetailInfo — shown in the left column below PositionsPanel
+// ---------------------------------------------------------------------------
+
+export function PositionDetailInfo({ pos }: { pos: Position }) {
+  const daysHeld = Math.floor(
+    (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  const pnlColor =
+    pos.unrealized_pnl_pct > 0
+      ? "text-profit"
+      : pos.unrealized_pnl_pct < 0
+        ? "text-loss"
+        : "text-text-primary";
+
+  return (
+    <div className="px-4 py-3">
+      {/* Compact header: ticker + P&L% + SELL */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-text-primary">{pos.ticker}</span>
+          <span className={`font-mono text-xs font-semibold ${pnlColor}`}>
+            {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
+            {pos.unrealized_pnl_pct.toFixed(2)}%
+          </span>
         </div>
+        <SellButton pos={pos} />
+      </div>
 
-        {/* Details */}
-        <div>
+      {/* Stop/Target progress bar */}
+      <ProgressVisualization pos={pos} />
+
+      {/* Detail rows — 2-column compact grid */}
+      <div className="grid grid-cols-2 gap-x-4 mt-2">
+        <div className="space-y-0">
           <DetailRow label="Shares" value={`${pos.shares}`} />
           <DetailRow label="Avg Cost" value={`$${pos.avg_cost_basis.toFixed(2)}`} />
-          <DetailRow label="Current Price" value={`$${pos.current_price.toFixed(2)}`} color="text-accent" />
           <DetailRow label="Stop Loss" value={`$${pos.stop_loss.toFixed(2)}`} color="text-loss" />
-          <DetailRow label="Take Profit" value={`$${pos.take_profit.toFixed(2)}`} color="text-profit" />
+        </div>
+        <div className="space-y-0">
           <DetailRow label="Entry Date" value={pos.entry_date.slice(0, 10)} />
           <DetailRow label="Days Held" value={`${daysHeld}`} />
+          <DetailRow label="Take Profit" value={`$${pos.take_profit.toFixed(2)}`} color="text-profit" />
         </div>
       </div>
     </div>

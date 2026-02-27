@@ -4,7 +4,7 @@ import { useUIStore, useAnalysisStore } from "../lib/store";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
-import PositionDetail from "./PositionDetail";
+import { PositionDetailChart } from "./PositionDetail";
 import PortfolioSummary from "./PortfolioSummary";
 
 interface FocusPaneProps {
@@ -20,7 +20,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
   if (selectedPosition) {
     return (
       <div className={`overflow-y-auto ${className}`}>
-        <PositionDetail pos={selectedPosition} />
+        <PositionDetailChart pos={selectedPosition} />
       </div>
     );
   }

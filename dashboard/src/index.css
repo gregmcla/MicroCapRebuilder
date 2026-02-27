@@ -108,3 +108,17 @@ html, body, #root {
   background: var(--color-accent);
 }
 
+/* Resizable panel separator */
+[data-separator] {
+  width: 1px;
+  background: var(--color-border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+[data-separator]:hover,
+[data-separator][data-resize-handle-active] {
+  background: var(--color-accent);
+}
+

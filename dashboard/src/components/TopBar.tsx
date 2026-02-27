@@ -401,11 +401,6 @@ export default function TopBar({
       <RiskBadge />
       <span className="text-text-muted text-xs">·</span>
       <FreshnessIndicator />
-      <div className="flex items-center gap-2">
-        <UpdatePricesButton />
-        <ScanButton />
-        <AnalyzeExecuteButtons />
-      </div>
       <div className="flex-1" />
       {state.stale_alerts.length > 0 && (
         <span className="text-[10px] text-warning">{state.stale_alerts.length} stale</span>
@@ -413,6 +408,12 @@ export default function TopBar({
       {state.price_failures.length > 0 && (
         <span className="text-[10px] text-loss">{state.price_failures.length} failed</span>
       )}
+      {/* Action buttons */}
+      <div className="flex items-center gap-2 border-l border-border pl-3">
+        <UpdatePricesButton />
+        <ScanButton />
+        <AnalyzeExecuteButtons />
+      </div>
       <EmergencyClose positions={state.positions} />
       <ModeToggle paperMode={state.paper_mode} />
     </header>

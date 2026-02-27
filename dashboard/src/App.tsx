@@ -1,5 +1,6 @@
-/** Signal layout — 55/45 fixed split, context-sensitive focus pane. */
+/** Signal layout — resizable 55/45 split, context-sensitive focus pane. */
 
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
@@ -10,11 +11,13 @@ import FocusPane from "./components/FocusPane";
 import ActivityFeed from "./components/ActivityFeed";
 import MommyCoPilot, { MommyStrip } from "./components/MommyCoPilot";
 import OverviewPage from "./components/OverviewPage";
+import { PositionDetailInfo } from "./components/PositionDetail";
 
 export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
+  const selectedPosition = useUIStore((s) => s.selectedPosition);
   const mommyExpanded = useUIStore((s) => s.mommyExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
@@ -29,25 +32,36 @@ export default function App() {
         <OverviewPage />
       ) : (
         <div className="flex flex-1 overflow-hidden relative">
-          {/* Left: positions, fixed 55% */}
-          <div className="w-[55%] border-r border-border bg-bg-surface overflow-hidden flex flex-col">
-            <PositionsPanel
-              positions={state?.positions ?? []}
-              isLoading={isLoading}
-            />
-          </div>
+          <Group orientation="horizontal" className="flex-1 overflow-hidden">
+            {/* Left panel */}
+            <Panel defaultSize={55} minSize={25} className="border-r border-border bg-bg-surface overflow-hidden flex flex-col">
+              <div className={selectedPosition ? "flex-1 min-h-0 overflow-hidden" : "h-full"}>
+                <PositionsPanel
+                  positions={state?.positions ?? []}
+                  isLoading={isLoading}
+                />
+              </div>
+              {selectedPosition && (
+                <div className="border-t border-border shrink-0 max-h-[40%] overflow-y-auto">
+                  <PositionDetailInfo pos={selectedPosition} />
+                </div>
+              )}
+            </Panel>
 
-          {/* Right: focus pane + mommy strip, remaining 45% */}
-          <div className="flex-1 flex flex-col bg-bg-surface overflow-hidden">
-            {mommyExpanded ? (
-              <MommyCoPilot />
-            ) : (
-              <FocusPane className="flex-1 overflow-y-auto" />
-            )}
-            <MommyStrip />
-          </div>
+            <Separator />
 
-          {/* Activity feed slide-over */}
+            {/* Right panel */}
+            <Panel defaultSize={45} minSize={30} className="flex flex-col bg-bg-surface overflow-hidden">
+              {mommyExpanded ? (
+                <MommyCoPilot />
+              ) : (
+                <FocusPane className="flex-1 overflow-y-auto" />
+              )}
+              <MommyStrip />
+            </Panel>
+          </Group>
+
+          {/* Activity feed slide-over — unchanged */}
           {activityOpen && (
             <>
               <div
