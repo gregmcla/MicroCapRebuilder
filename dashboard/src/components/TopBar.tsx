@@ -70,7 +70,7 @@ function UpdatePricesButton() {
       <button
         onClick={handleUpdate}
         disabled={updating}
-        className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-40 transition-colors"
+        className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-40 transition-colors"
       >
         {updating ? "Updating..." : "UPDATE"}
       </button>
@@ -313,7 +313,7 @@ function ScanButton() {
       <button
         onClick={handleScan}
         disabled={scanning}
-        className="text-xs text-text-secondary hover:text-text-primary disabled:opacity-50 transition-colors"
+        className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-50 transition-colors"
       >
         {scanning ? "Scanning..." : "SCAN"}
       </button>
@@ -364,10 +364,13 @@ export default function TopBar({
   if (isLoading || !state) {
     return (
       <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
-        <div className="flex items-center gap-1.5">
+        <button
+          onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
+          className="flex items-center gap-1.5 shrink-0 hover:opacity-70 transition-opacity"
+        >
           <span className="text-sm font-bold text-accent font-mono">M</span>
           <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
-        </div>
+        </button>
         <span className="text-border text-xs">|</span>
         <PortfolioSwitcher />
         {isLoading && <span className="text-[10px] text-text-muted animate-pulse">Loading...</span>}
@@ -376,29 +379,34 @@ export default function TopBar({
   }
 
   const pnlColor = state.day_pnl >= 0 ? "text-profit" : "text-loss";
-  const returnColor = state.total_return_pct >= 0 ? "text-profit" : "text-loss";
 
   return (
     <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
-      <div className="flex items-center gap-1.5 shrink-0">
+      <button
+        onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
+        className="flex items-center gap-1.5 shrink-0 hover:opacity-70 transition-opacity"
+      >
         <span className="text-sm font-bold text-accent font-mono">M</span>
         <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
-      </div>
+      </button>
       <span className="text-text-muted text-xs">|</span>
       <PortfolioSwitcher />
       <span className="text-text-muted text-xs">·</span>
       <span className="font-mono text-xs text-text-primary tabular-nums">
         ${state.total_equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
+      <span className="text-[9px] text-text-muted">eq</span>
       <span className={`font-mono text-xs tabular-nums ${pnlColor}`}>
         {state.day_pnl >= 0 ? "+" : ""}${state.day_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
-      <span className={`font-mono text-xs tabular-nums ${returnColor}`}>
-        {state.total_return_pct >= 0 ? "+" : ""}{state.total_return_pct.toFixed(1)}%
-      </span>
+      <span className="text-[9px] text-text-muted">day</span>
       <span className="text-text-muted text-xs">·</span>
       <RegimeBadge regime={state.regime ?? "SIDEWAYS"} />
       <RiskBadge />
+      <span className="text-text-muted text-xs">·</span>
+      <span className="font-mono text-[10px] text-text-muted tabular-nums">
+        {Math.round((state.positions_value / (state.total_equity || 1)) * 100)}% dep
+      </span>
       <span className="text-text-muted text-xs">·</span>
       <FreshnessIndicator />
       <div className="flex-1" />
@@ -410,8 +418,11 @@ export default function TopBar({
       )}
       {/* Action buttons */}
       <div className="flex items-center gap-2 border-l border-border pl-3">
-        <UpdatePricesButton />
-        <ScanButton />
+        <div className="flex items-center gap-2">
+          <UpdatePricesButton />
+          <ScanButton />
+        </div>
+        <span className="text-border text-xs">|</span>
         <AnalyzeExecuteButtons />
       </div>
       <EmergencyClose positions={state.positions} />

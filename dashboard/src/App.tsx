@@ -28,6 +28,18 @@ export default function App() {
       <MarketTickerBanner />
       <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
 
+      {/* Deployment bar — thin green fill showing % deployed */}
+      {!isOverview && state && (
+        <div className="h-0.5 bg-bg-elevated shrink-0">
+          <div
+            className="h-full bg-accent/30 transition-all duration-500"
+            style={{
+              width: `${Math.min(100, Math.round((state.positions_value / (state.total_equity || 1)) * 100))}%`
+            }}
+          />
+        </div>
+      )}
+
       {isOverview ? (
         <OverviewPage />
       ) : (
@@ -42,7 +54,7 @@ export default function App() {
                 />
               </div>
               {selectedPosition && (
-                <div className="border-t border-border shrink-0 max-h-[40%] overflow-y-auto">
+                <div className="position-detail-slide border-t border-border shrink-0 max-h-[40%] overflow-y-auto">
                   <PositionDetailInfo pos={selectedPosition} />
                 </div>
               )}

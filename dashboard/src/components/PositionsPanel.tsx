@@ -30,21 +30,14 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
 
   const range = pos.take_profit - pos.stop_loss;
   const progress = range > 0 ? ((pos.current_price - pos.stop_loss) / range) * 100 : 50;
-  const dotColor = progress > 60 ? "#4ADE80" : progress > 30 ? "#282828" : "#F87171";
+  const dotColor = progress > 60 ? "#4ADE80" : progress > 30 ? "#FBBF24" : "#F87171";
 
-  const dayChangeStr = pos.day_change != null
-    ? pos.day_change >= 0
-      ? `+$${pos.day_change.toFixed(2)}`
-      : `-$${Math.abs(pos.day_change).toFixed(2)}`
+  const dayTotalStr = pos.day_change != null
+    ? pos.day_change >= 0 ? `+$${pos.day_change.toFixed(2)}` : `-$${Math.abs(pos.day_change).toFixed(2)}`
     : "--";
-  const dayChangePctStr = pos.day_change_pct != null
+  const dayPctStr = pos.day_change_pct != null
     ? `${pos.day_change_pct >= 0 ? "+" : ""}${pos.day_change_pct.toFixed(1)}%`
     : "--";
-
-  const dayPnlVal = (pos.day_change ?? 0) * pos.shares;
-  const dayPnlStr = dayPnlVal >= 0
-    ? `+$${dayPnlVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    : `-$${Math.abs(dayPnlVal).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const overallPnlStr = pos.unrealized_pnl >= 0
     ? `+$${Math.round(pos.unrealized_pnl).toLocaleString("en-US")}`
@@ -70,28 +63,16 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
         <PositionRowSparkline ticker={pos.ticker} height={28} />
       </div>
 
-      {/* Entry price */}
-      <span className="w-16 font-mono text-[11px] text-text-muted text-right tabular-nums shrink-0">
-        ${pos.avg_cost_basis.toFixed(2)}
-      </span>
-
       {/* Current price */}
-      <span className="w-16 font-mono text-[13px] text-text-primary text-right tabular-nums shrink-0">
+      <span className="w-20 font-mono text-[13px] text-text-primary text-right tabular-nums shrink-0">
         ${pos.current_price.toFixed(2)}
       </span>
 
-      {/* Day change — two lines */}
+      {/* Day P&L — two lines */}
       <div className={`w-24 flex flex-col items-end justify-center shrink-0 ${dayColor}`}>
-        <span className="font-mono text-[12px] tabular-nums leading-tight">{dayChangeStr}</span>
-        <span className="font-mono text-[10px] tabular-nums leading-tight opacity-80">{dayChangePctStr}</span>
+        <span className="font-mono text-[12px] tabular-nums leading-tight">{dayTotalStr}</span>
+        <span className="font-mono text-[10px] tabular-nums leading-tight opacity-80">{dayPctStr}</span>
       </div>
-
-      {/* Day P&L $ */}
-      <span className={`w-16 font-mono text-[12px] text-right tabular-nums shrink-0 ${
-        dayPnlVal > 0 ? "text-profit" : dayPnlVal < 0 ? "text-loss" : "text-text-muted"
-      }`}>
-        {dayPnlStr}
-      </span>
 
       {/* Overall P&L — two lines */}
       <div className={`w-20 flex flex-col items-end justify-center shrink-0 ${pnlColor}`}>
@@ -119,14 +100,24 @@ export default function PositionsPanel({
   const sorted = sortPositions(positions, sortKey);
   const selectedPosition = useUIStore((s) => s.selectedPosition);
   const selectPosition = useUIStore((s) => s.selectPosition);
+  const toggleActivity = useUIStore((s) => s.toggleActivity);
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <h2 className="text-xs font-semibold text-text-secondary tracking-wider uppercase">
-          Positions ({positions.length})
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-semibold text-text-secondary tracking-wider uppercase">
+            Positions ({positions.length})
+          </h2>
+          <button
+            onClick={toggleActivity}
+            className="text-[10px] text-text-muted hover:text-text-secondary transition-colors uppercase tracking-wider"
+            title="Activity Log"
+          >
+            LOG
+          </button>
+        </div>
         <select
           value={sortKey}
           onChange={(e) => setSortKey(e.target.value as SortKey)}
@@ -144,10 +135,8 @@ export default function PositionsPanel({
       <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider border-b border-border">
         <span className="w-12">Ticker</span>
         <span className="flex-1">Trend</span>
-        <span className="w-16 text-right">Entry</span>
-        <span className="w-16 text-right">Price</span>
-        <span className="w-24 text-right">Day Chg</span>
-        <span className="w-16 text-right">Day P&L</span>
+        <span className="w-20 text-right">Price</span>
+        <span className="w-24 text-right">Day P&L</span>
         <span className="w-20 text-right">P&L</span>
         <span className="w-3" />
       </div>
@@ -160,10 +149,8 @@ export default function PositionsPanel({
               <div key={i} className="flex items-center h-10 px-3 gap-2 border-l-2 border-transparent">
                 <div className="h-3 w-12 bg-bg-elevated rounded animate-pulse" />
                 <div className="flex-1 h-4 bg-bg-elevated rounded animate-pulse" />
-                <div className="h-3 w-16 bg-bg-elevated rounded animate-pulse" />
-                <div className="h-3 w-16 bg-bg-elevated rounded animate-pulse" />
+                <div className="h-3 w-20 bg-bg-elevated rounded animate-pulse" />
                 <div className="h-6 w-24 bg-bg-elevated rounded animate-pulse" />
-                <div className="h-3 w-16 bg-bg-elevated rounded animate-pulse" />
                 <div className="h-6 w-20 bg-bg-elevated rounded animate-pulse" />
                 <div className="w-3 flex items-center justify-center">
                   <div className="w-1.5 h-1.5 rounded-full bg-bg-elevated animate-pulse" />

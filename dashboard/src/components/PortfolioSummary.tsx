@@ -55,8 +55,10 @@ function NavLink({ label, active, onClick }: { label: string; active: boolean; o
   return (
     <button
       onClick={onClick}
-      className={`text-[10px] uppercase tracking-wider transition-colors ${
-        active ? "text-text-primary font-semibold" : "text-text-muted hover:text-text-secondary"
+      className={`text-[10px] uppercase tracking-wider transition-colors pb-1 border-b ${
+        active
+          ? "text-text-primary font-semibold border-accent"
+          : "text-text-muted hover:text-text-secondary border-transparent"
       }`}
     >
       {label}
