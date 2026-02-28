@@ -4,19 +4,17 @@ import { useMemo } from "react";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import type { MarketIndex } from "../lib/types";
 
-// Constants for SVG dimensions
-const SPARKLINE_WIDTH = 40;
-const SPARKLINE_HEIGHT = 30;
-const SPARKLINE_PADDING = 5;
+// Constants for SVG dimensions (48×16 per spec)
+const SPARKLINE_WIDTH = 48;
+const SPARKLINE_HEIGHT = 16;
+const SPARKLINE_PADDING = 2;
 
 function IndexCard({
   name,
-  symbol,
   data,
   isError
 }: {
   name: string;
-  symbol: string;
   data: MarketIndex | undefined;
   isError?: boolean;
 }) {
@@ -36,63 +34,79 @@ function IndexCard({
 
   if (isError) {
     return (
-      <div className="flex-1 flex items-center justify-center gap-3 px-4">
-        <span className="text-xs text-text-muted">{name}</span>
-        <span className="text-sm text-loss">Error</span>
+      <div className="flex items-center gap-2">
+        <span
+          className="uppercase font-sans text-[10px] tracking-[0.08em]"
+          style={{ color: "var(--text-0)" }}
+        >
+          {name}
+        </span>
+        <span className="text-[10px]" style={{ color: "var(--red)" }}>Error</span>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="flex-1 flex items-center justify-center gap-3 px-4">
-        <span className="text-xs text-text-muted">{name}</span>
-        <span className="text-sm text-text-muted">Loading...</span>
+      <div className="flex items-center gap-2">
+        <span
+          className="uppercase font-sans text-[10px] tracking-[0.08em]"
+          style={{ color: "var(--text-0)" }}
+        >
+          {name}
+        </span>
+        <span className="text-[10px]" style={{ color: "var(--text-0)" }}>—</span>
       </div>
     );
   }
 
-  const changeColor = data.change_pct >= 0 ? "text-profit" : "text-loss";
-  const changeSign = data.change_pct >= 0 ? "+" : "";
+  const isPositive = data.change_pct >= 0;
+  const changeSign = isPositive ? "+" : "";
+  const directionColor = isPositive ? "var(--green)" : "var(--red)";
 
   return (
-    <div className="flex-1 flex items-center justify-center gap-3 px-4">
-      <div className="flex flex-col items-start">
-        <span className="text-[10px] text-text-muted uppercase tracking-wider">{name}</span>
-        <span className="font-mono text-sm font-semibold text-text-primary">
-          {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-      </div>
+    <div className="flex items-center gap-2">
+      {/* Index name */}
+      <span
+        className="uppercase font-sans text-[10px] tracking-[0.08em]"
+        style={{ color: "var(--text-0)" }}
+      >
+        {name}
+      </span>
 
-      <span className={`font-mono text-xs font-medium ${changeColor}`}>
+      {/* Price */}
+      <span
+        className="font-mono text-[12px] tabular-nums"
+        style={{ color: "var(--text-3)" }}
+      >
+        {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </span>
+
+      {/* Change % */}
+      <span
+        className="font-mono text-[10.5px] tabular-nums"
+        style={{ color: directionColor }}
+      >
         <span className="sr-only">Change: </span>
         {changeSign}{data.change_pct.toFixed(2)}%
       </span>
 
+      {/* Sparkline — 48×16, no fill, stroke matches direction */}
       {data.sparkline.length > 0 && (
         <svg
           width={SPARKLINE_WIDTH}
           height={SPARKLINE_HEIGHT}
-          className="opacity-70"
           role="img"
           aria-label={`${name} intraday trend sparkline`}
         >
           <title>{`${name} price trend`}</title>
-          <defs>
-            <linearGradient id={`gradient-${symbol}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" className="[stop-color:var(--color-accent)]" stopOpacity="0.3" />
-              <stop offset="100%" className="[stop-color:var(--color-accent)]" stopOpacity="0" />
-            </linearGradient>
-          </defs>
           <polyline
             points={sparklinePoints}
             fill="none"
-            className="[stroke:var(--color-accent)]"
+            stroke={directionColor}
             strokeWidth="1.5"
-          />
-          <polygon
-            points={`0,${SPARKLINE_HEIGHT} ${sparklinePoints} ${SPARKLINE_WIDTH},${SPARKLINE_HEIGHT}`}
-            fill={`url(#gradient-${symbol})`}
+            strokeLinejoin="round"
+            strokeLinecap="round"
           />
         </svg>
       )}
@@ -104,16 +118,21 @@ export default function MarketTickerBanner() {
   const { data, isError } = useMarketIndices();
 
   return (
-    <div className="h-[60px] bg-bg-primary border-b border-accent/25 flex items-center" role="region" aria-label="Market indices ticker">
-      <IndexCard name="S&P 500" symbol="sp500" data={data?.sp500} isError={isError} />
-
-      <div className="h-8 w-px bg-border" />
-
-      <IndexCard name="Russell 2000" symbol="rut" data={data?.russell2000} isError={isError} />
-
-      <div className="h-8 w-px bg-border" />
-
-      <IndexCard name="VIX" symbol="vix" data={data?.vix} isError={isError} />
+    <div
+      className="h-9 flex items-center overflow-hidden shrink-0"
+      style={{
+        background: "var(--surface-0)",
+        borderBottom: "1px solid var(--border-0)",
+      }}
+      role="region"
+      aria-label="Market indices ticker"
+    >
+      {/* Inner row: horizontally scrollable, centered, gap-[40px] */}
+      <div className="flex items-center gap-[40px] px-4 w-full justify-center overflow-x-auto scrollbar-none">
+        <IndexCard name="S&P 500" data={data?.sp500} isError={isError} />
+        <IndexCard name="Russell 2000" data={data?.russell2000} isError={isError} />
+        <IndexCard name="VIX" data={data?.vix} isError={isError} />
+      </div>
     </div>
   );
 }

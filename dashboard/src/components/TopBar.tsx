@@ -9,6 +9,24 @@ import { api } from "../lib/api";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
 
+// ── Shared button style constants ────────────────────────────────────────────
+
+const primaryBtn =
+  "inline-flex items-center justify-center px-3 text-xs font-semibold text-white rounded-[6px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+  + " bg-[var(--accent)] shadow-[0_0_12px_rgba(124,92,252,0.3)]"
+  + " hover:bg-[var(--accent-bright)] hover:shadow-[0_0_18px_rgba(124,92,252,0.45)]";
+
+const ghostBtn =
+  "inline-flex items-center justify-center px-3 text-xs font-semibold rounded-[6px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+  + " border border-[var(--border-1)] bg-transparent"
+  + " text-[var(--text-1)]"
+  + " hover:border-[var(--border-2)]";
+
+// All action buttons share this height
+const BTN_H = "h-[30px]";
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function RegimeBadge({ regime }: { regime: string }) {
   const cfg: Record<string, { icon: string; cls: string }> = {
     BULL: { icon: "🐂", cls: "text-profit" },
@@ -32,7 +50,7 @@ function RiskBadge() {
     : score >= 40 ? "text-warning"
     : "text-loss";
   return (
-    <span className={`font-mono text-xs ${color}`}>
+    <span className={`font-mono text-xs tabular-nums ${color}`}>
       {score != null ? Math.round(score) : "--"}
     </span>
   );
@@ -52,9 +70,7 @@ function UpdatePricesButton() {
       const res = await api.updatePrices(portfolioId);
       updateTimestamp("positions");
       setResult(`Updated ${res.num_positions} positions`);
-      // Invalidate state query to refetch with new prices
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-      // Also invalidate chart data to refresh sparklines
       queryClient.invalidateQueries({ queryKey: ["chartData"] });
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
@@ -70,12 +86,12 @@ function UpdatePricesButton() {
       <button
         onClick={handleUpdate}
         disabled={updating}
-        className="px-2.5 py-0.5 text-xs font-semibold border border-border text-text-secondary hover:border-border-hover hover:text-text-primary rounded-sm transition-colors disabled:opacity-40"
+        className={`${ghostBtn} ${BTN_H}`}
       >
         {updating ? "Updating..." : "UPDATE"}
       </button>
       {result && (
-        <span className="text-xs text-text-muted">{result}</span>
+        <span className="text-[10px]" style={{ color: "var(--text-0)" }}>{result}</span>
       )}
     </div>
   );
@@ -107,21 +123,24 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
 
   const targetMode = paperMode ? "LIVE" : "PAPER";
 
+  // Ghost button with accent text when LIVE
+  const modeTextColor = paperMode ? "var(--text-1)" : "var(--accent)";
+
   return (
     <div className="relative flex items-center gap-1.5">
       <button
         onClick={() => setShowConfirm(true)}
         disabled={toggling}
-        className={`text-xs px-2 py-0.5 rounded-sm font-semibold tracking-wider transition-colors disabled:opacity-50 ${
-          paperMode
-            ? "text-warning hover:text-warning/80"
-            : "text-loss hover:text-loss/80"
-        }`}
+        className={`${ghostBtn} ${BTN_H}`}
+        style={{ color: modeTextColor }}
       >
         {toggling ? "..." : paperMode ? "PAPER" : "LIVE"}
       </button>
       {result && (
-        <span className="text-xs text-text-muted absolute left-full ml-2 whitespace-nowrap">
+        <span
+          className="text-[10px] absolute left-full ml-2 whitespace-nowrap"
+          style={{ color: "var(--text-0)" }}
+        >
           {result}
         </span>
       )}
@@ -189,17 +208,27 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
 
   const totalValue = positions.reduce((sum, p) => sum + p.market_value, 0);
 
+  // Ghost button with red tint
+  const closeAllBtn =
+    `${BTN_H} inline-flex items-center justify-center px-3 text-xs font-semibold rounded-[6px] transition-all disabled:opacity-50`
+    + " border border-[rgba(248,113,113,0.30)] bg-transparent"
+    + " text-[rgba(248,113,113,0.70)]"
+    + " hover:border-[rgba(248,113,113,0.50)] hover:text-[var(--red)]";
+
   return (
     <div className="relative flex items-center gap-1.5">
       <button
         onClick={() => setShowConfirm(true)}
         disabled={closing}
-        className="text-xs px-2 py-0.5 rounded-sm font-semibold tracking-wider border border-loss/40 text-loss hover:bg-loss/10 transition-colors disabled:opacity-50"
+        className={closeAllBtn}
       >
         {closing ? "..." : "CLOSE ALL"}
       </button>
       {result && (
-        <span className="text-xs text-text-muted absolute left-full ml-2 whitespace-nowrap">
+        <span
+          className="text-[10px] absolute left-full ml-2 whitespace-nowrap"
+          style={{ color: "var(--text-0)" }}
+        >
           {result}
         </span>
       )}
@@ -296,7 +325,6 @@ function ScanButton() {
           setResult(status.error ?? "Scan failed");
           setTimeout(() => setResult(null), 5000);
         } else if (status.status === "idle" || Date.now() - startedAt > MAX_POLL_MS) {
-          // Server restarted (lost job state) or timed out
           stopPolling();
           setScanning(false);
           setResult(Date.now() - startedAt > MAX_POLL_MS ? "Scan timed out" : "Scan lost (server restarted)");
@@ -313,12 +341,12 @@ function ScanButton() {
       <button
         onClick={handleScan}
         disabled={scanning}
-        className="px-2.5 py-0.5 text-xs font-semibold border border-border text-text-secondary hover:border-border-hover hover:text-text-primary rounded-sm transition-colors disabled:opacity-50"
+        className={`${ghostBtn} ${BTN_H}`}
       >
         {scanning ? "Scanning..." : "SCAN"}
       </button>
       {result && (
-        <span className="text-xs text-text-muted">{result}</span>
+        <span className="text-[10px]" style={{ color: "var(--text-0)" }}>{result}</span>
       )}
     </div>
   );
@@ -337,7 +365,7 @@ function AnalyzeExecuteButtons() {
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
-        className="px-4 py-1 text-xs font-bold bg-accent text-black rounded-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
+        className={`${primaryBtn} ${BTN_H}`}
       >
         {isAnalyzing ? "Analyzing..." : "ANALYZE"}
       </button>
@@ -345,7 +373,7 @@ function AnalyzeExecuteButtons() {
         <button
           onClick={runExecute}
           disabled={isExecuting}
-          className="px-3 py-1 text-xs font-semibold border border-accent/40 text-accent rounded-sm hover:bg-accent/10 disabled:opacity-40 transition-colors"
+          className={`${primaryBtn} ${BTN_H}`}
         >
           {isExecuting ? "Executing..." : `EXECUTE ${actionCount}`}
         </button>
@@ -353,6 +381,8 @@ function AnalyzeExecuteButtons() {
     </div>
   );
 }
+
+// ── Main TopBar ───────────────────────────────────────────────────────────────
 
 export default function TopBar({
   state,
@@ -363,12 +393,12 @@ export default function TopBar({
 }) {
   if (isLoading || !state) {
     return (
-      <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+      <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
         <button
           onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
           className="flex items-center gap-1.5 shrink-0 hover:opacity-70 transition-opacity"
         >
-          <span className="text-sm font-bold text-accent font-mono">M</span>
+          <span className="text-sm font-bold font-mono" style={{ color: "var(--accent)" }}>M</span>
           <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
         </button>
         <span className="text-border text-xs">|</span>
@@ -381,41 +411,54 @@ export default function TopBar({
   const pnlColor = state.day_pnl >= 0 ? "text-profit" : "text-loss";
 
   return (
-    <header className="h-9 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+    <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
+      {/* Brand */}
       <button
         onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
         className="flex items-center gap-1.5 shrink-0 hover:opacity-70 transition-opacity"
       >
-        <span className="text-sm font-bold text-accent font-mono">M</span>
-        <span className="text-[10px] font-semibold text-text-secondary tracking-widest uppercase">MOMMY</span>
+        <span className="text-sm font-bold font-mono" style={{ color: "var(--accent)" }}>M</span>
+        <span className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: "var(--accent)" }}>MOMMY</span>
       </button>
+
       <span className="text-text-muted text-xs">|</span>
       <PortfolioSwitcher />
       <span className="text-text-muted text-xs">·</span>
+
+      {/* Equity */}
       <span className="font-mono text-xs text-text-primary tabular-nums">
         ${state.total_equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
       <span className="text-[9px] text-text-muted">eq</span>
+
+      {/* Day P&L */}
       <span className={`font-mono text-xs tabular-nums ${pnlColor}`}>
         {state.day_pnl >= 0 ? "+" : ""}${state.day_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
       <span className="text-[9px] text-text-muted">day</span>
+
       <span className="text-text-muted text-xs">·</span>
       <RegimeBadge regime={state.regime ?? "SIDEWAYS"} />
       <RiskBadge />
       <span className="text-text-muted text-xs">·</span>
+
+      {/* Deployment */}
       <span className="font-mono text-[10px] text-text-muted tabular-nums">
         {Math.round((state.positions_value / (state.total_equity || 1)) * 100)}% dep
       </span>
       <span className="text-text-muted text-xs">·</span>
       <FreshnessIndicator />
+
       <div className="flex-1" />
+
+      {/* Alerts */}
       {state.stale_alerts.length > 0 && (
         <span className="text-[10px] text-warning">{state.stale_alerts.length} stale</span>
       )}
       {state.price_failures.length > 0 && (
         <span className="text-[10px] text-loss">{state.price_failures.length} failed</span>
       )}
+
       {/* Action buttons */}
       <div className="flex items-center gap-2 border-l border-border pl-3">
         <div className="flex items-center gap-2">
