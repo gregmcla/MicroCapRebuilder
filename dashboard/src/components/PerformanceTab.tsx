@@ -3,44 +3,53 @@
 import { usePerformance, useLearning } from "../hooks/usePerformance";
 import type { HealthComponent, FactorAttribution, TradeContribution } from "../lib/types";
 
+function gradeColor(score: number): string {
+  if (score >= 80) return "var(--green)";
+  if (score >= 60) return "var(--accent-bright)";
+  if (score >= 40) return "var(--amber)";
+  return "var(--red)";
+}
+
 function GradeRing({ grade, score }: { grade: string; score: number }) {
-  const color =
-    score >= 80 ? "text-profit border-profit/40"
-      : score >= 60 ? "text-accent border-accent/40"
-        : score >= 40 ? "text-warning border-warning/40"
-          : "text-loss border-loss/40";
+  const color = gradeColor(score);
 
   return (
-    <div className={`w-16 h-16 rounded-full border-4 flex items-center justify-center ${color}`}>
+    <div
+      className="w-16 h-16 rounded-full border-4 flex items-center justify-center shrink-0"
+      style={{
+        borderColor: color,
+        color: color,
+      }}
+    >
       <span className="text-xl font-bold">{grade}</span>
     </div>
   );
 }
 
 function ComponentRow({ comp }: { comp: HealthComponent }) {
-  const gradeColor =
-    comp.score >= 80 ? "text-profit"
-      : comp.score >= 60 ? "text-accent"
-        : comp.score >= 40 ? "text-warning"
-          : "text-loss";
+  const color = gradeColor(comp.score);
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-text-secondary w-32 shrink-0 truncate">
+      <span className="text-xs w-32 shrink-0 truncate" style={{ color: "var(--text-2)" }}>
         {comp.name}
       </span>
-      <div className="flex-1 h-1.5 rounded-full bg-bg-primary overflow-hidden">
+      <div
+        className="flex-1 h-1.5 rounded-full overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      >
         <div
-          className={`h-full rounded-full transition-all duration-500 ${
-            comp.score >= 80 ? "bg-profit"
-              : comp.score >= 60 ? "bg-accent"
-                : comp.score >= 40 ? "bg-warning"
-                  : "bg-loss"
-          }`}
-          style={{ width: `${Math.max(2, comp.score)}%` }}
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${Math.max(2, comp.score)}%`,
+            background: `linear-gradient(to right, var(--accent), var(--accent-bright))`,
+          }}
         />
       </div>
-      <span className={`font-mono text-xs w-6 text-right shrink-0 font-medium ${gradeColor}`}>
+      <span
+        className="font-mono text-xs w-6 text-right shrink-0 font-medium tabular-nums"
+        style={{ color }}
+      >
         {comp.grade}
       </span>
     </div>
@@ -49,13 +58,23 @@ function ComponentRow({ comp }: { comp: HealthComponent }) {
 
 function MetricCard({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
   return (
-    <div className="bg-bg-elevated/50 rounded-lg p-2.5 border border-border/50">
-      <p className="text-[10px] text-text-muted uppercase tracking-wider mb-0.5">
+    <div
+      className="rounded-lg p-2.5"
+      style={{
+        background: "var(--surface-1)",
+        border: "1px solid var(--border-0)",
+        borderRadius: 8,
+      }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-wider mb-0.5"
+        style={{ color: "var(--text-0)" }}
+      >
         {label}
       </p>
-      <p className="font-mono text-sm font-semibold text-text-primary">
+      <p className="font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--text-4)" }}>
         {value}
-        {suffix && <span className="text-text-muted text-xs">{suffix}</span>}
+        {suffix && <span className="text-xs" style={{ color: "var(--text-1)" }}>{suffix}</span>}
       </p>
     </div>
   );
@@ -63,31 +82,45 @@ function MetricCard({ label, value, suffix }: { label: string; value: string; su
 
 function AttributionBar({ attr }: { attr: FactorAttribution }) {
   const isPositive = attr.contribution >= 0;
-  const color = isPositive ? "bg-profit" : "bg-loss";
-  const textColor = isPositive ? "text-profit" : "text-loss";
-  const maxWidth = 60; // max % of bar width
+  const textColor = isPositive ? "var(--green)" : "var(--red)";
+  const maxWidth = 60;
   const width = Math.min(maxWidth, Math.abs(attr.contribution_pct));
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-text-secondary w-28 shrink-0 capitalize">
+      <span className="text-xs w-28 shrink-0 capitalize" style={{ color: "var(--text-2)" }}>
         {attr.factor}
       </span>
       <div className="flex-1 flex items-center">
         {!isPositive && (
           <div className="flex-1 flex justify-end">
-            <div className={`h-2 rounded-l-full ${color}`} style={{ width: `${width}%` }} />
+            <div
+              className="h-2 rounded-l-full"
+              style={{ width: `${width}%`, background: "var(--red)" }}
+            />
           </div>
         )}
-        <div className="w-px h-4 bg-border shrink-0" />
+        <div
+          className="w-px h-4 shrink-0"
+          style={{ background: "var(--border-0)" }}
+        />
         {isPositive && (
           <div className="flex-1">
-            <div className={`h-2 rounded-r-full ${color}`} style={{ width: `${width}%` }} />
+            <div
+              className="h-2 rounded-r-full"
+              style={{
+                width: `${width}%`,
+                background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
+              }}
+            />
           </div>
         )}
         {!isPositive && <div className="flex-1" />}
       </div>
-      <span className={`font-mono text-xs w-16 text-right shrink-0 ${textColor}`}>
+      <span
+        className="font-mono text-xs w-16 text-right shrink-0 tabular-nums"
+        style={{ color: textColor }}
+      >
         {isPositive ? "+" : ""}${attr.contribution.toFixed(0)}
       </span>
     </div>
@@ -95,17 +128,17 @@ function AttributionBar({ attr }: { attr: FactorAttribution }) {
 }
 
 function ContributorRow({ trade }: { trade: TradeContribution }) {
-  const color = trade.pnl >= 0 ? "text-profit" : "text-loss";
+  const color = trade.pnl >= 0 ? "var(--green)" : "var(--red)";
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="font-semibold text-text-primary w-12">{trade.ticker}</span>
-      <span className={`font-mono w-16 text-right ${color}`}>
+      <span className="font-semibold w-12" style={{ color: "var(--text-4)" }}>{trade.ticker}</span>
+      <span className="font-mono w-16 text-right tabular-nums" style={{ color }}>
         {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(0)}
       </span>
-      <span className={`font-mono w-14 text-right ${color}`}>
+      <span className="font-mono w-14 text-right tabular-nums" style={{ color }}>
         {trade.pnl_pct >= 0 ? "+" : ""}{trade.pnl_pct.toFixed(1)}%
       </span>
-      <span className="text-text-muted text-[10px]">
+      <span className="text-[10px]" style={{ color: "var(--text-0)" }}>
         {trade.is_realized ? "closed" : "open"}
       </span>
     </div>
@@ -118,24 +151,33 @@ function FactorLearningRow({ factor }: { factor: { factor: string; win_rate: num
       : factor.trend === "declining" ? "\u2193"
         : "\u2192";
   const trendColor =
-    factor.trend === "improving" ? "text-profit"
-      : factor.trend === "declining" ? "text-loss"
-        : "text-text-muted";
-  const wrColor = factor.win_rate >= 50 ? "text-profit" : "text-loss";
+    factor.trend === "improving" ? "var(--green)"
+      : factor.trend === "declining" ? "var(--red)"
+        : "var(--text-0)";
+  const wrColor = factor.win_rate >= 50 ? "var(--green)" : "var(--red)";
 
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="text-text-secondary w-28 shrink-0 capitalize">{factor.factor}</span>
-      <span className={`font-mono w-12 text-right ${wrColor}`}>
+      <span className="w-28 shrink-0 capitalize" style={{ color: "var(--text-2)" }}>{factor.factor}</span>
+      <span className="font-mono w-12 text-right tabular-nums" style={{ color: wrColor }}>
         {factor.win_rate.toFixed(0)}%
       </span>
-      <span className="font-mono text-text-muted w-8 text-right">
+      <span className="font-mono w-8 text-right tabular-nums" style={{ color: "var(--text-0)" }}>
         {factor.total_trades}
       </span>
-      <span className={`${trendColor} w-4 text-center`}>{trendIcon}</span>
+      <span className="w-4 text-center" style={{ color: trendColor }}>{trendIcon}</span>
     </div>
   );
 }
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontFamily: "var(--font-sans)",
+  fontSize: "9.5px",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--text-0)",
+};
 
 export default function PerformanceTab() {
   const { data: perf, isLoading: perfLoading, error: perfError } = usePerformance();
@@ -144,16 +186,28 @@ export default function PerformanceTab() {
   if (perfLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        <div
+          className="w-6 h-6 border-2 rounded-full animate-spin"
+          style={{
+            borderColor: "rgba(124,92,252,0.3)",
+            borderTopColor: "var(--accent)",
+          }}
+        />
       </div>
     );
   }
 
   if (perfError) {
     return (
-      <div className="p-6 text-center text-text-muted">
-        <p className="text-loss mb-2">Failed to load performance data</p>
-        <button onClick={() => window.location.reload()} className="text-xs text-accent hover:underline">Retry</button>
+      <div className="p-6 text-center" style={{ color: "var(--text-1)" }}>
+        <p className="mb-2" style={{ color: "var(--red)" }}>Failed to load performance data</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-xs hover:underline"
+          style={{ color: "var(--accent-bright)" }}
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -171,16 +225,22 @@ export default function PerformanceTab() {
           <GradeRing grade={health.grade} score={health.score} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-semibold text-text-primary">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-4)" }}>
                 Strategy Health
               </h3>
               {health.pivot_recommended && (
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning/15 text-warning uppercase">
+                <span
+                  className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase"
+                  style={{
+                    background: "rgba(251,191,36,0.15)",
+                    color: "var(--amber)",
+                  }}
+                >
                   Pivot {health.pivot_urgency}
                 </span>
               )}
             </div>
-            <p className="text-xs text-text-secondary mb-3">
+            <p className="text-xs mb-3" style={{ color: "var(--text-2)" }}>
               {health.grade_description}
             </p>
             <div className="space-y-1.5">
@@ -197,11 +257,14 @@ export default function PerformanceTab() {
         <div className="grid grid-cols-2 gap-3">
           {health.what_working.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-profit uppercase tracking-wider mb-1">
+              <h4
+                className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                style={{ color: "var(--green)" }}
+              >
                 Working
               </h4>
               {health.what_working.map((w, i) => (
-                <p key={i} className="text-xs text-text-secondary leading-relaxed">
+                <p key={i} className="text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
                   {w}
                 </p>
               ))}
@@ -209,11 +272,14 @@ export default function PerformanceTab() {
           )}
           {health.what_struggling.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-loss uppercase tracking-wider mb-1">
+              <h4
+                className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                style={{ color: "var(--red)" }}
+              >
                 Struggling
               </h4>
               {health.what_struggling.map((w, i) => (
-                <p key={i} className="text-xs text-text-secondary leading-relaxed">
+                <p key={i} className="text-xs leading-relaxed" style={{ color: "var(--text-2)" }}>
                   {w}
                 </p>
               ))}
@@ -225,7 +291,7 @@ export default function PerformanceTab() {
       {/* Key metrics */}
       {metrics && (
         <div>
-          <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <h3 style={sectionHeaderStyle} className="mb-2">
             Key Metrics
           </h3>
           <div className="grid grid-cols-4 gap-2">
@@ -244,7 +310,7 @@ export default function PerformanceTab() {
       {/* Attribution by factor */}
       {attribution && attribution.factor_details.length > 0 && (
         <div>
-          <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <h3 style={sectionHeaderStyle} className="mb-2">
             Attribution by Factor
           </h3>
           <div className="space-y-1.5">
@@ -260,7 +326,10 @@ export default function PerformanceTab() {
         <div className="grid grid-cols-2 gap-4">
           {attribution.top_contributors.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-profit uppercase tracking-wider mb-2">
+              <h4
+                className="text-[10px] font-semibold uppercase tracking-wider mb-2"
+                style={{ color: "var(--green)" }}
+              >
                 Top Contributors
               </h4>
               <div className="space-y-1">
@@ -272,7 +341,10 @@ export default function PerformanceTab() {
           )}
           {attribution.bottom_contributors.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-semibold text-loss uppercase tracking-wider mb-2">
+              <h4
+                className="text-[10px] font-semibold uppercase tracking-wider mb-2"
+                style={{ color: "var(--red)" }}
+              >
                 Bottom Contributors
               </h4>
               <div className="space-y-1">
@@ -288,10 +360,10 @@ export default function PerformanceTab() {
       {/* Factor learning */}
       {!learnLoading && factors && factors.status === "ok" && factors.factors.length > 0 && (
         <div>
-          <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <h3 style={sectionHeaderStyle} className="mb-2">
             Factor Learning
           </h3>
-          <div className="flex items-center gap-2 text-[10px] text-text-muted mb-1 px-0">
+          <div className="flex items-center gap-2 text-[10px] mb-1 px-0" style={{ color: "var(--text-0)" }}>
             <span className="w-28">Factor</span>
             <span className="w-12 text-right">Win%</span>
             <span className="w-8 text-right">N</span>

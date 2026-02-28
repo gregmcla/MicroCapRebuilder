@@ -8,7 +8,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
   const circumference = 2 * Math.PI * radius;
   const filled = (score / 100) * circumference;
   const color =
-    score >= 70 ? "var(--color-profit)" : score >= 40 ? "var(--color-warning)" : "var(--color-loss)";
+    score >= 70 ? "var(--green)" : score >= 40 ? "var(--amber)" : "var(--red)";
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -18,7 +18,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--color-border)"
+          stroke="var(--border-1)"
           strokeWidth={4}
         />
         <circle
@@ -34,10 +34,13 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono text-xl font-bold text-text-primary">
+        <span
+          className="font-mono text-xl font-bold tabular-nums"
+          style={{ color: "var(--text-4)" }}
+        >
           {Math.round(score)}
         </span>
-        <span className="text-[10px] text-text-muted">/100</span>
+        <span className="text-[10px]" style={{ color: "var(--text-0)" }}>/100</span>
       </div>
     </div>
   );
@@ -46,23 +49,35 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
 function ComponentBar({ component }: { component: RiskComponent }) {
   const barColor =
     component.status === "OK"
-      ? "bg-profit"
+      ? "var(--green)"
       : component.status === "WARNING"
-        ? "bg-warning"
-        : "bg-loss";
+        ? "var(--amber)"
+        : "var(--red)";
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-text-secondary w-28 shrink-0 truncate">
+      <span
+        className="text-xs w-28 shrink-0 truncate"
+        style={{ color: "var(--text-2)" }}
+      >
         {component.name}
       </span>
-      <div className="flex-1 h-2 rounded-full bg-bg-primary overflow-hidden">
+      <div
+        className="flex-1 h-2 rounded-full overflow-hidden"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      >
         <div
-          className={`h-full rounded-full ${barColor} transition-all duration-500`}
-          style={{ width: `${Math.max(2, component.score)}%` }}
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${Math.max(2, component.score)}%`,
+            background: barColor,
+          }}
         />
       </div>
-      <span className="font-mono text-xs text-text-muted w-8 text-right shrink-0">
+      <span
+        className="font-mono text-xs w-8 text-right shrink-0 tabular-nums"
+        style={{ color: "var(--text-0)" }}
+      >
         {Math.round(component.score)}
       </span>
     </div>
@@ -70,42 +85,80 @@ function ComponentBar({ component }: { component: RiskComponent }) {
 }
 
 function WarningCard({ warning }: { warning: Warning }) {
-  const severityStyles: Record<string, string> = {
-    critical: "border-loss/40 bg-loss/5",
-    high: "border-warning/40 bg-warning/5",
-    medium: "border-accent/30 bg-accent/5",
-    info: "border-border bg-bg-elevated/30",
+  const borderColor: Record<string, string> = {
+    critical: "var(--red)",
+    high: "var(--red)",
+    medium: "var(--amber)",
+    info: "var(--text-1)",
+    low: "var(--text-1)",
   };
-  const severityBadge: Record<string, string> = {
-    critical: "bg-loss/15 text-loss",
-    high: "bg-warning/15 text-warning",
-    medium: "bg-accent/15 text-accent",
-    info: "bg-bg-elevated text-text-muted",
+  const bgColor: Record<string, string> = {
+    critical: "rgba(248,113,113,0.05)",
+    high: "rgba(248,113,113,0.05)",
+    medium: "rgba(251,191,36,0.05)",
+    info: "rgba(255,255,255,0.02)",
+    low: "rgba(255,255,255,0.02)",
+  };
+  const badgeBg: Record<string, string> = {
+    critical: "rgba(248,113,113,0.15)",
+    high: "rgba(248,113,113,0.15)",
+    medium: "rgba(251,191,36,0.15)",
+    info: "rgba(255,255,255,0.06)",
+    low: "rgba(255,255,255,0.06)",
+  };
+  const badgeColor: Record<string, string> = {
+    critical: "var(--red)",
+    high: "var(--red)",
+    medium: "var(--amber)",
+    info: "var(--text-1)",
+    low: "var(--text-1)",
   };
 
-  const style = severityStyles[warning.severity] ?? severityStyles.info;
-  const badge = severityBadge[warning.severity] ?? severityBadge.info;
+  const sev = warning.severity;
 
   return (
-    <div className={`border rounded-lg p-3 ${style}`}>
+    <div
+      className="rounded-lg p-3"
+      style={{
+        background: bgColor[sev] ?? bgColor.info,
+        borderLeft: `3px solid ${borderColor[sev] ?? borderColor.info}`,
+        border: `1px solid ${borderColor[sev] ?? borderColor.info}`,
+        borderLeftWidth: 3,
+      }}
+    >
       <div className="flex items-center gap-2 mb-1">
-        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${badge}`}>
+        <span
+          className="text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+          style={{
+            background: badgeBg[sev] ?? badgeBg.info,
+            color: badgeColor[sev] ?? badgeColor.info,
+          }}
+        >
           {warning.severity}
         </span>
-        <span className="text-xs text-text-muted">{warning.category}</span>
+        <span className="text-xs" style={{ color: "var(--text-0)" }}>{warning.category}</span>
       </div>
-      <p className="text-sm font-medium text-text-primary mb-1">
+      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-4)" }}>
         {warning.title}
       </p>
-      <p className="text-xs text-text-secondary">{warning.description}</p>
+      <p className="text-xs" style={{ color: "var(--text-2)" }}>{warning.description}</p>
       {warning.action_suggestion && (
-        <p className="text-xs text-accent mt-1.5 italic">
+        <p className="text-xs mt-1.5 italic" style={{ color: "var(--accent-bright)" }}>
           {warning.action_suggestion}
         </p>
       )}
     </div>
   );
 }
+
+const sectionHeaderStyle: React.CSSProperties = {
+  fontFamily: "var(--font-sans)",
+  fontSize: "9.5px",
+  fontWeight: 600,
+  textTransform: "uppercase",
+  letterSpacing: "0.08em",
+  color: "var(--text-0)",
+};
 
 export default function RiskTab() {
   const { data: risk, isLoading: riskLoading, error: riskError } = useRisk();
@@ -114,16 +167,28 @@ export default function RiskTab() {
   if (riskLoading || warningsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+        <div
+          className="w-6 h-6 border-2 rounded-full animate-spin"
+          style={{
+            borderColor: "rgba(124,92,252,0.3)",
+            borderTopColor: "var(--accent)",
+          }}
+        />
       </div>
     );
   }
 
   if (riskError || warningsError) {
     return (
-      <div className="p-6 text-center text-text-muted">
-        <p className="text-loss mb-2">Failed to load risk data</p>
-        <button onClick={() => window.location.reload()} className="text-xs text-accent hover:underline">Retry</button>
+      <div className="p-6 text-center" style={{ color: "var(--text-1)" }}>
+        <p className="mb-2" style={{ color: "var(--red)" }}>Failed to load risk data</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-xs hover:underline"
+          style={{ color: "var(--accent-bright)" }}
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -136,7 +201,7 @@ export default function RiskTab() {
           <ScoreRing score={risk.overall_score} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-sm font-semibold text-text-primary">
+              <h3 className="text-sm font-semibold" style={{ color: "var(--text-4)" }}>
                 Risk Score
               </h3>
               <span
@@ -149,7 +214,7 @@ export default function RiskTab() {
                 {risk.risk_level}
               </span>
             </div>
-            <p className="text-xs text-text-secondary leading-relaxed mb-3">
+            <p className="text-xs leading-relaxed mb-3" style={{ color: "var(--text-2)" }}>
               {risk.narrative}
             </p>
 
@@ -166,12 +231,19 @@ export default function RiskTab() {
       {/* Recommended actions */}
       {risk && risk.recommended_actions.length > 0 && (
         <div>
-          <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <h3 style={sectionHeaderStyle} className="mb-2">
             Recommended Actions
           </h3>
           <div className="space-y-1">
             {risk.recommended_actions.map((action, i) => (
-              <p key={i} className="text-xs text-text-secondary pl-3 border-l-2 border-accent/30">
+              <p
+                key={i}
+                className="text-xs pl-3"
+                style={{
+                  color: "var(--text-2)",
+                  borderLeft: "2px solid rgba(124,92,252,0.3)",
+                }}
+              >
                 {action}
               </p>
             ))}
@@ -182,7 +254,7 @@ export default function RiskTab() {
       {/* Early warnings */}
       {warnings && warnings.length > 0 && (
         <div>
-          <h3 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">
+          <h3 style={sectionHeaderStyle} className="mb-2">
             Early Warnings ({warnings.length})
           </h3>
           <div className="space-y-2">
@@ -194,7 +266,7 @@ export default function RiskTab() {
       )}
 
       {warnings && warnings.length === 0 && (
-        <div className="text-center text-text-muted text-xs py-4">
+        <div className="text-center text-xs py-4" style={{ color: "var(--text-1)" }}>
           No active warnings. All clear.
         </div>
       )}
