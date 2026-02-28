@@ -69,8 +69,8 @@ class EarlyWarningSystem:
         "regime_sma_proximity": 2.0,  # % from 50-day SMA
     }
 
-    def __init__(self):
-        self.state = load_portfolio_state(fetch_prices=False)
+    def __init__(self, portfolio_id: str = None):
+        self.state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
         self.trade_analyzer = TradeAnalyzer()
 
     def check_all(self) -> List[Warning]:
@@ -343,9 +343,9 @@ class EarlyWarningSystem:
         return warnings
 
 
-def get_warnings() -> List[Warning]:
+def get_warnings(portfolio_id: str = None) -> List[Warning]:
     """Get all current early warnings."""
-    system = EarlyWarningSystem()
+    system = EarlyWarningSystem(portfolio_id=portfolio_id)
     return system.check_all()
 
 

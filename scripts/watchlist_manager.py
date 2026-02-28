@@ -105,17 +105,23 @@ class WatchlistManager:
         return entries
 
     def _save_watchlist(self, entries: List[WatchlistEntry]):
-        """Save watchlist to JSONL file."""
+        """Save watchlist to JSONL file using atomic write (temp + rename)."""
         # Backup existing
         if self._watchlist_file.exists():
             BACKUP_DIR.mkdir(exist_ok=True)
             backup_path = BACKUP_DIR / f"watchlist_{date.today().isoformat()}.jsonl"
             shutil.copy(self._watchlist_file, backup_path)
 
-        # Save new
-        with open(self._watchlist_file, "w") as f:
-            for entry in entries:
-                f.write(json.dumps(asdict(entry)) + "\n")
+        # Atomic write: write to temp file then rename to avoid partial writes
+        tmp_path = self._watchlist_file.with_suffix(".jsonl.tmp")
+        try:
+            with open(tmp_path, "w") as f:
+                for entry in entries:
+                    f.write(json.dumps(asdict(entry)) + "\n")
+            tmp_path.replace(self._watchlist_file)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
 
     def _load_core_watchlist(self) -> Set[str]:
         """Load core watchlist tickers."""

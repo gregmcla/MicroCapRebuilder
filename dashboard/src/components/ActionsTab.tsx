@@ -128,10 +128,10 @@ export default function ActionsTab() {
   // Analyzing spinner
   if (isAnalyzing) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-text-muted">
+      <div className="flex flex-col items-center justify-center h-full gap-3">
         <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-        <p className="text-sm">Mommy's analyzing the market...</p>
-        <p className="text-xs">Scoring candidates, running AI review</p>
+        <p className="text-sm text-text-primary">Mommy's analyzing the market...</p>
+        <p className="text-xs text-text-secondary">Scoring candidates, running AI review</p>
       </div>
     );
   }

@@ -41,13 +41,36 @@ class ETFConfig:
     max_holdings: int = 100
 
 
-# Default ETF configurations
+# Default ETF configurations — ALL market caps so every portfolio has the full universe.
+# The discovery scanner's market cap / sector filters handle portfolio-specific selection.
 DEFAULT_ETFS = [
-    ETFConfig("IWM", "iShares Russell 2000 ETF", "small-cap", 150),
-    ETFConfig("IJR", "iShares Core S&P Small-Cap ETF", "small-cap", 100),
-    ETFConfig("VB", "Vanguard Small-Cap ETF", "small-cap", 100),
-    ETFConfig("SCHA", "Schwab U.S. Small-Cap ETF", "small-cap", 75),
-    ETFConfig("VBR", "Vanguard Small-Cap Value ETF", "small-cap-value", 75),
+    # Small-cap / Micro-cap
+    ETFConfig("IWM", "iShares Russell 2000 ETF", "small-cap", 40),
+    ETFConfig("IJR", "iShares Core S&P Small-Cap ETF", "small-cap", 40),
+    ETFConfig("VB", "Vanguard Small-Cap ETF", "small-cap", 40),
+    # Mid-cap
+    ETFConfig("IJH", "iShares Core S&P Mid-Cap ETF", "mid-cap", 40),
+    ETFConfig("VO", "Vanguard Mid-Cap ETF", "mid-cap", 40),
+    ETFConfig("MDY", "SPDR S&P MidCap 400 ETF", "mid-cap", 30),
+    # Large-cap
+    ETFConfig("SPY", "SPDR S&P 500 ETF", "large-cap", 80),
+    ETFConfig("QQQ", "Invesco QQQ Trust", "large-cap-growth", 80),
+    ETFConfig("VTV", "Vanguard Value ETF", "large-cap-value", 80),
+    ETFConfig("VUG", "Vanguard Growth ETF", "large-cap-growth", 80),
+    ETFConfig("DIA", "SPDR Dow Jones Industrial Average ETF", "large-cap", 30),
+    # Sectors
+    ETFConfig("XLK", "Technology Select Sector SPDR", "sector-tech", 30),
+    ETFConfig("XLV", "Health Care Select Sector SPDR", "sector-health", 30),
+    ETFConfig("XLF", "Financial Select Sector SPDR", "sector-finance", 30),
+    ETFConfig("XLI", "Industrial Select Sector SPDR", "sector-industrial", 30),
+    ETFConfig("XLY", "Consumer Discretionary Select Sector SPDR", "sector-consumer-disc", 25),
+    ETFConfig("XLP", "Consumer Staples Select Sector SPDR", "sector-consumer-staples", 25),
+    ETFConfig("XLE", "Energy Select Sector SPDR", "sector-energy", 20),
+    ETFConfig("XLB", "Materials Select Sector SPDR", "sector-materials", 20),
+    ETFConfig("XLU", "Utilities Select Sector SPDR", "sector-utilities", 20),
+    ETFConfig("XLRE", "Real Estate Select Sector SPDR", "sector-realestate", 20),
+    ETFConfig("XBI", "SPDR S&P Biotech ETF", "sector-biotech", 20),
+    ETFConfig("XOP", "SPDR Oil & Gas Exploration ETF", "sector-energy", 20),
 ]
 
 
@@ -83,10 +106,15 @@ class ETFHoldingsProvider:
         self.universe_config = self.config.get("universe", {})
         self.filters = self.universe_config.get("filters", {})
 
-        # Get ETF list from config or use defaults
+        # Get ETF list from config or use all defaults
         if etf_symbols is None:
             etf_config = self.universe_config.get("sources", {}).get("etf_holdings", {})
-            etf_symbols = etf_config.get("etfs", ["IWM", "IJR", "VB"])
+            configured_etfs = etf_config.get("etfs", None)
+            if configured_etfs:
+                etf_symbols = configured_etfs
+            else:
+                # No override — use ALL DEFAULT_ETFS for maximum universe coverage
+                etf_symbols = [cfg.symbol for cfg in DEFAULT_ETFS]
 
         self.etf_configs = {
             cfg.symbol: cfg for cfg in DEFAULT_ETFS

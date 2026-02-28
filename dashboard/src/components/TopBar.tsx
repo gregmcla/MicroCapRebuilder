@@ -70,7 +70,7 @@ function UpdatePricesButton() {
       <button
         onClick={handleUpdate}
         disabled={updating}
-        className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-40 transition-colors"
+        className="px-2.5 py-0.5 text-xs font-semibold border border-border text-text-secondary hover:border-border-hover hover:text-text-primary rounded-sm transition-colors disabled:opacity-40"
       >
         {updating ? "Updating..." : "UPDATE"}
       </button>
@@ -313,7 +313,7 @@ function ScanButton() {
       <button
         onClick={handleScan}
         disabled={scanning}
-        className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-50 transition-colors"
+        className="px-2.5 py-0.5 text-xs font-semibold border border-border text-text-secondary hover:border-border-hover hover:text-text-primary rounded-sm transition-colors disabled:opacity-50"
       >
         {scanning ? "Scanning..." : "SCAN"}
       </button>
@@ -337,7 +337,7 @@ function AnalyzeExecuteButtons() {
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
-        className="px-3 py-1 text-xs font-bold bg-accent text-black rounded-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
+        className="px-4 py-1 text-xs font-bold bg-accent text-black rounded-sm hover:bg-accent/90 disabled:opacity-40 transition-colors"
       >
         {isAnalyzing ? "Analyzing..." : "ANALYZE"}
       </button>

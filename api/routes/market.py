@@ -90,28 +90,36 @@ def get_chart_data(ticker: str, range: str = "1M", interval: Optional[str] = Non
                 "indicators": {"rsi": [], "sma_20": [], "sma_50": []}
             }
 
-        # Handle MultiIndex columns (only when ticker key exists in MultiIndex)
-        # When downloading single ticker, yfinance typically returns simple columns
-        if isinstance(data.columns, pd.MultiIndex) and ticker in data["Close"].columns:
-            df = pd.DataFrame({
-                "time": data.index,
-                "open": data["Open"][ticker].values,
-                "high": data["High"][ticker].values,
-                "low": data["Low"][ticker].values,
-                "close": data["Close"][ticker].values,
-                "volume": data["Volume"][ticker].values,
-            })
-        else:
-            # Simple columns (single ticker download)
-            # Use squeeze() to ensure 1D arrays (handles both Series and DataFrame columns)
-            df = pd.DataFrame({
-                "time": data.index,
-                "open": data["Open"].squeeze().values,
-                "high": data["High"].squeeze().values,
-                "low": data["Low"].squeeze().values,
-                "close": data["Close"].squeeze().values,
-                "volume": data["Volume"].squeeze().values,
-            })
+        # Normalize to simple columns regardless of yfinance version/MultiIndex
+        if isinstance(data.columns, pd.MultiIndex):
+            # Try to find the ticker in the second level, fallback to first available
+            tickers_available = data.columns.get_level_values(1).unique().tolist()
+            actual = ticker if ticker in tickers_available else (tickers_available[0] if tickers_available else None)
+            if actual:
+                data = data.xs(actual, axis=1, level=1)
+            else:
+                data.columns = data.columns.get_level_values(0)
+
+        def _col_1d(col_name: str) -> list:
+            """Extract a column as a guaranteed-1D Python list."""
+            if col_name not in data.columns:
+                return [0.0] * len(data)
+            col = data[col_name]
+            if hasattr(col, "squeeze"):
+                col = col.squeeze()
+            # Handle case where squeeze still returns 2D (DataFrame)
+            if isinstance(col, pd.DataFrame):
+                col = col.iloc[:, 0]
+            return col.tolist()
+
+        df = pd.DataFrame({
+            "time": data.index,
+            "open": _col_1d("Open"),
+            "high": _col_1d("High"),
+            "low": _col_1d("Low"),
+            "close": _col_1d("Close"),
+            "volume": _col_1d("Volume"),
+        })
 
         # Calculate RSI (14-period)
         delta = df["close"].diff()

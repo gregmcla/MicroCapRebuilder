@@ -59,7 +59,7 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
       </span>
 
       {/* Sparkline */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-w-[140px]">
         <PositionRowSparkline ticker={pos.ticker} height={28} />
       </div>
 

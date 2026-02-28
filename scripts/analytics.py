@@ -54,21 +54,23 @@ class RiskMetrics:
 class PortfolioAnalytics:
     """Calculate professional risk-adjusted portfolio metrics."""
 
-    def __init__(self, risk_free_rate: float = 0.05):
+    def __init__(self, risk_free_rate: float = 0.05, portfolio_id: str = None):
         """
         Initialize analytics.
 
         Args:
             risk_free_rate: Annual risk-free rate (default 5%)
+            portfolio_id: Portfolio to analyze (default: registry default)
         """
         self.risk_free_rate = risk_free_rate
+        self.portfolio_id = portfolio_id
         # Load config on-demand from portfolio state
-        state = load_portfolio_state(fetch_prices=False)
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
         self.config = state.config
 
     def load_equity_curve(self) -> pd.DataFrame:
         """Load daily equity snapshots."""
-        state = load_portfolio_state(fetch_prices=False)
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=self.portfolio_id)
         df = state.snapshots
         if not df.empty and "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])

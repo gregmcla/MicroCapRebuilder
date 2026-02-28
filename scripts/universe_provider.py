@@ -292,14 +292,20 @@ class UniverseProvider:
         Get the tickers to scan today.
 
         Returns:
-            All core tickers + today's batch of extended tickers
+            All core tickers + extended tickers (all or rotating batch based on config)
         """
         if not self.enabled:
             # Fallback to legacy hardcoded list
             return self._get_legacy_universe()
 
         core = self.get_core_tickers()
-        extended_batch = self.get_todays_extended_batch()
+
+        # Respect scan_frequency setting: "daily" scans all extended, otherwise rotate
+        extended_freq = self.universe_config.get("tiers", {}).get("extended", {}).get("scan_frequency", "rotating_3day")
+        if extended_freq == "daily":
+            extended_batch = self.get_extended_tickers()
+        else:
+            extended_batch = self.get_todays_extended_batch()
 
         # Deduplicate (core takes priority)
         core_set = set(core)

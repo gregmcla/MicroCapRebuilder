@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-import yfinance as yf
+from yf_session import cached_download
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -63,7 +63,7 @@ def load_config() -> dict:
 def fetch_benchmark_data(symbol: str, period: str = "1y") -> Optional[pd.DataFrame]:
     """Fetch benchmark historical data."""
     try:
-        df = yf.download(symbol, period=period, progress=False, auto_adjust=True)
+        df = cached_download(symbol, period=period, progress=False, auto_adjust=True)
         if df.empty:
             return None
         return df
@@ -190,9 +190,9 @@ def get_position_size_multiplier(regime: MarketRegime) -> float:
     """
     multipliers = {
         MarketRegime.BULL: 1.0,      # Full size in bull market
-        MarketRegime.SIDEWAYS: 0.5,  # Half size in sideways market
+        MarketRegime.SIDEWAYS: 0.75, # Moderate size in sideways market
         MarketRegime.BEAR: 0.25,     # Quarter size — buy oversold setups, but small
-        MarketRegime.UNKNOWN: 0.5,   # Conservative if unknown
+        MarketRegime.UNKNOWN: 0.75,  # Moderate size — new portfolio, assume neutral
     }
     return multipliers.get(regime, 0.5)
 

@@ -416,10 +416,9 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     print("EXECUTING APPROVED ACTIONS")
     print(f"{'='*60}\n")
 
+    # Build all transactions first
     for reviewed in actions_to_execute:
         action = reviewed.original
-
-        # Apply modifications if any
         shares = reviewed.modified_shares or action.shares
         stop_loss = reviewed.modified_stop or action.stop_loss
         take_profit = reviewed.modified_target or action.take_profit
@@ -436,7 +435,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "take_profit": round(take_profit, 2) if action.action_type == "BUY" else "",
             "reason": "SIGNAL" if action.action_type == "BUY" else (
                 "STOP_LOSS" if "STOP LOSS" in action.reason else
-                "TAKE_PROFIT" if "TAKE PROFIT" in action.reason else "MANUAL"
+                "TAKE_PROFIT" if "TAKE PROFIT" in action.reason else
+                "STOP_LOSS" if "QUALITY DEGRADATION" in action.reason else "MANUAL"
             ),
             "regime_at_entry": action.regime if action.action_type == "BUY" else "",
             "composite_score": action.quant_score if action.action_type == "BUY" else "",
@@ -445,9 +445,18 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         }
         transactions.append(tx)
 
-        # Update positions
+    # Validate all transactions against pre-mutation state, then save to ledger
+    if transactions:
+        state = save_transactions_batch(state, transactions)
+
+    # Now update positions and print results
+    for reviewed, tx in zip(actions_to_execute, transactions):
+        action = reviewed.original
+        shares = tx["shares"]
+
         if action.action_type == "BUY":
-            state = update_position(state, action.ticker, shares, action.price, stop_loss, take_profit)
+            state = update_position(state, action.ticker, shares, action.price,
+                                    tx["stop_loss"], tx["take_profit"])
         elif action.action_type == "SELL":
             state = remove_position(state, action.ticker)
 
@@ -455,10 +464,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         print(f"  ✅ {action.action_type} {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
         print(f"     AI: {reviewed.ai_reasoning}")
 
-    # Save everything at once
-    if transactions:
-        state = save_transactions_batch(state, transactions)
-        save_positions(state)
+    save_positions(state)
 
     # Generate post-mortems for sells
     sell_data = [

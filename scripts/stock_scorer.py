@@ -30,6 +30,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from yf_session import cached_download
 
 # Import MarketRegime if available (avoid circular import)
 try:
@@ -147,7 +148,7 @@ class StockScorer:
     def _fetch_price_data(self, ticker: str, period: str = "1mo") -> Optional[pd.DataFrame]:
         """Fetch historical price data for a ticker."""
         try:
-            df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+            df = cached_download(ticker, period=period, progress=False, auto_adjust=True)
             if df.empty:
                 return None
             # Flatten multi-level columns if present (newer yfinance versions)

@@ -84,11 +84,11 @@ class StrategyHealthCalculator:
         "market_fit": 0.10,
     }
 
-    def __init__(self):
+    def __init__(self, portfolio_id: str = None):
         # Load config on-demand from portfolio state
-        state = load_portfolio_state(fetch_prices=False)
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
         self.config = state.config
-        self.analytics = PortfolioAnalytics()
+        self.analytics = PortfolioAnalytics(portfolio_id=portfolio_id)
         self.trade_analyzer = TradeAnalyzer()
 
     def calculate(self) -> StrategyHealth:
@@ -547,9 +547,9 @@ class StrategyHealthCalculator:
             return False, "none"
 
 
-def get_strategy_health() -> StrategyHealth:
+def get_strategy_health(portfolio_id: str = None) -> StrategyHealth:
     """Get current strategy health assessment."""
-    calculator = StrategyHealthCalculator()
+    calculator = StrategyHealthCalculator(portfolio_id=portfolio_id)
     return calculator.calculate()
 
 

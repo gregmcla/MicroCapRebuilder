@@ -16,6 +16,9 @@ Usage:
 """
 
 import json
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import date, datetime, timedelta
 from enum import Enum
@@ -26,6 +29,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from yf_session import cached_download
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -172,7 +176,7 @@ class StockDiscovery:
             return self._price_cache[cache_key]
 
         try:
-            df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+            df = cached_download(ticker, period=period, progress=False, auto_adjust=True)
             if df.empty:
                 return None
             if isinstance(df.columns, pd.MultiIndex):
@@ -187,50 +191,73 @@ class StockDiscovery:
         except Exception:
             return None
 
-    def _get_stock_info(self, ticker: str) -> dict:
-        """Fetch and cache stock info."""
+    def _get_stock_info(self, ticker: str, timeout: float = 5.0) -> dict:
+        """Fetch and cache stock info with a hard per-ticker timeout."""
         if ticker in self._info_cache:
             return self._info_cache[ticker]
 
-        try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            self._info_cache[ticker] = info
-            return info
-        except Exception:
-            return {}
+        result: list = [{}]
 
-    def _passes_filters(self, ticker: str, df: pd.DataFrame, info: dict) -> bool:
-        """Check if stock passes basic filters."""
+        def _fetch() -> None:
+            try:
+                result[0] = yf.Ticker(ticker).info
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_fetch, daemon=True)
+        t.start()
+        t.join(timeout=timeout)
+        # If thread is still alive after timeout, it's hung — skip the ticker
+        info = result[0]
+        self._info_cache[ticker] = info
+        return info
+
+    def _passes_price_volume_filter(self, ticker: str, df: pd.DataFrame) -> bool:
+        """Fast pre-filter using only price data — no API call needed."""
         filters = self.discovery_config.get("filters", {})
 
-        # Market cap filter
+        if df is None or len(df) == 0:
+            return False
+
+        # Price filter
+        try:
+            current_price = float(df["Close"].iloc[-1])
+        except Exception:
+            return False
+        min_price = filters.get("min_price", 5.0)
+        max_price = filters.get("max_price", 500.0)
+        if current_price < min_price or current_price > max_price:
+            return False
+
+        # Volume filter
+        if "Volume" in df.columns:
+            _vol_mean = df["Volume"].iloc[-20:].mean()
+            avg_vol = int(_vol_mean) if pd.notna(_vol_mean) else 0
+            min_vol = filters.get("min_avg_volume", 200000)
+            if avg_vol < min_vol:
+                return False
+
+        return True
+
+    def _passes_filters(self, ticker: str, df: pd.DataFrame, info: dict) -> bool:
+        """Check if stock passes all filters (price/volume then market cap/sector)."""
+        filters = self.discovery_config.get("filters", {})
+
+        # Price and volume first — cheap, uses cached price data
+        if not self._passes_price_volume_filter(ticker, df):
+            return False
+
+        # Market cap filter — requires info (pre-cached for survivors)
         market_cap = info.get("marketCap", 0)
         min_cap = filters.get("min_market_cap_m", 300) * 1e6
         max_cap = filters.get("max_market_cap_m", 5000) * 1e6
         if market_cap < min_cap or market_cap > max_cap:
             return False
 
-        # Volume filter
-        if df is not None and "Volume" in df.columns:
-            avg_vol = df["Volume"].iloc[-20:].mean()
-            min_vol = filters.get("min_avg_volume", 200000)
-            if avg_vol < min_vol:
-                return False
-
-        # Price filter
-        if df is not None and len(df) > 0:
-            current_price = float(df["Close"].iloc[-1])
-            min_price = filters.get("min_price", 5.0)
-            max_price = filters.get("max_price", 500.0)
-            if current_price < min_price or current_price > max_price:
-                return False
-
         # Sector filter (for strategy-focused portfolios)
         sector_filter = self.discovery_config.get("sector_filter")
         if sector_filter:
-            stock_info = self._get_stock_info(ticker)
-            stock_sector = stock_info.get("sector", "")
+            stock_sector = info.get("sector", "")
             if stock_sector not in sector_filter:
                 return False
 
@@ -333,7 +360,8 @@ class StockDiscovery:
         market_cap_m = info.get("marketCap", 0) / 1e6
 
         # Average volume
-        avg_volume = int(df["Volume"].iloc[-20:].mean()) if "Volume" in df.columns else 0
+        _vol_mean = df["Volume"].iloc[-20:].mean() if "Volume" in df.columns else float("nan")
+        avg_volume = int(_vol_mean) if pd.notna(_vol_mean) else 0
 
         # Generate notes
         notes_parts = []
@@ -506,15 +534,22 @@ class StockDiscovery:
         print(f"    Leading sectors: {', '.join(top_sectors)}")
 
         # Find stocks in leading sectors
+        # Use ONLY pre-cached info — avoids 500+ sequential .info calls that cause 3min hangs
         for ticker in universe:
-            info = self._get_stock_info(ticker)
+            df = self._fetch_price_data(ticker, "3mo")
+            if not self._passes_price_volume_filter(ticker, df):
+                continue
+
+            # Only use pre-warmed info cache — no lazy fetches here
+            info = self._info_cache.get(ticker)
+            if not info:
+                continue
             sector = info.get("sector", "")
             if sector not in top_sectors:
                 continue
 
             # Check if outperforming sector
-            df = self._fetch_price_data(ticker, "3mo")
-            if df is None or len(df) < 20:
+            if len(df) < 20:
                 continue
 
             stock_mom = ((df["Close"].iloc[-1] - df["Close"].iloc[-20]) / df["Close"].iloc[-20]) * 100
@@ -585,6 +620,76 @@ class StockDiscovery:
         print(f"    Found {len(candidates)} volume anomalies")
         return candidates
 
+    def _prewarm_cache(self, tickers: List[str], chunk_size: int = 200) -> None:
+        """Batch-download price data in chunks to avoid rate limits."""
+        import time
+
+        for period in ("1y", "3mo"):
+            uncached = [t for t in tickers if f"{t}_{period}" not in self._price_cache]
+            if not uncached:
+                continue
+
+            # Split into chunks to avoid Yahoo rate limiting on large batches
+            chunks = [uncached[i:i + chunk_size] for i in range(0, len(uncached), chunk_size)]
+            print(f"  Batch downloading {len(uncached)} tickers ({period}) in {len(chunks)} chunk(s)...")
+
+            for chunk_idx, chunk in enumerate(chunks):
+                if chunk_idx > 0:
+                    time.sleep(5)  # Pause between chunks to avoid rate limits
+                try:
+                    raw = cached_download(
+                        chunk, period=period, progress=False, auto_adjust=True, group_by="ticker"
+                    )
+                    if raw.empty:
+                        continue
+                    for ticker in chunk:
+                        try:
+                            if len(chunk) == 1:
+                                df = raw.copy()
+                            else:
+                                df = raw[ticker].copy()
+                            if df.empty:
+                                continue
+                            if isinstance(df.columns, pd.MultiIndex):
+                                df.columns = df.columns.get_level_values(0)
+                            df = df.loc[:, ~df.columns.duplicated()]
+                            for col in ["Close", "High", "Low", "Volume", "Open"]:
+                                if col in df.columns and hasattr(df[col], "ndim") and df[col].ndim > 1:
+                                    df[col] = df[col].iloc[:, 0]
+                            if not df.empty:
+                                self._price_cache[f"{ticker}_{period}"] = df
+                        except Exception:
+                            pass
+                except Exception as e:
+                    print(f"  Chunk {chunk_idx+1} failed ({period}): {e}")
+
+    def _prewarm_info_cache(self, tickers: List[str], max_workers: int = 8) -> None:
+        """Fetch stock info for tickers in parallel, with per-ticker timeout."""
+        # Cap to avoid drowning in .info calls — only pre-warm what we actually need
+        tickers = tickers[:200]
+        uncached = [t for t in tickers if t not in self._info_cache]
+        if not uncached:
+            return
+        print(f"  Parallel info fetch for {len(uncached)} tickers ({max_workers} workers, 5s timeout/ticker)...")
+        t0 = time.time()
+
+        def _fetch_with_timeout(ticker: str) -> tuple:
+            """Each worker uses _get_stock_info which has a hard 5s timeout."""
+            return ticker, self._get_stock_info(ticker, timeout=5.0)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_fetch_with_timeout, t): t for t in uncached}
+            for future in as_completed(futures):
+                try:
+                    ticker, info = future.result(timeout=8)
+                    self._info_cache[ticker] = info
+                except Exception as e:
+                    ticker = futures[future]
+                    print(f"  Warning: info fetch failed for {ticker}: {e}")
+                    self._info_cache[ticker] = {}
+
+        print(f"  Info pre-warm done in {time.time() - t0:.1f}s")
+
     def run_all_scans(self) -> List[DiscoveredStock]:
         """
         Run all enabled discovery scans.
@@ -600,20 +705,64 @@ class StockDiscovery:
         })
 
         all_candidates = []
+        scan_start = time.time()
 
-        print("Running discovery scans...")
+        # Cap universe to avoid runaway scan times
+        MAX_UNIVERSE = 1000
+        if len(self.scan_universe) > MAX_UNIVERSE:
+            print(f"  Universe capped at {MAX_UNIVERSE} (was {len(self.scan_universe)})")
+            self.scan_universe = self.scan_universe[:MAX_UNIVERSE]
 
+        print(f"Running discovery scans on {len(self.scan_universe)} tickers...")
+
+        # Phase 1: Batch download price data
+        t0 = time.time()
+        self._prewarm_cache(self.scan_universe)
+        print(f"  Price pre-warm done in {time.time() - t0:.1f}s")
+
+        # Phase 2: Price/volume pre-filter (no .info calls, just cached price data)
+        def _get_cached_df(ticker: str):
+            df = self._price_cache.get(f"{ticker}_3mo")
+            if df is None:
+                df = self._price_cache.get(f"{ticker}_1y")
+            return df
+
+        price_vol_survivors = [
+            t for t in self.scan_universe
+            if self._passes_price_volume_filter(t, _get_cached_df(t))
+        ]
+        cached_count = sum(1 for t in self.scan_universe if _get_cached_df(t) is not None)
+        print(f"  Price data cached: {cached_count}/{len(self.scan_universe)} tickers")
+        print(f"  Price/volume pre-filter: {len(self.scan_universe)} → {len(price_vol_survivors)} survivors")
+
+        if not price_vol_survivors:
+            print("  WARNING: 0 survivors after price/volume filter — data fetch may have failed")
+            return []
+
+        # Phase 3: Pre-warm .info for survivors only (not the full universe)
+        # Warm up to 500 — sector leaders scan only uses pre-cached info, so more = better coverage
+        self._prewarm_info_cache(price_vol_survivors[:500])
+
+        # Phase 4: Run scans
         if scan_types.get("momentum_breakouts", True):
+            t0 = time.time()
             all_candidates.extend(self.scan_momentum_breakouts())
+            print(f"    Momentum scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("oversold_bounces", True):
+            t0 = time.time()
             all_candidates.extend(self.scan_oversold_bounces())
+            print(f"    Oversold scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("sector_leaders", True):
+            t0 = time.time()
             all_candidates.extend(self.scan_sector_leaders())
+            print(f"    Sector scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("volume_anomalies", False):
+            t0 = time.time()
             all_candidates.extend(self.scan_volume_anomalies())
+            print(f"    Volume scan: {time.time() - t0:.1f}s")
 
         # Deduplicate by ticker (keep highest score)
         ticker_map: Dict[str, DiscoveredStock] = {}
@@ -626,7 +775,8 @@ class StockDiscovery:
         result = list(ticker_map.values())
         result.sort(key=lambda x: x.discovery_score, reverse=True)
 
-        print(f"\nTotal unique candidates: {len(result)}")
+        total_elapsed = time.time() - scan_start
+        print(f"\nTotal unique candidates: {len(result)} (scan completed in {total_elapsed:.1f}s)")
         return result
 
 

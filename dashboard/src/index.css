@@ -6,9 +6,9 @@
   --color-bg-surface:    #080808;
   --color-bg-elevated:   #101010;
 
-  /* Borders — barely there */
-  --color-border:        #151515;
-  --color-border-hover:  #222222;
+  /* Borders */
+  --color-border:        #222222;
+  --color-border-hover:  #333333;
 
   /* Jade — UI chrome ONLY (ANALYZE button + selected position) */
   --color-accent:        #00D488;
@@ -24,8 +24,8 @@
 
   /* Text */
   --color-text-primary:   #EDEDED;
-  --color-text-secondary: #4A4A4A;
-  --color-text-muted:     #282828;
+  --color-text-secondary: #888888;
+  --color-text-muted:     #555555;
 
   /* Typography */
   --font-sans: "Inter", system-ui, sans-serif;

@@ -82,8 +82,8 @@ class RiskScoreboardCalculator:
         MarketRegime.BEAR: 30.0,
     }
 
-    def __init__(self):
-        self.state = load_portfolio_state(fetch_prices=False)
+    def __init__(self, portfolio_id: str = None):
+        self.state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
 
     def calculate(self) -> RiskScoreboard:
         """Calculate full risk scoreboard."""
@@ -463,9 +463,9 @@ class RiskScoreboardCalculator:
         return recommendations
 
 
-def get_risk_scoreboard() -> RiskScoreboard:
+def get_risk_scoreboard(portfolio_id: str = None) -> RiskScoreboard:
     """Get current risk scoreboard."""
-    calculator = RiskScoreboardCalculator()
+    calculator = RiskScoreboardCalculator(portfolio_id=portfolio_id)
     return calculator.calculate()
 
 

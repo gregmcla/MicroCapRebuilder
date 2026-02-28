@@ -309,6 +309,9 @@ class OpportunityLayer:
         """
         Generate BuyProposal objects from conviction scores.
 
+        For initial deployment (no existing positions), skips regime and ATR
+        reductions and targets the configured initial_deployment_target_pct.
+
         Args:
             conviction_scores: Dict of ConvictionScore objects
             state: Current portfolio state
@@ -320,6 +323,12 @@ class OpportunityLayer:
         remaining_cash = state.cash
         max_position_pct = self.config.get("max_position_pct", 15.0)
 
+        # Detect initial deployment: no positions held yet
+        is_initial_deployment = state.num_positions == 0
+        initial_target_pct = self.config.get("initial_deployment_target_pct", 90.0)
+        # Stop when remaining cash falls below the reserve threshold
+        cash_reserve = state.cash * (1.0 - initial_target_pct / 100.0) if is_initial_deployment else 100.0
+
         # Sort by conviction (highest first)
         sorted_scores = sorted(
             conviction_scores.values(),
@@ -328,6 +337,9 @@ class OpportunityLayer:
         )
 
         for conviction in sorted_scores:
+            if remaining_cash <= cash_reserve:
+                break
+
             # Get current price from scoring results (price_map) or state cache
             price = (price_map or {}).get(conviction.ticker) or state.price_cache.get(conviction.ticker)
             if price is None:
@@ -341,16 +353,21 @@ class OpportunityLayer:
             else:
                 base_size_pct = self.position_sizing["low_conviction_pct"]
 
-            # Apply volatility adjustment
             position_size_pct = base_size_pct
-            if conviction.atr_pct > 6.0:
-                position_size_pct *= 0.5  # Reduce 50% for very high volatility
-            elif conviction.atr_pct > 4.0:
-                position_size_pct *= 0.75  # Reduce 25% for high volatility
 
-            # Apply regime multiplier
-            regime_multiplier = get_position_size_multiplier(state.regime)
-            position_size_pct *= regime_multiplier
+            if is_initial_deployment:
+                # Initial deployment: use full position sizes — goal is full capital
+                # deployment across top-ranked candidates. Regime and ATR reductions
+                # are skipped; the AI review layer acts as the quality gate.
+                pass
+            else:
+                # Ongoing management: apply conservative volatility and regime adjustments
+                if conviction.atr_pct > 6.0:
+                    position_size_pct *= 0.5
+                elif conviction.atr_pct > 4.0:
+                    position_size_pct *= 0.75
+                regime_multiplier = get_position_size_multiplier(state.regime)
+                position_size_pct *= regime_multiplier
 
             # Cap at max position size
             position_size_pct = min(position_size_pct, max_position_pct)
@@ -358,9 +375,8 @@ class OpportunityLayer:
             # Calculate dollar value and shares
             position_value = state.total_equity * (position_size_pct / 100.0)
 
-            # Don't exceed remaining cash
-            if position_value > remaining_cash:
-                position_value = remaining_cash
+            # Don't exceed remaining cash (minus reserve)
+            position_value = min(position_value, remaining_cash - cash_reserve)
 
             if position_value < price:
                 continue  # Can't afford even 1 share
@@ -387,10 +403,6 @@ class OpportunityLayer:
 
             proposals.append(proposal)
             remaining_cash -= total_value
-
-            # Stop if we're out of cash
-            if remaining_cash < 100:
-                break
 
         return proposals
 

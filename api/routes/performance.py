@@ -7,7 +7,6 @@ from strategy_health import get_strategy_health
 from attribution import get_daily_attribution
 from analytics import PortfolioAnalytics
 from factor_learning import FactorLearner, get_weight_suggestions
-from portfolio_state import load_portfolio_state
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -15,10 +14,9 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 @router.get("/performance")
 def performance(portfolio_id: str):
     """Strategy health grade, attribution, analytics metrics."""
-    _state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
-    health = get_strategy_health()
+    health = get_strategy_health(portfolio_id=portfolio_id)
     attribution = get_daily_attribution()
-    metrics = PortfolioAnalytics().calculate_all_metrics()
+    metrics = PortfolioAnalytics(portfolio_id=portfolio_id).calculate_all_metrics()
 
     return {
         "health": serialize(health),

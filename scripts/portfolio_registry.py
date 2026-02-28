@@ -115,6 +115,30 @@ UNIVERSE_PRESETS = {
         },
         "etf_sources": ["SPY", "IVV", "VOO"],
     },
+    "allcap": {
+        "label": "All-Cap (Everything)",
+        "default_stop_loss_pct": 7.0,
+        "risk_per_trade_pct": 8.0,
+        "max_position_pct": 12.0,
+        "scoring_weights": {
+            "momentum": 0.22,
+            "volatility": 0.15,
+            "volume": 0.13,
+            "relative_strength": 0.22,
+            "mean_reversion": 0.13,
+            "rsi": 0.15,
+        },
+        "benchmark_symbol": "^GSPC",
+        "fallback_benchmark": "SPY",
+        "discovery_filters": {
+            "min_market_cap_m": 50,
+            "max_market_cap_m": 999999,
+            "min_avg_volume": 100000,
+            "min_price": 2.0,
+            "max_price": 5000.0,
+        },
+        "etf_sources": [],  # Uses all DEFAULT_ETFS — no restriction
+    },
     "custom": {
         "label": "Custom Universe",
         "default_stop_loss_pct": 8.0,

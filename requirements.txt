@@ -9,3 +9,5 @@ streamlit
 plotly
 fastapi
 uvicorn
+requests-cache
+requests-ratelimiter
