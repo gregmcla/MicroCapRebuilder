@@ -121,7 +121,6 @@ export default function Sidebar() {
 
         {/* Overview entry */}
         <PortfolioRow
-          id="overview"
           label="Overview"
           active={activePortfolioId === "overview"}
           collapsed={collapsed}
@@ -131,7 +130,6 @@ export default function Sidebar() {
         {portfolios.map((p) => (
           <PortfolioRow
             key={p.id}
-            id={p.id}
             label={p.name}
             active={activePortfolioId === p.id}
             collapsed={collapsed}
@@ -260,7 +258,6 @@ function PortfolioRow({
   collapsed,
   onClick,
 }: {
-  id?: string;
   label: string;
   active: boolean;
   collapsed: boolean;

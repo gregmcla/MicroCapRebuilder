@@ -1,6 +1,5 @@
 /** 3-column layout: sidebar | main | right-rail. */
 
-import type { CSSProperties } from "react";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
@@ -22,7 +21,6 @@ export default function App() {
   const mommyExpanded = useUIStore((s) => s.mommyExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
-  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   useKeyboardShortcuts();
 
   return (
@@ -43,10 +41,7 @@ export default function App() {
       )}
 
       {/* Body row */}
-      <div
-        className="flex-1 flex overflow-hidden"
-        style={{ "--sidebar-w": sidebarCollapsed ? "48px" : "232px" } as CSSProperties}
-      >
+      <div className="flex-1 flex overflow-hidden">
         {/* Left sidebar */}
         <Sidebar />
 
