@@ -298,10 +298,9 @@ function PortfolioRow({
         }
       }}
     >
-      <IconPortfolio
-        className=""
-        /* opacity handled inline */
-      />
+      <span style={{ opacity: active ? 1 : 0.4, display: "flex" }}>
+        <IconPortfolio className="" />
+      </span>
       {!collapsed && (
         <span
           style={{
@@ -365,10 +364,9 @@ function NavRow({
         }
       }}
     >
-      <Icon
-        className=""
-        /* color inherited from button */
-      />
+      <span style={{ opacity: active ? 1 : 0.4, display: "flex" }}>
+        <Icon className="" />
+      </span>
       {!collapsed && (
         <span
           style={{
