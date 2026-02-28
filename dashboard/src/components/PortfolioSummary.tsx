@@ -1,6 +1,6 @@
 /** Default focus pane state — portfolio hero metrics + nav. */
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
 import { useUIStore } from "../lib/store";
@@ -10,6 +10,7 @@ function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   const W = 400;
   const H = 64;
   const PAD = 2;
+  const polylineRef = useRef<SVGPolylineElement>(null);
 
   const points = useMemo(() => {
     if (snapshots.length < 2) return null;
@@ -26,14 +27,33 @@ function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
     }).join(" ");
   }, [snapshots]);
 
+  // Stroke-dashoffset mount animation — draw the line over 2s
+  useEffect(() => {
+    const el = polylineRef.current;
+    if (!el || !points) return;
+    const length = el.getTotalLength?.() ?? 0;
+    if (length === 0) return;
+    el.style.strokeDasharray = `${length}`;
+    el.style.strokeDashoffset = `${length}`;
+    // Force reflow so transition starts from the beginning
+    void el.getBoundingClientRect();
+    el.style.transition = "stroke-dashoffset 2s cubic-bezier(0.16, 1, 0.3, 1)";
+    el.style.strokeDashoffset = "0";
+    return () => {
+      el.style.transition = "";
+      el.style.strokeDasharray = "";
+      el.style.strokeDashoffset = "";
+    };
+  }, [points]);
+
   if (!points) return null;
 
   return (
     <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block">
       <defs>
         <linearGradient id="equity-fill" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#4ADE80" stopOpacity="0.12" />
-          <stop offset="100%" stopColor="#4ADE80" stopOpacity="0" />
+          <stop offset="0%" stopColor="rgba(124,92,252,0.15)" stopOpacity="1" />
+          <stop offset="100%" stopColor="rgba(124,92,252,0)" stopOpacity="1" />
         </linearGradient>
       </defs>
       <polygon
@@ -41,9 +61,10 @@ function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
         fill="url(#equity-fill)"
       />
       <polyline
+        ref={polylineRef}
         points={points}
         fill="none"
-        stroke="#4ADE80"
+        stroke="var(--accent)"
         strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
       />
@@ -55,11 +76,18 @@ function NavLink({ label, active, onClick }: { label: string; active: boolean; o
   return (
     <button
       onClick={onClick}
-      className={`text-[10px] uppercase tracking-wider transition-colors pb-1 border-b ${
-        active
-          ? "text-text-primary font-semibold border-accent"
-          : "text-text-muted hover:text-text-secondary border-transparent"
-      }`}
+      style={{
+        color: active ? "var(--accent-bright)" : "var(--text-1)",
+        fontSize: "9.5px",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        fontFamily: "var(--font-sans)",
+        background: "none",
+        border: "none",
+        padding: "2px 0",
+        cursor: "pointer",
+        transition: "color 0.15s ease",
+      }}
     >
       {label}
     </button>
@@ -77,6 +105,16 @@ export default function PortfolioSummary() {
   const dayColor = (state?.day_pnl ?? 0) >= 0 ? "text-profit" : "text-loss";
   const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
 
+  // Shared label style for metric labels
+  const labelStyle: React.CSSProperties = {
+    fontSize: "9.5px",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    color: "var(--text-0)",
+    fontFamily: "var(--font-sans)",
+    marginTop: "2px",
+  };
+
   return (
     <div className="flex flex-col h-full p-4 gap-4">
       {/* Nav links */}
@@ -88,10 +126,13 @@ export default function PortfolioSummary() {
 
       {/* Hero equity */}
       <div>
-        <div className="font-mono text-[32px] font-semibold text-text-primary leading-none tabular-nums">
+        <div
+          className="font-mono leading-none tabular-nums"
+          style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)" }}
+        >
           ${(state?.total_equity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </div>
-        <div className="text-[10px] text-text-muted uppercase tracking-wider mt-1">
+        <div style={labelStyle}>
           Portfolio Equity
         </div>
       </div>
@@ -102,25 +143,25 @@ export default function PortfolioSummary() {
           <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
             {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Total P&L</div>
+          <div style={labelStyle}>Total P&L</div>
         </div>
         <div>
           <div className={`font-mono text-sm tabular-nums font-semibold ${dayColor}`}>
             {(state?.day_pnl ?? 0) >= 0 ? "+" : ""}${(state?.day_pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Today</div>
+          <div style={labelStyle}>Today</div>
         </div>
         <div>
           <div className={`font-mono text-sm tabular-nums font-semibold ${returnColor}`}>
             {(state?.total_return_pct ?? 0) >= 0 ? "+" : ""}{(state?.total_return_pct ?? 0).toFixed(1)}%
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Return</div>
+          <div style={labelStyle}>Return</div>
         </div>
         <div>
           <div className="font-mono text-sm tabular-nums text-text-primary">
             ${(state?.cash ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
-          <div className="text-[10px] text-text-muted uppercase tracking-wider mt-0.5">Cash</div>
+          <div style={labelStyle}>Cash</div>
         </div>
       </div>
 
