@@ -47,14 +47,25 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center h-10 px-3 gap-2 cursor-pointer transition-colors ${
-        isSelected
-          ? "bg-bg-elevated border-l-2 border-accent"
-          : "hover:bg-bg-elevated border-l-2 border-transparent"
+      className={`flex items-center h-10 px-3 gap-2 cursor-pointer transition-colors border-b ${
+        isSelected ? "" : "hover:bg-[rgba(255,255,255,0.012)]"
       }`}
+      style={{
+        borderBottomColor: "var(--border-0)",
+        backgroundColor: isSelected ? "rgba(124,92,252,0.03)" : undefined,
+        boxShadow: isSelected ? "inset 3px 0 0 var(--accent)" : undefined,
+      }}
     >
       {/* Ticker */}
-      <span className="w-12 font-mono text-[13px] font-bold text-text-primary shrink-0">
+      <span
+        className="w-12 shrink-0 tabular-nums"
+        style={{
+          fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+          fontWeight: 500,
+          fontSize: "11px",
+          color: "var(--text-3)",
+        }}
+      >
         {pos.ticker}
       </span>
 
@@ -132,12 +143,70 @@ export default function PositionsPanel({
       </div>
 
       {/* Column headers */}
-      <div className="flex items-center gap-2 px-3 py-1 text-[10px] text-text-muted uppercase tracking-wider border-b border-border">
-        <span className="w-12">Ticker</span>
-        <span className="flex-1">Trend</span>
-        <span className="w-20 text-right">Price</span>
-        <span className="w-24 text-right">Day P&L</span>
-        <span className="w-20 text-right">P&L</span>
+      <div
+        className="flex items-center gap-2 px-3 py-1 border-b"
+        style={{ borderBottomColor: "var(--border-0)" }}
+      >
+        <span
+          className="w-12"
+          style={{
+            fontFamily: "var(--font-sans, sans-serif)",
+            fontSize: "9.5px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-0)",
+          }}
+        >
+          Ticker
+        </span>
+        <span
+          className="flex-1"
+          style={{
+            fontFamily: "var(--font-sans, sans-serif)",
+            fontSize: "9.5px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-0)",
+          }}
+        >
+          Trend
+        </span>
+        <span
+          className="w-20 text-right"
+          style={{
+            fontFamily: "var(--font-sans, sans-serif)",
+            fontSize: "9.5px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-0)",
+          }}
+        >
+          Price
+        </span>
+        <span
+          className="w-24 text-right"
+          style={{
+            fontFamily: "var(--font-sans, sans-serif)",
+            fontSize: "9.5px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-0)",
+          }}
+        >
+          Day P&L
+        </span>
+        <span
+          className="w-20 text-right"
+          style={{
+            fontFamily: "var(--font-sans, sans-serif)",
+            fontSize: "9.5px",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: "var(--text-0)",
+          }}
+        >
+          P&L
+        </span>
         <span className="w-3" />
       </div>
 
@@ -146,7 +215,11 @@ export default function PositionsPanel({
         {isLoading ? (
           <div className="space-y-px">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center h-10 px-3 gap-2 border-l-2 border-transparent">
+              <div
+                key={i}
+                className="flex items-center h-10 px-3 gap-2 border-b"
+                style={{ borderBottomColor: "var(--border-0)" }}
+              >
                 <div className="h-3 w-12 bg-bg-elevated rounded animate-pulse" />
                 <div className="flex-1 h-4 bg-bg-elevated rounded animate-pulse" />
                 <div className="h-3 w-20 bg-bg-elevated rounded animate-pulse" />

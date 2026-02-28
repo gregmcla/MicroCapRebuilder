@@ -17,8 +17,8 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
   const { data, isLoading, error } = useChartData(ticker, "20D");
 
   // Calculate sparkline points
-  const points = useMemo(() => {
-    if (!data || data.data.length === 0) return null;
+  const { linePoints, lastPoint } = useMemo(() => {
+    if (!data || data.data.length === 0) return { linePoints: null, lastPoint: null };
 
     const prices = data.data.map((d) => d.close);
     const minPrice = Math.min(...prices);
@@ -28,18 +28,27 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
     // Handle flat prices (range === 0)
     if (range === 0) {
       const centerY = HEIGHT / 2;
-      return prices.map((_, i) => {
+      const pts = prices.map((_, i) => {
         const x = prices.length > 1 ? (i / (prices.length - 1)) * WIDTH : WIDTH / 2;
         return `${x},${centerY}`;
       }).join(' ');
+      const lastX = prices.length > 1 ? WIDTH : WIDTH / 2;
+      return { linePoints: pts, lastPoint: { x: lastX, y: centerY } };
     }
 
-    return prices.map((price, i) => {
+    const coordPairs = prices.map((price, i) => {
       const x = prices.length > 1 ? (i / (prices.length - 1)) * WIDTH : WIDTH / 2;
       const y = HEIGHT - ((price - minPrice) / range) * (HEIGHT - PADDING * 2) - PADDING;
-      return `${x},${y}`;
-    }).join(' ');
-  }, [data]);
+      return { x, y };
+    });
+
+    const pts = coordPairs.map(({ x, y }) => `${x},${y}`).join(' ');
+    const last = coordPairs[coordPairs.length - 1];
+    return { linePoints: pts, lastPoint: last };
+  }, [data, HEIGHT]);
+
+  // Unique gradient ID per ticker to avoid SVG ID conflicts
+  const gradientId = `sparkline-grad-${ticker.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // Loading state
   if (isLoading) {
@@ -56,7 +65,7 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
   }
 
   // No data state
-  if (!points) {
+  if (!linePoints || !lastPoint) {
     return (
       <div className="w-[60px] bg-bg-surface rounded opacity-40" style={{ height }} />
     );
@@ -71,21 +80,31 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
       aria-label={`20-day price history for ${ticker}`}
     >
       <defs>
-        <linearGradient id={`sparkline-${ticker}`} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#00D488" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#00D488" stopOpacity="0" />
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="rgba(124,92,252,0.15)" stopOpacity="1" />
+          <stop offset="100%" stopColor="rgba(124,92,252,0)" stopOpacity="1" />
         </linearGradient>
       </defs>
-      <polyline
-        points={points}
-        fill="none"
-        stroke="#00D488"
-        strokeWidth="1.5"
-        className="drop-shadow-[0_0_1px_rgba(0,212,136,0.3)]"
-      />
+      {/* Filled area under the line */}
       <polygon
-        points={`0,${HEIGHT} ${points} ${WIDTH},${HEIGHT}`}
-        fill={`url(#sparkline-${ticker})`}
+        points={`0,${HEIGHT} ${linePoints} ${WIDTH},${HEIGHT}`}
+        fill={`url(#${gradientId})`}
+      />
+      {/* Sparkline stroke */}
+      <polyline
+        points={linePoints}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* Last data point dot with glow */}
+      <circle
+        cx={lastPoint.x}
+        cy={lastPoint.y}
+        r={2}
+        fill="var(--accent)"
+        filter="drop-shadow(0 0 3px rgba(124,92,252,0.6))"
       />
     </svg>
   );
