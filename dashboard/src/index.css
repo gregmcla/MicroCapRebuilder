@@ -1,139 +1,190 @@
 @import "tailwindcss";
 
 @theme {
-  /* Backgrounds */
-  --color-bg-primary:    #000000;
-  --color-bg-surface:    #080808;
-  --color-bg-elevated:   #101010;
+  /* ── Backgrounds (dual-token bridge: old names → new values) ── */
+  --color-bg-primary:    #0a0a0b;    /* was #000000 → void */
+  --color-bg-surface:    #0e0e10;    /* was #080808 → surface-0 */
+  --color-bg-elevated:   #141416;    /* was #101010 → surface-1 */
 
-  /* Borders */
-  --color-border:        #222222;
-  --color-border-hover:  #333333;
+  /* New surface levels */
+  --color-surface-2:     #1a1a1d;
+  --color-surface-3:     #222225;
+  --color-surface-4:     #2a2a2e;
 
-  /* Jade — UI chrome ONLY (ANALYZE button + selected position) */
-  --color-accent:        #00D488;
-  --color-accent-dim:    #003D27;
+  /* ── Borders (rgba) ── */
+  --color-border:        rgba(255,255,255,0.05);   /* was #222222 → border-0 */
+  --color-border-hover:  rgba(255,255,255,0.09);   /* was #333333 → border-2 */
+  --color-border-1:      rgba(255,255,255,0.06);
+  --color-border-3:      rgba(255,255,255,0.13);
 
-  /* Profit/loss — DATA only, separate from accent */
-  --color-profit:        #4ADE80;
-  --color-profit-dim:    #14532D;
-  --color-loss:          #F87171;
-  --color-loss-dim:      #4D0010;
-  --color-warning:       #FBBF24;
-  --color-warning-dim:   #78350F;
+  /* ── Accent: jade → violet ── */
+  --color-accent:        #7c5cfc;
+  --color-accent-dim:    rgba(124,92,252,0.12);
+  --color-accent-bright: #917aff;
+  --color-accent-border: rgba(124,92,252,0.25);
+  --color-accent-glow:   rgba(124,92,252,0.06);
+  --color-accent-cyan:   #5ce0d6;
 
-  /* Text */
-  --color-text-primary:   #EDEDED;
-  --color-text-secondary: #888888;
-  --color-text-muted:     #555555;
+  /* ── Semantic data colors ── */
+  --color-profit:        #34d399;    /* was #4ADE80 */
+  --color-profit-dim:    rgba(52,211,153,0.10);
+  --color-loss:          #f87171;
+  --color-loss-dim:      rgba(248,113,113,0.08);
+  --color-warning:       #fbbf24;
+  --color-warning-dim:   rgba(251,191,36,0.08);
 
-  /* Typography */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* ── Text (opacity-based) ── */
+  --color-text-primary:   rgba(255,255,255,0.95);  /* was #EDEDED → text-4 */
+  --color-text-secondary: rgba(255,255,255,0.48);  /* was #888888 → text-1 */
+  --color-text-muted:     rgba(255,255,255,0.32);  /* was #555555 → text-0 */
+  /* New text levels */
+  --color-text-2:         rgba(255,255,255,0.68);
+  --color-text-3:         rgba(255,255,255,0.88);
 
-  /* Glows — NONE */
-  --shadow-glow-cyan:    none;
-  --shadow-glow-cyan-lg: none;
-  --shadow-glow-magenta: none;
-  --shadow-glow-green:   none;
+  /* ── Typography ── */
+  --font-sans: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
-  /* Animations */
+  /* ── Border radius ── */
+  --radius:    8px;
+  --radius-sm: 6px;
+  --radius-xs: 4px;
+
+  /* ── Animations ── */
   --animate-pulse-slow: pulse-slow 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-pulse-fast: pulse-fast 0.7s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-up: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ── Raw CSS vars for inline styles and SVG strokes ── */
+:root {
+  --void:       #0a0a0b;
+  --surface-0:  #0e0e10;
+  --surface-1:  #141416;
+  --surface-2:  #1a1a1d;
+  --surface-3:  #222225;
+  --surface-4:  #2a2a2e;
+  --accent:        #7c5cfc;
+  --accent-bright: #917aff;
+  --accent-cyan:   #5ce0d6;
+  --accent-dim:    rgba(124,92,252,0.12);
+  --accent-border: rgba(124,92,252,0.25);
+  --accent-glow:   rgba(124,92,252,0.06);
+  --green:      #34d399;
+  --green-dim:  rgba(52,211,153,0.10);
+  --red:        #f87171;
+  --red-dim:    rgba(248,113,113,0.08);
+  --amber:      #fbbf24;
+  --amber-dim:  rgba(251,191,36,0.08);
+  --border-0:   rgba(255,255,255,0.05);
+  --border-1:   rgba(255,255,255,0.06);
+  --border-2:   rgba(255,255,255,0.09);
+  --border-3:   rgba(255,255,255,0.13);
+  --text-0:     rgba(255,255,255,0.32);
+  --text-1:     rgba(255,255,255,0.48);
+  --text-2:     rgba(255,255,255,0.68);
+  --text-3:     rgba(255,255,255,0.88);
+  --text-4:     rgba(255,255,255,0.95);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Keyframes ── */
 @keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 @keyframes pulse-fast {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-.animate-pulse-slow {
-  animation: pulse-slow 1s ease-in-out infinite;
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.animate-pulse-fast {
-  animation: pulse-fast 0.7s ease-in-out infinite;
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Base styles */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--green); }
+  50%       { opacity: 0.6; box-shadow: 0 0 8px var(--green); }
+}
+
+/* ── Animation utility classes ── */
+.animate-pulse-slow { animation: pulse-slow 1s ease-in-out infinite; }
+.animate-pulse-fast { animation: pulse-fast 0.7s ease-in-out infinite; }
+.animate-live-pulse { animation: livePulse 2s ease-in-out infinite; }
+
+/* Cascade delay classes for staggered load */
+.anim { animation: fadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.d1  { animation-delay: 30ms; }
+.d2  { animation-delay: 60ms; }
+.d3  { animation-delay: 90ms; }
+.d4  { animation-delay: 120ms; }
+.d5  { animation-delay: 150ms; }
+.d6  { animation-delay: 180ms; }
+.d7  { animation-delay: 210ms; }
+.d8  { animation-delay: 240ms; }
+.d9  { animation-delay: 270ms; }
+.d10 { animation-delay: 300ms; }
+
+/* Card hover pattern */
+.card-hover {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-1);
+  background: linear-gradient(to bottom, var(--surface-2), var(--surface-1));
+}
+
+/* ── Base styles ── */
 html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
+  background-color: var(--void);
+  color: var(--text-2);
   font-family: var(--font-sans);
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Mono font for data */
 .font-data {
   font-family: var(--font-mono);
 }
 
-/* Tabular numbers for financial data */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #1E1E1E;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
 
-/* Resizable panel separator */
+/* ── Resizable panel separator ── */
 [data-separator] {
   width: 1px;
-  background: var(--color-border);
+  background: var(--border-0);
   cursor: col-resize;
   flex-shrink: 0;
-  transition: background 0.15s;
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 [data-separator]:hover,
 [data-separator][data-resize-handle-active] {
-  background: var(--color-accent);
+  background: var(--accent);
 }
 
-/* Position detail info slide-in */
+/* ── Slide animations ── */
 .position-detail-slide {
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
