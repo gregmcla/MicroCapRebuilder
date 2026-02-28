@@ -6,8 +6,9 @@
 - **Plan before coding.** For anything beyond a trivial fix, enter plan mode first. Outline the approach, get approval, then implement.
 - **Verify before claiming success.** After making changes, run the dev server or relevant script and check output for errors. Do NOT claim something works without proof.
 - **Preserve existing functionality.** When rewriting or refactoring, enumerate what currently works and confirm with the user what should be kept. Never silently remove features.
-- **Don't deploy unless asked.** If asked to implement or fix something, do exactly that. Don't push, deploy, or change scope without explicit approval.
+- **Don't deploy unless explicitly asked.** Don't push, deploy, or change scope without explicit approval. "Figure it out" is not explicit approval to push to GitHub.
 - **Update this file.** After completing a major feature or phase, update this CLAUDE.md to reflect the current state of the project.
+- **Push to GitHub at end of every session** where meaningful changes were made — do it automatically.
 - **Use python3**, not python, on this machine.
 - **Always `except Exception as e:`** — never bare `except:`. It hides real bugs.
 
@@ -15,25 +16,28 @@
 - Python 3 shebang: `#!/usr/bin/env python3`
 - Use `pathlib.Path` for all file paths: `Path(__file__).parent.parent / "data"`
 - Imports from `schema.py` for consistent column names
-- All parameters from `data/config.json` — don't hardcode
+- All parameters from `data/portfolios/{id}/config.json` — don't hardcode
 - TypeScript for all frontend code (React dashboard)
+
+---
 
 ## Project Overview
 
-MicroCapRebuilder (aka **Mommy Bot**) is an intelligent, adaptive portfolio trading system for microcap stocks. Currently in **PAPER mode**.
+MicroCapRebuilder (aka **Mommy Bot**) is an intelligent, adaptive portfolio trading system. Supports multiple portfolios with different strategies (microcap, allcap, mean reversion, momentum, etc.). Currently in **PAPER mode**.
 
 **Core capabilities:**
+- Multi-portfolio management with isolated data per portfolio
 - Multi-factor stock scoring (momentum, volatility, volume, relative strength, RSI, mean reversion)
 - Market regime detection (bull/bear/sideways)
 - Automated risk management (stop losses, take profits, position sizing)
-- Unified analysis pipeline with optional AI review
+- Unified analysis pipeline with AI review (APPROVE/MODIFY/VETO)
 - Learning pipeline (factor scores at entry, post-mortems at exit, weight adjustment)
 - Risk scoreboard and early warning system
 - React dashboard with FastAPI backend ("Mommy" co-pilot personality)
 
-## Architecture
+---
 
-The system has three layers:
+## Architecture
 
 ### 1. Python Backend (`scripts/`)
 Core trading logic, analysis, and data management.
@@ -41,203 +45,259 @@ Core trading logic, analysis, and data management.
 **Single source of truth:** `portfolio_state.py`
 ```python
 from portfolio_state import load_portfolio_state, PortfolioState
-state = load_portfolio_state(fetch_prices=True)  # or False for cached
+state = load_portfolio_state(fetch_prices=True, portfolio_id="microcap")
 ```
-All scripts consume `PortfolioState` — no direct CSV reads/writes for trading data. Regime cached with 1hr TTL. Price fetching uses yfinance batch download.
+All scripts consume `PortfolioState` — no direct CSV reads/writes for trading data.
+
+**Key scripts:**
+- `portfolio_state.py` — loads all portfolio data into a single PortfolioState dataclass
+- `unified_analysis.py` — ANALYZE → EXECUTE pipeline
+- `ai_review.py` — AI review layer (APPROVE/MODIFY/VETO)
+- `stock_scorer.py` — 6-factor scoring model
+- `stock_discovery.py` — universe scanning and candidate discovery
+- `universe_provider.py` — two-tier universe (core + extended), ETF holdings
+- `watchlist_manager.py` — per-portfolio watchlist management
+- `etf_holdings_provider.py` — ETF holdings provider (23 DEFAULT_ETFS)
+- `portfolio_registry.py` — portfolio creation, SECTOR_ETF_MAP, TRADING_STYLES, universe presets
+- `strategy_generator.py` — AI strategy generation via Anthropic API
+- `market_regime.py` — bull/bear/sideways detection
+- `risk_layer.py` — trailing stops, volatility stops, regime-adjusted stops
+- `risk_manager.py` — position sizing, concentration limits
+- `risk_scoreboard.py` — overall risk score (5 components)
+- `opportunity_layer.py` — buy proposal generation (filters held tickers, uses scorer price_map)
+- `composition_layer.py` — portfolio composition and correlation checks
+- `execution_sequencer.py` — trade sequencing by priority
+- `analytics.py` — Sharpe, drawdown, CAGR, benchmark comparison
+- `factor_learning.py` — factor weight adjustment from real trades
+- `early_warning.py` — proactive risk alerts
+- `strategy_health.py` — A-F grading
+- `strategy_pivot.py` — PIVOT recommendations
+- `capital_preservation.py` — capital preservation system
+- `yf_session.py` — DataFrame-level disk cache for yfinance (4hr TTL, curl_cffi compat)
+- `portfolio_chat.py` — Mommy chat interface
+- `schema.py` — column constants and enums
+- `execute_sells.py`, `update_positions.py`, `pick_from_watchlist.py` — daily pipeline scripts
 
 ### 2. FastAPI API (`api/`)
-Thin REST layer over existing Python modules. No business logic here.
+Thin REST layer. No business logic here.
+
+- `api/main.py` — app, CORS, router registration
+- `api/deps.py` — sys.path setup, `serialize()` helper
+- `api/routes/portfolios.py` — portfolio management (`/api/portfolios`)
+- `api/routes/state.py` — portfolio state (`/api/{portfolio_id}/state`)
+- `api/routes/analysis.py` — analyze + execute (`/api/{portfolio_id}/analyze`)
+- `api/routes/risk.py` — risk + warnings (`/api/{portfolio_id}/risk`)
+- `api/routes/performance.py` — performance + learning (`/api/{portfolio_id}/performance`)
+- `api/routes/chat.py` — chat + mommy insight (`/api/{portfolio_id}/chat`)
+- `api/routes/controls.py` — mode toggle, sell, close-all (`/api/{portfolio_id}/...`)
+- `api/routes/discovery.py` — scan (`/api/{portfolio_id}/scan`)
+- `api/routes/market.py` — market indices + charts (`/api/market/...`)
 
 ### 3. React Dashboard (`dashboard/`)
 Vite + React 19 + Tailwind v4 + TanStack Query + Zustand.
+
+---
 
 ## Directory Structure
 
 ```
 MicroCapRebuilder/
-├── scripts/                     # Python backend (all trading logic)
-│   ├── portfolio_state.py       # ⭐ Single source of truth for all portfolio data
-│   ├── unified_analysis.py      # ANALYZE → EXECUTE pipeline
-│   ├── ai_review.py             # AI review layer (APPROVE/MODIFY/VETO)
-│   ├── execute_sells.py         # Stop loss / take profit execution
-│   ├── pick_from_watchlist.py   # Multi-factor scoring and buy proposals
-│   ├── update_positions.py      # Position price updates + daily snapshot
-│   ├── stock_scorer.py          # 6-factor scoring model
-│   ├── market_regime.py         # Bull/bear/sideways detection
-│   ├── risk_manager.py          # Position sizing, concentration limits
-│   ├── risk_scoreboard.py       # Overall risk score (5 components)
-│   ├── analytics.py             # Sharpe, drawdown, CAGR, etc.
-│   ├── trade_analyzer.py        # Completed trade analysis
-│   ├── strategy_health.py       # Strategy A-F grading
-│   ├── strategy_pivot.py        # PIVOT recommendations
-│   ├── early_warning.py         # Proactive risk alerts
-│   ├── factor_learning.py       # Factor weight adjustment from real trades
-│   ├── post_mortem.py           # Trade post-mortem generation
-│   ├── capital_preservation.py  # Capital preservation system
-│   ├── portfolio_chat.py        # Mommy chat interface
-│   ├── data_provider.py         # Centralized yfinance data access
-│   ├── schema.py                # Column constants and enums
-│   ├── explainability.py        # Trade rationale generation
-│   ├── attribution.py           # Factor attribution analysis
-│   ├── pattern_detector.py      # Pattern detection from trade history
-│   ├── generate_report.py       # Daily text report
-│   ├── generate_graph.py        # Performance chart generation
-│   ├── webapp.py                # Legacy Streamlit dashboard (being replaced)
-│   └── paper_trading.py         # Paper trading mode
-├── api/                         # FastAPI REST layer
-│   ├── main.py                  # App, CORS, lifespan
-│   ├── deps.py                  # Shared dependencies (state loading)
-│   └── routes/
-│       ├── state.py             # GET /api/state, /api/state/refresh
-│       ├── analysis.py          # POST /api/analyze, /api/execute
-│       ├── risk.py              # GET /api/risk, /api/warnings
-│       ├── performance.py       # GET /api/performance, /api/learning
-│       ├── chat.py              # POST /api/chat, GET /api/mommy/insight
-│       ├── controls.py          # Paper/live mode, close-all, manual sell
-│       └── discovery.py         # POST /api/scan (watchlist discovery)
-├── dashboard/                   # React SPA
-│   ├── src/
-│   │   ├── App.tsx              # Four-panel layout shell
-│   │   ├── components/          # TopBar, PositionsPanel, RightPanel, etc.
-│   │   ├── hooks/               # usePortfolioState, useRisk, usePerformance
-│   │   └── lib/                 # api.ts, types.ts, store.ts
-│   ├── vite.config.ts
-│   └── package.json
-├── data/                        # Data files (CSVs gitignored)
-│   ├── config.json              # ⭐ All trading parameters
-│   ├── positions.csv            # Current holdings
-│   ├── transactions.csv         # Unified transaction ledger
-│   └── daily_snapshots.csv      # Equity curve data
-├── docs/plans/                  # Design documents
-├── run_dashboard.sh             # Launches API (8000) + React dev (5173)
-├── run_daily.sh                 # Daily trading pipeline
-└── requirements.txt
+├── scripts/                        # Python backend (all trading logic)
+├── api/                            # FastAPI REST layer
+│   ├── main.py
+│   ├── deps.py
+│   └── routes/                     # One file per route group
+├── dashboard/                      # React SPA (Vite + React 19 + Tailwind v4)
+│   └── src/
+│       ├── App.tsx                 # Resizable panel layout shell
+│       ├── components/             # TopBar, PositionsPanel, FocusPane, etc.
+│       ├── hooks/                  # usePortfolioState, useRisk, usePerformance
+│       └── lib/                    # api.ts, types.ts, store.ts
+├── data/
+│   ├── portfolios/                 # Per-portfolio data (gitignored CSVs)
+│   │   └── {id}/
+│   │       ├── config.json         # Portfolio config (tracked in git)
+│   │       ├── positions.csv
+│   │       ├── transactions.csv
+│   │       ├── daily_snapshots.csv
+│   │       └── watchlist.jsonl
+│   ├── portfolios.json             # Registry of all portfolios
+│   └── yf_cache/                   # yfinance disk cache (4hr TTL, gitignored)
+├── docs/plans/                     # Design documents and implementation plans
+├── run_dashboard.sh                # Launches API (8000) + React dev (5173)
+└── run_daily.sh                    # Daily trading pipeline
 ```
+
+**Active portfolios:** microcap, ai, new, largeboi (plus many orphan test dirs — ignore those)
+
+---
+
+## API Endpoints
+
+All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/portfolios` | List all portfolios |
+| POST | `/api/portfolios` | Create portfolio |
+| DELETE | `/api/portfolios/{id}` | Delete portfolio |
+| POST | `/api/portfolios/generate-strategy` | AI strategy generation |
+| GET | `/api/portfolios/trading-styles` | Available trading style presets |
+| GET | `/api/portfolios/sectors` | Available sectors |
+| GET | `/api/portfolios/overview` | Cross-portfolio overview |
+| GET | `/api/{portfolio_id}/state` | Portfolio state (cached prices) |
+| GET | `/api/{portfolio_id}/state/refresh` | Portfolio state (live prices) |
+| POST | `/api/{portfolio_id}/analyze` | Run unified analysis (dry run) |
+| POST | `/api/{portfolio_id}/execute` | Execute approved actions |
+| GET | `/api/{portfolio_id}/risk` | Risk scoreboard |
+| GET | `/api/{portfolio_id}/warnings` | Early warnings |
+| GET | `/api/{portfolio_id}/performance` | Strategy health + analytics |
+| GET | `/api/{portfolio_id}/learning` | Factor summary + suggestions |
+| POST | `/api/{portfolio_id}/sell/{ticker}` | Manual sell |
+| POST | `/api/{portfolio_id}/close-all` | Close all positions |
+| GET | `/api/{portfolio_id}/mode` | Paper/live mode |
+| POST | `/api/{portfolio_id}/mode/toggle` | Toggle paper/live |
+| POST | `/api/{portfolio_id}/scan` | Trigger watchlist discovery scan |
+| GET | `/api/{portfolio_id}/scan/status` | Scan status + result |
+| POST | `/api/{portfolio_id}/chat` | Mommy chat |
+| GET | `/api/{portfolio_id}/mommy/insight` | Context-aware rotating insight |
+| GET | `/api/market/indices` | Market indices (SPY, QQQ, etc.) |
+| GET | `/api/market/chart/{ticker}` | OHLCV chart data |
+| GET | `/api/health` | Health check |
+
+---
+
+## React Dashboard
+
+**Launch:** `./run_dashboard.sh` (API on 8000, React on 5173)
+
+**Layout:** Resizable two-panel split via `react-resizable-panels` v4.
+- **Left panel** (default 55%): PositionsPanel + PositionDetailInfo (slides in below when position selected)
+- **Right panel** (default 45%): FocusPane (tabs: Summary, Actions, Risk, Performance) + MommyStrip
+
+**TopBar:** M MOMMY (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | CLOSE ALL | PAPER/LIVE
+
+**Position rows:** ticker | sparkline (max 140px) | price | day P&L ($/%) | overall P&L ($/%) | dot
+
+**Position detail (split):**
+- `PositionDetailChart` — right pane (chart, P&L cards, range selector)
+- `PositionDetailInfo` — left pane below positions (compact header, SELL, progress bar, detail grid), `max-h-[40%]`, slideDown animation
+
+**react-resizable-panels v4:** uses `Group`, `Panel`, `Separator` — NOT PanelGroup/PanelResizeHandle.
+
+**Keyboard shortcuts:** A = analyze, E = execute, R = refresh, Escape = close detail
+
+---
 
 ## Trading Flow
 
 ### Daily Pipeline (`run_daily.sh`)
 ```
-load_portfolio_state()
-    → execute_sells(state)      # Check stop/target triggers
+load_portfolio_state(fetch_prices=True)
+    → execute_sells(state)       # Check stop/target triggers
     → pick_from_watchlist(state) # Score candidates, propose buys
     → update_positions(state)    # Update prices, save snapshot
     → generate_graph()           # Performance chart
 ```
 
-### ANALYZE → EXECUTE Flow (Dashboard)
+### ANALYZE → EXECUTE (Dashboard)
 ```
-ANALYZE button → run_unified_analysis(dry_run=True)
+ANALYZE → run_unified_analysis(dry_run=True)
     1. Check stop/target triggers → proposed sells
-    2. Score watchlist → proposed buys (limited by remaining cash)
-    3. AI reviews proposals (batched, 10 at a time)
-    → Show results with quant scores + AI reasoning
-EXECUTE button → execute_approved_actions()
+    2. Score watchlist candidates (filtered: not already held)
+    3. AI reviews proposals in batches of 10
+    → Returns approved/modified/vetoed with quant scores + reasoning
+EXECUTE → execute_approved_actions()
 ```
 
-### Key Configuration (`data/config.json`)
-- Starting capital: $50,000
-- Risk per trade: 10%
-- Max position: 15% of portfolio
-- Max positions: 999 (uncapped — system is selective via scoring + AI review)
-- Stop loss: 8% (dynamic: trailing, volatility-adjusted, regime-adjusted)
-- No hard take profit ceiling — trailing stops let winners run
-- Benchmark: ^RUT (fallback: IWM)
+### SCAN (Dashboard)
+```
+SCAN → watchlist_manager.update_watchlist(run_discovery=True)
+    → universe_provider: core (daily) + extended (rotating_3day)
+    → stock_discovery: score candidates, apply filters
+    → Update watchlist.jsonl (add new, remove stale/poor)
+    ~30-50s warm cache, ~5-6min cold cache
+```
 
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/state` | Portfolio state (fetch_prices=False) |
-| GET | `/api/state/refresh` | Portfolio state (fetch_prices=True) |
-| POST | `/api/analyze` | Run unified analysis (dry run) |
-| POST | `/api/execute` | Execute approved actions |
-| GET | `/api/risk` | Risk scoreboard + components |
-| GET | `/api/warnings` | Early warnings |
-| GET | `/api/performance` | Strategy health, analytics, attribution |
-| GET | `/api/learning` | Factor summary + weight suggestions |
-| POST | `/api/sell/{ticker}` | Manual sell single position |
-| POST | `/api/chat` | Mommy chat |
-| GET | `/api/mommy/insight` | Context-aware rotating insight |
-| POST | `/api/scan` | Trigger watchlist discovery scan |
-
-## React Dashboard
-
-**Launch:** `./run_dashboard.sh` (starts API on 8000 + React on 5173)
-
-**Stack:** Vite + React 19 + Tailwind v4 + TanStack Query + Zustand
-
-**Layout:** Four persistent panels — positions (left), context tabs (right), activity feed (bottom-left), Mommy co-pilot (bottom-right). Top bar always visible with equity, day P&L, overall P&L, return %, risk score, regime, action badges.
-
-**Positions panel:** Each row shows ticker, sparkline, shares, price, unrealized P&L %, day P&L ($+%), days held. Sortable by P&L, Day P&L, ticker, weight, entry date.
-
-**Position detail:** Click a position to see full chart, stop/target progress, and manual SELL button with confirmation modal.
-
-**UPDATE button:** Fetches live prices via yfinance, saves to positions.csv and daily_snapshots.csv, then reloads state. Day P&L compares against previous day's snapshot (skips today's row to avoid zeroing on repeat updates).
-
-**SCAN button:** Triggers `watchlist_manager.update_watchlist(run_discovery=True)` to find new stock candidates. Run before ANALYZE to refresh the watchlist. Shows "Found X, added Y" result.
-
-**Keyboard shortcuts:** A = analyze, E = execute, R = refresh, Escape = close detail
-
-**Note:** `react-resizable-panels` v4 uses `Group`, `Panel`, `Separator` — NOT PanelGroup/PanelResizeHandle.
+---
 
 ## Scoring Model
 
-6 factors (weights in parentheses):
-- **Momentum (30%)**: 20-day price change
-- **Relative Strength (25%)**: Performance vs Russell 2000
-- **Volatility (20%)**: Lower volatility = higher score
-- **Volume (15%)**: Recent vs average volume (liquidity)
-- **Mean Reversion (10%)**: Distance from 20-day SMA
-- **RSI**: Overbought filter (score of 10.0 for overbought stocks)
+6 factors with regime-weighted scoring:
+- **Momentum**: multi-timeframe (5/20/60 day), alignment + acceleration bonuses
+- **Relative Strength**: vs benchmark (^GSPC or ^RUT)
+- **Volatility**: lower = higher score
+- **Volume**: recent vs average (liquidity signal)
+- **Mean Reversion**: distance from 20-day SMA (primary signal for mean reversion style)
+- **RSI**: overbought filter, hard filter above 85
 
-ATR% calculated for volatility-adjusted position sizing.
+Regime weights: BULL favors momentum/RS, BEAR favors volatility/mean reversion.
+Min score threshold: BULL=40, SIDEWAYS=50, BEAR=60.
 
-**StockScore is a dataclass with individual attributes, not a dict:**
-```python
-factor_scores = {
-    "momentum": s.momentum_score,
-    "volatility": s.volatility_score,
-    "volume": s.volume_score,
-    "relative_strength": s.relative_strength_score,
-    "mean_reversion": s.mean_reversion_score,
-    "rsi": s.rsi_score,
-}
-```
+**StockScore is a dataclass** — access `.momentum_score`, `.volatility_score`, etc. (not dict keys).
+
+---
+
+## Portfolio Configuration
+
+Each portfolio has its own `data/portfolios/{id}/config.json` with:
+- `strategy.trading_style`: `mean_reversion` | `momentum` | `balanced` | `defensive`
+- `universe.tiers.core.scan_frequency`: `daily` (always scan all core)
+- `universe.tiers.extended.scan_frequency`: `rotating_3day` (scan 1/3 of extended per day)
+- `scoring.regime_weights`: per-regime factor weights
+- `enhanced_trading.layer2.conviction_multipliers`: `acceptable: 1.0` (NOT 0.75 — that was a dead zone bug)
+
+**Universe presets:** `microcap`, `allcap` (no market cap limits), `largecap`
+
+---
+
+## yfinance Cache (`scripts/yf_session.py`)
+
+- **yfinance ≥ 0.2.50 uses curl_cffi** — rejects custom requests-cache sessions
+- **Solution:** DataFrame-level pickle cache in `data/yf_cache/` with **4hr TTL**
+- Use `from yf_session import cached_download` — never pass `session=` to yf.download()
+- `yf.Ticker(ticker).info` must have a per-ticker timeout (5s) to prevent hanging scans
+- TTL configurable via `YF_CACHE_TTL_SECONDS` env var
+
+---
+
+## Known Gotchas
+
+- `ALE`, `JBT` tickers appear delisted — fail price fetch consistently
+- `stale_alerts` must load from tracker file even when `fetch_prices=False`
+- `FactorLearner.get_factor_summary()` is a method, not a module-level function
+- `PreservationStatus` is a dataclass — use `.active` not `.get()`
+- AI JSON responses need cleaning: strip markdown blocks, find JSON boundaries, remove trailing commas
+- `OpportunityLayer` must filter out held tickers before scoring — otherwise only held positions match
+- `OpportunityLayer._generate_buy_proposals()` needs `price_map` from scorer results — `state.price_cache` only has held positions, not watchlist candidates
+- `fetch_prices_batch` returns 3-tuple: `(prices, failures, prev_closes)` — uses `period="5d"`
+- `save_snapshot` must filter out today's row before computing day P&L (avoid zeroing on repeat updates)
+- `run_dashboard.sh` uses `wait` not `wait -n` (macOS bash lacks `wait -n`)
+- `day_change` in positions CSV is **total position dollar change** (not per-share). Per-share = `day_change / shares`
+- **Scan timeout:** cold cache scan can take 5-6 min and crash API from memory pressure. Keep `rotating_3day` on extended tier. 4hr cache TTL reduces cold scan frequency.
+- API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8000`
+- `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
+
+---
 
 ## Learning Pipeline
 
 - Factor scores recorded as JSON on each BUY transaction
-- Post-mortems generated on each SELL (`data/post_mortems.csv`)
-- `factor_learning.py` correlates entry scores with trade outcomes, adjusts weights +/-5% per cycle
-- Minimum 20 completed trades before any adjustment
+- Post-mortems generated on each SELL (`data/portfolios/{id}/post_mortems.csv`)
+- `factor_learning.py` correlates entry scores with outcomes, adjusts weights ±5% per cycle
+- Minimum 10 completed trades before any adjustment (fast pattern learning at 5)
 - No factor below 5% or above 40% weight
 
-## Risk & Strategy Systems
-
-- **Risk Scoreboard** (`risk_scoreboard.py`): Overall score from 5 components — Concentration, Drawdown, Exposure, Volatility, Stop Proximity
-- **Early Warnings** (`early_warning.py`): Regime shifts, drawdown thresholds, losing streaks, concentration risk
-- **Strategy Health** (`strategy_health.py`): A-F grading across Performance, Risk Control, Trading Edge, Factor Alignment, Market Fit
-- **PIVOT Analysis** (`strategy_pivot.py`): Recommends Consolidation/Defensive/Cash/Aggressive/Regime Adaptation modes
-- **Capital Preservation** (`capital_preservation.py`): `PreservationStatus` is a dataclass — use `.active` not `.get()`
-
-## Known Gotchas
-
-- `ALE` ticker appears delisted — fails price fetch consistently
-- `stale_alerts` must load from tracker file even when `fetch_prices=False`
-- `FactorLearner.get_factor_summary()` is a method, not a module-level function
-- AI JSON responses need cleaning: strip markdown blocks, find JSON boundaries, remove trailing commas, batch 10 max
-- Cash must be tracked as buys are proposed — each position capped by remaining cash
-- Pandas Series vs scalar: `.iloc[0]` when you expect a scalar from a filtered DataFrame
-- `fetch_prices_batch` returns 3-tuple: `(prices, failures, prev_closes)` — uses `period="5d"` for prev close data
-- `save_snapshot` must compare against previous *day's* snapshot, not today's — filter `df[df["date"] != today]` before computing day P&L
-- `run_dashboard.sh` uses `wait` not `wait -n` for macOS bash compatibility
-- `OpportunityLayer.process()` must filter out held tickers before scoring — otherwise only existing positions match and AI vetoes them
-- `OpportunityLayer._generate_buy_proposals()` needs `price_map` from scorer results — `state.price_cache` only has held position prices, not watchlist candidate prices
-- `JBT` ticker appears delisted — fails price fetch like `ALE`
-- ANALYZE pipeline takes ~27s: state load (2s) + risk layer (3s) + scoring 100 tickers (16s) + composition (1s) + AI review (6s)
+---
 
 ## Data Schemas
+
+### positions.csv
+```
+ticker, shares, avg_cost_basis, current_price, market_value,
+unrealized_pnl, unrealized_pnl_pct, stop_loss, take_profit, entry_date,
+day_change, day_change_pct
+```
 
 ### transactions.csv
 ```
@@ -246,18 +306,15 @@ stop_loss, take_profit, reason, factor_scores, regime_at_entry
 ```
 Actions: `BUY`, `SELL` | Reasons: `SIGNAL`, `STOP_LOSS`, `TAKE_PROFIT`, `MANUAL`, `MIGRATION`
 
-### positions.csv
-```
-ticker, shares, avg_cost_basis, current_price, market_value,
-unrealized_pnl, unrealized_pnl_pct, stop_loss, take_profit, entry_date
-```
-
 ### daily_snapshots.csv
 ```
 date, cash, positions_value, total_equity, day_pnl, day_pnl_pct, benchmark_value
 ```
 
+---
+
 ## Files That Are Gitignored
-- `data/*.csv` (config.json is tracked via `!data/config.json`)
+- `data/portfolios/{id}/*.csv`, `*.jsonl` (except config.json — that IS tracked)
+- `data/yf_cache/`, `data/yfinance_cache.sqlite`
 - `charts/`, `reports/`, `backup/`, `logs/`
-- `.venv/`, `__pycache__/`, `node_modules/`
+- `.venv/`, `__pycache__/`, `node_modules/`, `dashboard/dist/`
