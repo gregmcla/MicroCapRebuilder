@@ -39,6 +39,8 @@ interface UIStore {
   toggleMommy: () => void;
   activityOpen: boolean;
   toggleActivity: () => void;
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -50,6 +52,17 @@ export const useUIStore = create<UIStore>((set) => ({
   toggleMommy: () => set((s) => ({ mommyExpanded: !s.mommyExpanded })),
   activityOpen: false,
   toggleActivity: () => set((s) => ({ activityOpen: !s.activityOpen })),
+  sidebarCollapsed: (() => {
+    const stored = localStorage.getItem("sidebar-collapsed");
+    if (stored !== null) return stored === "true";
+    return window.innerWidth < 1600;
+  })(),
+  toggleSidebar: () =>
+    set((s) => {
+      const next = !s.sidebarCollapsed;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return { sidebarCollapsed: next };
+    }),
 }));
 
 export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
