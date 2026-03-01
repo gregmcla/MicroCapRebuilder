@@ -4,10 +4,9 @@ import { usePerformance, useLearning } from "../hooks/usePerformance";
 import type { HealthComponent, FactorAttribution, TradeContribution } from "../lib/types";
 
 function gradeColor(score: number): string {
-  if (score >= 80) return "var(--green)";
-  if (score >= 60) return "var(--accent-bright)";
-  if (score >= 40) return "var(--amber)";
-  return "var(--red)";
+  if (score >= 80) return "var(--green)";   // A/B
+  if (score >= 60) return "var(--amber)";   // C
+  return "var(--red)";                       // D/F
 }
 
 function GradeRing({ grade, score }: { grade: string; score: number }) {
