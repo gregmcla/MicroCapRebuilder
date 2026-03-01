@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Factor Learning Module for Mommy Bot.
+Factor Learning Module for GScott.
 
 Tracks factor performance over time and suggests weight adjustments:
 - Calculates win rate and contribution per factor

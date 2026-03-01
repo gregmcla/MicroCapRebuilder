@@ -1,0 +1,10 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+a6c08857,2026-02-24,GTY,BUY,245,32.61,7989.45,30.33,39.13,SIGNAL,BULL,82.7,"{""momentum"": 83.1, ""volatility"": 66.8, ""volume"": 100, ""relative_strength"": 78.2, ""mean_reversion"": 76.2, ""rsi"": 90.0, ""composite"": 82.7}",
+89b20b0f,2026-02-24,CAKE,BUY,124,64.34,7978.16,59.84,77.21,SIGNAL,BULL,79.4,"{""momentum"": 86.1, ""volatility"": 55.8, ""volume"": 69.4, ""relative_strength"": 83.1, ""mean_reversion"": 73.3, ""rsi"": 90.0, ""composite"": 79.4}",
+636143fb,2026-02-24,NOG,BUY,294,27.18,7990.92,25.28,32.62,SIGNAL,BULL,73.9,"{""momentum"": 81.1, ""volatility"": 41.5, ""volume"": 48.8, ""relative_strength"": 84.1, ""mean_reversion"": 71.8, ""rsi"": 90.0, ""composite"": 73.9}",
+1554de10,2026-02-24,LBRT,BUY,200,28.24,5648.0,26.26,33.89,SIGNAL,BULL,70.2,"{""momentum"": 97.1, ""volatility"": 27.9, ""volume"": 33.4, ""relative_strength"": 100, ""mean_reversion"": 42.0, ""rsi"": 55.0, ""composite"": 70.2}",
+5fd23b3c,2026-02-24,TDW,BUY,100,79.43,7943.0,73.87,95.32,SIGNAL,BULL,70.2,"{""momentum"": 100, ""volatility"": 39.6, ""volume"": 58.2, ""relative_strength"": 100, ""mean_reversion"": 19.5, ""rsi"": 35.0, ""composite"": 70.2}",
+2163c9b1,2026-02-24,FELE,BUY,35,98.92,3462.2,92.0,118.7,SIGNAL,BULL,58.5,"{""momentum"": 55.9, ""volatility"": 51.1, ""volume"": 53.2, ""relative_strength"": 49.6, ""mean_reversion"": 87.4, ""rsi"": 70.0, ""composite"": 58.5}",
+0af43c88,2026-02-25,GTY,SELL,245,32.61,7989.45,,,MANUAL,,,,
+512d7ea4,2026-02-25,NBTB,BUY,110,45.06,4956.6,41.91,54.07,SIGNAL,BULL,63.1,"{""momentum"": 64.3, ""volatility"": 68.1, ""volume"": 42.9, ""relative_strength"": 37.3, ""mean_reversion"": 98.7, ""rsi"": 90.0, ""composite"": 63.1}",
+ad8a1d97,2026-02-25,FWRD,BUY,25,193.18,4829.5,179.66,231.82,SIGNAL,BULL,68.2,"{""momentum"": 80.7, ""volatility"": 53.1, ""volume"": 37.0, ""relative_strength"": 49.9, ""mean_reversion"": 99.4, ""rsi"": 90.0, ""composite"": 68.2}",

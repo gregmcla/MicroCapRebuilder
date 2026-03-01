@@ -1,6 +1,6 @@
 /** Overview page — shown when activePortfolioId === "overview". */
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
@@ -91,81 +91,315 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 }
 
 // ---------------------------------------------------------------------------
-// Heatmap
+// All Positions Panel — weighted map + scatter plot toggle
 // ---------------------------------------------------------------------------
 
-function AllPositionsHeatmap({ positions }: { positions: CrossPortfolioMover[] }) {
-  // Sort: biggest winners first, then flat, then losers last — classic heatmap order
+const PORTFOLIO_PALETTE = [
+  "#34d399", // emerald
+  "#818cf8", // indigo
+  "#38bdf8", // sky
+  "#fb923c", // orange
+  "#f472b6", // pink
+  "#a78bfa", // violet
+  "#fbbf24", // amber
+  "#4ade80", // green
+];
+
+type ViewMode = "map" | "plot";
+
+function usePortfolioColors(positions: CrossPortfolioMover[]) {
+  return useMemo(() => {
+    const ids = [...new Set(positions.map((p) => p.portfolio_id))].sort();
+    const map: Record<string, string> = {};
+    ids.forEach((id, i) => { map[id] = PORTFOLIO_PALETTE[i % PORTFOLIO_PALETTE.length]; });
+    return map;
+  }, [positions]);
+}
+
+function blockBg(pct: number) {
+  if (pct >= 12)  return "rgba(52,211,153,0.55)";
+  if (pct >= 6)   return "rgba(52,211,153,0.36)";
+  if (pct >= 2)   return "rgba(52,211,153,0.20)";
+  if (pct >= 0)   return "rgba(52,211,153,0.08)";
+  if (pct >= -2)  return "rgba(248,113,113,0.08)";
+  if (pct >= -6)  return "rgba(248,113,113,0.20)";
+  if (pct >= -12) return "rgba(248,113,113,0.36)";
+  return "rgba(248,113,113,0.55)";
+}
+
+// ── View 1: Weighted Map ─────────────────────────────────────────────────────
+
+function WeightedMap({ positions, portfolioColors }: {
+  positions: CrossPortfolioMover[];
+  portfolioColors: Record<string, string>;
+}) {
   const sorted = useMemo(
     () => [...positions].sort((a, b) => b.pnl_pct - a.pnl_pct),
     [positions]
   );
 
-  if (sorted.length === 0) return null;
-
-  function blockBg(pct: number) {
-    if (pct >= 12)      return "rgba(52,211,153,0.55)";
-    if (pct >= 6)       return "rgba(52,211,153,0.36)";
-    if (pct >= 2)       return "rgba(52,211,153,0.20)";
-    if (pct >= 0)       return "rgba(52,211,153,0.08)";
-    if (pct >= -2)      return "rgba(248,113,113,0.08)";
-    if (pct >= -6)      return "rgba(248,113,113,0.20)";
-    if (pct >= -12)     return "rgba(248,113,113,0.36)";
-    return              "rgba(248,113,113,0.55)";
-  }
-
-  function textColor(pct: number) {
-    return pct >= 0 ? "var(--green)" : "var(--red)";
-  }
-
   return (
-    <div style={{ marginTop: "16px" }}>
-      <p style={{
-        fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase",
-        letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "7px",
-      }}>
-        All Positions — {sorted.length}
-      </p>
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "2px",
-          padding: "6px",
-          background: "var(--surface-1)",
-          border: "1px solid var(--border-0)",
-          borderRadius: "7px",
-        }}
-      >
-        {sorted.map((pos) => (
+    <div style={{
+      display: "flex", flexWrap: "wrap", gap: "2px", padding: "6px",
+      background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "7px",
+    }}>
+      {sorted.map((pos) => {
+        const mv = pos.market_value ?? 1000;
+        // sqrt normalization + flex-basis 0 so flex-grow is the sole size driver
+        const flexGrow = Math.max(Math.sqrt(mv / 500), 0.8);
+        const portfolioColor = portfolioColors[pos.portfolio_id] ?? "#818cf8";
+        const pnlColor = pos.pnl_pct >= 0 ? "var(--green)" : "var(--red)";
+        return (
           <div
             key={`${pos.portfolio_id}-${pos.ticker}`}
-            title={`${pos.ticker} · ${pos.portfolio_name} · ${fmtPct(pos.pnl_pct)} · $${(pos.market_value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            title={`${pos.ticker} · ${pos.portfolio_name} · ${fmtPct(pos.pnl_pct)} · $${mv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
             style={{
               background: blockBg(pos.pnl_pct),
-              border: "1px solid rgba(255,255,255,0.04)",
               borderRadius: "4px",
+              borderTop: `2px solid ${portfolioColor}`,
+              borderLeft: "1px solid rgba(255,255,255,0.04)",
+              borderRight: "1px solid rgba(255,255,255,0.04)",
+              borderBottom: "1px solid rgba(255,255,255,0.04)",
               padding: "4px 7px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "1px",
-              cursor: "default",
-              transition: "opacity 0.1s",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "1px",
+              cursor: "pointer", transition: "opacity 0.15s",
               minWidth: "46px",
+              flex: `${flexGrow} 0 0`,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.75")}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
             onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             <span style={{ fontSize: "9.5px", fontWeight: 700, color: "var(--text-4)", fontFamily: "var(--font-mono)", letterSpacing: "0.03em" }}>
               {pos.ticker}
             </span>
-            <span style={{ fontSize: "9px", fontWeight: 600, color: textColor(pos.pnl_pct), fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: "9px", fontWeight: 600, color: pnlColor, fontFamily: "var(--font-mono)" }}>
               {fmtPct(pos.pnl_pct, 1)}
             </span>
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── View 2: Scatter Plot ─────────────────────────────────────────────────────
+
+function ScatterPlot({ positions, portfolioColors }: {
+  positions: CrossPortfolioMover[];
+  portfolioColors: Record<string, string>;
+}) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const VW = 800, VH = 230;
+  const ML = 58, MR = 16, MT = 18, MB = 36;
+  const CW = VW - ML - MR;
+  const CH = VH - MT - MB;
+
+  const xVals = positions.map((p) => p.pnl_pct);
+  const yVals = positions.map((p) => p.market_value ?? 0);
+  const xMin = Math.min(...xVals);
+  const xMax = Math.max(...xVals);
+  const xPad = Math.max((xMax - xMin) * 0.10, 2);
+  const xLo = xMin - xPad;
+  const xHi = xMax + xPad;
+  const yMax = Math.max(...yVals) * 1.18;
+
+  const xs = (v: number) => ML + ((v - xLo) / (xHi - xLo)) * CW;
+  const ys = (v: number) => MT + CH - (v / yMax) * CH;
+  const zeroX = xs(0);
+
+  // X ticks
+  const xRange = xHi - xLo;
+  const tickStep = xRange < 10 ? 2 : xRange < 25 ? 5 : 10;
+  const xTicks: number[] = [];
+  for (let t = Math.ceil(xLo / tickStep) * tickStep; t <= xHi; t += tickStep) xTicks.push(t);
+
+  // Y ticks
+  const yTickCount = 4;
+  const yTicks = Array.from({ length: yTickCount + 1 }, (_, i) => (yMax / yTickCount) * i);
+
+  // Label extremes so labels spread across the chart — not the 0% cluster
+  // Top 4 gainers (rightmost) + worst 4 losers (leftmost) + top 3 by size (topmost)
+  const byGain = [...positions].sort((a, b) => b.pnl_pct - a.pnl_pct);
+  const bySize = [...positions].sort((a, b) => (b.market_value ?? 0) - (a.market_value ?? 0));
+  const extremeKeys = new Set([
+    ...byGain.slice(0, 4).map((p) => `${p.portfolio_id}-${p.ticker}`),
+    ...byGain.slice(-4).map((p) => `${p.portfolio_id}-${p.ticker}`),
+    ...bySize.slice(0, 3).map((p) => `${p.portfolio_id}-${p.ticker}`),
+  ]);
+  const topKeys = extremeKeys;
+
+  // Unique portfolio entries for legend
+  const portfolioEntries = Object.entries(portfolioColors).filter(([id]) =>
+    positions.some((p) => p.portfolio_id === id)
+  );
+
+  const hoveredPos = hovered ? positions.find((p) => `${p.portfolio_id}-${p.ticker}` === hovered) : null;
+
+  return (
+    <div style={{ background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "7px", padding: "6px 6px 4px" }}>
+      <svg
+        ref={svgRef}
+        width="100%"
+        viewBox={`0 0 ${VW} ${VH}`}
+        style={{ display: "block", overflow: "visible" }}
+      >
+        {/* Subtle grid */}
+        {yTicks.map((y, i) => (
+          <line key={`yg${i}`} x1={ML} y1={ys(y)} x2={VW - MR} y2={ys(y)}
+            stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+        ))}
+        {xTicks.map((x, i) => (
+          <line key={`xg${i}`} x1={xs(x)} y1={MT} x2={xs(x)} y2={VH - MB}
+            stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+        ))}
+
+        {/* Zero line */}
+        <line x1={zeroX} y1={MT} x2={zeroX} y2={VH - MB}
+          stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4,3" />
+
+        {/* Quadrant hint text */}
+        <text x={zeroX + 7} y={MT + 11} fontSize="8" fill="rgba(52,211,153,0.30)" fontFamily="monospace">gains →</text>
+        <text x={zeroX - 7} y={MT + 11} fontSize="8" fill="rgba(248,113,113,0.30)" fontFamily="monospace" textAnchor="end">← losses</text>
+
+        {/* Y axis labels */}
+        {yTicks.map((y, i) => (
+          <text key={`yt${i}`} x={ML - 5} y={ys(y) + 3} fontSize="8" fill="var(--text-0)"
+            textAnchor="end" fontFamily="monospace">
+            {y >= 1000 ? `$${(y / 1000).toFixed(0)}k` : `$${y.toFixed(0)}`}
+          </text>
+        ))}
+
+        {/* X axis labels */}
+        {xTicks.map((x, i) => (
+          <text key={`xt${i}`} x={xs(x)} y={VH - MB + 13} fontSize="8" fill="var(--text-0)"
+            textAnchor="middle" fontFamily="monospace">
+            {x >= 0 ? `+${x}%` : `${x}%`}
+          </text>
+        ))}
+
+        {/* Axis titles */}
+        <text x={ML + CW / 2} y={VH - 2} fontSize="8" fill="var(--text-0)" textAnchor="middle" fontFamily="monospace" letterSpacing="0.08em">
+          UNREALIZED RETURN
+        </text>
+        <text x={10} y={MT + CH / 2} fontSize="8" fill="var(--text-0)" textAnchor="middle" fontFamily="monospace"
+          transform={`rotate(-90, 10, ${MT + CH / 2})`} letterSpacing="0.08em">
+          POSITION SIZE
+        </text>
+
+        {/* Bubbles — render all non-hovered first, then hovered on top */}
+        {[false, true].map((renderHov) =>
+          positions.map((pos) => {
+            const key = `${pos.portfolio_id}-${pos.ticker}`;
+            const isHov = hovered === key;
+            if (renderHov !== isHov) return null;
+            const cx = xs(pos.pnl_pct);
+            const cy = ys(pos.market_value ?? 0);
+            const color = portfolioColors[pos.portfolio_id] ?? "#818cf8";
+            const showLabel = topKeys.has(key) || isHov;
+            return (
+              <g key={key} style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHovered(key)}
+                onMouseLeave={() => setHovered(null)}
+              >
+                {isHov && (
+                  <circle cx={cx} cy={cy} r="14"
+                    fill={color} fillOpacity="0.12" stroke={color} strokeOpacity="0.3" strokeWidth="1" />
+                )}
+                <circle cx={cx} cy={cy} r={isHov ? 8 : 5.5}
+                  fill={color} fillOpacity={isHov ? 0.95 : 0.7}
+                  stroke={color} strokeOpacity={0.5} strokeWidth={isHov ? 1.5 : 1}
+                  style={{ transition: "r 0.12s" }}
+                />
+                {showLabel && (
+                  <text x={cx} y={pos.pnl_pct >= 0 || cy > VH - MB - 28 ? cy - 10 : cy + 18} fontSize="8.5" fontWeight="700"
+                    fill="var(--text-3)" textAnchor="middle" fontFamily="monospace">
+                    {pos.ticker}
+                  </text>
+                )}
+              </g>
+            );
+          })
+        )}
+
+        {/* SVG tooltip */}
+        {hoveredPos && (() => {
+          const cx = xs(hoveredPos.pnl_pct);
+          const cy = ys(hoveredPos.market_value ?? 0);
+          const mv = hoveredPos.market_value ?? 0;
+          const tx = cx > VW * 0.72 ? cx - 126 : cx + 14;
+          const ty = cy > VH * 0.65 ? cy - 58 : cy + 10;
+          return (
+            <g>
+              <rect x={tx} y={ty} width="120" height="50" rx="4"
+                fill="var(--bg-elevated)" stroke="var(--border-1)" strokeWidth="1" />
+              <text x={tx + 8} y={ty + 15} fontSize="10.5" fontWeight="700"
+                fill="var(--text-3)" fontFamily="monospace">{hoveredPos.ticker}</text>
+              <text x={tx + 8} y={ty + 27} fontSize="9"
+                fill={hoveredPos.pnl_pct >= 0 ? "var(--green)" : "var(--red)"}
+                fontFamily="monospace">
+                {fmtPct(hoveredPos.pnl_pct)} · {fmt$(hoveredPos.pnl, 0)}
+              </text>
+              <text x={tx + 8} y={ty + 39} fontSize="8.5" fill="var(--text-0)" fontFamily="monospace">
+                ${mv.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {hoveredPos.portfolio_id}
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* Portfolio legend */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", paddingLeft: "4px", marginTop: "2px" }}>
+        {portfolioEntries.map(([id, color]) => (
+          <div key={id} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="4" fill={color} fillOpacity="0.8" />
+            </svg>
+            <span style={{ fontSize: "9px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}>{id}</span>
+          </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── All Positions Panel (container with toggle) ───────────────────────────────
+
+function AllPositionsPanel({ positions }: { positions: CrossPortfolioMover[] }) {
+  const [view, setView] = useState<ViewMode>("map");
+  const portfolioColors = usePortfolioColors(positions);
+
+  if (positions.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
+        <p style={{ fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
+          All Positions — {positions.length}
+        </p>
+        <div style={{ display: "flex", gap: "2px", background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "5px", padding: "2px" }}>
+          {(["map", "plot"] as ViewMode[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                fontSize: "9px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
+                padding: "3px 10px", borderRadius: "3px", border: "none", cursor: "pointer",
+                background: view === v ? "var(--accent)" : "transparent",
+                color: view === v ? "white" : "var(--text-0)",
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              {v === "map" ? "MAP" : "PLOT"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {view === "map"
+        ? <WeightedMap positions={positions} portfolioColors={portfolioColors} />
+        : <ScatterPlot positions={positions} portfolioColors={portfolioColors} />
+      }
     </div>
   );
 }
@@ -175,10 +409,11 @@ function AllPositionsHeatmap({ positions }: { positions: CrossPortfolioMover[] }
 // ---------------------------------------------------------------------------
 
 function AggregateBar({
-  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalPositions, portfolioCount,
+  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalPositions, portfolioCount, onNewPortfolio,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
-  totalUnrealizedPnl: number; totalPositions: number; portfolioCount: number;
+  totalUnrealizedPnl: number; totalAllTimePnl: number; totalPositions: number; portfolioCount: number;
+  onNewPortfolio: () => void;
 }) {
   // 0 decimals → then format with commas
   const rawCount = useCountUp(totalEquity, 1200, 0);
@@ -211,11 +446,32 @@ function AggregateBar({
         </p>
       </div>
       <div className="h-8 w-px shrink-0" style={{ background: "var(--border-1)" }} />
+      <StatChip label="All-Time P&L" value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
       <StatChip label="Unrealized P&L" value={fmt$(totalUnrealizedPnl)} color={pnlColor(totalUnrealizedPnl)} />
       <StatChip label="Day P&L" value={fmt$(totalDayPnl)} color={pnlColor(totalDayPnl)} />
       <StatChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
       <StatChip label="Positions" value={String(totalPositions)} />
       <StatChip label="Portfolios" value={String(portfolioCount)} />
+      <div style={{ marginLeft: "auto" }}>
+        <button
+          onClick={onNewPortfolio}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "5px",
+            padding: "0 12px", height: "28px",
+            background: "transparent",
+            border: "1px solid var(--border-1)",
+            borderRadius: "6px",
+            color: "var(--text-1)",
+            fontSize: "11px", fontWeight: 600,
+            letterSpacing: "0.06em", textTransform: "uppercase",
+            cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; e.currentTarget.style.color = "var(--text-1)"; }}
+        >
+          + New Portfolio
+        </button>
+      </div>
     </div>
   );
 }
@@ -310,8 +566,11 @@ function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; to
               </span>
             </div>
 
-            {/* Day / Open P&L */}
+            {/* P&L row */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "11px" }}>
+              <span style={{ color: "var(--text-0)" }}>All-time</span>
+              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.all_time_pnl ?? 0), fontWeight: 600 }}>{fmt$(summary.all_time_pnl ?? 0)}</span>
+              <span style={{ color: "var(--border-1)" }}>·</span>
               <span style={{ color: "var(--text-0)" }}>Day</span>
               <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.day_pnl) }}>{fmt$(summary.day_pnl)}</span>
               <span style={{ color: "var(--border-1)" }}>·</span>
@@ -451,8 +710,10 @@ export default function OverviewPage() {
         totalCash={overview?.total_cash ?? 0}
         totalDayPnl={overview?.total_day_pnl ?? 0}
         totalUnrealizedPnl={overview?.total_unrealized_pnl ?? 0}
+        totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={enriched.length}
+        onNewPortfolio={() => setShowCreate(true)}
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -471,26 +732,9 @@ export default function OverviewPage() {
                     <PortfolioCard summary={s} totalEquity={totalEquity} />
                   </div>
                 ))}
-
-                <button
-                  onClick={() => setShowCreate(true)}
-                  style={{
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    padding: "16px", minHeight: "148px",
-                    background: "var(--surface-1)", border: "1px dashed var(--border-1)", borderRadius: "8px",
-                    cursor: "pointer", transition: "border-color 0.15s, opacity 0.15s",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-2)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
-                >
-                  <span style={{ fontSize: "22px", color: "var(--text-1)", marginBottom: "6px" }}>+</span>
-                  <span style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.10em", color: "var(--text-1)" }}>
-                    New Portfolio
-                  </span>
-                </button>
               </div>
 
-              <AllPositionsHeatmap positions={allPositions} />
+              <AllPositionsPanel positions={allPositions} />
             </>
           )}
         </div>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Paper Trading Module for Mommy Bot.
+Paper Trading Module for GScott.
 
 Provides paper trading functionality to test strategies without real money.
 In paper mode:
@@ -255,7 +255,7 @@ DAILY_SNAPSHOTS_FILE = property(lambda self: get_data_file("daily_snapshots.csv"
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Manage paper trading mode for Mommy Bot"
+        description="Manage paper trading mode for GScott"
     )
 
     parser.add_argument(

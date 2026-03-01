@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Daily Report Generator for Mommy Bot.
+Daily Report Generator for GScott.
 
 Generates a comprehensive text report with:
 - Portfolio summary
@@ -70,7 +70,7 @@ def generate_report() -> str:
     # Build report
     lines = []
     lines.append("=" * 60)
-    lines.append(f"  MOMMY BOT - DAILY REPORT: {today}")
+    lines.append(f"  GScott BOT - DAILY REPORT: {today}")
     lines.append("=" * 60)
     lines.append("")
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Universe Provider for Mommy Bot.
+Universe Provider for GScott.
 
 Aggregates stock tickers from multiple sources into a two-tier universe:
 - Tier 1 (Core): Hand-curated quality stocks, scanned daily

@@ -10,25 +10,29 @@ import { api } from "../lib/api";
 // Shared styles
 // ---------------------------------------------------------------------------
 
-const GHOST =
-  "inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-md disabled:opacity-40 disabled:cursor-not-allowed"
-  + " border border-white/[0.09] bg-white/[0.04] text-[var(--text-1)]"
-  + " hover:border-white/[0.16] hover:bg-white/[0.07] hover:text-[var(--text-3)]";
+const BASE = "inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed";
 
-const GHOST_AMBER =
-  "inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-md disabled:opacity-40 disabled:cursor-not-allowed"
-  + " border border-amber-400/[0.18] bg-amber-400/[0.04] text-amber-400/70"
-  + " hover:border-amber-400/[0.30] hover:bg-amber-400/[0.08] hover:text-amber-400";
+// UPDATE — blue
+const BLUE_BTN = BASE
+  + " border border-sky-400/40 bg-sky-400/[0.07] text-sky-400"
+  + " hover:border-sky-400/70 hover:bg-sky-400/[0.13]";
 
-const HERO =
-  "inline-flex items-center gap-2 font-bold tracking-widest uppercase transition-all duration-150 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-  + " text-white";
+// SCAN — amber
+const AMBER_BTN = BASE
+  + " border border-amber-400/40 bg-amber-400/[0.07] text-amber-400"
+  + " hover:border-amber-400/70 hover:bg-amber-400/[0.13]";
+
+// ANALYZE / EXECUTE — green accent
+const ACCENT_BTN = BASE
+  + " border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)]"
+  + " hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]";
+
 
 // ---------------------------------------------------------------------------
 // Update button
 // ---------------------------------------------------------------------------
 
-function UpdateButton() {
+export function UpdateButton() {
   const queryClient = useQueryClient();
   const updateTimestamp = useFreshnessStore((s) => s.updateTimestamp);
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
@@ -54,30 +58,26 @@ function UpdateButton() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={handle}
-        disabled={updating}
-        className={GHOST}
-        style={{ fontSize: "10px", height: "28px", padding: "0 12px" }}
+    <button
+      onClick={handle}
+      disabled={updating}
+      className={BLUE_BTN}
+      title={result || undefined}
+      style={{ fontSize: "10px", height: "28px", padding: "0 12px" }}
+    >
+      {/* Refresh icon */}
+      <svg
+        width="11" height="11" viewBox="0 0 12 12" fill="none"
+        className={updating ? "animate-spin" : ""}
+        style={{ flexShrink: 0 }}
       >
-        {/* Refresh icon */}
-        <svg
-          width="11" height="11" viewBox="0 0 12 12" fill="none"
-          className={updating ? "animate-spin" : ""}
-          style={{ flexShrink: 0 }}
-        >
-          <path
-            d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6"
-            stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-        {updating ? "Updating" : "Update"}
-      </button>
-      {result && (
-        <span style={{ fontSize: "10px", color: "var(--text-0)" }}>{result}</span>
-      )}
-    </div>
+        <path
+          d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6"
+          stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+        />
+      </svg>
+      {updating ? "Updating" : "Update"}
+    </button>
   );
 }
 
@@ -101,7 +101,7 @@ function fmtScanResult(r: ScanResult, finishedAt?: string | null): string {
   return parts.join(" · ");
 }
 
-function ScanButton() {
+export function ScanButton() {
   const queryClient = useQueryClient();
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [scanning, setScanning] = useState(false);
@@ -150,40 +150,36 @@ function ScanButton() {
 
   // Derive display text
   let resultText = "";
-  let resultColor = "var(--text-0)";
   if (scanError) {
     resultText = scanError;
-    resultColor = "var(--red)";
   } else if (!scanning && lastStatus?.status === "complete" && lastStatus.result) {
     resultText = fmtScanResult(lastStatus.result, lastStatus.finished_at);
   } else if (!scanning && lastStatus?.status === "error") {
     resultText = lastStatus.error ?? "Scan failed";
-    resultColor = "rgba(248,113,113,0.7)";
   }
 
+  const isError = !scanning && lastStatus?.status === "error";
+  const errorStyle = isError
+    ? { borderColor: "rgba(248,113,113,0.45)", color: "rgba(248,113,113,0.8)", background: "rgba(248,113,113,0.07)" }
+    : {};
+
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={handle}
-        disabled={scanning}
-        className={GHOST_AMBER}
-        style={{ fontSize: "10px", height: "28px", padding: "0 12px" }}
-      >
-        <span
-          style={{
-            width: "7px", height: "7px", borderRadius: "50%",
-            background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
-            animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
-          }}
-        />
-        {scanning ? "Scanning" : "Scan"}
-      </button>
-      {resultText && (
-        <span style={{ fontSize: "9.5px", color: resultColor, maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {resultText}
-        </span>
-      )}
-    </div>
+    <button
+      onClick={handle}
+      disabled={scanning}
+      className={AMBER_BTN}
+      title={resultText || undefined}
+      style={{ fontSize: "10px", height: "28px", padding: "0 12px", ...errorStyle }}
+    >
+      <span
+        style={{
+          width: "7px", height: "7px", borderRadius: "50%",
+          background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
+          animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
+        }}
+      />
+      {scanning ? "Scanning" : "Scan"}
+    </button>
   );
 }
 
@@ -191,7 +187,7 @@ function ScanButton() {
 // Analyze + Execute
 // ---------------------------------------------------------------------------
 
-function AnalyzeExecute() {
+export function AnalyzeExecute() {
   const { result, isAnalyzing, isExecuting, runAnalysis, runExecute } = useAnalysisStore();
   const actionCount = result ? result.summary.approved + result.summary.modified : 0;
 
@@ -200,18 +196,8 @@ function AnalyzeExecute() {
       <button
         onClick={runAnalysis}
         disabled={isAnalyzing}
-        className={HERO}
-        style={{
-          fontSize: "11px",
-          height: "34px",
-          padding: "0 22px",
-          background: isAnalyzing
-            ? "linear-gradient(135deg, rgba(124,92,252,0.7), rgba(155,126,255,0.7))"
-            : "linear-gradient(135deg, #7c5cfc 0%, #9b7eff 100%)",
-          boxShadow: isAnalyzing
-            ? "0 0 24px rgba(124,92,252,0.25)"
-            : "0 0 20px rgba(124,92,252,0.40), inset 0 1px 0 rgba(255,255,255,0.15)",
-        }}
+        className={ACCENT_BTN}
+        style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
       >
         {/* Sparkle */}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
@@ -227,14 +213,8 @@ function AnalyzeExecute() {
         <button
           onClick={runExecute}
           disabled={isExecuting}
-          className={HERO}
-          style={{
-            fontSize: "11px",
-            height: "34px",
-            padding: "0 18px",
-            background: "linear-gradient(135deg, #10b981 0%, #34d399 100%)",
-            boxShadow: "0 0 16px rgba(52,211,153,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
-          }}
+          className={ACCENT_BTN}
+          style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
         >
           {/* Play icon */}
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" style={{ flexShrink: 0 }}>

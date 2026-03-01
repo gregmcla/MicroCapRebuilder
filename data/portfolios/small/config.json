@@ -1,0 +1,273 @@
+{
+  "mode": "live",
+  "paper_trading": {
+    "enabled": true,
+    "simulated_fill_delay_pct": 0.1,
+    "simulated_slippage_pct": 0.05,
+    "paper_data_suffix": "_paper"
+  },
+  "starting_capital": 1000000.0,
+  "risk_per_trade_pct": 8.0,
+  "max_position_pct": 12.0,
+  "max_positions": 999,
+  "default_stop_loss_pct": 7.0,
+  "default_take_profit_pct": 20.0,
+  "volatility_lookback_days": 20,
+  "benchmark_symbol": "^RUT",
+  "fallback_benchmark": "IWM",
+  "chart_days": 30,
+  "scoring": {
+    "default_weights": {
+      "momentum": 0.2,
+      "volatility": 0.18,
+      "volume": 0.15,
+      "relative_strength": 0.2,
+      "mean_reversion": 0.12,
+      "rsi": 0.15
+    },
+    "regime_weights": {
+      "BULL": {
+        "momentum": 0.28,
+        "volatility": 0.12,
+        "volume": 0.12,
+        "relative_strength": 0.23,
+        "mean_reversion": 0.08,
+        "rsi": 0.17
+      },
+      "SIDEWAYS": {
+        "momentum": 0.18,
+        "volatility": 0.22,
+        "volume": 0.12,
+        "relative_strength": 0.18,
+        "mean_reversion": 0.15,
+        "rsi": 0.15
+      },
+      "BEAR": {
+        "momentum": 0.12,
+        "volatility": 0.25,
+        "volume": 0.12,
+        "relative_strength": 0.13,
+        "mean_reversion": 0.2,
+        "rsi": 0.18
+      }
+    },
+    "min_score_threshold": {
+      "BULL": 40.0,
+      "SIDEWAYS": 50.0,
+      "BEAR": 60.0
+    },
+    "momentum": {
+      "multi_timeframe_enabled": true,
+      "timeframes": {
+        "short": {
+          "days": 5,
+          "weight": 0.2
+        },
+        "medium": {
+          "days": 20,
+          "weight": 0.5
+        },
+        "long": {
+          "days": 60,
+          "weight": 0.3
+        }
+      },
+      "alignment_bonus_max": 15,
+      "acceleration_bonus": 10
+    },
+    "rsi": {
+      "enabled": true,
+      "period": 14,
+      "thresholds": {
+        "oversold": 30,
+        "overbought": 70,
+        "extreme_overbought": 80
+      },
+      "hard_filter_above": 85
+    }
+  },
+  "risk_management": {
+    "capital_preservation": {
+      "enabled": true,
+      "triggers": {
+        "drawdown_threshold_pct": 10.0,
+        "risk_score_threshold": 40,
+        "regime_bear_auto_enable": true
+      },
+      "actions": {
+        "halt_new_buys": true,
+        "tighten_stops_pct": 5.0,
+        "reduce_position_size_multiplier": 0.5
+      }
+    }
+  },
+  "learning": {
+    "enabled": true,
+    "review_period_trades": 30,
+    "max_weight_change_pct": 5.0,
+    "min_trades_for_adjustment": 10,
+    "confidence_multiplier_enabled": true,
+    "confidence_min": 0.5,
+    "confidence_max": 1.5,
+    "fast_pattern_learning": {
+      "enabled": true,
+      "min_trades_for_pattern": 5,
+      "pattern_confidence_threshold": 0.6
+    },
+    "conviction_calibration": {
+      "enabled": true,
+      "recalibrate_every_n_trades": 10,
+      "adjustment_step_pct": 10.0
+    },
+    "stop_optimization": {
+      "enabled": true,
+      "track_trailing_vs_fixed": true,
+      "track_volatility_adjusted": true
+    },
+    "auto_tuning": {
+      "enabled": true,
+      "poor_performance_threshold": 0.5,
+      "high_volatility_threshold": 3.0,
+      "adjustment_magnitude": 5.0
+    }
+  },
+  "enhanced_trading": {
+    "enable_layers": true,
+    "layer1": {
+      "enable_reeval": true,
+      "aggressiveness": "moderate",
+      "min_score_drop_for_alert": 20,
+      "min_score_drop_for_sell": 30,
+      "enable_trailing_stops": true,
+      "enable_volatility_stops": true,
+      "trailing_stop_trigger_pct": 10.0,
+      "trailing_stop_distance_pct": 6.0,
+      "volatility_stop_high_atr": 10.0,
+      "volatility_stop_low_atr": 6.0,
+      "volatility_stop_atr_threshold_high": 5.0,
+      "volatility_stop_atr_threshold_low": 2.0,
+      "regime_stops": {
+        "BULL": 8.0,
+        "SIDEWAYS": 7.0,
+        "BEAR": 6.0
+      }
+    },
+    "layer2": {
+      "enable_conviction": true,
+      "min_conviction": 45,
+      "enable_pattern_detection": true,
+      "conviction_multiplier_max": 2.0,
+      "conviction_thresholds": {
+        "exceptional": 90,
+        "strong": 80,
+        "good": 70,
+        "acceptable": 60
+      },
+      "conviction_multipliers": {
+        "exceptional": 2.0,
+        "strong": 1.5,
+        "good": 1.0,
+        "acceptable": 1.0
+      },
+      "conviction_adjustments": {
+        "multiple_confirmations": 0.3,
+        "breakout_pattern": 0.2,
+        "fresh_high": 0.2,
+        "regime_alignment": 0.2,
+        "low_volatility": 0.1
+      },
+      "position_sizing": {
+        "high_conviction_pct": 12.0,
+        "medium_conviction_pct": 8.0,
+        "low_conviction_pct": 5.0
+      }
+    },
+    "layer3": {
+      "enable_composition": true,
+      "sector_limit_pct": 40.0,
+      "correlation_threshold": 0.7,
+      "max_correlated_positions": 3,
+      "top3_limit_pct": 45.0,
+      "correlation_lookback_days": 60,
+      "enable_rebalancing": true,
+      "rebalance_trigger_pct": 20.0,
+      "rebalance_target_pct": 15.0
+    },
+    "layer4": {
+      "enable_sequencing": true,
+      "priorities": {
+        "emergency_sell": 100,
+        "deteriorating_sell_high": 90,
+        "deteriorating_sell_medium": 70,
+        "quality_degradation_sell": 60,
+        "rebalancing_sell": 50,
+        "high_conviction_buy": 85,
+        "medium_conviction_buy": 65,
+        "low_conviction_buy": 45
+      }
+    }
+  },
+  "data_provider": {
+    "primary": "yfinance",
+    "fallback": "alpha_vantage",
+    "alpha_vantage_api_key": "",
+    "cache_minutes": 15,
+    "retry_count": 3
+  },
+  "discovery": {
+    "enabled": true,
+    "run_frequency": "weekly",
+    "scan_types": {
+      "momentum_breakouts": true,
+      "oversold_bounces": true,
+      "sector_leaders": true,
+      "volume_anomalies": false
+    },
+    "filters": {
+      "min_market_cap_m": 300,
+      "max_market_cap_m": 5000,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 500.0
+    },
+    "watchlist": {
+      "max_tickers": 150,
+      "stale_days_threshold": 30,
+      "core_tickers_file": "data/core_watchlist.jsonl",
+      "max_sector_pct": 25,
+      "remove_poor_performers": true,
+      "min_trades_for_removal": 3,
+      "max_loss_rate_for_removal": 0.75
+    }
+  },
+  "universe": {
+    "enabled": true,
+    "refresh_frequency_days": 7,
+    "sources": {
+      "curated": {
+        "enabled": true,
+        "file": "data/curated_universe.json"
+      },
+      "etf_holdings": {
+        "enabled": true
+      }
+    },
+    "tiers": {
+      "core": {
+        "max_tickers": 100,
+        "scan_frequency": "daily"
+      },
+      "extended": {
+        "max_tickers": 1000,
+        "scan_frequency": "daily"
+      }
+    },
+    "filters": {
+      "min_market_cap_m": 300,
+      "max_market_cap_m": 5000,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 500.0
+    }
+  }
+}

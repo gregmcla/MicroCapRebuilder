@@ -333,6 +333,13 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
     try:
         df = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
         if not df.empty:
+            # Only compute day_change if the market traded today.
+            # yfinance returns daily bars; the last bar's date tells us the last
+            # trading day. If it's not today, markets are closed and "current
+            # price" == yesterday's close — day_change would be yesterday's
+            # gain, not today's (which is 0). So we suppress prev_closes.
+            last_trade_date = df.index[-1].date()
+            market_open_today = (last_trade_date == date.today())
             close_col = df["Close"]
             if isinstance(close_col, pd.Series):
                 # Single ticker - close_col is a Series
@@ -340,7 +347,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                     current, prev = _extract_prices(close_col, tickers[0], is_series=True)
                     if current and current > 0:
                         prices[tickers[0]] = current
-                        if prev and prev > 0:
+                        if market_open_today and prev and prev > 0:
                             prev_closes[tickers[0]] = prev
                     else:
                         failures.append(tickers[0])
@@ -350,7 +357,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                     current, prev = _extract_prices(close_col, ticker)
                     if current and current > 0:
                         prices[ticker] = current
-                        if prev and prev > 0:
+                        if market_open_today and prev and prev > 0:
                             prev_closes[ticker] = prev
                     else:
                         failures.append(ticker)

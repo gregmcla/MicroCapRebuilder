@@ -1,4 +1,4 @@
-# CLAUDE.md — MicroCapRebuilder (Mommy Bot)
+# CLAUDE.md — MicroCapRebuilder (GScott)
 
 ## Rules for AI Assistants
 
@@ -23,7 +23,7 @@
 
 ## Project Overview
 
-MicroCapRebuilder (aka **Mommy Bot**) is an intelligent, adaptive portfolio trading system. Supports multiple portfolios with different strategies (microcap, allcap, mean reversion, momentum, etc.). Currently in **PAPER mode**.
+MicroCapRebuilder (aka **GScott**) is an intelligent, adaptive portfolio trading system. Supports multiple portfolios with different strategies (microcap, allcap, mean reversion, momentum, etc.). Currently in **PAPER mode**.
 
 **Core capabilities:**
 - Multi-portfolio management with isolated data per portfolio
@@ -33,7 +33,7 @@ MicroCapRebuilder (aka **Mommy Bot**) is an intelligent, adaptive portfolio trad
 - Unified analysis pipeline with AI review (APPROVE/MODIFY/VETO)
 - Learning pipeline (factor scores at entry, post-mortems at exit, weight adjustment)
 - Risk scoreboard and early warning system
-- React dashboard with FastAPI backend ("Mommy" co-pilot personality)
+- React dashboard with FastAPI backend ("GScott" co-pilot personality)
 
 ---
 
@@ -74,7 +74,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `strategy_pivot.py` — PIVOT recommendations
 - `capital_preservation.py` — capital preservation system
 - `yf_session.py` — DataFrame-level disk cache for yfinance (4hr TTL, curl_cffi compat)
-- `portfolio_chat.py` — Mommy chat interface
+- `portfolio_chat.py` — GScott chat interface
 - `schema.py` — column constants and enums
 - `execute_sells.py`, `update_positions.py`, `pick_from_watchlist.py` — daily pipeline scripts
 
@@ -88,7 +88,7 @@ Thin REST layer. No business logic here.
 - `api/routes/analysis.py` — analyze + execute (`/api/{portfolio_id}/analyze`)
 - `api/routes/risk.py` — risk + warnings (`/api/{portfolio_id}/risk`)
 - `api/routes/performance.py` — performance + learning (`/api/{portfolio_id}/performance`)
-- `api/routes/chat.py` — chat + mommy insight (`/api/{portfolio_id}/chat`)
+- `api/routes/chat.py` — chat + gscott insight (`/api/{portfolio_id}/chat`)
 - `api/routes/controls.py` — mode toggle, sell, close-all (`/api/{portfolio_id}/...`)
 - `api/routes/discovery.py` — scan (`/api/{portfolio_id}/scan`)
 - `api/routes/market.py` — market indices + charts (`/api/market/...`)
@@ -159,8 +159,8 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | POST | `/api/{portfolio_id}/mode/toggle` | Toggle paper/live |
 | POST | `/api/{portfolio_id}/scan` | Trigger watchlist discovery scan |
 | GET | `/api/{portfolio_id}/scan/status` | Scan status + result |
-| POST | `/api/{portfolio_id}/chat` | Mommy chat |
-| GET | `/api/{portfolio_id}/mommy/insight` | Context-aware rotating insight |
+| POST | `/api/{portfolio_id}/chat` | GScott chat |
+| GET | `/api/{portfolio_id}/gscott/insight` | Context-aware rotating insight |
 | GET | `/api/market/indices` | Market indices (SPY, QQQ, etc.) |
 | GET | `/api/market/chart/{ticker}` | OHLCV chart data |
 | GET | `/api/health` | Health check |
@@ -173,9 +173,9 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 
 **Layout:** Resizable two-panel split via `react-resizable-panels` v4.
 - **Left panel** (default 55%): PositionsPanel + PositionDetailInfo (slides in below when position selected)
-- **Right panel** (default 45%): FocusPane (tabs: Summary, Actions, Risk, Performance) + MommyStrip
+- **Right panel** (default 45%): FocusPane (tabs: Summary, Actions, Risk, Performance) + GScottStrip
 
-**TopBar:** M MOMMY (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | CLOSE ALL | PAPER/LIVE
+**TopBar:** M GScott (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | CLOSE ALL | PAPER/LIVE
 
 **Position rows:** ticker | sparkline (max 140px) | price | day P&L ($/%) | overall P&L ($/%) | dot
 

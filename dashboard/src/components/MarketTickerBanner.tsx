@@ -97,7 +97,7 @@ function IndexCard({
           width={SPARKLINE_WIDTH}
           height={SPARKLINE_HEIGHT}
           role="img"
-          aria-label={`${name} intraday trend sparkline`}
+          gscott-label={`${name} intraday trend sparkline`}
         >
           <title>{`${name} price trend`}</title>
           <polyline
@@ -125,7 +125,7 @@ export default function MarketTickerBanner() {
         borderBottom: "1px solid var(--border-0)",
       }}
       role="region"
-      aria-label="Market indices ticker"
+      gscott-label="Market indices ticker"
     >
       {/* Inner row: horizontally scrollable, centered, gap-[40px] */}
       <div className="flex items-center gap-[40px] px-4 w-full justify-center overflow-x-auto scrollbar-none">

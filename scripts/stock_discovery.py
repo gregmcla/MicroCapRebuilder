@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stock Discovery Module for Mommy Bot.
+Stock Discovery Module for GScott.
 
 Automatically discovers new trading candidates through multiple scan types:
 - Momentum Breakouts: Stocks near 52-week highs with volume surge
@@ -831,7 +831,7 @@ def format_discovery_report(candidates: List[DiscoveredStock], top_n: int = 20) 
 
 # ─── CLI for Testing ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n─── Mommy Bot Stock Discovery ───\n")
+    print("\n─── GScott Stock Discovery ───\n")
 
     candidates = discover_stocks()
 

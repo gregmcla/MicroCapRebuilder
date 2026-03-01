@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Trade Explainability Module for Mommy Bot.
+Trade Explainability Module for GScott.
 
 Provides human-readable explanations for every trade:
 - Why a stock was bought (key factors, regime context)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Risk Manager Module for Mommy Bot.
+Risk Manager Module for GScott.
 
 Provides:
 - Stop loss checking

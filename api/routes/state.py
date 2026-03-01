@@ -30,13 +30,13 @@ def _serialize_state(state):
             day_pnl = float(last.get("day_pnl", 0) or 0)
             day_pnl_pct = float(last.get("day_pnl_pct", 0) or 0)
 
-    # Total return from snapshots
+    # Total return + all-time P&L
+    starting_capital = float(state.config.get("starting_capital", 50000))
     total_return_pct = 0.0
-    if len(snapshots) >= 1:
-        starting = state.config.get("starting_capital", 50000)
-        current = state.total_equity
-        if starting > 0:
-            total_return_pct = ((current - starting) / starting) * 100
+    all_time_pnl = 0.0
+    if starting_capital > 0:
+        total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
+        all_time_pnl = state.total_equity - starting_capital
 
     # Zero out stale day_change values in positions when markets are closed.
     # The CSV retains the last computed day_change (from the last trading session)
@@ -63,6 +63,8 @@ def _serialize_state(state):
         "day_pnl": day_pnl,
         "day_pnl_pct": day_pnl_pct,
         "total_return_pct": total_return_pct,
+        "all_time_pnl": round(all_time_pnl, 2),
+        "starting_capital": starting_capital,
         "timestamp": serialize(state.timestamp),
     }
 

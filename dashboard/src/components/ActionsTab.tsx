@@ -385,7 +385,7 @@ export default function ActionsTab() {
             borderTopColor: "var(--accent)",
           }}
         />
-        <p className="text-sm" style={{ color: "var(--text-4)" }}>Mommy's analyzing the market...</p>
+        <p className="text-sm" style={{ color: "var(--text-4)" }}>GScott's analyzing the market...</p>
         <p className="text-xs" style={{ color: "var(--text-2)" }}>Scoring candidates, running AI review</p>
       </div>
     );
@@ -403,7 +403,7 @@ export default function ActionsTab() {
         <div className="text-4xl">&#x1F937;</div>
         <p className="text-sm font-medium" style={{ color: "var(--text-2)" }}>No opportunities found</p>
         <p className="text-xs text-center max-w-xs">
-          Mommy scanned the watchlist but didn't find any trades worth making right now.
+          GScott scanned the watchlist but didn't find any trades worth making right now.
           Try running SCAN first to refresh candidates.
         </p>
         {lastAnalyzedAt && (

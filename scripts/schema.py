@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Centralized schema definitions for Mommy Bot.
+Centralized schema definitions for GScott.
 All scripts should import from here to ensure consistency.
 """
 

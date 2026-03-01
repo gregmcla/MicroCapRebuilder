@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Design System for Mommy Bot Dashboard.
+Design System for GScott Dashboard.
 
 Implements the design consultant's vision:
 - Deep navy (#0A1628) + soft teal (#4FD1C5) palette
@@ -57,14 +57,14 @@ FONTS = {
 STYLES = f"""
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   MOMMY BOT - DESIGN SYSTEM
+   GScott BOT - DESIGN SYSTEM
    Deep Navy + Soft Teal | Warm & Distinctive
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ─── Fonts ─────────────────────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fraunces:wght@400;500;600;700&display=swap');
 
-/* ─── CSS Variables ─────────────────────────────────────────────────────── */
+/* ─── CSS Vgscottbles ─────────────────────────────────────────────────────── */
 :root {{
     /* Colors */
     --bg-primary: {COLORS["bg_primary"]};
@@ -121,7 +121,7 @@ STYLES = f"""
 }}
 
 /* ─── Top Bar ───────────────────────────────────────────────────────────── */
-.mommy-topbar {{
+.gscott-topbar {{
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border);
     padding: var(--space-3) var(--space-6);
@@ -133,7 +133,7 @@ STYLES = f"""
     z-index: 1000;
 }}
 
-.mommy-logo {{
+.gscott-logo {{
     font-family: var(--font-display);
     font-size: 24px;
     font-weight: 600;
@@ -143,7 +143,7 @@ STYLES = f"""
     gap: var(--space-2);
 }}
 
-.mommy-logo-icon {{
+.gscott-logo-icon {{
     width: 36px;
     height: 36px;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
@@ -253,7 +253,7 @@ STYLES = f"""
     font-weight: 800;
     color: var(--text-primary);
     font-family: var(--font-body);
-    font-variant-numeric: tabular-nums;
+    font-vgscottnt-numeric: tabular-nums;
     line-height: 1.1;
 }}
 
@@ -281,7 +281,7 @@ STYLES = f"""
 }}
 
 /* ─── Cards ─────────────────────────────────────────────────────────────── */
-.mommy-card {{
+.gscott-card {{
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
@@ -289,21 +289,21 @@ STYLES = f"""
     margin-bottom: var(--space-4);
 }}
 
-.mommy-card-header {{
+.gscott-card-header {{
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-4);
 }}
 
-.mommy-card-title {{
+.gscott-card-title {{
     font-family: var(--font-display);
     font-size: 18px;
     font-weight: 500;
     color: var(--text-primary);
 }}
 
-.mommy-card-badge {{
+.gscott-card-badge {{
     background: var(--accent);
     color: var(--bg-primary);
     padding: var(--space-1) var(--space-3);
@@ -405,8 +405,8 @@ STYLES = f"""
     color: var(--text-muted);
 }}
 
-/* ─── Mommy Companion Sidebar ───────────────────────────────────────────── */
-.mommy-sidebar {{
+/* ─── GScott Companion Sidebar ───────────────────────────────────────────── */
+.gscott-sidebar {{
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
@@ -414,7 +414,7 @@ STYLES = f"""
     height: fit-content;
 }}
 
-.mommy-avatar {{
+.gscott-avatar {{
     width: 80px;
     height: 80px;
     border-radius: 50%;
@@ -431,7 +431,7 @@ STYLES = f"""
 }}
 
 /* Avatar container for SVG avatar */
-.mommy-avatar-container {{
+.gscott-avatar-container {{
     width: 80px;
     height: 80px;
     margin: 0 auto var(--space-4);
@@ -442,7 +442,7 @@ STYLES = f"""
     animation: avatar-breathe 4s ease-in-out infinite;
 }}
 
-.mommy-avatar-container svg {{
+.gscott-avatar-container svg {{
     width: 100%;
     height: 100%;
 }}
@@ -459,7 +459,7 @@ STYLES = f"""
     }}
 }}
 
-.mommy-greeting {{
+.gscott-greeting {{
     font-family: var(--font-display);
     font-size: 18px;
     text-align: center;
@@ -470,7 +470,7 @@ STYLES = f"""
     padding: 0 var(--space-2);
 }}
 
-.mommy-input {{
+.gscott-input {{
     background: var(--bg-input);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
@@ -480,17 +480,17 @@ STYLES = f"""
     font-size: 14px;
 }}
 
-.mommy-input:focus {{
+.gscott-input:focus {{
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(79,209,197,0.1);
 }}
 
-.mommy-insights {{
+.gscott-insights {{
     margin-top: var(--space-6);
 }}
 
-.mommy-insights-title {{
+.gscott-insights-title {{
     font-size: 12px;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -498,14 +498,14 @@ STYLES = f"""
     margin-bottom: var(--space-3);
 }}
 
-.mommy-insight {{
+.gscott-insight {{
     padding: var(--space-2) 0;
     font-size: 13px;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border);
 }}
 
-.mommy-insight:last-child {{
+.gscott-insight:last-child {{
     border-bottom: none;
 }}
 
@@ -534,7 +534,7 @@ STYLES = f"""
 }}
 
 /* ─── Text Reveal Animation ────────────────────────────────────────────── */
-.mommy-response {{
+.gscott-response {{
     animation: text-reveal 0.4s ease-out;
 }}
 
@@ -676,7 +676,7 @@ STYLES = f"""
     text-align: right;
     font-size: 12px;
     color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
+    font-vgscottnt-numeric: tabular-nums;
 }}
 
 /* ─── Pivot Analysis ────────────────────────────────────────────────────── */
@@ -688,7 +688,7 @@ STYLES = f"""
     margin-top: var(--space-4);
 }}
 
-.pivot-mommy {{
+.pivot-gscott {{
     font-family: var(--font-display);
     font-size: 16px;
     font-style: italic;
@@ -1013,7 +1013,7 @@ footer {{ visibility: hidden; }}
     font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
-    font-variant-numeric: tabular-nums;
+    font-vgscottnt-numeric: tabular-nums;
 }}
 
 .strip-metric-value.positive {{ color: var(--success); }}
@@ -1075,8 +1075,8 @@ footer {{ visibility: hidden; }}
     margin-right: 320px;
 }}
 
-/* ─── Collapsible Mommy Sidebar ─────────────────────────────────────────── */
-.mommy-panel {{
+/* ─── Collapsible GScott Sidebar ─────────────────────────────────────────── */
+.gscott-panel {{
     position: fixed;
     right: 0;
     top: 110px;
@@ -1090,7 +1090,7 @@ footer {{ visibility: hidden; }}
     z-index: 900;
 }}
 
-.mommy-panel.collapsed {{
+.gscott-panel.collapsed {{
     width: 60px;
     padding: var(--space-2);
 }}
@@ -1122,7 +1122,7 @@ footer {{ visibility: hidden; }}
     transition: opacity 0.2s ease;
 }}
 
-.mommy-panel.collapsed .panel-content {{
+.gscott-panel.collapsed .panel-content {{
     opacity: 0;
     pointer-events: none;
 }}
@@ -1135,7 +1135,7 @@ footer {{ visibility: hidden; }}
     cursor: pointer;
 }}
 
-.mommy-panel.collapsed .collapsed-avatar {{
+.gscott-panel.collapsed .collapsed-avatar {{
     display: block;
 }}
 
@@ -1407,7 +1407,7 @@ def typing_indicator_html() -> str:
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("Mommy Bot Design System")
+    print("GScott Design System")
     print("=" * 50)
     print("\nColor Palette:")
     for name, color in COLORS.items():

@@ -1,0 +1,9 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+a392e687,2026-03-01,APA,BUY,59,30.37,1791.83,28.85,36.44,SIGNAL,BULL,74.3,"{""momentum"": 91.6, ""volatility"": 44.9, ""volume"": 53.8, ""relative_strength"": 85.7, ""mean_reversion"": 54.6, ""rsi"": 75.0, ""composite"": 74.3}",
+7cb2d60a,2026-03-01,CRGY,BUY,154,11.66,1795.64,11.08,13.99,SIGNAL,BULL,73.6,"{""momentum"": 100, ""volatility"": 36.3, ""volume"": 60.1, ""relative_strength"": 96.6, ""mean_reversion"": 31.1, ""rsi"": 55.0, ""composite"": 73.6}",
+f039ae88,2026-03-01,MTDR,BUY,35,51.4,1799.0,48.83,61.68,SIGNAL,BULL,75.5,"{""momentum"": 88.7, ""volatility"": 49.8, ""volume"": 62.0, ""relative_strength"": 84.4, ""mean_reversion"": 63.6, ""rsi"": 75.0, ""composite"": 75.5}",
+f3f4d479,2026-03-01,MPC,BUY,6,198.21,1189.26,188.3,237.85,SIGNAL,BULL,75.9,"{""momentum"": 75.3, ""volatility"": 58.1, ""volume"": 53.4, ""relative_strength"": 80.9, ""mean_reversion"": 94.2, ""rsi"": 90.0, ""composite"": 75.9}",
+dbb760dd,2026-03-01,NOG,BUY,45,27.59,1241.55,26.21,33.11,SIGNAL,BULL,72.3,"{""momentum"": 83.5, ""volatility"": 40.3, ""volume"": 50.8, ""relative_strength"": 74.1, ""mean_reversion"": 71.1, ""rsi"": 90.0, ""composite"": 72.3}",
+3777b60e,2026-03-01,PCG,BUY,94,19.0,1786.0,18.05,22.8,SIGNAL,BULL,68.7,"{""momentum"": 96.4, ""volatility"": 67.7, ""volume"": 39.4, ""relative_strength"": 100, ""mean_reversion"": 52.0, ""rsi"": 10.0, ""composite"": 68.7}",
+d4d0d0b9,2026-03-01,EXC,BUY,2,49.47,98.94,47.0,59.36,SIGNAL,BULL,64.2,"{""momentum"": 76.9, ""volatility"": 72.5, ""volume"": 46.1, ""relative_strength"": 74.4, ""mean_reversion"": 66.8, ""rsi"": 35.0, ""composite"": 64.2}",
+6b1f618e,2026-03-01,SRE,BUY,18,96.27,1732.86,91.46,115.52,SIGNAL,BULL,64.2,"{""momentum"": 74.7, ""volatility"": 73.4, ""volume"": 46.3, ""relative_strength"": 74.8, ""mean_reversion"": 71.5, ""rsi"": 35.0, ""composite"": 64.2}",

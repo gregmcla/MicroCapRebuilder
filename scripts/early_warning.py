@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Early Warning System for Mommy Bot.
+Early Warning System for GScott.
 
 Detects potential issues before they cause damage:
 - Regime shifts (benchmark crossing key moving averages)

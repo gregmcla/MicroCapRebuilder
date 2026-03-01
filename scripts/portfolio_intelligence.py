@@ -2,7 +2,7 @@
 """
 Portfolio Intelligence Engine
 
-The autonomous brain of Mommy. Analyzes the portfolio holistically
+The autonomous brain of GScott. Analyzes the portfolio holistically
 and generates actionable decisions with reasoning.
 
 This module:
@@ -237,7 +237,7 @@ def get_ai_recommendations(context: dict) -> list[dict]:
     except ImportError:
         return [{"error": "anthropic package not installed"}]
 
-    system_prompt = """You are Mommy, an autonomous portfolio intelligence system for microcap stocks.
+    system_prompt = """You are GScott, an autonomous portfolio intelligence system for microcap stocks.
 
 Your job is to analyze the portfolio holistically and generate specific, actionable recommendations.
 
@@ -398,7 +398,7 @@ def log_decision(context: dict, actions: list[dict]):
 def run_intelligence() -> dict:
     """Main entry point: analyze portfolio and generate recommendations."""
 
-    print("🧠 Mommy is thinking...")
+    print("🧠 GScott is thinking...")
     print()
 
     # Load all data

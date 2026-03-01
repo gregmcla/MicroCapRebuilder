@@ -8,23 +8,23 @@
   },
   "starting_capital": 200000.0,
   "initial_deployment_target_pct": 90.0,
-  "risk_per_trade_pct": 3.0,
-  "max_position_pct": 8.0,
+  "risk_per_trade_pct": 7,
+  "max_position_pct": 15,
   "max_positions": 999,
-  "default_stop_loss_pct": 6.0,
-  "default_take_profit_pct": 20.0,
+  "default_stop_loss_pct": 6,
+  "default_take_profit_pct": 20,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^GSPC",
   "fallback_benchmark": "SPY",
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "momentum": 0.1,
-      "volatility": 0.15,
-      "volume": 0.15,
-      "relative_strength": 0.1,
-      "mean_reversion": 0.35,
-      "rsi": 0.15
+      "momentum": 0.05,
+      "volatility": 0.35,
+      "volume": 0.2,
+      "relative_strength": 0.25,
+      "mean_reversion": 0.05,
+      "rsi": 0.1
     },
     "regime_weights": {
       "BULL": {
@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 40.0,
-      "SIDEWAYS": 50.0,
-      "BEAR": 60.0
+      "BULL": 35,
+      "SIDEWAYS": 45,
+      "BEAR": 55
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -91,7 +91,7 @@
     "capital_preservation": {
       "enabled": true,
       "triggers": {
-        "drawdown_threshold_pct": 10.0,
+        "drawdown_threshold_pct": 10,
         "risk_score_threshold": 40,
         "regime_bear_auto_enable": true
       },
@@ -210,7 +210,7 @@
     },
     "rotation": {
       "enabled": true,
-      "min_upgrade_score_gap": 15,
+      "min_upgrade_score_gap": 10,
       "max_rotations_per_cycle": 3,
       "min_held_days_before_rotation": 3,
       "max_unrealized_loss_pct_for_rotation": -15
@@ -227,9 +227,9 @@
     "enabled": true,
     "run_frequency": "weekly",
     "scan_types": {
-      "momentum_breakouts": false,
+      "momentum_breakouts": true,
       "oversold_bounces": true,
-      "sector_leaders": false,
+      "sector_leaders": true,
       "volume_anomalies": true
     },
     "filters": {
@@ -247,7 +247,8 @@
       "remove_poor_performers": true,
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75
-    }
+    },
+    "sector_filter": []
   },
   "universe": {
     "enabled": true,
@@ -283,9 +284,10 @@
   "strategy": {
     "name": "Mean Reversion",
     "sectors": [],
-    "trading_style": "mean_reversion",
+    "trading_style": "aggressive_momentum",
     "created_via": "wizard",
     "ai_prompt": null,
-    "ai_rationale": null
+    "ai_rationale": null,
+    "universe": "allcap"
   }
 }

@@ -4,12 +4,11 @@ import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
 import TopBar from "./components/TopBar";
-import CommandBar from "./components/CommandBar";
 import PositionsPanel from "./components/PositionsPanel";
 import FocusPane from "./components/FocusPane";
 import CenterPane from "./components/CenterPane";
 import ActivityFeed from "./components/ActivityFeed";
-import MommyCoPilot, { MommyStrip } from "./components/MommyCoPilot";
+import GScottCoPilot, { GScottStrip } from "./components/GScottCoPilot";
 import OverviewPage from "./components/OverviewPage";
 import PortfolioSummary from "./components/PortfolioSummary";
 
@@ -17,7 +16,7 @@ export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
-  const mommyExpanded = useUIStore((s) => s.mommyExpanded);
+  const gscottExpanded = useUIStore((s) => s.gscottExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
   useKeyboardShortcuts();
@@ -25,9 +24,6 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
       <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
-
-      {/* Command bar — UPDATE · SCAN · ANALYZE (only in portfolio view) */}
-      {!isOverview && <CommandBar />}
 
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">
@@ -63,12 +59,12 @@ export default function App() {
                 className="flex-shrink-0 flex flex-col overflow-hidden border-l bg-bg-surface"
                 style={{ width: "300px", borderColor: "var(--border-0)" }}
               >
-                {mommyExpanded ? (
-                  <MommyCoPilot />
+                {gscottExpanded ? (
+                  <GScottCoPilot />
                 ) : (
                   <FocusPane className="flex-1" />
                 )}
-                <MommyStrip />
+                <GScottStrip />
               </aside>
             </div>
           </div>

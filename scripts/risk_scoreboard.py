@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Risk Scoreboard for Mommy Bot.
+Risk Scoreboard for GScott.
 
 Provides portfolio-level risk assessment with:
 - Overall risk score (0-100, higher = safer)

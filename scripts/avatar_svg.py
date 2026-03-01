@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Mommy Avatar SVG Generator
+GScott Avatar SVG Generator
 
-Creates stylized SVG avatars for the Mommy Bot persona with 4 expressions:
+Creates stylized SVG avatars for the GScott persona with 4 expressions:
 - neutral: Calm, confident, slight smile
 - pleased: Warm smile, bright eyes
 - concerned: Slight frown, alert expression
@@ -18,7 +18,7 @@ AvatarState = Literal["neutral", "pleased", "concerned", "skeptical"]
 
 def get_avatar_svg(state: AvatarState = "neutral", size: int = 80) -> str:
     """
-    Generate inline SVG for Mommy avatar in specified state.
+    Generate inline SVG for GScott avatar in specified state.
 
     Args:
         state: One of 'neutral', 'pleased', 'concerned', 'skeptical'
@@ -163,7 +163,7 @@ def get_avatar_with_container(state: AvatarState = "neutral", size: int = 80) ->
     """
     svg = get_avatar_svg(state, size)
 
-    html = f'<div class="mommy-avatar-container" style="width: {size}px; height: {size}px; margin: 0 auto;">'
+    html = f'<div class="gscott-avatar-container" style="width: {size}px; height: {size}px; margin: 0 auto;">'
     html += svg
     html += '</div>'
 
@@ -172,7 +172,7 @@ def get_avatar_with_container(state: AvatarState = "neutral", size: int = 80) ->
 
 # ─── Test ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("Mommy Avatar SVG Generator")
+    print("GScott Avatar SVG Generator")
     print("=" * 50)
 
     for state in ["neutral", "pleased", "concerned", "skeptical"]:
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     test_html = """<!DOCTYPE html>
 <html>
 <head>
-    <title>Mommy Avatar Test</title>
+    <title>GScott Avatar Test</title>
     <style>
         body { background: #0A1628; padding: 40px; font-family: sans-serif; }
         .container { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Reusable Components for Mommy Bot Dashboard.
+Reusable Components for GScott Dashboard.
 
 Provides modular UI components following the design system:
 - Hero Metrics Ribbon with sparklines
 - Position Cards with progress bars
 - Portfolio Treemap
-- Mommy Companion Sidebar
+- GScott Companion Sidebar
 - Enhanced Equity Curve
 
 Usage:
     from webapp_components import (
         render_metrics_ribbon,
         render_position_cards,
-        render_mommy_sidebar,
+        render_gscott_sidebar,
     )
 """
 
@@ -353,7 +353,7 @@ def render_equity_curve(snapshots_df: pd.DataFrame, height: int = 300):
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
-# ─── Mommy Companion Sidebar ──────────────────────────────────────────────────
+# ─── GScott Companion Sidebar ──────────────────────────────────────────────────
 
 import random
 
@@ -392,14 +392,14 @@ def get_time_greeting() -> str:
         return random.choice(night)
 
 
-def get_mommy_greeting(
+def get_gscott_greeting(
     day_pnl: float = 0,
     positions_near_stop: int = 0,
     positions_near_target: int = 0,
     regime: str = "UNKNOWN",
     drawdown_pct: float = 0
 ) -> str:
-    """Generate a context-aware greeting from Mommy with personality."""
+    """Generate a context-aware greeting from GScott with personality."""
 
     # Time-based greeting
     base = get_time_greeting()
@@ -449,7 +449,7 @@ def get_mommy_greeting(
     return " ".join(parts)
 
 
-def render_mommy_sidebar(
+def render_gscott_sidebar(
     day_pnl: float = 0,
     insights: List[str] = None,
     positions_near_stop: int = 0,
@@ -458,7 +458,7 @@ def render_mommy_sidebar(
     drawdown_pct: float = 0
 ):
     """
-    Render the Mommy companion sidebar with dynamic avatar.
+    Render the GScott companion sidebar with dynamic avatar.
 
     The avatar expression changes based on portfolio state:
     - neutral: Default calm look
@@ -476,7 +476,7 @@ def render_mommy_sidebar(
     )
 
     # Get greeting with context
-    greeting = get_mommy_greeting(
+    greeting = get_gscott_greeting(
         day_pnl=day_pnl,
         positions_near_stop=positions_near_stop,
         positions_near_target=positions_near_target,
@@ -488,22 +488,22 @@ def render_mommy_sidebar(
     # Get SVG avatar for current state
     avatar_svg = get_avatar_svg(avatar_state.value, size=80)
 
-    html = '<div class="mommy-sidebar">'
+    html = '<div class="gscott-sidebar">'
 
     # Avatar with breathing animation
-    html += '<div class="mommy-avatar-container">'
+    html += '<div class="gscott-avatar-container">'
     html += avatar_svg
     html += '</div>'
 
     # Greeting bubble
-    html += f'<div class="mommy-greeting">"{greeting}"</div>'
+    html += f'<div class="gscott-greeting">"{greeting}"</div>'
 
     # Recent insights
     if insights:
-        html += '<div class="mommy-insights">'
-        html += '<div class="mommy-insights-title">Recent Insights</div>'
+        html += '<div class="gscott-insights">'
+        html += '<div class="gscott-insights-title">Recent Insights</div>'
         for insight in insights[:5]:
-            html += f'<div class="mommy-insight">{insight}</div>'
+            html += f'<div class="gscott-insight">{insight}</div>'
         html += '</div>'
 
     html += '</div>'
@@ -540,10 +540,10 @@ def render_top_bar(is_live: bool = True):
     """Render the minimal top bar with logo and status."""
     status_class = "live" if is_live else "paper"
 
-    html = '<div class="mommy-topbar">'
-    html += '<div class="mommy-logo">'
-    html += '<div class="mommy-logo-icon">M</div>'
-    html += '<span>MOMMY</span>'
+    html = '<div class="gscott-topbar">'
+    html += '<div class="gscott-logo">'
+    html += '<div class="gscott-logo-icon">M</div>'
+    html += '<span>GScott</span>'
     html += '</div>'
     html += '<div style="display: flex; align-items: center; gap: 12px;">'
     html += f'<span class="status-dot {status_class}"></span>'
@@ -561,7 +561,7 @@ def render_section_header(title: str, badge: str = None):
     html = '<div class="section-head">'
     html += f'<span class="section-title">{title}</span>'
     if badge:
-        html += f'<span class="mommy-card-badge">{badge}</span>'
+        html += f'<span class="gscott-card-badge">{badge}</span>'
     html += '</div>'
 
     st.markdown(html, unsafe_allow_html=True)
@@ -571,12 +571,12 @@ def render_section_header(title: str, badge: str = None):
 
 def card_start(title: str = None, badge: str = None) -> None:
     """Start a card container."""
-    html = '<div class="mommy-card">'
+    html = '<div class="gscott-card">'
     if title:
-        html += '<div class="mommy-card-header">'
-        html += f'<span class="mommy-card-title">{title}</span>'
+        html += '<div class="gscott-card-header">'
+        html += f'<span class="gscott-card-title">{title}</span>'
         if badge:
-            html += f'<span class="mommy-card-badge">{badge}</span>'
+            html += f'<span class="gscott-card-badge">{badge}</span>'
         html += '</div>'
     st.markdown(html, unsafe_allow_html=True)
 
@@ -589,7 +589,7 @@ def card_end() -> None:
 # ─── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     # Test components
-    print("Mommy Bot Components")
+    print("GScott Components")
     print("=" * 50)
 
     # Test sparkline
@@ -598,5 +598,5 @@ if __name__ == "__main__":
     print(f"\nSparkline SVG length: {len(svg)} chars")
 
     # Test greeting
-    greeting = get_mommy_greeting(day_pnl=150, positions_near_target=2)
+    greeting = get_gscott_greeting(day_pnl=150, positions_near_target=2)
     print(f"\nSample greeting: {greeting}")

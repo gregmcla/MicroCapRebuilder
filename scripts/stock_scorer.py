@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Stock Scorer Module for Mommy Bot.
+Stock Scorer Module for GScott.
 
 Multi-factor scoring system for ranking watchlist candidates.
 Weights are configurable per market regime (BULL/SIDEWAYS/BEAR).

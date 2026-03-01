@@ -1,0 +1,2 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+72f10276,2026-02-16,XOM,BUY,673,148.45,99906.85,141.03,178.14,SIGNAL,BULL,79.6,"{""momentum"": 83.2, ""volatility"": 68.4, ""volume"": 50.5, ""relative_strength"": 90.5, ""mean_reversion"": 73.3, ""rsi"": 90.0, ""composite"": 79.6}",

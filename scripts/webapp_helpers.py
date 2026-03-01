@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Webapp Helpers - Mommy's Voice & Visual Components
+Webapp Helpers - GScott's Voice & Visual Components
 
 Helper functions for the dashboard including:
-- Smart status sentence generation with Mommy's personality
+- Smart status sentence generation with GScott's personality
 - Position progress bar calculations
 - Time-based greetings
 - Contextual phrase generation
@@ -14,15 +14,15 @@ from datetime import datetime
 from typing import Optional
 import pandas as pd
 
-# ─── Mommy Voice Phrase Library ───────────────────────────────────────────────
+# ─── GScott Voice Phrase Library ───────────────────────────────────────────────
 # Warm, direct, occasionally teasing - always in command
 
-MOMMY_PHRASES = {
+GScott_PHRASES = {
     # All-clear states - calm, confident, a touch playful
     "all_clear": [
         "All quiet on the western front. Go enjoy your coffee.",
         "Nothing's on fire. I'll holler if that changes.",
-        "Smooth sailing, sweetie. Mommy's got this.",
+        "Smooth sailing, sweetie. GScott's got this.",
         "Portfolio's humming along nicely. Just the way I like it.",
         "Looking good out there. I'm keeping watch.",
         "Everything's in order. You can breathe.",
@@ -51,7 +51,7 @@ MOMMY_PHRASES = {
     "near_stop_multiple": [
         "{count} positions are getting uncomfortably close to stops. Let's pay attention.",
         "Sweetie, we've got {count} positions in the danger zone. Stay sharp.",
-        "Mommy's a bit concerned - {count} positions near their stops.",
+        "GScott's a bit concerned - {count} positions near their stops.",
         "Red alert on {count} positions. Time to focus.",
     ],
 
@@ -270,14 +270,14 @@ def generate_status_sentence(
     # Priority 1: Capital preservation mode (highest alert)
     if preservation_active:
         return (
-            random.choice(MOMMY_PHRASES["preservation_mode"]),
+            random.choice(GScott_PHRASES["preservation_mode"]),
             "warning"
         )
 
     # Priority 2: No positions
     if positions_df.empty:
         return (
-            random.choice(MOMMY_PHRASES["no_positions"]),
+            random.choice(GScott_PHRASES["no_positions"]),
             "calm"
         )
 
@@ -285,13 +285,13 @@ def generate_status_sentence(
     near_stop = get_positions_near_stop(positions_df, threshold_pct=3.0)
     if near_stop:
         if len(near_stop) == 1:
-            phrase = random.choice(MOMMY_PHRASES["near_stop_single"])
+            phrase = random.choice(GScott_PHRASES["near_stop_single"])
             return (
                 phrase.format(ticker=near_stop[0]['ticker'], pct=near_stop[0]['distance_pct']),
                 "attention"
             )
         else:
-            phrase = random.choice(MOMMY_PHRASES["near_stop_multiple"])
+            phrase = random.choice(GScott_PHRASES["near_stop_multiple"])
             return (
                 phrase.format(count=len(near_stop)),
                 "attention"
@@ -300,7 +300,7 @@ def generate_status_sentence(
     # Priority 4: Positions approaching take profit (positive!)
     near_target = get_positions_near_target(positions_df, threshold_pct=5.0)
     if near_target:
-        phrase = random.choice(MOMMY_PHRASES["near_target"])
+        phrase = random.choice(GScott_PHRASES["near_target"])
         return (
             phrase.format(ticker=near_target[0]['ticker'], pct=near_target[0]['distance_pct']),
             "positive"
@@ -309,29 +309,29 @@ def generate_status_sentence(
     # Priority 5: Market regime
     if regime == "BEAR":
         return (
-            random.choice(MOMMY_PHRASES["bear_market"]),
+            random.choice(GScott_PHRASES["bear_market"]),
             "attention"
         )
 
     # Priority 6: Significant drawdown
     if drawdown_pct >= 10:
-        phrase = random.choice(MOMMY_PHRASES["drawdown_significant"])
+        phrase = random.choice(GScott_PHRASES["drawdown_significant"])
         return (phrase.format(pct=drawdown_pct), "attention")
     elif drawdown_pct >= 5:
-        phrase = random.choice(MOMMY_PHRASES["drawdown_mild"])
+        phrase = random.choice(GScott_PHRASES["drawdown_mild"])
         return (phrase.format(pct=drawdown_pct), "calm")
 
     # Priority 7: Today's performance
     if day_pnl > 50:
-        phrase = random.choice(MOMMY_PHRASES["good_day"])
+        phrase = random.choice(GScott_PHRASES["good_day"])
         return (phrase.replace("${amount}", f"${day_pnl:,.0f}"), "positive")
     elif day_pnl < -50:
-        phrase = random.choice(MOMMY_PHRASES["bad_day"])
+        phrase = random.choice(GScott_PHRASES["bad_day"])
         return (phrase.replace("${amount}", f"${abs(day_pnl):,.0f}"), "attention")
 
     # Default: All clear
     return (
-        random.choice(MOMMY_PHRASES["all_clear"]),
+        random.choice(GScott_PHRASES["all_clear"]),
         "calm"
     )
 

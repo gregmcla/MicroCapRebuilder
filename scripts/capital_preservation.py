@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Capital Preservation Mode for Mommy Bot.
+Capital Preservation Mode for GScott.
 
 Auto-protects portfolio when risk thresholds are exceeded:
 - Halts new buys

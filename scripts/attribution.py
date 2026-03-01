@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Attribution Module for Mommy Bot.
+Performance Attribution Module for GScott.
 
 Explains WHY performance happened by attributing returns to:
 - Individual factors (momentum, volatility, etc.)

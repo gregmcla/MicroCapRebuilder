@@ -5,6 +5,7 @@ import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
 import { useCountUp } from "../hooks/useCountUp";
 import type { Snapshot } from "../lib/types";
+import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
 
 export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   const W = 400;
@@ -78,6 +79,8 @@ export default function PortfolioSummary() {
 
   const overallPnl = state?.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0) ?? 0;
   const overallColor = overallPnl >= 0 ? "text-profit" : "text-loss";
+  const allTimePnl = state?.all_time_pnl ?? 0;
+  const allTimeColor = allTimePnl >= 0 ? "text-profit" : "text-loss";
   const dayColor = (state?.day_pnl ?? 0) >= 0 ? "text-profit" : "text-loss";
   const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
 
@@ -116,12 +119,19 @@ export default function PortfolioSummary() {
 
           {/* P&L metrics row */}
           <div className="flex items-center gap-5 flex-wrap anim d2">
-            {/* Total P&L */}
+            {/* All-Time P&L */}
+            <div>
+              <div className={`font-mono text-sm tabular-nums font-semibold ${allTimeColor}`}>
+                {allTimePnl >= 0 ? "+" : ""}${allTimePnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <div style={labelStyle}>All-Time P&L</div>
+            </div>
+            {/* Open P&L */}
             <div>
               <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
                 {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
-              <div style={labelStyle}>Total P&L</div>
+              <div style={labelStyle}>Open P&L</div>
             </div>
             {/* Today */}
             <div>
@@ -146,8 +156,19 @@ export default function PortfolioSummary() {
             </div>
           </div>
 
+          {/* Action buttons */}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <UpdateButton />
+            <ScanButton />
+            <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
+            <AnalyzeExecute />
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
+
           {/* Status chips */}
-          <div className="flex items-center gap-2 ml-auto shrink-0 anim d3" style={{ fontSize: "10px" }}>
+          <div className="flex items-center gap-2 shrink-0 anim d3" style={{ fontSize: "10px" }}>
             <span className={state?.regime === "BULL" ? "text-profit" : state?.regime === "BEAR" ? "text-loss" : "text-warning"} style={{ fontWeight: 600 }}>
               {state?.regime ?? "—"}
             </span>

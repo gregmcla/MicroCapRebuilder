@@ -3,13 +3,13 @@ set -e
 cd "$(dirname "$0")"
 source .venv/bin/activate
 
-# Load environment variables from .env if present
+# Load environment vgscottbles from .env if present
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
 echo "═══════════════════════════════════════════════════════════"
-echo "  MOMMY BOT Daily Run - $(date +%Y-%m-%d)"
+echo "  GScott BOT Daily Run - $(date +%Y-%m-%d)"
 echo "═══════════════════════════════════════════════════════════"
 
 # Check for unified mode flag

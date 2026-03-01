@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-# Load environment variables - try multiple paths
+# Load environment vgscottbles - try multiple paths
 def _load_env():
     """Try multiple paths to find and load .env file."""
     try:
@@ -139,7 +139,7 @@ def get_portfolio_context() -> str:
 
 def get_system_prompt() -> str:
     """Get the system prompt for the portfolio assistant."""
-    return """You are MOMMY's AI assistant - a helpful trading intelligence embedded in an autonomous portfolio management system.
+    return """You are GScott's AI assistant - a helpful trading intelligence embedded in an autonomous portfolio management system.
 
 Your role is to:
 1. Analyze the portfolio and answer questions about positions, performance, and risk

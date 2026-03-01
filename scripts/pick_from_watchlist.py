@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Intelligent Stock Picker for Mommy Bot.
+Intelligent Stock Picker for GScott.
 
 Enhanced picking logic with:
 - Multi-factor scoring with regime-adaptive weights

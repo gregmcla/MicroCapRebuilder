@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pattern Detection Module for Mommy Bot.
+Pattern Detection Module for GScott.
 
 Detects concerning patterns across trades:
 - Stop loss clusters (multiple stops in short period)

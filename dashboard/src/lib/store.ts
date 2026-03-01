@@ -35,8 +35,8 @@ interface UIStore {
   setRightTab: (tab: RightTab) => void;
   selectedPosition: Position | null;
   selectPosition: (pos: Position | null) => void;
-  mommyExpanded: boolean;
-  toggleMommy: () => void;
+  gscottExpanded: boolean;
+  toggleGScott: () => void;
   activityOpen: boolean;
   toggleActivity: () => void;
   sidebarCollapsed: boolean;
@@ -48,8 +48,8 @@ export const useUIStore = create<UIStore>((set) => ({
   setRightTab: (tab) => set({ rightTab: tab, selectedPosition: null }),
   selectedPosition: null,
   selectPosition: (pos) => set({ selectedPosition: pos }),
-  mommyExpanded: false,
-  toggleMommy: () => set((s) => ({ mommyExpanded: !s.mommyExpanded })),
+  gscottExpanded: false,
+  toggleGScott: () => set((s) => ({ gscottExpanded: !s.gscottExpanded })),
   activityOpen: false,
   toggleActivity: () => set((s) => ({ activityOpen: !s.activityOpen })),
   sidebarCollapsed: (() => {

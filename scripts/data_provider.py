@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Data Provider Module for Mommy Bot.
+Data Provider Module for GScott.
 
 Provides a unified interface for fetching stock data from multiple sources:
 - yfinance (default, free, no API key)
@@ -39,7 +39,7 @@ import hashlib
 
 import pandas as pd
 
-# Load environment variables from .env file (for API keys)
+# Load environment vgscottbles from .env file (for API keys)
 try:
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).parent.parent / ".env")
@@ -84,16 +84,16 @@ def load_config():
 def get_api_key(provider: str) -> Optional[str]:
     """Get API key for a provider from environment or config.
 
-    Priority: Environment variables (secure) > config.json (less secure)
+    Priority: Environment vgscottbles (secure) > config.json (less secure)
     """
-    # Environment variable mapping
+    # Environment vgscottble mapping
     env_var_map = {
         "alpha_vantage": "ALPHA_VANTAGE_API_KEY",
         "finnhub": "FINNHUB_API_KEY",
         "polygon": "POLYGON_API_KEY",
     }
 
-    # Check environment variables FIRST (more secure)
+    # Check environment vgscottbles FIRST (more secure)
     env_var = env_var_map.get(provider)
     if env_var:
         key = os.environ.get(env_var)

@@ -4,7 +4,7 @@ import type {
   PortfolioState,
   RiskScoreboard,
   Warning,
-  MommyInsight,
+  GScottInsight,
   AnalysisResult,
   PerformanceData,
   LearningData,
@@ -39,6 +39,16 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return res.json();
 }
 
+async function put<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+
 async function del<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -64,7 +74,7 @@ export const api = {
   refreshState: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
   getRisk: (pid: string) => get<RiskScoreboard>(`/${pid}/risk`),
   getWarnings: (pid: string) => get<Warning[]>(`/${pid}/warnings`),
-  getMommyInsight: (pid: string) => get<MommyInsight>(`/${pid}/mommy/insight`),
+  getGScottInsight: (pid: string) => get<GScottInsight>(`/${pid}/gscott/insight`),
   getPerformance: (pid: string) => get<PerformanceData>(`/${pid}/performance`),
   getLearning: (pid: string) => get<LearningData>(`/${pid}/learning`),
   analyze: (pid: string) => post<AnalysisResult>(`/${pid}/analyze`),
@@ -94,6 +104,11 @@ export const api = {
       total_pnl: number;
       message: string;
     }>(`/${pid}/close-all`),
+
+  // --- Portfolio config ---
+  getPortfolioConfig: (pid: string) => get<Record<string, unknown>>(`/portfolios/${pid}/config`),
+  updatePortfolioConfig: (pid: string, changes: Record<string, unknown>) =>
+    put<{ success: boolean; message: string }>(`/portfolios/${pid}/config`, { changes }),
 
   // --- Market endpoints (global, not portfolio-scoped) ---
   getMarketIndices: () => get<MarketIndices>("/market/indices"),

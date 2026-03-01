@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Avatar State Manager for Mommy Bot
+Avatar State Manager for GScott
 
 Determines which avatar expression to display based on portfolio conditions.
 Integrates with the dashboard to show contextually appropriate expressions.
@@ -160,10 +160,10 @@ def determine_avatar_state_simple(
 def get_state_description(state: AvatarState) -> str:
     """Get a human-readable description of what the avatar state means."""
     descriptions = {
-        AvatarState.NEUTRAL: "All systems normal. Mommy is calmly watching over your portfolio.",
-        AvatarState.PLEASED: "Things are looking good! Mommy is happy with your progress.",
-        AvatarState.CONCERNED: "Heads up - some positions need attention. Mommy is keeping a close eye.",
-        AvatarState.SKEPTICAL: "Market conditions are uncertain. Mommy suggests caution.",
+        AvatarState.NEUTRAL: "All systems normal. GScott is calmly watching over your portfolio.",
+        AvatarState.PLEASED: "Things are looking good! GScott is happy with your progress.",
+        AvatarState.CONCERNED: "Heads up - some positions need attention. GScott is keeping a close eye.",
+        AvatarState.SKEPTICAL: "Market conditions are uncertain. GScott suggests caution.",
     }
     return descriptions.get(state, descriptions[AvatarState.NEUTRAL])
 

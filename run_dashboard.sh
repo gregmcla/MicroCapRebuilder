@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launch the Mommy Trading Cockpit — FastAPI + React dev server
+# Launch the GScott Trading Cockpit — FastAPI + React dev server
 # Usage: ./run_dashboard.sh
 
 set -e
@@ -21,7 +21,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo -e "${CYAN}Starting Mommy Trading Cockpit${NC}"
+echo -e "${CYAN}Starting GScott Trading Cockpit${NC}"
 echo ""
 
 # Start FastAPI

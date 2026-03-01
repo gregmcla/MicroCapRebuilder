@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Strategy Health Dashboard for Mommy Bot.
+Strategy Health Dashboard for GScott.
 
 Provides a holistic "health check" that grades the current strategy A-F
 across 5 components:

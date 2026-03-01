@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Schedule Setup for Mommy Bot.
+Schedule Setup for GScott.
 
 Sets up automated daily runs using cron (Linux/Mac) or provides
 instructions for Windows Task Scheduler.
@@ -30,7 +30,7 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "daily_run.log"
 
 # Cron job identifier (used to find/remove our job)
-CRON_MARKER = "# MOMMY_BOT_DAILY_RUN"
+CRON_MARKER = "# GScott_BOT_DAILY_RUN"
 
 
 def get_current_cron_jobs():
@@ -49,7 +49,7 @@ def get_current_cron_jobs():
 
 
 def has_existing_job():
-    """Check if Mommy Bot cron job already exists."""
+    """Check if GScott cron job already exists."""
     jobs = get_current_cron_jobs()
     if jobs is None:
         return None
@@ -68,7 +68,7 @@ def install_cron_job(hour: int = 16, minute: int = 30, timezone: str = "America/
         print("❌ Cron is not available on this system")
         print("\nFor Windows, use Task Scheduler instead:")
         print(f"  1. Open Task Scheduler")
-        print(f"  2. Create Basic Task -> 'Mommy Bot Daily Run'")
+        print(f"  2. Create Basic Task -> 'GScott Daily Run'")
         print(f"  3. Trigger: Daily at {hour:02d}:{minute:02d}")
         print(f"  4. Action: Start a program")
         print(f"     Program: bash")
@@ -78,7 +78,7 @@ def install_cron_job(hour: int = 16, minute: int = 30, timezone: str = "America/
 
     # Check if already installed
     if CRON_MARKER in current_jobs:
-        print("⚠️  Mommy Bot cron job already exists")
+        print("⚠️  GScott cron job already exists")
         print("   Use --remove first, then --install to change settings")
         return False
 
@@ -127,7 +127,7 @@ def install_cron_job(hour: int = 16, minute: int = 30, timezone: str = "America/
 
 
 def remove_cron_job():
-    """Remove the Mommy Bot cron job."""
+    """Remove the GScott cron job."""
     current_jobs = get_current_cron_jobs()
 
     if current_jobs is None:
@@ -135,7 +135,7 @@ def remove_cron_job():
         return False
 
     if CRON_MARKER not in current_jobs:
-        print("ℹ️  No Mommy Bot cron job found")
+        print("ℹ️  No GScott cron job found")
         return True
 
     # Filter out our job
@@ -170,7 +170,7 @@ def remove_cron_job():
 
 def show_status():
     """Show current scheduling status."""
-    print("\n─── Mommy Bot Schedule Status ───\n")
+    print("\n─── GScott Schedule Status ───\n")
 
     current_jobs = get_current_cron_jobs()
 
@@ -252,7 +252,7 @@ def test_run():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Set up automated daily runs for Mommy Bot"
+        description="Set up automated daily runs for GScott"
     )
 
     parser.add_argument(

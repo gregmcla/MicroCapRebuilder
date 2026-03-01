@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ETF Holdings Provider for Mommy Bot.
+ETF Holdings Provider for GScott.
 
 Fetches holdings from small-cap ETFs to populate the extended universe tier.
 Uses yfinance for data retrieval with fallback to cached holdings.

@@ -80,7 +80,7 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
       style={{ display: "block" }}
       className="opacity-70"
       role="img"
-      aria-label={`20-day price history for ${ticker}`}
+      gscott-label={`20-day price history for ${ticker}`}
     >
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">

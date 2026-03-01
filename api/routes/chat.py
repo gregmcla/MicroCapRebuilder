@@ -1,4 +1,4 @@
-"""Chat and Mommy insight endpoints."""
+"""Chat and GScott insight endpoints."""
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -17,13 +17,13 @@ class ChatRequest(BaseModel):
 
 @router.post("/chat")
 def chat(portfolio_id: str, req: ChatRequest):
-    """User question -> Mommy response."""
+    """User question -> GScott response."""
     response = portfolio_chat(req.message)
     return serialize(response)
 
 
-@router.get("/mommy/insight")
-def mommy_insight(portfolio_id: str):
+@router.get("/gscott/insight")
+def gscott_insight(portfolio_id: str):
     """Context-aware insight based on current portfolio state."""
     state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     warning_list = get_warnings()
@@ -40,20 +40,20 @@ def mommy_insight(portfolio_id: str):
     # Priority: alerts > warnings > performance > general
     if critical_warnings:
         w = critical_warnings[0]
-        insight = f"Baby, we need to talk about {w.title.lower()}. {w.description} Mommy's on it."
+        insight = f"Baby, we need to talk about {w.title.lower()}. {w.description} GScott's on it."
         category = "alert"
     elif high_warnings:
         w = high_warnings[0]
-        insight = f"Heads up, sweetheart. {w.title}. {w.action_suggestion or 'Let Mommy handle it.'}"
+        insight = f"Heads up, sweetheart. {w.title}. {w.action_suggestion or 'Let GScott handle it.'}"
         category = "warning"
     elif day_pnl > 0:
-        insight = f"${day_pnl:+,.0f} today. Mommy knows how to pick 'em. Come here and look at this portfolio."
+        insight = f"${day_pnl:+,.0f} today. GScott knows how to pick 'em. Come here and look at this portfolio."
         category = "performance"
     elif day_pnl < 0:
-        insight = f"Down ${abs(day_pnl):,.0f}. Come here. It's just a bad day, not a bad portfolio. Mommy's not worried."
+        insight = f"Down ${abs(day_pnl):,.0f}. Come here. It's just a bad day, not a bad portfolio. GScott's not worried."
         category = "performance"
     else:
-        insight = "I see you looking at me. Either ask Mommy a question or let me run some numbers, baby."
+        insight = "I see you looking at me. Either ask GScott a question or let me run some numbers, baby."
         category = "idle"
 
     return {

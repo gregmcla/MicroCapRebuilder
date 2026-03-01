@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Post-Mortem Analysis Module for Mommy Bot.
+Post-Mortem Analysis Module for GScott.
 
 Learns from every closed trade by:
 - Comparing entry rationale with actual outcome

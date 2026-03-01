@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Portfolio management endpoints."""
 
+import json
 from datetime import date
+from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from api.deps import serialize
 
@@ -15,6 +17,23 @@ from portfolio_registry import (
 from strategy_generator import generate_strategy
 from portfolio_state import load_portfolio_state
 from dataclasses import asdict
+
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+
+
+def _deep_merge(base: dict, overrides: dict) -> dict:
+    """Recursively merge overrides into base dict."""
+    result = base.copy()
+    for key, value in overrides.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _config_path(portfolio_id: str) -> Path:
+    return DATA_DIR / "portfolios" / portfolio_id / "config.json"
 
 router = APIRouter(prefix="/api/portfolios", tags=["portfolios"])
 
@@ -93,6 +112,47 @@ def get_sectors():
     return {"sectors": ALL_SECTORS}
 
 
+@router.get("/{portfolio_id}/config")
+def get_portfolio_config(portfolio_id: str):
+    """Return the raw config.json for a portfolio."""
+    path = _config_path(portfolio_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Portfolio '{portfolio_id}' not found")
+    return json.loads(path.read_text())
+
+
+class UpdateConfigRequest(BaseModel):
+    changes: dict
+
+
+def _trigger_scan(portfolio_id: str):
+    """Background task: re-scan watchlist with updated config."""
+    try:
+        import sys
+        scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from watchlist_manager import WatchlistManager
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
+        mgr = WatchlistManager(state.config, portfolio_id=portfolio_id)
+        mgr.update_watchlist(run_discovery=True)
+    except Exception as e:
+        print(f"[config rescan] {portfolio_id}: {e}")
+
+
+@router.put("/{portfolio_id}/config")
+def update_portfolio_config(portfolio_id: str, req: UpdateConfigRequest, background_tasks: BackgroundTasks):
+    """Deep-merge changes into config.json and trigger a watchlist rescan."""
+    path = _config_path(portfolio_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Portfolio '{portfolio_id}' not found")
+    current = json.loads(path.read_text())
+    updated = _deep_merge(current, req.changes)
+    path.write_text(json.dumps(updated, indent=2))
+    background_tasks.add_task(_trigger_scan, portfolio_id)
+    return {"success": True, "message": "Config updated. Rescanning watchlist in background."}
+
+
 @router.delete("/{portfolio_id}")
 def delete_portfolio(portfolio_id: str):
     archive_portfolio(portfolio_id)
@@ -114,6 +174,7 @@ def get_overview():
     total_day_pnl = 0.0
     total_unrealized_pnl = 0.0
     total_positions = 0
+    total_all_time_pnl = 0.0
     all_positions = []  # cross-portfolio position list for top/bottom movers
 
     for p in portfolios:
@@ -130,11 +191,13 @@ def get_overview():
                 if snapshot_date.startswith(date.today().isoformat()):
                     day_pnl = float(today_row.get("day_pnl", 0) or 0)
 
-            # Total return % from starting capital
-            starting_capital = state.config.get("starting_capital", 50000)
+            # Total return % + all-time P&L from starting capital
+            starting_capital = float(state.config.get("starting_capital", 50000))
             total_return_pct = 0.0
+            all_time_pnl = 0.0
             if starting_capital > 0:
                 total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
+                all_time_pnl = state.total_equity - starting_capital
 
             # Unrealized P&L and deployment
             positions = state.positions
@@ -174,6 +237,7 @@ def get_overview():
                 "paper_mode": state.paper_mode,
                 "unrealized_pnl": round(unrealized_pnl, 2),
                 "day_pnl": round(day_pnl, 2),
+                "all_time_pnl": round(all_time_pnl, 2),
                 "total_return_pct": round(total_return_pct, 2),
                 "deployed_pct": deployed_pct,
                 "sparkline": sparkline,
@@ -182,6 +246,7 @@ def get_overview():
             total_cash += state.cash
             total_day_pnl += day_pnl
             total_unrealized_pnl += unrealized_pnl
+            total_all_time_pnl += all_time_pnl
             total_positions += state.num_positions
             summaries.append(summary)
         except Exception as e:
@@ -197,6 +262,7 @@ def get_overview():
         "total_cash": round(total_cash, 2),
         "total_day_pnl": round(total_day_pnl, 2),
         "total_unrealized_pnl": round(total_unrealized_pnl, 2),
+        "total_all_time_pnl": round(total_all_time_pnl, 2),
         "total_positions": total_positions,
         "top_movers": top_movers,
         "bottom_movers": bottom_movers,

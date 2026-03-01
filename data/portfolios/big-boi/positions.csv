@@ -1,0 +1,2 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,day_change,day_change_pct
+XOM,673,148.45,148.45,99906.85,-0.0,-0.0,141.02749999999995,178.14,2026-02-16,-996.04,-0.99

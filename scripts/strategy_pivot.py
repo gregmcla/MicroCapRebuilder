@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Strategy Pivot Analyzer for Mommy Bot.
+Strategy Pivot Analyzer for GScott.
 
 The PIVOT button performs deep holistic analysis and suggests alternative
 strategies when the current approach isn't working.
@@ -85,7 +85,7 @@ class PivotAnalysis:
     diagnosis_failing: List[DiagnosisItem] = field(default_factory=list)
     pivots: List[PivotRecommendation] = field(default_factory=list)
     recommended_pivot: Optional[PivotRecommendation] = None
-    mommy_says: str = ""  # Personalized narrative from Mommy
+    gscott_says: str = ""  # Personalized narrative from GScott
 
 
 class StrategyPivotAnalyzer:
@@ -121,8 +121,8 @@ class StrategyPivotAnalyzer:
         # Select recommended pivot (highest priority)
         recommended = pivots[0] if pivots else None
 
-        # Generate Mommy's narrative
-        mommy_says = self._generate_mommy_narrative(health, working, failing, recommended, regime)
+        # Generate GScott's narrative
+        gscott_says = self._generate_gscott_narrative(health, working, failing, recommended, regime)
 
         return PivotAnalysis(
             health=health,
@@ -132,7 +132,7 @@ class StrategyPivotAnalyzer:
             diagnosis_failing=failing,
             pivots=pivots,
             recommended_pivot=recommended,
-            mommy_says=mommy_says,
+            gscott_says=gscott_says,
         )
 
     def _load_positions(self) -> pd.DataFrame:
@@ -403,10 +403,10 @@ class StrategyPivotAnalyzer:
                 "scoring.min_score_threshold.SIDEWAYS": 55.0,
             }
 
-    def _generate_mommy_narrative(self, health: StrategyHealth, working: List[DiagnosisItem],
+    def _generate_gscott_narrative(self, health: StrategyHealth, working: List[DiagnosisItem],
                                    failing: List[DiagnosisItem], recommended: Optional[PivotRecommendation],
                                    regime: MarketRegime) -> str:
-        """Generate Mommy's personalized narrative."""
+        """Generate GScott's personalized narrative."""
         grade = health.grade
 
         if grade in ["A", "A-"]:
@@ -482,11 +482,11 @@ if __name__ == "__main__":
     if analysis.should_pivot:
         print(f"Urgency: {analysis.urgency.upper()}")
 
-    # Mommy's take
+    # GScott's take
     print("\n" + "-" * 70)
-    print("MOMMY SAYS:")
+    print("GScott SAYS:")
     print("-" * 70)
-    print(f"\n  \"{analysis.mommy_says}\"")
+    print(f"\n  \"{analysis.gscott_says}\"")
 
     # Diagnosis
     if analysis.diagnosis_working:

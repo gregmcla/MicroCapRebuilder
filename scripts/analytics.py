@@ -305,13 +305,13 @@ class PortfolioAnalytics:
         aligned.columns = ["portfolio", "benchmark"]
 
         # Beta = Cov(portfolio, benchmark) / Var(benchmark)
-        covariance = aligned["portfolio"].cov(aligned["benchmark"])
-        variance = aligned["benchmark"].var()
+        covgscottnce = aligned["portfolio"].cov(aligned["benchmark"])
+        vgscottnce = aligned["benchmark"].var()
 
-        if variance == 0:
+        if vgscottnce == 0:
             return 1.0
 
-        return round(covariance / variance, 2)
+        return round(covgscottnce / vgscottnce, 2)
 
     def calculate_alpha(
         self,

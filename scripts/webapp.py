@@ -13,7 +13,7 @@ Sections:
 - Recent Activity: last trades (expandable)
 - Learning Insights: factor performance (collapsed by default)
 
-Mommy Chat lives in a persistent right sidebar.
+GScott Chat lives in a persistent right sidebar.
 
 Run with: streamlit run scripts/webapp.py
 """
@@ -70,7 +70,7 @@ from webapp_components import (
     render_equity_curve,
     render_section_header,
     generate_sparkline_svg,
-    get_mommy_greeting,
+    get_gscott_greeting,
 )
 from avatar_svg import get_avatar_svg
 from avatar_states import determine_avatar_state_simple
@@ -164,7 +164,7 @@ def close_all_positions():
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="MOMMY",
+    page_title="GScott",
     page_icon="M",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -187,8 +187,8 @@ if "pivot_analysis" not in st.session_state:
     st.session_state.pivot_analysis = None
 if "view_mode" not in st.session_state:
     st.session_state.view_mode = "cards"
-if "mommy_chat_response" not in st.session_state:
-    st.session_state.mommy_chat_response = None
+if "gscott_chat_response" not in st.session_state:
+    st.session_state.gscott_chat_response = None
 if "sidebar_collapsed" not in st.session_state:
     st.session_state.sidebar_collapsed = False
 
@@ -252,7 +252,7 @@ col_logo, col_spacer, col_controls = st.columns([1.5, 3, 1.5])
 with col_logo:
     logo_html = '<div style="display: flex; align-items: center; gap: 12px; padding: 4px 0;">'
     logo_html += '<div style="width: 36px; height: 36px; background: linear-gradient(135deg, #4FD1C5 0%, #38B2AC 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #0A1628; font-family: Georgia, serif;">M</div>'
-    logo_html += '<span style="font-family: Georgia, serif; font-size: 20px; font-weight: 600; color: #F7FAFC;">MOMMY</span>'
+    logo_html += '<span style="font-family: Georgia, serif; font-size: 20px; font-weight: 600; color: #F7FAFC;">GScott</span>'
     logo_html += '</div>'
     st.markdown(logo_html, unsafe_allow_html=True)
 
@@ -373,11 +373,11 @@ if st.session_state.show_emergency_modal:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MAIN CONTENT AREA + MOMMY SIDEBAR
+# MAIN CONTENT AREA + GScott SIDEBAR
 # ═══════════════════════════════════════════════════════════════════════════════
 main_col, sidebar_col = st.columns([3, 1])
 
-# ─── MOMMY SIDEBAR (Persistent) ───────────────────────────────────────────────
+# ─── GScott SIDEBAR (Persistent) ───────────────────────────────────────────────
 with sidebar_col:
     # Determine avatar state
     avatar_state = determine_avatar_state_simple(
@@ -389,7 +389,7 @@ with sidebar_col:
     )
 
     # Get greeting
-    greeting = get_mommy_greeting(
+    greeting = get_gscott_greeting(
         day_pnl=day_pnl,
         positions_near_stop=len(near_stop),
         positions_near_target=len(near_target),
@@ -399,10 +399,10 @@ with sidebar_col:
 
     # Avatar
     avatar_svg = get_avatar_svg(avatar_state.value, size=80)
-    st.markdown('<div class="mommy-avatar-container">' + avatar_svg + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="gscott-avatar-container">' + avatar_svg + '</div>', unsafe_allow_html=True)
 
     # Greeting
-    st.markdown(f'<div class="mommy-greeting">"{greeting}"</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="gscott-greeting">"{greeting}"</div>', unsafe_allow_html=True)
 
     # Recent Insights
     insights = []
@@ -450,7 +450,7 @@ with sidebar_col:
         PLACEHOLDERS = ["How's my portfolio?", "Any worries?", "What should I watch?"]
         placeholder = random.choice(PLACEHOLDERS)
 
-        with st.form(key="mommy_chat_form", clear_on_submit=True):
+        with st.form(key="gscott_chat_form", clear_on_submit=True):
             user_question = st.text_input("chat", placeholder=placeholder, label_visibility="collapsed")
             submitted = st.form_submit_button("Ask", use_container_width=True)
 
@@ -458,16 +458,16 @@ with sidebar_col:
             with st.spinner("Thinking..."):
                 response = ai_chat(user_question)
             if response.success:
-                st.session_state.mommy_chat_response = response.message
+                st.session_state.gscott_chat_response = response.message
             else:
-                st.session_state.mommy_chat_response = None
+                st.session_state.gscott_chat_response = None
                 st.error(response.error)
 
         # Display response outside the submit block so it persists
-        if st.session_state.mommy_chat_response:
-            st.markdown(f'<div style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; font-style: italic; color: {COLORS["text_primary"]};">"{st.session_state.mommy_chat_response}"</div>', unsafe_allow_html=True)
+        if st.session_state.gscott_chat_response:
+            st.markdown(f'<div style="background: rgba(79,209,197,0.1); border-left: 3px solid {COLORS["accent_teal"]}; padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 13px; font-style: italic; color: {COLORS["text_primary"]};">"{st.session_state.gscott_chat_response}"</div>', unsafe_allow_html=True)
             if st.button("Clear", key="clear_chat", use_container_width=True):
-                st.session_state.mommy_chat_response = None
+                st.session_state.gscott_chat_response = None
                 st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)

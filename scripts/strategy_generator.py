@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AI strategy generation — Mommy generates a portfolio config from a text description."""
+"""AI strategy generation — GScott generates a portfolio config from a text description."""
 
 import json
 import os
@@ -30,7 +30,7 @@ VALID_SECTORS = [
     "Energy", "Materials", "Utilities", "Real Estate",
 ]
 
-STRATEGY_SYSTEM_PROMPT = """You are Mommy Bot's strategy architect. Given a user's description of their desired trading strategy, generate a portfolio configuration.
+STRATEGY_SYSTEM_PROMPT = """You are GScott's strategy architect. Given a user's description of their desired trading strategy, generate a portfolio configuration.
 
 You MUST return ONLY valid JSON with these exact fields:
 {

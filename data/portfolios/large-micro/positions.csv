@@ -1,0 +1,4 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,day_change,day_change_pct
+OII,2370,37.97,37.97,89988.9,0.0,0.0,34.93,45.56,2026-02-25,-2014.5,-2.19
+PTEN,7194,8.34,8.34,59997.96,0.0,0.0,7.67,10.01,2026-02-25,0.0,0.0
+XPRO,3468,17.3,17.3,59996.4,-0.0,-0.0,15.92,20.76,2026-02-25,-1491.24,-2.43

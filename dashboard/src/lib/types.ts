@@ -28,6 +28,7 @@ export interface PortfolioSummary {
   paper_mode: boolean;
   unrealized_pnl: number;
   day_pnl: number;
+  all_time_pnl: number;
   total_return_pct: number;
   deployed_pct: number;
   sparkline?: number[];
@@ -48,6 +49,7 @@ export interface OverviewData {
   total_cash: number;
   total_day_pnl: number;
   total_unrealized_pnl: number;
+  total_all_time_pnl: number;
   total_positions: number;
   top_movers: CrossPortfolioMover[];
   bottom_movers: CrossPortfolioMover[];
@@ -130,6 +132,8 @@ export interface PortfolioState {
   day_pnl: number;
   day_pnl_pct: number;
   total_return_pct: number;
+  all_time_pnl: number;
+  starting_capital: number;
   timestamp: string;
 }
 
@@ -271,7 +275,7 @@ export interface LearningData {
   weight_suggestions: WeightSuggestion[];
 }
 
-export interface MommyInsight {
+export interface GScottInsight {
   insight: string;
   category: "alert" | "warning" | "performance" | "idle";
   warnings_count: number;

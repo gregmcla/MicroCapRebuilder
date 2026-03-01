@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Watchlist Manager Module for Mommy Bot.
+Watchlist Manager Module for GScott.
 
 Manages the dynamic watchlist with:
 - Core watchlist (manually curated, always included)
@@ -639,7 +639,7 @@ def format_watchlist_report(manager: WatchlistManager = None) -> str:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Mommy Bot Watchlist Manager")
+    parser = argparse.ArgumentParser(description="GScott Watchlist Manager")
     parser.add_argument("--update", action="store_true", help="Run full watchlist update")
     parser.add_argument("--status", action="store_true", help="Show watchlist status")
     parser.add_argument("--list", action="store_true", help="List all active tickers")

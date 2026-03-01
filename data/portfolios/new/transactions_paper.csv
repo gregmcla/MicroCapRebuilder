@@ -1,0 +1,8 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+ef779273,2026-03-01,APA,BUY,790,30.37,23992.3,28.55,36.44,SIGNAL,BULL,74.3,"{""momentum"": 91.6, ""volatility"": 44.9, ""volume"": 53.8, ""relative_strength"": 85.7, ""mean_reversion"": 54.6, ""rsi"": 75.0, ""composite"": 74.3}",
+853f7981,2026-03-01,BKR,BUY,367,65.26,23950.42,61.34,78.31,SIGNAL,BULL,70.3,"{""momentum"": 92.4, ""volatility"": 60.1, ""volume"": 45.0, ""relative_strength"": 90.4, ""mean_reversion"": 63.1, ""rsi"": 35.0, ""composite"": 70.3}",
+5ba1c38a,2026-03-01,COP,BUY,211,113.46,23940.06,106.65,136.15,SIGNAL,BULL,71.1,"{""momentum"": 83.8, ""volatility"": 59.5, ""volume"": 41.6, ""relative_strength"": 72.5, ""mean_reversion"": 76.4, ""rsi"": 75.0, ""composite"": 71.1}",
+2ffeb4c1,2026-03-01,CRGY,BUY,2058,11.66,23996.28,10.96,13.99,SIGNAL,BULL,73.6,"{""momentum"": 100, ""volatility"": 36.3, ""volume"": 60.1, ""relative_strength"": 96.6, ""mean_reversion"": 31.1, ""rsi"": 55.0, ""composite"": 73.6}",
+6826e3c4,2026-03-01,SJM,BUY,206,115.95,23885.7,108.99,139.14,SIGNAL,BULL,78.8,"{""momentum"": 83.8, ""volatility"": 64.0, ""volume"": 98.4, ""relative_strength"": 77.4, ""mean_reversion"": 66.7, ""rsi"": 75.0, ""composite"": 78.8}",
+d6173131,2026-03-01,ETR,BUY,115,107.11,12317.65,100.68,128.53,SIGNAL,BULL,67.8,"{""momentum"": 83.6, ""volatility"": 75.8, ""volume"": 45.0, ""relative_strength"": 79.3, ""mean_reversion"": 71.1, ""rsi"": 35.0, ""composite"": 67.8}",
+dd5d027f,2026-03-01,PKG,BUY,103,232.14,23910.42,218.21,278.57,SIGNAL,BULL,68.4,"{""momentum"": 76.8, ""volatility"": 64.6, ""volume"": 51.0, ""relative_strength"": 59.0, ""mean_reversion"": 94.4, ""rsi"": 70.0, ""composite"": 68.4}",

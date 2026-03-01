@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
+import PortfolioSettingsModal from "./PortfolioSettingsModal";
 
 // ── Shared button style constants ────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
           <div className="bg-bg-elevated border border-border rounded-lg p-4 max-w-md">
             <h3 className="text-sm font-semibold text-loss mb-2">Emergency Close All Positions?</h3>
             <p className="text-xs text-text-muted mb-3">
-              You sure, sweetheart? Mommy will close everything if that's what you need. I've got you.
+              You sure, sweetheart? GScott will close everything if that's what you need. I've got you.
             </p>
             <div className="bg-bg-surface rounded p-2 mb-3 max-h-32 overflow-y-auto">
               <div className="text-xs space-y-1">
@@ -240,6 +241,8 @@ export default function TopBar({
   state: PortfolioState | undefined;
   isLoading: boolean;
 }) {
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
     <header
       className="flex items-center gap-4 px-4 shrink-0 border-b"
@@ -255,15 +258,38 @@ export default function TopBar({
           onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
           className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
         >
-          <span className="font-mono font-bold" style={{ fontSize: "15px", color: "var(--accent)" }}>M</span>
-          <span className="font-semibold tracking-widest uppercase" style={{ fontSize: "11px", color: "var(--accent)" }}>
-            MOMMY
+          <span className="font-semibold tracking-widest uppercase" style={{ fontSize: "13px", color: "var(--accent)", letterSpacing: "0.15em" }}>
+            GScott
           </span>
         </button>
         <span style={{ color: "var(--border-1)", fontSize: "16px", fontWeight: 300 }}>|</span>
         <PortfolioSwitcher />
         <FreshnessIndicator />
+        <button
+          onClick={() => setShowSettings(true)}
+          title="Portfolio Settings"
+          style={{
+            background: "none",
+            border: "1px solid var(--border-1)",
+            borderRadius: "5px",
+            color: "var(--text-0)",
+            cursor: "pointer",
+            width: "24px",
+            height: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "13px",
+            lineHeight: 1,
+            transition: "color 0.15s, border-color 0.15s",
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-0)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)"; }}
+        >
+          ⚙
+        </button>
       </div>
+      {showSettings && <PortfolioSettingsModal onClose={() => setShowSettings(false)} />}
 
       {/* Center: market indices */}
       <div className="flex-1 flex justify-center min-w-0">

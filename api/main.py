@@ -8,7 +8,7 @@ import api.deps  # noqa: F401
 
 from api.routes import state, risk, performance, analysis, chat, market, controls, discovery, portfolios
 
-app = FastAPI(title="Mommy Trading Cockpit", version="0.1.0")
+app = FastAPI(title="GScott Trading Cockpit", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

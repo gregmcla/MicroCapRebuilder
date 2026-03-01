@@ -1,0 +1,4 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+1dc2b82c,2026-02-25,OII,BUY,2370,37.97,89988.9,34.93,45.56,SIGNAL,BULL,77.5,"{""momentum"": 97.5, ""volatility"": 32.5, ""volume"": 71.0, ""relative_strength"": 100, ""mean_reversion"": 25.6, ""rsi"": 75.0, ""composite"": 77.5}",
+aa1070b0,2026-02-25,PTEN,BUY,7194,8.34,59997.96,7.67,10.01,SIGNAL,BULL,74.1,"{""momentum"": 81.2, ""volatility"": 46.6, ""volume"": 36.2, ""relative_strength"": 83.5, ""mean_reversion"": 86.7, ""rsi"": 90.0, ""composite"": 74.1}",
+869fafc9,2026-02-25,XPRO,BUY,3468,17.3,59996.4,15.92,20.76,SIGNAL,BULL,74.6,"{""momentum"": 78.2, ""volatility"": 36.8, ""volume"": 72.2, ""relative_strength"": 78.3, ""mean_reversion"": 79.6, ""rsi"": 90.0, ""composite"": 74.6}",

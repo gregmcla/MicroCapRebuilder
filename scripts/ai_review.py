@@ -102,7 +102,7 @@ Action {i}:
   Quant Reason: {action.reason}
 """
 
-    prompt = f"""You are Mommy's risk management AI. You review proposed trades from the quantitative system and decide whether to APPROVE, MODIFY, or VETO each one.
+    prompt = f"""You are GScott's risk management AI. You review proposed trades from the quantitative system and decide whether to APPROVE, MODIFY, or VETO each one.
 
 PORTFOLIO CONTEXT:
 - Total Equity: ${portfolio_context.get('total_equity', 0):,.0f}
