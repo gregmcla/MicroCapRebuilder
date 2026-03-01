@@ -42,6 +42,7 @@ class ExecutionSequencer:
             "deteriorating_sell_medium": 70,
             "quality_degradation_sell": 60,
             "rebalancing_sell": 50,
+            "rotation_sell": 55,
             "high_conviction_buy": 85,
             "medium_conviction_buy": 65,
             "low_conviction_buy": 45,
@@ -147,6 +148,8 @@ class ExecutionSequencer:
                     return self.priorities["deteriorating_sell_medium"], "Deteriorating position"
             elif "rebalanc" in reason_lower:
                 return self.priorities["rebalancing_sell"], "Rebalancing sell"
+            elif "rotation" in reason_lower:
+                return self.priorities.get("rotation_sell", 55), "Rotation sell (upgrading position)"
             else:
                 return self.priorities["quality_degradation_sell"], "Quality degradation"
 

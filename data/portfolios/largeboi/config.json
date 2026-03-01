@@ -6,12 +6,12 @@
     "simulated_slippage_pct": 0.05,
     "paper_data_suffix": "_paper"
   },
-  "starting_capital": 500000.0,
+  "starting_capital": 1000000.0,
   "initial_deployment_target_pct": 90.0,
-  "risk_per_trade_pct": 6,
-  "max_position_pct": 12,
+  "risk_per_trade_pct": 3.0,
+  "max_position_pct": 8.0,
   "max_positions": 999,
-  "default_stop_loss_pct": 8,
+  "default_stop_loss_pct": 7.0,
   "default_take_profit_pct": 20.0,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^GSPC",
@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "momentum": 0.35,
-      "volatility": 0.05,
-      "volume": 0.2,
-      "relative_strength": 0.25,
-      "mean_reversion": 0.05,
-      "rsi": 0.1
+      "momentum": 0.2,
+      "volatility": 0.15,
+      "volume": 0.15,
+      "relative_strength": 0.2,
+      "mean_reversion": 0.15,
+      "rsi": 0.15
     },
     "regime_weights": {
       "BULL": {
@@ -141,8 +141,8 @@
       "min_score_drop_for_sell": 30,
       "enable_trailing_stops": true,
       "enable_volatility_stops": true,
-      "trailing_stop_trigger_pct": 10.0,
-      "trailing_stop_distance_pct": 6.0,
+      "trailing_stop_trigger_pct": 12.0,
+      "trailing_stop_distance_pct": 7.0,
       "volatility_stop_high_atr": 10.0,
       "volatility_stop_low_atr": 6.0,
       "volatility_stop_atr_threshold_high": 5.0,
@@ -227,7 +227,7 @@
     "run_frequency": "weekly",
     "scan_types": {
       "momentum_breakouts": true,
-      "oversold_bounces": false,
+      "oversold_bounces": true,
       "sector_leaders": true,
       "volume_anomalies": true
     },
@@ -246,17 +246,7 @@
       "remove_poor_performers": true,
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75
-    },
-    "sector_filter": [
-      "Technology",
-      "Communication Services",
-      "Real Estate",
-      "Healthcare",
-      "Industrials",
-      "Financial Services",
-      "Consumer Cyclical",
-      "Energy"
-    ]
+    }
   },
   "universe": {
     "enabled": true,
@@ -268,37 +258,17 @@
       },
       "etf_holdings": {
         "enabled": true,
-        "etfs": [
-          "XLK",
-          "SOXX",
-          "XLC",
-          "XLRE",
-          "VGT",
-          "ARKQ",
-          "PLD",
-          "ROBO",
-          "BOTZ",
-          "IGV",
-          "ARKG",
-          "ARKW",
-          "WCLD",
-          "SMH",
-          "FINX",
-          "HACK",
-          "AIQ",
-          "KOMP",
-          "SKYY"
-        ]
+        "etfs": []
       }
     },
     "tiers": {
       "core": {
         "max_tickers": 100,
-        "scan_frequency": "rotating_3day"
+        "scan_frequency": "daily"
       },
       "extended": {
         "max_tickers": 1000,
-        "scan_frequency": "rotating_3day"
+        "scan_frequency": "daily"
       }
     },
     "filters": {
@@ -310,11 +280,11 @@
     }
   },
   "strategy": {
-    "name": "AI & Data Center Aggressive Growth",
+    "name": "Balanced",
     "sectors": [],
-    "trading_style": "aggressive_momentum",
-    "created_via": "ai",
-    "ai_prompt": "aggressive buy strategy. focus is AI and data centers",
-    "ai_rationale": "This aggressive configuration targets AI and data center infrastructure through Technology, Communication, and Real Estate sectors with high momentum weighting and generous position sizing. The strategy prioritizes breakout patterns and sector leadership to capitalize on the rapid growth in AI-related investments."
+    "trading_style": "balanced",
+    "created_via": "wizard",
+    "ai_prompt": null,
+    "ai_rationale": null
   }
 }

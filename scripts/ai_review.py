@@ -137,6 +137,8 @@ DECISION GUIDELINES:
 - MODIFY if the idea is good but position size or levels should be adjusted
 - VETO if you see risks the quant model missed (correlation, sector concentration, timing, macro)
 
+- ROTATION SELLS: Sells labeled "ROTATION: Upgrading to {ticker}" sell a modestly-performing position to fund a higher-scoring candidate. A 20+ point score gap generally justifies the switch.
+
 Be protective but not overly cautious. A 70+ score with good regime usually deserves APPROVE.
 
 Respond ONLY with the JSON, no other text."""

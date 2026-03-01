@@ -7,6 +7,7 @@
     "paper_data_suffix": "_paper"
   },
   "starting_capital": 50000.0,
+  "initial_deployment_target_pct": 90.0,
   "risk_per_trade_pct": 10.0,
   "max_position_pct": 15.0,
   "max_positions": 999,
@@ -141,7 +142,7 @@
       "enable_trailing_stops": true,
       "enable_volatility_stops": true,
       "trailing_stop_trigger_pct": 10.0,
-      "trailing_stop_distance_pct": 8.0,
+      "trailing_stop_distance_pct": 6.0,
       "volatility_stop_high_atr": 10.0,
       "volatility_stop_low_atr": 6.0,
       "volatility_stop_atr_threshold_high": 5.0,
@@ -154,7 +155,7 @@
     },
     "layer2": {
       "enable_conviction": true,
-      "min_conviction": 60,
+      "min_conviction": 45,
       "enable_pattern_detection": true,
       "conviction_multiplier_max": 2.0,
       "conviction_thresholds": {
@@ -167,7 +168,7 @@
         "exceptional": 2.0,
         "strong": 1.5,
         "good": 1.0,
-        "acceptable": 0.75
+        "acceptable": 1.0
       },
       "conviction_adjustments": {
         "multiple_confirmations": 0.3,
@@ -205,6 +206,13 @@
         "medium_conviction_buy": 65,
         "low_conviction_buy": 45
       }
+    },
+    "rotation": {
+      "enabled": true,
+      "min_upgrade_score_gap": 20,
+      "max_rotations_per_cycle": 3,
+      "min_held_days_before_rotation": 5,
+      "max_unrealized_loss_pct_for_rotation": -15
     }
   },
   "data_provider": {
@@ -249,12 +257,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
-        "etfs": [
-          "IWM",
-          "IJR",
-          "VB"
-        ]
+        "enabled": true
       }
     },
     "tiers": {
@@ -263,8 +266,8 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 300,
-        "scan_frequency": "rotating_3day"
+        "max_tickers": 1000,
+        "scan_frequency": "daily"
       }
     },
     "filters": {

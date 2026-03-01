@@ -174,10 +174,20 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
             print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
 
+        # Log rotation proposals
+        if layer2_output.get("rotation_sells"):
+            print(f"\n  🔄 Portfolio Rotation: {len(layer2_output['rotation_sells'])} swap(s) proposed")
+            for sell, buy in zip(layer2_output["rotation_sells"], layer2_output["rotation_buys"]):
+                print(f"     SELL {sell.ticker} → BUY {buy.ticker} ({sell.reason})")
+
+        # Merge rotation buys into Layer 3 input so composition checks them too
+        all_buys = layer2_output["buy_proposals"] + layer2_output.get("rotation_buys", [])
+        layer2_for_l3 = {**layer2_output, "buy_proposals": all_buys}
+
         # Run Layer 3: Portfolio Composition
         print("\nRunning Layer 3: Portfolio Composition...")
         layer3 = CompositionLayer(config)
-        layer3_output = layer3.process(state, layer1_output, layer2_output)
+        layer3_output = layer3.process(state, layer1_output, layer2_for_l3)
 
         # Remove originally proposed buys and add only filtered buys
         proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
@@ -208,6 +218,25 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                 reason=rebalance_sell.reason,
                 stop_loss=0.0,
                 take_profit=0.0,
+                quant_score=0,
+                factor_scores={},
+                regime=regime.value,
+            ))
+
+        # Add rotation sells
+        for sell_proposal in layer2_output.get("rotation_sells", []):
+            proposed_actions.append(ProposedAction(
+                action_type="SELL",
+                ticker=sell_proposal.ticker,
+                shares=sell_proposal.shares,
+                price=sell_proposal.current_price,
+                stop_loss=sell_proposal.stop_loss,
+                take_profit=sell_proposal.take_profit,
+                quant_score=0,
+                factor_scores={},
+                regime=regime.value,
+                reason=sell_proposal.reason,
+                source_proposal=sell_proposal,
             ))
 
         # Display composition warnings

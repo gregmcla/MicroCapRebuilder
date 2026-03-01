@@ -299,5 +299,6 @@ class RiskLayer:
         return {
             "sell_proposals": sell_proposals,
             "updated_stops": updated_stops,
-            "deterioration_alerts": deterioration_alerts
+            "deterioration_alerts": deterioration_alerts,
+            "held_score_map": score_map,  # Exposed for Layer 2 rotation
         }

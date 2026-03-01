@@ -26,12 +26,13 @@ Usage:
 """
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 from enhanced_structures import (
     BuyProposal, ConvictionScore, ConvictionLevel,
-    PatternSignal, PatternType
+    PatternSignal, PatternType, SellProposal, UrgencyLevel
 )
 from stock_scorer import StockScorer, StockScore
 from portfolio_state import PortfolioState, load_watchlist
@@ -133,9 +134,17 @@ class OpportunityLayer:
         # Generate buy proposals from high-conviction candidates
         buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map)
 
+        # If no normal buys (likely low cash) but good candidates exist, try rotation
+        rotation_output = {"rotation_sells": [], "rotation_buys": []}
+        if not buy_proposals and conviction_scores:
+            rotation_output = self._generate_rotation_proposals(
+                conviction_scores, state, risk_layer_output, price_map
+            )
+
         return {
             "conviction_scores": conviction_scores,
-            "buy_proposals": buy_proposals
+            "buy_proposals": buy_proposals,
+            **rotation_output,
         }
 
     def calculate_conviction(self, stock_score: StockScore, regime: MarketRegime) -> ConvictionScore:
@@ -411,6 +420,179 @@ class OpportunityLayer:
             remaining_cash -= total_value
 
         return proposals
+
+    def _generate_rotation_proposals(
+        self,
+        conviction_scores: Dict[str, "ConvictionScore"],
+        state: "PortfolioState",
+        risk_layer_output: dict,
+        price_map: Dict[str, float]
+    ) -> dict:
+        """
+        Generate rotation sell+buy pairs when portfolio is fully deployed.
+
+        Sells the lowest-scoring held position to fund a significantly better
+        watchlist candidate (requires min_upgrade_score_gap).
+
+        Returns:
+            Dict with rotation_sells and rotation_buys lists.
+        """
+        rotation_cfg = self.config.get("enhanced_trading", {}).get("rotation", {})
+        if not rotation_cfg.get("enabled", False):
+            return {"rotation_sells": [], "rotation_buys": []}
+
+        min_gap = rotation_cfg.get("min_upgrade_score_gap", 20)
+        max_rotations = rotation_cfg.get("max_rotations_per_cycle", 3)
+        min_held_days = rotation_cfg.get("min_held_days_before_rotation", 5)
+        max_loss_pct = rotation_cfg.get("max_unrealized_loss_pct_for_rotation", -15)
+
+        # Get held score map from Layer 1 (StockScore objects keyed by ticker)
+        held_score_map = risk_layer_output.get("held_score_map", {})
+        if not held_score_map or state.positions.empty:
+            return {"rotation_sells": [], "rotation_buys": []}
+
+        # Tickers already flagged for sell by Layer 1 — don't double-sell
+        already_selling = {sp.ticker for sp in risk_layer_output.get("sell_proposals", [])}
+
+        today = date.today()
+
+        # Build eligible held positions
+        eligible_held = []
+        for _, pos in state.positions.iterrows():
+            ticker = pos["ticker"]
+            if ticker in already_selling:
+                continue
+            if ticker not in held_score_map:
+                continue
+
+            # Check minimum hold duration
+            try:
+                entry_date = date.fromisoformat(str(pos["entry_date"])[:10])
+                days_held = (today - entry_date).days
+            except Exception:
+                days_held = 0
+            if days_held < min_held_days:
+                continue
+
+            # Don't lock in large losses
+            unrealized_pct = float(pos.get("unrealized_pnl_pct", 0))
+            if unrealized_pct < max_loss_pct:
+                continue
+
+            held_score = held_score_map[ticker].composite_score
+            current_price = state.price_cache.get(ticker, float(pos.get("current_price", 0)))
+            eligible_held.append({
+                "ticker": ticker,
+                "shares": int(pos["shares"]),
+                "current_price": current_price,
+                "composite_score": held_score,
+                "stop_loss": float(pos.get("stop_loss", 0)),
+                "take_profit": float(pos.get("take_profit", 0)),
+            })
+
+        if not eligible_held:
+            return {"rotation_sells": [], "rotation_buys": []}
+
+        # Sort held by score ascending (worst first)
+        eligible_held.sort(key=lambda x: x["composite_score"])
+
+        # Sort candidates by composite_score descending (best first)
+        sorted_candidates = sorted(
+            conviction_scores.values(),
+            key=lambda c: c.composite_score,
+            reverse=True
+        )
+
+        rotation_sells = []
+        rotation_buys = []
+        used_buy_tickers = set()
+        used_sell_tickers = set()
+
+        for held in eligible_held:
+            if len(rotation_sells) >= max_rotations:
+                break
+
+            held_score = held["composite_score"]
+
+            # Find best candidate with sufficient gap
+            best_candidate = None
+            for candidate in sorted_candidates:
+                if candidate.ticker in used_buy_tickers:
+                    continue
+                gap = candidate.composite_score - held_score
+                if gap >= min_gap:
+                    best_candidate = candidate
+                    break
+
+            if best_candidate is None:
+                continue
+
+            gap = best_candidate.composite_score - held_score
+            sell_ticker = held["ticker"]
+            buy_ticker = best_candidate.ticker
+
+            # Build sell proposal
+            sell_reason = (
+                f"ROTATION: Upgrading to {buy_ticker} "
+                f"(score gap +{gap:.0f}: {held_score:.0f} → {best_candidate.composite_score:.0f})"
+            )
+            sell_proposal = SellProposal(
+                ticker=sell_ticker,
+                shares=held["shares"],
+                current_price=held["current_price"],
+                reason=sell_reason,
+                urgency_level=UrgencyLevel.LOW,
+                urgency_score=35,
+                stop_loss=held["stop_loss"],
+                take_profit=held["take_profit"],
+            )
+
+            # Size the buy from sell proceeds
+            sell_proceeds = held["shares"] * held["current_price"]
+            buy_price = price_map.get(buy_ticker) or state.price_cache.get(buy_ticker)
+            if not buy_price or buy_price <= 0:
+                continue
+
+            # Conviction-based size (capped by sell proceeds)
+            if best_candidate.final_conviction >= 80:
+                base_size_pct = self.position_sizing["high_conviction_pct"]
+            elif best_candidate.final_conviction >= 70:
+                base_size_pct = self.position_sizing["medium_conviction_pct"]
+            else:
+                base_size_pct = self.position_sizing["low_conviction_pct"]
+
+            conviction_value = state.total_equity * (base_size_pct / 100.0)
+            position_value = min(conviction_value, sell_proceeds)
+
+            if position_value < buy_price:
+                continue
+
+            buy_shares = int(position_value / buy_price)
+            if buy_shares < 1:
+                continue
+
+            total_value = buy_shares * buy_price
+
+            # Build buy rationale
+            base_rationale = self._build_rationale(best_candidate, base_size_pct, state.regime)
+            buy_rationale = f"{base_rationale} | ROTATION from {sell_ticker} (+{gap:.0f} score upgrade)"
+
+            buy_proposal = BuyProposal(
+                ticker=buy_ticker,
+                shares=buy_shares,
+                price=buy_price,
+                total_value=total_value,
+                conviction_score=best_candidate,
+                position_size_pct=round(base_size_pct, 2),
+                rationale=buy_rationale,
+            )
+
+            rotation_sells.append(sell_proposal)
+            rotation_buys.append(buy_proposal)
+            used_sell_tickers.add(sell_ticker)
+            used_buy_tickers.add(buy_ticker)
+
+        return {"rotation_sells": rotation_sells, "rotation_buys": rotation_buys}
 
     def _build_rationale(
         self,
