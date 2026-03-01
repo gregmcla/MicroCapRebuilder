@@ -1,6 +1,6 @@
 /** Context-sensitive focus pane — right rail content. */
 
-import { useUIStore, useAnalysisStore } from "../lib/store";
+import { useUIStore } from "../lib/store";
 import type { RightTab } from "../lib/store";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
@@ -55,15 +55,14 @@ function TabBar() {
 
 export default function FocusPane({ className = "" }: FocusPaneProps) {
   const rightTab = useUIStore((s) => s.rightTab);
-  const { result, isAnalyzing } = useAnalysisStore();
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
       <TabBar />
       <div className="flex-1 overflow-y-auto">
-        {(isAnalyzing || result || rightTab === "actions") && <ActionsTab />}
-        {!isAnalyzing && !result && rightTab === "risk" && <RiskTab />}
-        {!isAnalyzing && !result && rightTab === "performance" && <PerformanceTab />}
+        {rightTab === "actions" && <ActionsTab />}
+        {rightTab === "risk" && <RiskTab />}
+        {rightTab === "performance" && <PerformanceTab />}
       </div>
     </div>
   );
