@@ -315,7 +315,7 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
           { label: "Stop", value: `$${pos.stop_loss.toFixed(2)}`, color: "var(--red)" },
           { label: "Target", value: `$${pos.take_profit.toFixed(2)}`, color: "var(--green)" },
           { label: "Entry", value: pos.entry_date.slice(0, 10), color: undefined },
-          { label: "Days", value: String(daysHeld), color: undefined },
+          { label: "Held", value: `${daysHeld}d`, color: undefined },
         ].map(({ label, value, color }) => (
           <div key={label} className="shrink-0">
             <div style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>

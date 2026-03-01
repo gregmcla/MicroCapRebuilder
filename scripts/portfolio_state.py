@@ -227,13 +227,22 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, pr
         df.at[idx, "unrealized_pnl"] = round(unrealized_pnl, 2)
         df.at[idx, "unrealized_pnl_pct"] = round(unrealized_pnl_pct, 2)
 
-        # Day change from previous close
-        prev_close = prev_close_cache.get(ticker)
-        if prev_close and prev_close > 0:
-            day_change = (current_price - prev_close) * shares
-            day_change_pct = ((current_price - prev_close) / prev_close) * 100
+        # Day change: for positions entered today, use avg_cost as baseline
+        # (we didn't own it at yesterday's close, so prev_close is misleading)
+        entry_date = str(row.get("entry_date", ""))
+        bought_today = entry_date == date.today().isoformat()
+        if bought_today:
+            day_change = (current_price - avg_cost) * shares
+            day_change_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0
             df.at[idx, "day_change"] = round(day_change, 2)
             df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
+        else:
+            prev_close = prev_close_cache.get(ticker)
+            if prev_close and prev_close > 0:
+                day_change = (current_price - prev_close) * shares
+                day_change_pct = ((current_price - prev_close) / prev_close) * 100
+                df.at[idx, "day_change"] = round(day_change, 2)
+                df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
 
     return df
 

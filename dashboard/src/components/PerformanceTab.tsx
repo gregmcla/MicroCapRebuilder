@@ -301,7 +301,7 @@ export default function PerformanceTab() {
             <MetricCard label="Return" value={`${metrics.total_return_pct >= 0 ? "+" : ""}${metrics.total_return_pct.toFixed(1)}`} suffix="%" />
             <MetricCard label="Alpha" value={`${metrics.alpha_pct >= 0 ? "+" : ""}${metrics.alpha_pct.toFixed(1)}`} suffix="%" />
             <MetricCard label="Exposure" value={`${metrics.exposure_pct.toFixed(0)}`} suffix="%" />
-            <MetricCard label="Days" value={`${metrics.days_tracked}`} />
+            <MetricCard label="Tracked" value={`${metrics.days_tracked}d`} />
           </div>
         </div>
       )}
