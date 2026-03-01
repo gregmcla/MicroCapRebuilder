@@ -16,18 +16,27 @@ export default function FreshnessIndicator() {
   const severity = getStalenessSeverity("positions");
   const timeAgo = getTimeAgo("positions");
 
-  const severityStyles = {
-    fresh: "text-text-muted",
-    stale: "text-warning animate-pulse-slow",
-    "very-stale": "text-warning animate-pulse-fast",
-    critical: "text-loss animate-pulse-fast",
+  // Map severity to design token colors and animations
+  const severityStyle: Record<string, React.CSSProperties> = {
+    fresh: { color: "var(--text-1)" },
+    stale: { color: "var(--amber)" },
+    "very-stale": { color: "var(--amber)" },
+    critical: { color: "var(--red)" },
   };
 
-  const style = severityStyles[severity];
+  const severityClass: Record<string, string> = {
+    fresh: "",
+    stale: "animate-pulse-slow",
+    "very-stale": "animate-pulse-fast",
+    critical: "animate-pulse-fast",
+  };
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className={`text-xs font-medium ${style}`}>
+      <span
+        className={`text-xs font-medium ${severityClass[severity] ?? ""}`}
+        style={severityStyle[severity] ?? { color: "var(--text-1)" }}
+      >
         Updated {timeAgo}
       </span>
     </div>

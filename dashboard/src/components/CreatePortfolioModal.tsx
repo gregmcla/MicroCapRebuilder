@@ -67,6 +67,14 @@ type Mode = "wizard" | "ai";
 const WIZARD_STEPS = ["Name & Capital", "Cap Size", "Sectors", "Trading Style", "Review"];
 const AI_STEPS = ["Name & Capital", "Cap Size", "Describe Strategy", "Review"];
 
+// Shared input style helper
+const inputStyle = {
+  background: "var(--surface-2)",
+  border: "1px solid var(--border-1)",
+  borderRadius: "6px",
+  color: "var(--text-2)",
+} as const;
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -218,39 +226,66 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
       <div className="space-y-4">
         {/* Name */}
         <div>
-          <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1">Name</label>
+          <label
+            className="block uppercase tracking-wider mb-1"
+            style={{ fontSize: "10px", color: "var(--text-1)" }}
+          >
+            Name
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="My Large Cap Portfolio"
-            className="w-full bg-bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-accent"
+            className="w-full px-3 py-2 text-sm focus:outline-none transition-colors"
+            style={inputStyle}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
             autoFocus
           />
         </div>
         {/* ID */}
         <div>
-          <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1">
-            ID <span className="text-text-muted/50">(slug)</span>
+          <label
+            className="block uppercase tracking-wider mb-1"
+            style={{ fontSize: "10px", color: "var(--text-1)" }}
+          >
+            ID <span style={{ color: "var(--text-0)" }}>(slug)</span>
           </label>
           <input
             type="text"
             value={id}
             onChange={(e) => { setId(e.target.value); setIdManual(true); }}
             placeholder="my-large-cap-portfolio"
-            className="w-full bg-bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary font-mono placeholder:text-text-muted/50 focus:outline-none focus:border-accent"
+            className="w-full px-3 py-2 text-sm font-mono focus:outline-none transition-colors"
+            style={inputStyle}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+            onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
           />
         </div>
         {/* Starting Capital */}
         <div>
-          <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1">Starting Capital</label>
+          <label
+            className="block uppercase tracking-wider mb-1"
+            style={{ fontSize: "10px", color: "var(--text-1)" }}
+          >
+            Starting Capital
+          </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
+            <span
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-sm"
+              style={{ color: "var(--text-1)" }}
+            >
+              $
+            </span>
             <input
               type="text"
               value={capital}
               onChange={(e) => setCapital(e.target.value.replace(/[^0-9.]/g, ""))}
-              className="w-full bg-bg-surface border border-border rounded pl-7 pr-3 py-2 text-sm text-text-primary font-mono focus:outline-none focus:border-accent"
+              className="w-full pl-7 pr-3 py-2 text-sm font-mono focus:outline-none transition-colors"
+              style={inputStyle}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+              onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
             />
           </div>
         </div>
@@ -261,21 +296,39 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   function renderUniverseStep() {
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1.5">Universe</label>
+        <label
+          className="block uppercase tracking-wider mb-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Universe
+        </label>
         <div className="space-y-1.5">
           {UNIVERSES.map((u) => (
             <button
               type="button"
               key={u.id}
               onClick={() => setUniverse(u.id)}
-              className={`w-full text-left px-3 py-2 rounded border text-xs transition-colors ${
+              className="w-full text-left px-3 py-2 rounded text-xs transition-colors"
+              style={
                 universe === u.id
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border bg-bg-surface text-text-primary hover:border-text-muted"
-              }`}
+                  ? {
+                      border: "1px solid var(--accent)",
+                      background: "rgba(124,92,252,0.10)",
+                      color: "var(--accent)",
+                      borderRadius: "6px",
+                    }
+                  : {
+                      border: "1px solid var(--border-1)",
+                      background: "var(--surface-2)",
+                      color: "var(--text-2)",
+                      borderRadius: "6px",
+                    }
+              }
             >
               <span className="font-semibold">{u.label}</span>
-              <span className="text-text-muted ml-2">{u.desc}</span>
+              <span className="ml-2" style={{ color: universe === u.id ? "rgba(145,122,255,0.7)" : "var(--text-1)" }}>
+                {u.desc}
+              </span>
             </button>
           ))}
         </div>
@@ -287,16 +340,32 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     const allSelected = sectors.length === ALL_SECTORS.length;
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1.5">Sector Focus</label>
+        <label
+          className="block uppercase tracking-wider mb-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Sector Focus
+        </label>
         <div className="mb-2">
           <button
             type="button"
             onClick={toggleAllSectors}
-            className={`px-3 py-1.5 rounded border text-xs transition-colors ${
+            className="px-3 py-1.5 text-xs transition-colors"
+            style={
               allSelected
-                ? "border-accent bg-accent/10 text-accent"
-                : "border-border bg-bg-surface text-text-primary hover:border-text-muted"
-            }`}
+                ? {
+                    border: "1px solid var(--accent)",
+                    background: "rgba(124,92,252,0.10)",
+                    color: "var(--accent)",
+                    borderRadius: "6px",
+                  }
+                : {
+                    border: "1px solid var(--border-1)",
+                    background: "var(--surface-2)",
+                    color: "var(--text-2)",
+                    borderRadius: "6px",
+                  }
+            }
           >
             {allSelected ? "Deselect All" : "Select All"}
           </button>
@@ -309,11 +378,22 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                 type="button"
                 key={s}
                 onClick={() => toggleSector(s)}
-                className={`text-left px-3 py-2 rounded border text-xs transition-colors ${
+                className="text-left px-3 py-2 text-xs transition-colors"
+                style={
                   selected
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-border bg-bg-surface text-text-primary hover:border-text-muted"
-                }`}
+                    ? {
+                        border: "1px solid var(--accent)",
+                        background: "rgba(124,92,252,0.10)",
+                        color: "var(--accent)",
+                        borderRadius: "6px",
+                      }
+                    : {
+                        border: "1px solid var(--border-1)",
+                        background: "var(--surface-2)",
+                        color: "var(--text-2)",
+                        borderRadius: "6px",
+                      }
+                }
               >
                 {s}
               </button>
@@ -327,21 +407,42 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   function renderTradingStyleStep() {
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1.5">Trading Style</label>
+        <label
+          className="block uppercase tracking-wider mb-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Trading Style
+        </label>
         <div className="space-y-1.5">
           {TRADING_STYLE_OPTIONS.map((ts) => (
             <button
               type="button"
               key={ts.id}
               onClick={() => setTradingStyle(ts.id)}
-              className={`w-full text-left px-3 py-2.5 rounded border text-xs transition-colors ${
+              className="w-full text-left px-3 py-2.5 text-xs transition-colors"
+              style={
                 tradingStyle === ts.id
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border bg-bg-surface text-text-primary hover:border-text-muted"
-              }`}
+                  ? {
+                      border: "1px solid var(--accent)",
+                      background: "rgba(124,92,252,0.10)",
+                      color: "var(--accent)",
+                      borderRadius: "6px",
+                    }
+                  : {
+                      border: "1px solid var(--border-1)",
+                      background: "var(--surface-2)",
+                      color: "var(--text-2)",
+                      borderRadius: "6px",
+                    }
+              }
             >
               <div className="font-semibold">{ts.label}</div>
-              <div className="text-text-muted mt-0.5">{ts.desc}</div>
+              <div
+                className="mt-0.5"
+                style={{ color: tradingStyle === ts.id ? "rgba(145,122,255,0.7)" : "var(--text-1)" }}
+              >
+                {ts.desc}
+              </div>
             </button>
           ))}
         </div>
@@ -354,8 +455,19 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     const risk = STYLE_RISK[tradingStyle];
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-2">Strategy Summary</label>
-        <div className="bg-bg-surface border border-border rounded-lg p-4">
+        <label
+          className="block uppercase tracking-wider mb-2"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Strategy Summary
+        </label>
+        <div
+          className="rounded-lg p-4"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-0)",
+          }}
+        >
           <StrategyReviewCard
             sectors={sectors}
             tradingStyle={tradingStyle}
@@ -374,16 +486,27 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   function renderAiPromptStep() {
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-1.5">Describe Your Strategy</label>
+        <label
+          className="block uppercase tracking-wider mb-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Describe Your Strategy
+        </label>
         <textarea
           value={aiPrompt}
           onChange={(e) => setAiPrompt(e.target.value)}
           placeholder="I want an aggressive momentum strategy focused on tech and healthcare sectors with tight stops..."
           rows={5}
-          className="w-full bg-bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-accent resize-none"
+          className="w-full px-3 py-2 text-sm focus:outline-none resize-none transition-colors"
+          style={inputStyle}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
           autoFocus
         />
-        <p className="text-[10px] text-text-muted mt-1.5">
+        <p
+          className="mt-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
           Describe sectors, risk tolerance, trading approach, or any preferences. AI will generate a complete strategy configuration.
         </p>
       </div>
@@ -394,8 +517,19 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     if (!generatedStrategy) return null;
     return (
       <div>
-        <label className="block text-[10px] text-text-muted uppercase tracking-wider mb-2">AI-Generated Strategy</label>
-        <div className="bg-bg-surface border border-border rounded-lg p-4">
+        <label
+          className="block uppercase tracking-wider mb-2"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          AI-Generated Strategy
+        </label>
+        <div
+          className="rounded-lg p-4"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-0)",
+          }}
+        >
           <StrategyReviewCard
             sectors={generatedStrategy.sectors}
             tradingStyle={generatedStrategy.trading_style}
@@ -432,36 +566,62 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   // ---- Render ----
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-bg-elevated border border-border rounded-xl w-full max-w-lg shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.60)", backdropFilter: "blur(4px)" }}
+    >
+      <div
+        className="w-full max-w-lg shadow-2xl"
+        style={{
+          background: "var(--surface-1)",
+          border: "1px solid var(--border-1)",
+          borderRadius: "12px",
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-bold text-text-primary">Create Portfolio</h2>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary text-lg leading-none">&times;</button>
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid var(--border-1)" }}
+        >
+          <h2 className="text-sm font-bold" style={{ color: "var(--text-4)" }}>
+            Create Portfolio
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-lg leading-none transition-opacity hover:opacity-70"
+            style={{ color: "var(--text-1)" }}
+          >
+            &times;
+          </button>
         </div>
 
         <div className="p-5 space-y-4">
           {/* Mode toggle */}
-          <div className="flex rounded border border-border overflow-hidden">
+          <div
+            className="flex rounded overflow-hidden"
+            style={{ border: "1px solid var(--border-1)" }}
+          >
             <button
               type="button"
               onClick={() => switchMode("wizard")}
-              className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className="flex-1 px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={
                 mode === "wizard"
-                  ? "bg-accent text-bg-primary"
-                  : "bg-bg-surface text-text-muted hover:text-text-primary"
-              }`}
+                  ? { background: "var(--accent)", color: "#ffffff" }
+                  : { background: "var(--surface-2)", color: "var(--text-1)" }
+              }
             >
               Strategy Wizard
             </button>
             <button
               type="button"
               onClick={() => switchMode("ai")}
-              className={`flex-1 px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className="flex-1 px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={
                 mode === "ai"
-                  ? "bg-accent text-bg-primary"
-                  : "bg-bg-surface text-text-muted hover:text-text-primary"
-              }`}
+                  ? { background: "var(--accent)", color: "#ffffff" }
+                  : { background: "var(--surface-2)", color: "var(--text-1)" }
+              }
             >
               AI Strategy
             </button>
@@ -476,18 +636,25 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
               return (
                 <div key={label} className="flex items-center gap-1.5">
                   <div
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
-                      isCurrent
-                        ? "bg-accent text-bg-primary"
+                    className="w-5 h-5 rounded-full flex items-center justify-center font-bold transition-colors"
+                    style={{
+                      fontSize: "10px",
+                      background: isCurrent
+                        ? "var(--accent)"
                         : isDone
-                          ? "bg-accent/30 text-accent"
-                          : "bg-bg-surface text-text-muted border border-border"
-                    }`}
+                          ? "rgba(124,92,252,0.25)"
+                          : "var(--surface-3)",
+                      color: isCurrent ? "#ffffff" : isDone ? "var(--accent)" : "var(--text-1)",
+                      border: isCurrent || isDone ? "none" : "1px solid var(--border-1)",
+                    }}
                   >
                     {stepNum}
                   </div>
                   {i < steps.length - 1 && (
-                    <div className={`w-4 h-px ${isDone ? "bg-accent/40" : "bg-border"}`} />
+                    <div
+                      className="w-4 h-px"
+                      style={{ background: isDone ? "rgba(124,92,252,0.40)" : "var(--border-1)" }}
+                    />
                   )}
                 </div>
               );
@@ -496,7 +663,10 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
 
           {/* Step title */}
           <div className="text-center">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">
+            <span
+              className="uppercase tracking-wider"
+              style={{ fontSize: "10px", color: "var(--text-1)" }}
+            >
               Step {step} of {maxStep} — {steps[step - 1]}
             </span>
           </div>
@@ -508,7 +678,12 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
 
           {/* Error */}
           {error && (
-            <p className="text-xs text-red-400 bg-red-500/10 rounded px-3 py-2">{error}</p>
+            <p
+              className="text-xs rounded px-3 py-2"
+              style={{ color: "var(--red)", background: "rgba(248,113,113,0.08)" }}
+            >
+              {error}
+            </p>
           )}
 
           {/* Navigation */}
@@ -518,7 +693,8 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="px-4 py-2 text-xs text-text-muted hover:text-text-primary transition-colors"
+                  className="px-4 py-2 text-xs transition-opacity hover:opacity-70"
+                  style={{ color: "var(--text-1)" }}
                 >
                   Back
                 </button>
@@ -526,7 +702,8 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-xs text-text-muted hover:text-text-primary transition-colors"
+                  className="px-4 py-2 text-xs transition-opacity hover:opacity-70"
+                  style={{ color: "var(--text-1)" }}
                 >
                   Cancel
                 </button>
@@ -538,7 +715,13 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                   type="button"
                   onClick={handleSubmit}
                   disabled={mutation.isPending}
-                  className="px-4 py-2 text-xs font-semibold bg-accent text-bg-primary rounded hover:bg-accent/80 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold rounded transition-colors disabled:opacity-50"
+                  style={{
+                    background: "var(--accent)",
+                    color: "#ffffff",
+                    boxShadow: "0 0 12px rgba(124,92,252,0.35)",
+                    borderRadius: "6px",
+                  }}
                 >
                   {mutation.isPending ? "Creating..." : "Create Portfolio"}
                 </button>
@@ -547,7 +730,13 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                   type="button"
                   onClick={handleNext}
                   disabled={generating}
-                  className="px-4 py-2 text-xs font-semibold bg-accent text-bg-primary rounded hover:bg-accent/80 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-semibold rounded transition-colors disabled:opacity-50"
+                  style={{
+                    background: "var(--accent)",
+                    color: "#ffffff",
+                    boxShadow: "0 0 12px rgba(124,92,252,0.35)",
+                    borderRadius: "6px",
+                  }}
                 >
                   {isAiPromptStep
                     ? generating

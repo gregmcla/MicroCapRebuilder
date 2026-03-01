@@ -21,31 +21,71 @@ function AggregateBar({
   portfolioCount: number;
 }) {
   const dayColor =
-    totalDayPnl > 0 ? "text-profit" : totalDayPnl < 0 ? "text-loss" : "text-text-primary";
+    totalDayPnl > 0 ? "var(--green)" : totalDayPnl < 0 ? "var(--red)" : "var(--text-3)";
 
   return (
-    <div className="flex items-center gap-6 px-6 py-4 bg-bg-surface border-b border-border">
+    <div
+      className="flex items-center gap-6 px-6 py-4 shrink-0"
+      style={{
+        background: "var(--surface-1)",
+        borderBottom: "1px solid var(--border-0)",
+      }}
+    >
       <div>
-        <p className="text-[10px] text-text-muted uppercase tracking-wider">Total Equity</p>
-        <p className="font-mono text-2xl font-bold text-text-primary">
+        <p
+          className="uppercase tracking-wider"
+          style={{ fontSize: "9.5px", color: "var(--text-0)" }}
+        >
+          Total Equity
+        </p>
+        <p
+          className="font-mono font-bold tabular-nums"
+          style={{ fontSize: "22px", color: "var(--text-4)", fontFamily: "var(--font-mono)" }}
+        >
           ${totalEquity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </p>
       </div>
       <div>
-        <p className="text-[10px] text-text-muted uppercase tracking-wider">Total Cash</p>
-        <p className="font-mono text-lg font-semibold text-text-primary">
+        <p
+          className="uppercase tracking-wider"
+          style={{ fontSize: "9.5px", color: "var(--text-0)" }}
+        >
+          Total Cash
+        </p>
+        <p
+          className="font-mono font-semibold tabular-nums"
+          style={{ fontSize: "18px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}
+        >
           ${totalCash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </p>
       </div>
       <div>
-        <p className="text-[10px] text-text-muted uppercase tracking-wider">Day P&L</p>
-        <p className={`font-mono text-lg font-semibold ${dayColor}`}>
+        <p
+          className="uppercase tracking-wider"
+          style={{ fontSize: "9.5px", color: "var(--text-0)" }}
+        >
+          Day P&L
+        </p>
+        <p
+          className="font-mono font-semibold tabular-nums"
+          style={{ fontSize: "18px", color: dayColor, fontFamily: "var(--font-mono)" }}
+        >
           {totalDayPnl >= 0 ? "+" : ""}${totalDayPnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
         </p>
       </div>
       <div>
-        <p className="text-[10px] text-text-muted uppercase tracking-wider">Portfolios</p>
-        <p className="font-mono text-lg font-semibold text-text-primary tabular-nums">{portfolioCount}</p>
+        <p
+          className="uppercase tracking-wider"
+          style={{ fontSize: "9.5px", color: "var(--text-0)" }}
+        >
+          Portfolios
+        </p>
+        <p
+          className="font-mono font-semibold tabular-nums"
+          style={{ fontSize: "18px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}
+        >
+          {portfolioCount}
+        </p>
       </div>
     </div>
   );
@@ -66,12 +106,21 @@ function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
   });
 
   const regimeColor =
-    summary.regime === "BULL" ? "text-profit"
-    : summary.regime === "BEAR" ? "text-loss"
-    : "text-warning";
+    summary.regime === "BULL"
+      ? "var(--green)"
+      : summary.regime === "BEAR"
+        ? "var(--red)"
+        : "var(--amber)";
 
   return (
-    <div className="relative text-left bg-bg-surface border border-border hover:border-border-hover transition-colors group">
+    <div
+      className="relative text-left card-hover"
+      style={{
+        background: "var(--surface-1)",
+        border: "1px solid var(--border-0)",
+        borderRadius: "8px",
+      }}
+    >
       {/* Delete button */}
       <button
         onClick={(e) => {
@@ -82,29 +131,44 @@ function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
             setConfirmDelete(true);
           }
         }}
-        className={`absolute top-2 right-2 text-[10px] px-1.5 py-0.5 transition-colors ${
-          confirmDelete
-            ? "text-loss font-semibold"
-            : "text-text-muted/0 group-hover:text-text-muted/50 hover:!text-loss"
-        }`}
+        className="absolute top-2 right-2 transition-colors"
+        style={{
+          fontSize: "10px",
+          padding: "2px 6px",
+          color: confirmDelete ? "var(--red)" : "transparent",
+          fontWeight: confirmDelete ? 600 : 400,
+        }}
+        onMouseEnter={(e) => {
+          if (!confirmDelete) e.currentTarget.style.color = "rgba(248,113,113,0.50)";
+        }}
+        onMouseLeave={(e) => {
+          if (!confirmDelete) e.currentTarget.style.color = "transparent";
+        }}
       >
-        {deleteMutation.isPending ? "..." : confirmDelete ? "Confirm?" : "\u00D7"}
+        {deleteMutation.isPending ? "..." : confirmDelete ? "Confirm?" : "×"}
       </button>
 
       {/* Clickable card body */}
       <button onClick={() => setPortfolio(summary.id)} className="w-full text-left p-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-3 pr-4">
-          <h3 className="text-sm font-bold text-text-primary">
+          <h3 className="text-sm font-bold" style={{ color: "var(--text-4)" }}>
             {summary.name}
           </h3>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">
+            <span
+              className="uppercase tracking-wider"
+              style={{ fontSize: "10px", color: "var(--text-0)" }}
+            >
               {summary.universe}
             </span>
-            <span className={`text-[10px] font-semibold uppercase tracking-wider ${
-              summary.paper_mode ? "text-warning" : "text-loss"
-            }`}>
+            <span
+              className="uppercase tracking-wider font-semibold"
+              style={{
+                fontSize: "10px",
+                color: summary.paper_mode ? "var(--amber)" : "var(--red)",
+              }}
+            >
               {summary.paper_mode ? "Paper" : "Live"}
             </span>
           </div>
@@ -112,25 +176,32 @@ function PortfolioCard({ summary }: { summary: PortfolioSummary }) {
 
         {/* Error state */}
         {summary.error ? (
-          <div className="text-xs text-loss">
+          <div className="text-xs" style={{ color: "var(--red)" }}>
             {summary.error}
           </div>
         ) : (
           <>
             {/* Equity */}
-            <p className="font-mono text-xl font-semibold text-text-primary tabular-nums mb-2">
+            <p
+              className="font-mono font-semibold tabular-nums mb-2"
+              style={{
+                fontSize: "20px",
+                color: "var(--text-3)",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
               ${summary.equity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </p>
 
             {/* Stats row */}
-            <div className="flex items-center gap-3 text-[11px] text-text-muted">
+            <div className="flex items-center gap-3" style={{ fontSize: "11px", color: "var(--text-1)" }}>
               <span className="tabular-nums">{summary.num_positions} pos</span>
-              <span className="text-text-muted/40">·</span>
+              <span style={{ color: "var(--border-2)" }}>·</span>
               <span className="tabular-nums">${summary.cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} cash</span>
               {summary.regime && (
                 <>
-                  <span className="text-text-muted/40">·</span>
-                  <span className={regimeColor}>{summary.regime}</span>
+                  <span style={{ color: "var(--border-2)" }}>·</span>
+                  <span style={{ color: regimeColor }}>{summary.regime}</span>
                 </>
               )}
             </div>
@@ -148,8 +219,13 @@ export default function OverviewPage() {
 
   if (overviewLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-bg-primary">
-        <p className="text-text-muted animate-pulse">Loading portfolios...</p>
+      <div
+        className="flex-1 flex items-center justify-center"
+        style={{ background: "var(--surface-0)" }}
+      >
+        <p className="animate-pulse" style={{ color: "var(--text-1)" }}>
+          Loading portfolios...
+        </p>
       </div>
     );
   }
@@ -166,7 +242,7 @@ export default function OverviewPage() {
   }));
 
   return (
-    <div className="flex-1 flex flex-col bg-bg-primary overflow-y-auto">
+    <div className="flex-1 flex flex-col overflow-y-auto" style={{ background: "var(--surface-0)" }}>
       <AggregateBar
         totalEquity={overview?.total_equity ?? 0}
         totalCash={overview?.total_cash ?? 0}
@@ -175,17 +251,20 @@ export default function OverviewPage() {
       />
 
       <div className="p-6">
-        <h2 className="text-xs font-semibold text-text-secondary tracking-wider uppercase mb-4">
+        <h2
+          className="uppercase tracking-wider mb-4 font-semibold"
+          style={{ fontSize: "11px", color: "var(--text-1)" }}
+        >
           Your Portfolios
         </h2>
 
         {enriched.length === 0 ? (
-          <div className="text-center py-12 text-text-muted">
+          <div className="text-center py-12" style={{ color: "var(--text-1)" }}>
             <p className="text-lg mb-2">No portfolios yet</p>
             <p className="text-sm">Create your first portfolio to get started.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[10px]">
             {enriched.map((s) => (
               <PortfolioCard key={s.id} summary={s} />
             ))}
@@ -193,10 +272,20 @@ export default function OverviewPage() {
             {/* Add portfolio card */}
             <button
               onClick={() => setShowCreate(true)}
-              className="flex flex-col items-center justify-center p-4 bg-bg-surface hover:bg-bg-elevated transition-colors min-h-[120px]"
+              className="flex flex-col items-center justify-center p-4 card-hover min-h-[120px]"
+              style={{
+                background: "var(--surface-1)",
+                border: "1px solid var(--border-0)",
+                borderRadius: "8px",
+              }}
             >
-              <span className="text-xl text-text-muted mb-1">+</span>
-              <span className="text-[11px] text-text-muted uppercase tracking-wider">New Portfolio</span>
+              <span className="text-xl mb-1" style={{ color: "var(--text-1)" }}>+</span>
+              <span
+                className="uppercase tracking-wider"
+                style={{ fontSize: "11px", color: "var(--text-1)" }}
+              >
+                New Portfolio
+              </span>
             </button>
           </div>
         )}

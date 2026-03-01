@@ -1,4 +1,4 @@
-/** Mommy avatar — sleek silhouette with cyan glow breathing animation. */
+/** Mommy avatar — sleek silhouette with violet glow breathing animation. */
 
 export default function MommyAvatar({ size = 48 }: { size?: number }) {
   return (
@@ -8,7 +8,7 @@ export default function MommyAvatar({ size = 48 }: { size?: number }) {
         className="absolute inset-0 rounded-full animate-pulse"
         style={{
           background:
-            "radial-gradient(circle, rgba(0,212,136,0.08) 0%, rgba(0,212,136,0) 70%)",
+            "radial-gradient(circle, rgba(124,92,252,0.10) 0%, rgba(124,92,252,0) 70%)",
           animationDuration: "4s",
         }}
       />
@@ -21,16 +21,16 @@ export default function MommyAvatar({ size = 48 }: { size?: number }) {
         className="relative"
       >
         {/* Background circle */}
-        <circle cx="24" cy="24" r="23" fill="#0A0A0A" stroke="#00D488" strokeWidth="1" strokeOpacity="0.3" />
+        <circle cx="24" cy="24" r="23" fill="#0A0A0A" stroke="#7c5cfc" strokeWidth="1" strokeOpacity="0.35" />
 
         {/* Silhouette — stylized female bust */}
-        <g fill="#00D488" fillOpacity="0.85">
+        <g fill="rgba(124,92,252,0.6)" fillOpacity="1">
           {/* Hair */}
           <ellipse cx="24" cy="16" rx="9" ry="10" />
           {/* Face overlay */}
-          <ellipse cx="24" cy="18" rx="7" ry="8" fill="#141920" />
+          <ellipse cx="24" cy="18" rx="7" ry="8" fill="#141420" />
           {/* Face */}
-          <ellipse cx="24" cy="18.5" rx="6.5" ry="7" fill="#00D488" fillOpacity="0.85" />
+          <ellipse cx="24" cy="18.5" rx="6.5" ry="7" fill="rgba(124,92,252,0.6)" />
           {/* Hair drape left */}
           <path d="M15 16 Q14 24 16 28 Q18 24 17 18 Z" />
           {/* Hair drape right */}
