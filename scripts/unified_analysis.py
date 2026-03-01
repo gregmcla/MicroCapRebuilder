@@ -498,9 +498,14 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     transactions = [tx for _, tx in validated]
 
-    # Validate all transactions against pre-mutation state, then save to ledger
-    if transactions:
-        state = save_transactions_batch(state, transactions)
+    # Save sells first so cash is updated before buy validation runs
+    sell_pairs = [(r, tx) for r, tx in validated if r.original.action_type == "SELL"]
+    buy_pairs  = [(r, tx) for r, tx in validated if r.original.action_type == "BUY"]
+
+    if sell_pairs:
+        state = save_transactions_batch(state, [tx for _, tx in sell_pairs])
+    if buy_pairs:
+        state = save_transactions_batch(state, [tx for _, tx in buy_pairs])
 
     # Now update positions and print results
     for reviewed, tx in validated:
@@ -520,11 +525,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     save_positions(state)
 
     # Generate post-mortems for sells
-    sell_data = [
-        (reviewed, tx)
-        for reviewed, tx in zip(actions_to_execute, transactions)
-        if reviewed.original.action_type == "SELL"
-    ]
+    sell_data = sell_pairs
     if sell_data:
         print("\n  Generating post-mortems...")
         try:
