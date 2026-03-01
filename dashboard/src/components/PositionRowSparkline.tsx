@@ -53,28 +53,31 @@ function PositionRowSparkline({ ticker, height = 30 }: PositionRowSparklineProps
   // Loading state
   if (isLoading) {
     return (
-      <div className="w-[60px] bg-bg-surface rounded animate-pulse" style={{ height }} />
+      <div className="w-full bg-bg-surface rounded animate-pulse" style={{ height }} />
     );
   }
 
   // Error state
   if (error) {
     return (
-      <div className="w-[60px] bg-bg-surface rounded opacity-30 border border-loss/30" style={{ height }} />
+      <div className="w-full bg-bg-surface rounded opacity-30 border border-loss/30" style={{ height }} />
     );
   }
 
   // No data state
   if (!linePoints || !lastPoint) {
     return (
-      <div className="w-[60px] bg-bg-surface rounded opacity-40" style={{ height }} />
+      <div className="w-full bg-bg-surface rounded opacity-40" style={{ height }} />
     );
   }
 
   return (
     <svg
-      width={WIDTH}
+      width="100%"
       height={height}
+      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      preserveAspectRatio="none"
+      style={{ display: "block" }}
       className="opacity-70"
       role="img"
       aria-label={`20-day price history for ${ticker}`}
