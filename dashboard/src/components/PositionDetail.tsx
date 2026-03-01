@@ -234,47 +234,80 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
     (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const dayColor = (pos.day_change ?? 0) >= 0 ? "var(--green)" : "var(--red)";
+  const dayStr = pos.day_change != null
+    ? `${pos.day_change >= 0 ? "+" : "-"}$${Math.abs(pos.day_change).toFixed(2)}`
+    : null;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
+
+      {/* Row 1 — hero header */}
       <div
-        className="flex items-center justify-between px-4 py-2 shrink-0"
-        style={{ borderBottom: "1px solid var(--border-0)" }}
+        className="flex items-center justify-between px-4 shrink-0"
+        style={{ borderBottom: "1px solid var(--border-0)", minHeight: "52px" }}
       >
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold" style={{ color: "var(--text-4)" }}>{pos.ticker}</h2>
-          <span className="font-mono text-sm font-semibold" style={{ color: pnlColor }}>
-            {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
-            {pos.unrealized_pnl_pct.toFixed(2)}%
+        {/* Left: ticker + P&L numbers */}
+        <div className="flex items-baseline gap-3">
+          <span
+            className="font-mono font-bold"
+            style={{ fontSize: "22px", color: "var(--text-4)", letterSpacing: "-0.01em" }}
+          >
+            {pos.ticker}
+          </span>
+          <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
+            {pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(2)}%
+          </span>
+          <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
+            {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
+          {dayStr && (
+            <>
+              <span style={{ color: "var(--border-2)" }}>·</span>
+              <span className="font-mono text-sm" style={{ color: dayColor }}>{dayStr} today</span>
+            </>
+          )}
+          <span style={{ color: "var(--border-2)" }}>·</span>
+          <span className="font-mono text-sm" style={{ color: "var(--text-1)" }}>
+            ${pos.market_value.toLocaleString(undefined, { maximumFractionDigits: 0 })} value
           </span>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Right: range selector + SELL + Back */}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className="px-2 py-1 text-xs rounded transition-colors"
+                style={
+                  range === r
+                    ? { color: "var(--accent)", background: "rgba(124,92,252,0.12)", border: "1px solid var(--border-2)", fontWeight: 600 }
+                    : { color: "var(--text-1)", background: "transparent", border: "1px solid var(--border-1)" }
+                }
+              >
+                {r}
+              </button>
+            ))}
+          </div>
           <SellButton pos={pos} />
           <button
             onClick={() => clearSelection(null)}
             className="text-xs rounded transition-colors px-2 py-1"
-            style={{
-              color: "var(--text-1)",
-              border: "1px solid var(--border-1)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "var(--accent)";
-              e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--border-1)";
-              e.currentTarget.style.color = "var(--text-1)";
-            }}
+            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; e.currentTarget.style.color = "var(--text-1)"; }}
           >
             Back
           </button>
         </div>
       </div>
 
-      {/* Stat strip */}
+      {/* Row 2 — stat chips + progress bar */}
       <div
-        className="flex items-center gap-5 px-4 py-2 shrink-0 flex-wrap"
-        style={{ borderBottom: "1px solid var(--border-0)", background: "var(--surface-0)" }}
+        className="flex items-center gap-5 px-4 shrink-0"
+        style={{ borderBottom: "1px solid var(--border-0)", background: "var(--surface-0)", minHeight: "44px" }}
       >
         {[
           { label: "Shares", value: String(pos.shares), color: undefined },
@@ -284,90 +317,23 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
           { label: "Entry", value: pos.entry_date.slice(0, 10), color: undefined },
           { label: "Days", value: String(daysHeld), color: undefined },
         ].map(({ label, value, color }) => (
-          <div key={label}>
+          <div key={label} className="shrink-0">
             <div style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
               {label}
             </div>
-            <div className="font-mono text-xs font-semibold" style={{ color: color ?? "var(--text-3)" }}>
+            <div className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--text-3)" }}>
               {value}
             </div>
           </div>
         ))}
-        {/* Progress bar — stop→current→target */}
-        <div className="flex-1 min-w-[120px]">
+        {/* Progress bar — flex-1 */}
+        <div className="flex-1 min-w-[80px]">
           <ProgressVisualization pos={pos} />
         </div>
       </div>
 
-      {/* P&L summary cards — shrink-0 */}
-      <div className="grid grid-cols-2 gap-3 px-4 pt-3 shrink-0">
-        <div
-          className="rounded-lg p-3"
-          style={{
-            background: "var(--surface-1)",
-            border: "1px solid var(--border-0)",
-            borderRadius: "8px",
-          }}
-        >
-          <p
-            className="uppercase tracking-wider mb-0.5"
-            style={{ fontSize: "9.5px", color: "var(--text-0)" }}
-          >
-            Unrealized P&L
-          </p>
-          <p className="font-mono text-lg font-bold" style={{ color: pnlColor }}>
-            {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)}
-          </p>
-        </div>
-        <div
-          className="rounded-lg p-3"
-          style={{
-            background: "var(--surface-1)",
-            border: "1px solid var(--border-0)",
-            borderRadius: "8px",
-          }}
-        >
-          <p
-            className="uppercase tracking-wider mb-0.5"
-            style={{ fontSize: "9.5px", color: "var(--text-0)" }}
-          >
-            Market Value
-          </p>
-          <p className="font-mono text-lg font-bold" style={{ color: "var(--text-3)" }}>
-            ${pos.market_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      </div>
-
-      {/* Time Range Selector — shrink-0 */}
-      <div className="flex gap-1 px-4 py-2 shrink-0">
-        {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
-          <button
-            key={r}
-            onClick={() => setRange(r)}
-            className="px-2 py-1 text-xs rounded transition-colors"
-            style={
-              range === r
-                ? {
-                    color: "var(--accent)",
-                    background: "rgba(124,92,252,0.12)",
-                    border: "1px solid var(--border-2)",
-                    fontWeight: 600,
-                  }
-                : {
-                    color: "var(--text-1)",
-                    background: "transparent",
-                    border: "1px solid var(--border-1)",
-                    }
-              }
-            >
-              {r}
-            </button>
-          ))}
-      </div>
-
-      {/* Candlestick Chart — flex-1, fills remaining height */}
-      <div className="flex-1 min-h-0 px-4 pb-4">
+      {/* Chart — fills all remaining height */}
+      <div className="flex-1 min-h-0 p-3">
         <CandlestickChart ticker={pos.ticker} range={range} position={pos} />
       </div>
     </div>
