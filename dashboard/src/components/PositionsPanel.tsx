@@ -70,7 +70,7 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
       </span>
 
       {/* Sparkline */}
-      <div className="flex-1 min-w-0 max-w-[280px]">
+      <div className="w-[160px] shrink-0">
         <PositionRowSparkline ticker={pos.ticker} height={22} />
       </div>
 
@@ -184,7 +184,7 @@ export default function PositionsPanel({
           Ticker
         </span>
         <span
-          className="flex-1 max-w-[280px]"
+          className="w-[160px] shrink-0"
           style={{
             fontFamily: "var(--font-sans, sans-serif)",
             fontSize: "9.5px",

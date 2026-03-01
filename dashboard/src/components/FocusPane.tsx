@@ -1,6 +1,7 @@
-/** Context-sensitive focus pane — replaces tab-based RightPanel. */
+/** Context-sensitive focus pane — right rail content. */
 
 import { useUIStore, useAnalysisStore } from "../lib/store";
+import type { RightTab } from "../lib/store";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
@@ -10,46 +11,45 @@ interface FocusPaneProps {
   className?: string;
 }
 
-/** Breadcrumb nav row shared by sub-tabs (Risk, Performance). */
-function BreadcrumbNav({ section }: { section: string }) {
+const TABS: { tab: RightTab; label: string }[] = [
+  { tab: "actions", label: "Actions" },
+  { tab: "risk", label: "Risk" },
+  { tab: "performance", label: "Performance" },
+];
+
+function TabBar() {
+  const rightTab = useUIStore((s) => s.rightTab);
   const setRightTab = useUIStore((s) => s.setRightTab);
+
   return (
     <div
-      className="flex items-center gap-2 px-4 pt-3 pb-1"
-      style={{ borderBottom: `1px solid var(--border-0)` }}
+      className="flex items-center shrink-0 border-b"
+      style={{ borderColor: "var(--border-0)" }}
     >
-      <button
-        onClick={() => setRightTab("actions")}
-        className="transition-colors"
-        style={{
-          fontSize: "9.5px",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--text-1)",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "2px 0",
-        }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-2)"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-1)"; }}
-      >
-        Actions
-      </button>
-      <span style={{ fontSize: "9.5px", color: "var(--text-0)" }}>/</span>
-      <span
-        style={{
-          fontSize: "9.5px",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--accent-bright)",
-          padding: "2px 5px",
-          borderRadius: "3px",
-          background: "rgba(124,92,252,0.06)",
-        }}
-      >
-        {section}
-      </span>
+      {TABS.map(({ tab, label }) => {
+        const active = rightTab === tab;
+        return (
+          <button
+            key={tab}
+            onClick={() => setRightTab(tab)}
+            className="px-4 py-2.5 text-xs font-medium transition-colors relative"
+            style={{
+              color: active ? "var(--accent-bright)" : "var(--text-1)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {label}
+            {active && (
+              <span
+                className="absolute bottom-0 left-0 right-0 h-[2px]"
+                style={{ background: "var(--accent)" }}
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -59,43 +59,24 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
   const rightTab = useUIStore((s) => s.rightTab);
   const { result, isAnalyzing } = useAnalysisStore();
 
+  // Position selected — show chart (full pane, no tab bar)
   if (selectedPosition) {
     return (
-      <div className={`overflow-y-auto ${className}`}>
+      <div className={`flex flex-col h-full ${className}`}>
         <PositionDetailChart pos={selectedPosition} />
       </div>
     );
   }
 
-  if (isAnalyzing || result) {
-    return (
-      <div className={`overflow-y-auto ${className}`}>
-        <ActionsTab />
-      </div>
-    );
-  }
-
-  if (rightTab === "risk") {
-    return (
-      <div className={`overflow-y-auto ${className}`}>
-        <BreadcrumbNav section="Risk" />
-        <RiskTab />
-      </div>
-    );
-  }
-
-  if (rightTab === "performance") {
-    return (
-      <div className={`overflow-y-auto ${className}`}>
-        <BreadcrumbNav section="Performance" />
-        <PerformanceTab />
-      </div>
-    );
-  }
-
+  // Tab bar + content
   return (
-    <div className={`overflow-y-auto ${className}`}>
-      <ActionsTab />
+    <div className={`flex flex-col h-full ${className}`}>
+      <TabBar />
+      <div className="flex-1 overflow-y-auto">
+        {(isAnalyzing || result || rightTab === "actions") && <ActionsTab />}
+        {!isAnalyzing && !result && rightTab === "risk" && <RiskTab />}
+        {!isAnalyzing && !result && rightTab === "performance" && <PerformanceTab />}
+      </div>
     </div>
   );
 }

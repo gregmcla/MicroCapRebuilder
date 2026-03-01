@@ -11,11 +11,13 @@ import ActivityFeed from "./components/ActivityFeed";
 import MommyCoPilot, { MommyStrip } from "./components/MommyCoPilot";
 import OverviewPage from "./components/OverviewPage";
 import PortfolioSummary from "./components/PortfolioSummary";
+import { PositionDetailInfo } from "./components/PositionDetail";
 
 export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
+  const selectedPosition = useUIStore((s) => s.selectedPosition);
   const mommyExpanded = useUIStore((s) => s.mommyExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
@@ -52,12 +54,18 @@ export default function App() {
               {/* Portfolio summary header */}
               <PortfolioSummary />
               {/* Positions */}
-              <div className="flex-1 overflow-auto">
+              <div className={selectedPosition ? "flex-1 min-h-0 overflow-hidden" : "flex-1"}>
                 <PositionsPanel
                   positions={state?.positions ?? []}
                   isLoading={isLoading}
                 />
               </div>
+              {/* Position detail slide-in */}
+              {selectedPosition && (
+                <div className="border-t shrink-0 max-h-[40%] overflow-y-auto" style={{ borderColor: "var(--border-0)" }}>
+                  <PositionDetailInfo pos={selectedPosition} />
+                </div>
+              )}
             </main>
 
             {/* Right rail: 312px fixed */}
