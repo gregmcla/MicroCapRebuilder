@@ -299,76 +299,75 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* P&L summary cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            className="rounded-lg p-3"
-            style={{
-              background: "var(--surface-1)",
-              border: "1px solid var(--border-0)",
-              borderRadius: "8px",
-            }}
+      {/* P&L summary cards — shrink-0 */}
+      <div className="grid grid-cols-2 gap-3 px-4 pt-3 shrink-0">
+        <div
+          className="rounded-lg p-3"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-0)",
+            borderRadius: "8px",
+          }}
+        >
+          <p
+            className="uppercase tracking-wider mb-0.5"
+            style={{ fontSize: "9.5px", color: "var(--text-0)" }}
           >
-            <p
-              className="uppercase tracking-wider mb-0.5"
-              style={{ fontSize: "9.5px", color: "var(--text-0)" }}
-            >
-              Unrealized P&L
-            </p>
-            <p className="font-mono text-lg font-bold" style={{ color: pnlColor }}>
-              {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)}
-            </p>
-          </div>
-          <div
-            className="rounded-lg p-3"
-            style={{
-              background: "var(--surface-1)",
-              border: "1px solid var(--border-0)",
-              borderRadius: "8px",
-            }}
-          >
-            <p
-              className="uppercase tracking-wider mb-0.5"
-              style={{ fontSize: "9.5px", color: "var(--text-0)" }}
-            >
-              Market Value
-            </p>
-            <p className="font-mono text-lg font-bold" style={{ color: "var(--text-3)" }}>
-              ${pos.market_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-            </p>
-          </div>
+            Unrealized P&L
+          </p>
+          <p className="font-mono text-lg font-bold" style={{ color: pnlColor }}>
+            {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)}
+          </p>
         </div>
+        <div
+          className="rounded-lg p-3"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-0)",
+            borderRadius: "8px",
+          }}
+        >
+          <p
+            className="uppercase tracking-wider mb-0.5"
+            style={{ fontSize: "9.5px", color: "var(--text-0)" }}
+          >
+            Market Value
+          </p>
+          <p className="font-mono text-lg font-bold" style={{ color: "var(--text-3)" }}>
+            ${pos.market_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </p>
+        </div>
+      </div>
 
-        {/* Time Range Selector */}
-        <div className="flex gap-1">
-          {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className="px-2 py-1 text-xs rounded transition-colors"
-              style={
-                range === r
-                  ? {
-                      color: "var(--accent)",
-                      background: "rgba(124,92,252,0.12)",
-                      border: "1px solid var(--border-2)",
-                      fontWeight: 600,
-                    }
-                  : {
-                      color: "var(--text-1)",
-                      background: "transparent",
-                      border: "1px solid var(--border-1)",
+      {/* Time Range Selector — shrink-0 */}
+      <div className="flex gap-1 px-4 py-2 shrink-0">
+        {['1D', '5D', '1M', '3M', 'YTD', 'ALL'].map((r) => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className="px-2 py-1 text-xs rounded transition-colors"
+            style={
+              range === r
+                ? {
+                    color: "var(--accent)",
+                    background: "rgba(124,92,252,0.12)",
+                    border: "1px solid var(--border-2)",
+                    fontWeight: 600,
+                  }
+                : {
+                    color: "var(--text-1)",
+                    background: "transparent",
+                    border: "1px solid var(--border-1)",
                     }
               }
             >
               {r}
             </button>
           ))}
-        </div>
+      </div>
 
-        {/* Candlestick Chart */}
+      {/* Candlestick Chart — flex-1, fills remaining height */}
+      <div className="flex-1 min-h-0 px-4 pb-4">
         <CandlestickChart ticker={pos.ticker} range={range} position={pos} />
       </div>
     </div>
