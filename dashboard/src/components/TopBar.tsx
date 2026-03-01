@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
 import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
-import { useRisk } from "../hooks/useRisk";
 import { api } from "../lib/api";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
@@ -27,34 +26,6 @@ const BTN_H = "h-[30px]";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function RegimeBadge({ regime }: { regime: string }) {
-  const cfg: Record<string, { icon: string; cls: string }> = {
-    BULL: { icon: "🐂", cls: "text-profit" },
-    BEAR: { icon: "🐻", cls: "text-loss" },
-    SIDEWAYS: { icon: "↔️", cls: "text-warning" },
-  };
-  const { icon, cls } = cfg[regime] ?? cfg.SIDEWAYS;
-  return (
-    <span className={`text-xs font-semibold ${cls}`}>
-      {icon} {regime}
-    </span>
-  );
-}
-
-function RiskBadge() {
-  const { data: risk } = useRisk();
-  const score = risk?.overall_score;
-  const color =
-    score == null ? "text-text-muted"
-    : score >= 70 ? "text-profit"
-    : score >= 40 ? "text-warning"
-    : "text-loss";
-  return (
-    <span className={`font-mono text-xs tabular-nums ${color}`}>
-      {score != null ? Math.round(score) : "--"}
-    </span>
-  );
-}
 
 function UpdatePricesButton() {
   const queryClient = useQueryClient();
@@ -408,8 +379,6 @@ export default function TopBar({
     );
   }
 
-  const pnlColor = state.day_pnl >= 0 ? "text-profit" : "text-loss";
-
   return (
     <header className="h-12 flex items-center gap-3 px-4 bg-bg-surface border-b border-border shrink-0">
       {/* Brand */}
@@ -423,30 +392,6 @@ export default function TopBar({
 
       <span className="text-text-muted text-xs">|</span>
       <PortfolioSwitcher />
-      <span className="text-text-muted text-xs">·</span>
-
-      {/* Equity */}
-      <span className="font-mono text-xs text-text-primary tabular-nums">
-        ${state.total_equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-      </span>
-      <span className="text-[9px] text-text-muted">eq</span>
-
-      {/* Day P&L */}
-      <span className={`font-mono text-xs tabular-nums ${pnlColor}`}>
-        {state.day_pnl >= 0 ? "+" : ""}${state.day_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-      </span>
-      <span className="text-[9px] text-text-muted">day</span>
-
-      <span className="text-text-muted text-xs">·</span>
-      <RegimeBadge regime={state.regime ?? "SIDEWAYS"} />
-      <RiskBadge />
-      <span className="text-text-muted text-xs">·</span>
-
-      {/* Deployment */}
-      <span className="font-mono text-[10px] text-text-muted tabular-nums">
-        {Math.round((state.positions_value / (state.total_equity || 1)) * 100)}% dep
-      </span>
-      <span className="text-text-muted text-xs">·</span>
       <FreshnessIndicator />
 
       <div className="flex-1" />

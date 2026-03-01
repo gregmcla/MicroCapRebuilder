@@ -47,7 +47,7 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center h-10 px-3 gap-2 cursor-pointer transition-colors border-b ${
+      className={`flex items-center h-8 px-3 gap-2 cursor-pointer transition-colors border-b ${
         isSelected ? "" : "hover:bg-[rgba(255,255,255,0.012)]"
       }`}
       style={{
@@ -69,13 +69,10 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
         {pos.ticker}
       </span>
 
-      {/* Sparkline */}
-      <div className="min-w-0 w-[140px] shrink-0">
-        <PositionRowSparkline ticker={pos.ticker} height={28} />
+      {/* Sparkline — stretches to fill dead space */}
+      <div className="flex-1 min-w-0">
+        <PositionRowSparkline ticker={pos.ticker} height={22} />
       </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
 
       {/* Current price */}
       <span className="w-20 font-mono text-[13px] text-text-primary text-right tabular-nums shrink-0">
@@ -94,9 +91,30 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
         <span className="font-mono text-[10px] tabular-nums leading-tight opacity-80">{overallPnlPctStr}</span>
       </div>
 
-      {/* Dot */}
-      <div className="w-3 flex items-center justify-center shrink-0">
-        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: dotColor }} />
+      {/* Mini range bar: stop → current → target */}
+      <div className="w-9 flex items-center shrink-0">
+        <div
+          className="relative w-full h-[3px] rounded-full"
+          style={{ background: "var(--surface-3)" }}
+        >
+          {/* Fill: stop → current */}
+          <div
+            className="absolute top-0 left-0 h-full rounded-full"
+            style={{
+              width: `${Math.max(0, Math.min(100, progress))}%`,
+              background: dotColor,
+              opacity: 0.3,
+            }}
+          />
+          {/* Marker at current */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-[2px] h-[7px] rounded-full"
+            style={{
+              left: `calc(${Math.max(0, Math.min(100, progress))}% - 1px)`,
+              background: dotColor,
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -163,7 +181,7 @@ export default function PositionsPanel({
           Ticker
         </span>
         <span
-          className="w-[140px] shrink-0"
+          className="flex-1"
           style={{
             fontFamily: "var(--font-sans, sans-serif)",
             fontSize: "9.5px",
@@ -174,7 +192,6 @@ export default function PositionsPanel({
         >
           Trend
         </span>
-        <div className="flex-1" />
         <span
           className="w-20 text-right"
           style={{
@@ -211,7 +228,7 @@ export default function PositionsPanel({
         >
           P&L
         </span>
-        <span className="w-3" />
+        <span className="w-9 shrink-0" />
       </div>
 
       {/* Rows */}
@@ -221,16 +238,16 @@ export default function PositionsPanel({
             {Array.from({ length: 8 }).map((_, i) => (
               <div
                 key={i}
-                className="flex items-center h-10 px-3 gap-2 border-b"
+                className="flex items-center h-8 px-3 gap-2 border-b"
                 style={{ borderBottomColor: "var(--border-0)" }}
               >
                 <div className="h-3 w-12 bg-bg-elevated rounded animate-pulse" />
-                <div className="flex-1 h-4 bg-bg-elevated rounded animate-pulse" />
+                <div className="flex-1 h-3 bg-bg-elevated rounded animate-pulse" />
                 <div className="h-3 w-20 bg-bg-elevated rounded animate-pulse" />
-                <div className="h-6 w-24 bg-bg-elevated rounded animate-pulse" />
-                <div className="h-6 w-20 bg-bg-elevated rounded animate-pulse" />
-                <div className="w-3 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-bg-elevated animate-pulse" />
+                <div className="h-4 w-24 bg-bg-elevated rounded animate-pulse" />
+                <div className="h-4 w-20 bg-bg-elevated rounded animate-pulse" />
+                <div className="w-9 flex items-center justify-center">
+                  <div className="w-full h-[3px] rounded-full bg-bg-elevated animate-pulse" />
                 </div>
               </div>
             ))}
