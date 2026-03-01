@@ -43,6 +43,7 @@ class ExecutionSequencer:
             "quality_degradation_sell": 60,
             "rebalancing_sell": 50,
             "rotation_sell": 55,
+            "rotation_buy": 40,
             "high_conviction_buy": 85,
             "medium_conviction_buy": 65,
             "low_conviction_buy": 45,
@@ -154,6 +155,12 @@ class ExecutionSequencer:
                 return self.priorities["quality_degradation_sell"], "Quality degradation"
 
         else:  # BUY
+            reason_lower = action.reason.lower()
+
+            # Rotation buys must execute AFTER their paired rotation sell (priority < 55)
+            if "rotation from" in reason_lower:
+                return self.priorities.get("rotation_buy", 40), "Rotation buy (funded by paired sell)"
+
             # Determine buy priority from conviction (in reason or quant_score)
             quant_score = action.quant_score or 0
 
