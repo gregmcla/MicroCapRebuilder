@@ -1,9 +1,8 @@
-/** Default focus pane state — portfolio hero metrics + nav. */
+/** Horizontal summary strip at the top of the main column. */
 
 import { useMemo, useEffect, useRef } from "react";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
-import { useUIStore } from "../lib/store";
 import { useCountUp } from "../hooks/useCountUp";
 import type { Snapshot } from "../lib/types";
 
@@ -50,7 +49,7 @@ function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   if (!points) return null;
 
   return (
-    <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="block">
+    <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ display: "block", height: "100%" }}>
       <defs>
         <linearGradient id="equity-fill" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="rgba(124,92,252,0.15)" stopOpacity="1" />
@@ -73,33 +72,9 @@ function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   );
 }
 
-function NavLink({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        color: active ? "var(--accent-bright)" : "var(--text-1)",
-        fontSize: "9.5px",
-        textTransform: "uppercase",
-        letterSpacing: "0.08em",
-        fontFamily: "var(--font-sans)",
-        background: "none",
-        border: "none",
-        padding: "2px 0",
-        cursor: "pointer",
-        transition: "color 0.15s ease",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
 export default function PortfolioSummary() {
   const { data: state } = usePortfolioState();
   const { data: risk } = useRisk();
-  const rightTab = useUIStore((s) => s.rightTab);
-  const setRightTab = useUIStore((s) => s.setRightTab);
 
   const overallPnl = state?.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0) ?? 0;
   const overallColor = overallPnl >= 0 ? "text-profit" : "text-loss";
@@ -119,101 +94,89 @@ export default function PortfolioSummary() {
   };
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4">
-      {/* Nav links */}
-      <div className="flex items-center gap-4">
-        <NavLink label="Summary" active={rightTab === "summary"} onClick={() => setRightTab("summary")} />
-        <NavLink label="Risk" active={rightTab === "risk"} onClick={() => setRightTab("risk")} />
-        <NavLink label="Performance" active={rightTab === "performance"} onClick={() => setRightTab("performance")} />
-      </div>
+    <div
+      className="flex-shrink-0 border-b"
+      style={{ borderColor: "var(--border-0)", background: "var(--surface-0)" }}
+    >
+      <div className="flex items-stretch" style={{ minHeight: "84px" }}>
 
-      {/* Hero equity */}
-      <div className="anim d1">
-        <div
-          className="font-mono leading-none tabular-nums"
-          style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)" }}
-        >
-          ${animatedEquity}
-        </div>
-        <div style={labelStyle}>
-          Portfolio Equity
-        </div>
-      </div>
+        {/* Left: metrics */}
+        <div className="flex-1 flex items-center gap-6 px-4 py-3 min-w-0">
 
-      {/* P&L row */}
-      <div className="flex items-center gap-6">
-        <div className="anim d2">
-          <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
-            {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          {/* Hero equity */}
+          <div className="shrink-0 anim d1">
+            <div className="font-mono tabular-nums leading-none" style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)" }}>
+              ${animatedEquity}
+            </div>
+            <div style={labelStyle}>Portfolio Equity</div>
           </div>
-          <div style={labelStyle}>Total P&L</div>
-        </div>
-        <div className="anim d3">
-          <div className={`font-mono text-sm tabular-nums font-semibold ${dayColor}`}>
-            {(state?.day_pnl ?? 0) >= 0 ? "+" : ""}${(state?.day_pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+
+          {/* Divider */}
+          <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
+
+          {/* P&L metrics row */}
+          <div className="flex items-center gap-5 flex-wrap anim d2">
+            {/* Total P&L */}
+            <div>
+              <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
+                {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <div style={labelStyle}>Total P&L</div>
+            </div>
+            {/* Today */}
+            <div>
+              <div className={`font-mono text-sm tabular-nums font-semibold ${dayColor}`}>
+                {(state?.day_pnl ?? 0) >= 0 ? "+" : ""}${(state?.day_pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <div style={labelStyle}>Today</div>
+            </div>
+            {/* Return */}
+            <div>
+              <div className={`font-mono text-sm tabular-nums font-semibold ${returnColor}`}>
+                {(state?.total_return_pct ?? 0) >= 0 ? "+" : ""}{(state?.total_return_pct ?? 0).toFixed(1)}%
+              </div>
+              <div style={labelStyle}>Return</div>
+            </div>
+            {/* Cash */}
+            <div>
+              <div className="font-mono text-sm tabular-nums text-text-primary">
+                ${(state?.cash ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <div style={labelStyle}>Cash</div>
+            </div>
           </div>
-          <div style={labelStyle}>Today</div>
-        </div>
-        <div className="anim d4">
-          <div className={`font-mono text-sm tabular-nums font-semibold ${returnColor}`}>
-            {(state?.total_return_pct ?? 0) >= 0 ? "+" : ""}{(state?.total_return_pct ?? 0).toFixed(1)}%
+
+          {/* Status chips */}
+          <div className="flex items-center gap-2 ml-auto shrink-0 anim d3" style={{ fontSize: "10px" }}>
+            <span className={state?.regime === "BULL" ? "text-profit" : state?.regime === "BEAR" ? "text-loss" : "text-warning"} style={{ fontWeight: 600 }}>
+              {state?.regime ?? "—"}
+            </span>
+            <span style={{ color: "var(--border-2)" }}>·</span>
+            <span style={{ color: "var(--text-1)" }}>
+              Risk{" "}
+              <span className={`font-mono font-semibold ${(risk?.overall_score ?? 0) >= 70 ? "text-profit" : (risk?.overall_score ?? 0) >= 40 ? "text-warning" : "text-loss"}`}>
+                {risk?.overall_score != null ? Math.round(risk.overall_score) : "—"}
+              </span>
+            </span>
+            <span style={{ color: "var(--border-2)" }}>·</span>
+            <span style={{ color: "var(--text-1)" }}>
+              <span className="font-mono text-text-primary">{state?.positions.length ?? 0}</span> pos
+            </span>
+            {(state?.stale_alerts.length ?? 0) > 0 && (
+              <span className="text-warning">&#9888; {state!.stale_alerts.length}</span>
+            )}
           </div>
-          <div style={labelStyle}>Return</div>
+
         </div>
-        <div className="anim d5">
-          <div className="font-mono text-sm tabular-nums text-text-primary">
-            ${(state?.cash ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+
+        {/* Right: 30-day equity curve */}
+        {(state?.snapshots.length ?? 0) >= 2 && (
+          <div style={{ width: "220px", flexShrink: 0, borderLeft: "1px solid var(--border-0)" }}>
+            <EquityCurve snapshots={state!.snapshots} />
           </div>
-          <div style={labelStyle}>Cash</div>
-        </div>
+        )}
+
       </div>
-
-      {/* 30-day equity curve */}
-      {(state?.snapshots.length ?? 0) >= 2 && (
-        <div className="w-full overflow-hidden">
-          <EquityCurve snapshots={state!.snapshots} />
-        </div>
-      )}
-
-      {/* Divider */}
-      <div className="border-t border-border" />
-
-      {/* Status row */}
-      <div className="flex items-center gap-3 text-xs flex-wrap">
-        <span className={`font-semibold ${
-          state?.regime === "BULL" ? "text-profit"
-          : state?.regime === "BEAR" ? "text-loss"
-          : "text-warning"
-        }`}>
-          {state?.regime ?? "—"}
-        </span>
-        <span className="text-text-muted">·</span>
-        <span className="text-text-secondary">
-          Risk{" "}
-          <span className={`font-mono font-semibold ${
-            (risk?.overall_score ?? 0) >= 70 ? "text-profit"
-            : (risk?.overall_score ?? 0) >= 40 ? "text-warning"
-            : "text-loss"
-          }`}>
-            {risk?.overall_score != null ? Math.round(risk.overall_score) : "—"}
-          </span>
-        </span>
-        <span className="text-text-muted">·</span>
-        <span className="text-text-secondary">
-          <span className="font-mono font-semibold text-text-primary">{state?.positions.length ?? 0}</span> positions
-        </span>
-        <span className="text-text-muted">·</span>
-        <span className={state?.paper_mode ? "text-warning text-[10px] uppercase tracking-wider" : "text-loss text-[10px] uppercase tracking-wider font-bold"}>
-          {state?.paper_mode ? "Paper" : "Live"}
-        </span>
-      </div>
-
-      {/* Warnings if any */}
-      {(state?.stale_alerts.length ?? 0) > 0 && (
-        <div className="text-[11px] text-warning">
-          {state!.stale_alerts.length} stale alert{state!.stale_alerts.length > 1 ? "s" : ""}
-        </div>
-      )}
     </div>
   );
 }

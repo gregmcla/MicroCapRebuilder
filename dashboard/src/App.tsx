@@ -1,16 +1,16 @@
-/** 3-column layout: sidebar | main | right-rail. */
+/** 2-column layout: main | right-rail. */
 
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
 import MarketTickerBanner from "./components/MarketTickerBanner";
 import TopBar from "./components/TopBar";
-import Sidebar from "./components/Sidebar";
 import PositionsPanel from "./components/PositionsPanel";
 import FocusPane from "./components/FocusPane";
 import ActivityFeed from "./components/ActivityFeed";
 import MommyCoPilot, { MommyStrip } from "./components/MommyCoPilot";
 import OverviewPage from "./components/OverviewPage";
+import PortfolioSummary from "./components/PortfolioSummary";
 import { PositionDetailInfo } from "./components/PositionDetail";
 
 export default function App() {
@@ -42,9 +42,6 @@ export default function App() {
 
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left sidebar */}
-        <Sidebar />
-
         {/* Main content */}
         {isOverview ? (
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -52,16 +49,20 @@ export default function App() {
           </main>
         ) : (
           <>
-            {/* Center column: positions + position detail */}
-            <main className="flex-1 flex flex-col overflow-hidden min-w-0 border-r border-border bg-bg-surface">
-              <div className={selectedPosition ? "flex-1 min-h-0 overflow-hidden" : "h-full"}>
+            {/* Center column: portfolio summary + positions + position detail */}
+            <main className="flex-1 flex flex-col overflow-hidden min-w-0 border-r border-[var(--border-0)] bg-bg-surface">
+              {/* Portfolio summary header */}
+              <PortfolioSummary />
+              {/* Positions */}
+              <div className={selectedPosition ? "flex-1 min-h-0 overflow-hidden" : "flex-1"}>
                 <PositionsPanel
                   positions={state?.positions ?? []}
                   isLoading={isLoading}
                 />
               </div>
+              {/* Position detail slide-in */}
               {selectedPosition && (
-                <div className="position-detail-slide border-t border-border shrink-0 max-h-[40%] overflow-y-auto">
+                <div className="position-detail-slide border-t border-[var(--border-0)] shrink-0 max-h-[40%] overflow-y-auto">
                   <PositionDetailInfo pos={selectedPosition} />
                 </div>
               )}
