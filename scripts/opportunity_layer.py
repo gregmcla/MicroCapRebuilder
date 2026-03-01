@@ -329,6 +329,12 @@ class OpportunityLayer:
         # Stop when remaining cash falls below the reserve threshold
         cash_reserve = state.cash * (1.0 - initial_target_pct / 100.0) if is_initial_deployment else 100.0
 
+        # Don't generate any buy proposals if available cash is too small to build a meaningful position
+        # (avoids 1-share micro-buys when the portfolio is nearly fully deployed)
+        min_meaningful_buy = max(500.0, state.total_equity * 0.005)  # at least $500 or 0.5% of equity
+        if remaining_cash - cash_reserve < min_meaningful_buy:
+            return []
+
         # Sort by conviction (highest first)
         sorted_scores = sorted(
             conviction_scores.values(),
