@@ -6,7 +6,7 @@ import { useRisk } from "../hooks/useRisk";
 import { useCountUp } from "../hooks/useCountUp";
 import type { Snapshot } from "../lib/types";
 
-function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
+export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   const W = 400;
   const H = 64;
   const PAD = 2;
@@ -168,13 +168,6 @@ export default function PortfolioSummary() {
           </div>
 
         </div>
-
-        {/* Right: 30-day equity curve */}
-        {(state?.snapshots.length ?? 0) >= 2 && (
-          <div style={{ width: "220px", flexShrink: 0, borderLeft: "1px solid var(--border-0)" }}>
-            <EquityCurve snapshots={state!.snapshots} />
-          </div>
-        )}
 
       </div>
     </div>

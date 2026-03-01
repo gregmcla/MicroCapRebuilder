@@ -5,7 +5,6 @@ import type { RightTab } from "../lib/store";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
-import { PositionDetailChart } from "./PositionDetail";
 
 interface FocusPaneProps {
   className?: string;
@@ -55,20 +54,9 @@ function TabBar() {
 }
 
 export default function FocusPane({ className = "" }: FocusPaneProps) {
-  const selectedPosition = useUIStore((s) => s.selectedPosition);
   const rightTab = useUIStore((s) => s.rightTab);
   const { result, isAnalyzing } = useAnalysisStore();
 
-  // Position selected — show chart (full pane, no tab bar)
-  if (selectedPosition) {
-    return (
-      <div className={`flex flex-col h-full ${className}`}>
-        <PositionDetailChart pos={selectedPosition} />
-      </div>
-    );
-  }
-
-  // Tab bar + content
   return (
     <div className={`flex flex-col h-full ${className}`}>
       <TabBar />

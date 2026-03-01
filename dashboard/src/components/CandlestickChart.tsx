@@ -16,15 +16,18 @@ interface Props {
   ticker: string;
   range: string;
   position: Position;
+  height?: number;
 }
 
-export default function CandlestickChart({ ticker, range, position }: Props) {
+export default function CandlestickChart({ ticker, range, position, height }: Props) {
   const { data, isLoading, error } = useChartData(ticker, range);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current || !data || data.data.length === 0) return;
+
+    const resolvedHeight = height ?? (chartContainerRef.current.clientHeight || 300);
 
     // Create main chart
     const chart = createChart(chartContainerRef.current, {
@@ -37,7 +40,7 @@ export default function CandlestickChart({ ticker, range, position }: Props) {
         horzLines: { color: 'rgba(0, 212, 136, 0.1)' },
       },
       width: chartContainerRef.current.clientWidth,
-      height: 300,
+      height: resolvedHeight,
       crosshair: {
         vertLine: {
           color: '#00D488',
@@ -130,24 +133,35 @@ export default function CandlestickChart({ ticker, range, position }: Props) {
     chart.timeScale().fitContent();
     chartRef.current = chart;
 
-    // Handle resize
+    // Handle resize — update both width and height
     const handleResize = () => {
       if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+        chart.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: height ?? (chartContainerRef.current.clientHeight || 300),
+        });
       }
     };
+
+    // ResizeObserver for container-driven sizing (when no explicit height)
+    let ro: ResizeObserver | null = null;
+    if (!height) {
+      ro = new ResizeObserver(handleResize);
+      ro.observe(chartContainerRef.current);
+    }
 
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      ro?.disconnect();
       chart.remove();
     };
-  }, [data, position, ticker, range]);
+  }, [data, position, ticker, range, height]);
 
   if (isLoading) {
     return (
-      <div className="w-full h-[300px] flex items-center justify-center bg-bg-surface rounded">
+      <div className="w-full flex items-center justify-center bg-bg-surface rounded" style={{ height: height ?? 300 }}>
         <span className="text-text-muted animate-pulse">Loading chart...</span>
       </div>
     );
@@ -155,11 +169,11 @@ export default function CandlestickChart({ ticker, range, position }: Props) {
 
   if (error || !data || data.data.length === 0) {
     return (
-      <div className="w-full h-[300px] flex items-center justify-center bg-bg-surface rounded">
+      <div className="w-full flex items-center justify-center bg-bg-surface rounded" style={{ height: height ?? 300 }}>
         <span className="text-text-muted">No chart data available</span>
       </div>
     );
   }
 
-  return <div ref={chartContainerRef} className="w-full" />;
+  return <div ref={chartContainerRef} className="w-full h-full" />;
 }

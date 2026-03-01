@@ -1,4 +1,4 @@
-/** 2-column layout: main | right-rail. */
+/** 3-column layout: positions list | center chart | right analytics. */
 
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -7,17 +7,16 @@ import MarketTickerBanner from "./components/MarketTickerBanner";
 import TopBar from "./components/TopBar";
 import PositionsPanel from "./components/PositionsPanel";
 import FocusPane from "./components/FocusPane";
+import CenterPane from "./components/CenterPane";
 import ActivityFeed from "./components/ActivityFeed";
 import MommyCoPilot, { MommyStrip } from "./components/MommyCoPilot";
 import OverviewPage from "./components/OverviewPage";
 import PortfolioSummary from "./components/PortfolioSummary";
-import { PositionDetailInfo } from "./components/PositionDetail";
 
 export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
-  const selectedPosition = useUIStore((s) => s.selectedPosition);
   const mommyExpanded = useUIStore((s) => s.mommyExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
@@ -42,45 +41,47 @@ export default function App() {
 
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Main content */}
         {isOverview ? (
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
             <OverviewPage />
           </main>
         ) : (
-          <>
-            {/* Center column: portfolio summary + positions + position detail */}
-            <main className="flex-1 flex flex-col overflow-hidden min-w-0 border-r border-[var(--border-0)] bg-bg-surface">
-              {/* Portfolio summary header */}
-              <PortfolioSummary />
-              {/* Positions */}
-              <div className={selectedPosition ? "flex-1 min-h-0 overflow-hidden" : "flex-1"}>
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+            {/* Portfolio summary — full width above three columns */}
+            <PortfolioSummary />
+
+            {/* Three columns */}
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left: positions list — 320px */}
+              <aside
+                className="flex-shrink-0 flex flex-col overflow-hidden border-r bg-bg-surface"
+                style={{ width: "320px", borderColor: "var(--border-0)" }}
+              >
                 <PositionsPanel
                   positions={state?.positions ?? []}
                   isLoading={isLoading}
                 />
-              </div>
-              {/* Position detail slide-in */}
-              {selectedPosition && (
-                <div className="border-t shrink-0 max-h-[40%] overflow-y-auto" style={{ borderColor: "var(--border-0)" }}>
-                  <PositionDetailInfo pos={selectedPosition} />
-                </div>
-              )}
-            </main>
+              </aside>
 
-            {/* Right rail: 312px fixed */}
-            <aside
-              className="flex-shrink-0 flex flex-col overflow-hidden border-l border-border bg-bg-surface"
-              style={{ width: "312px" }}
-            >
-              {mommyExpanded ? (
-                <MommyCoPilot />
-              ) : (
-                <FocusPane className="flex-1 overflow-y-auto" />
-              )}
-              <MommyStrip />
-            </aside>
-          </>
+              {/* Center: chart panel — flex-1 */}
+              <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-bg-surface">
+                <CenterPane />
+              </main>
+
+              {/* Right: analytics panel — 300px */}
+              <aside
+                className="flex-shrink-0 flex flex-col overflow-hidden border-l bg-bg-surface"
+                style={{ width: "300px", borderColor: "var(--border-0)" }}
+              >
+                {mommyExpanded ? (
+                  <MommyCoPilot />
+                ) : (
+                  <FocusPane className="flex-1" />
+                )}
+                <MommyStrip />
+              </aside>
+            </div>
+          </div>
         )}
       </div>
 
