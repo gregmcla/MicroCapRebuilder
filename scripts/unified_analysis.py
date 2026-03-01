@@ -445,12 +445,34 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     print("EXECUTING APPROVED ACTIONS")
     print(f"{'='*60}\n")
 
-    # Build all transactions first
+    # Sort: sells first so freed cash is available for buy validation
+    actions_to_execute.sort(key=lambda r: 0 if r.original.action_type == "SELL" else 1)
+
+    # Build transactions with running cash validation — one clean pass
+    available_cash = state.cash
+    validated = []  # list of (reviewed, tx) pairs that passed cash check
+
     for reviewed in actions_to_execute:
         action = reviewed.original
         shares = reviewed.modified_shares or action.shares
         stop_loss = reviewed.modified_stop or action.stop_loss
         take_profit = reviewed.modified_target or action.take_profit
+
+        if action.action_type == "SELL":
+            available_cash += shares * action.price
+        else:
+            # BUY: cap to what cash can afford
+            if action.price > 0:
+                max_affordable = int(available_cash / action.price)
+            else:
+                max_affordable = 0
+            if max_affordable < 1:
+                print(f"  ⏭️  Skipping BUY {action.ticker}: insufficient cash (need ${shares * action.price:,.0f}, have ${available_cash:,.0f})")
+                continue
+            if shares > max_affordable:
+                print(f"  ⚠️  {action.ticker}: Capping shares {shares} → {max_affordable} (cash constraint)")
+                shares = max_affordable
+            available_cash -= shares * action.price
 
         tx = {
             "transaction_id": str(uuid.uuid4())[:8],
@@ -472,14 +494,16 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "factor_scores": json.dumps(action.factor_scores) if action.action_type == "BUY" else "",
             "signal_rank": "",
         }
-        transactions.append(tx)
+        validated.append((reviewed, tx))
+
+    transactions = [tx for _, tx in validated]
 
     # Validate all transactions against pre-mutation state, then save to ledger
     if transactions:
         state = save_transactions_batch(state, transactions)
 
     # Now update positions and print results
-    for reviewed, tx in zip(actions_to_execute, transactions):
+    for reviewed, tx in validated:
         action = reviewed.original
         shares = tx["shares"]
 
