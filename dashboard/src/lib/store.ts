@@ -28,7 +28,7 @@ interface AnalysisStore {
   clear: () => void;
 }
 
-export type RightTab = "summary" | "risk" | "performance";
+export type RightTab = "actions" | "risk" | "performance";
 
 interface UIStore {
   rightTab: RightTab;
@@ -44,7 +44,7 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  rightTab: "summary",
+  rightTab: "actions",
   setRightTab: (tab) => set({ rightTab: tab, selectedPosition: null }),
   selectedPosition: null,
   selectPosition: (pos) => set({ selectedPosition: pos }),

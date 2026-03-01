@@ -70,7 +70,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { tab: "summary",     label: "Summary",     Icon: IconSummary },
+  { tab: "actions",     label: "Actions",     Icon: IconSummary },
   { tab: "risk",        label: "Risk",        Icon: IconRisk },
   { tab: "performance", label: "Performance", Icon: IconPerformance },
 ];

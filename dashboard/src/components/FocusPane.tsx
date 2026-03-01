@@ -5,7 +5,6 @@ import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
 import { PositionDetailChart } from "./PositionDetail";
-import PortfolioSummary from "./PortfolioSummary";
 
 interface FocusPaneProps {
   className?: string;
@@ -20,7 +19,7 @@ function BreadcrumbNav({ section }: { section: string }) {
       style={{ borderBottom: `1px solid var(--border-0)` }}
     >
       <button
-        onClick={() => setRightTab("summary")}
+        onClick={() => setRightTab("actions")}
         className="transition-colors"
         style={{
           fontSize: "9.5px",
@@ -35,7 +34,7 @@ function BreadcrumbNav({ section }: { section: string }) {
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-2)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-1)"; }}
       >
-        Summary
+        Actions
       </button>
       <span style={{ fontSize: "9.5px", color: "var(--text-0)" }}>/</span>
       <span
@@ -96,7 +95,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
 
   return (
     <div className={`overflow-y-auto ${className}`}>
-      <PortfolioSummary />
+      <ActionsTab />
     </div>
   );
 }
