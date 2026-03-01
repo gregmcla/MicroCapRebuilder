@@ -1,5 +1,7 @@
 """Portfolio state endpoints."""
 
+from datetime import date
+
 from fastapi import APIRouter
 from api.deps import serialize
 
@@ -14,18 +16,19 @@ def _serialize_state(state):
     transactions = state.transactions
     snapshots = state.snapshots
 
-    # Day P&L from last two snapshots
+    # Day P&L from last snapshot — only if markets were open today.
+    # Weekends (weekday >= 5) mean no trading; snapshot day_pnl would be
+    # yesterday's gain mislabeled as today's.
     day_pnl = 0.0
     day_pnl_pct = 0.0
-    if len(snapshots) >= 2:
-        today = snapshots.iloc[-1]
-        yesterday = snapshots.iloc[-2]
-        day_pnl = float(today.get("day_pnl", 0) or 0)
-        day_pnl_pct = float(today.get("day_pnl_pct", 0) or 0)
-    elif len(snapshots) == 1:
-        today = snapshots.iloc[-1]
-        day_pnl = float(today.get("day_pnl", 0) or 0)
-        day_pnl_pct = float(today.get("day_pnl_pct", 0) or 0)
+    today = date.today()
+    market_open_today = today.weekday() < 5  # Mon=0 … Fri=4
+    if market_open_today and len(snapshots) >= 1:
+        last = snapshots.iloc[-1]
+        snapshot_date = str(last.get("date", ""))
+        if snapshot_date.startswith(today.isoformat()):
+            day_pnl = float(last.get("day_pnl", 0) or 0)
+            day_pnl_pct = float(last.get("day_pnl_pct", 0) or 0)
 
     # Total return from snapshots
     total_return_pct = 0.0
@@ -34,6 +37,14 @@ def _serialize_state(state):
         current = state.total_equity
         if starting > 0:
             total_return_pct = ((current - starting) / starting) * 100
+
+    # Zero out stale day_change values in positions when markets are closed.
+    # The CSV retains the last computed day_change (from the last trading session)
+    # which would show as today's gain/loss when markets haven't opened.
+    if not market_open_today and not positions.empty:
+        positions = positions.copy()
+        positions["day_change"] = 0.0
+        positions["day_change_pct"] = 0.0
 
     return {
         "cash": state.cash,

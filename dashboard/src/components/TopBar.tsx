@@ -1,9 +1,9 @@
 /** Top bar — brand + portfolio left | market indices center | action buttons right. */
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
+import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
@@ -11,10 +11,6 @@ import PortfolioSwitcher from "./PortfolioSwitcher";
 
 // ── Shared button style constants ────────────────────────────────────────────
 
-const primaryBtn =
-  "inline-flex items-center justify-center px-3.5 text-xs font-semibold text-white rounded-[6px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-  + " bg-[var(--accent)] shadow-[0_0_12px_rgba(124,92,252,0.3)]"
-  + " hover:bg-[var(--accent-bright)] hover:shadow-[0_0_18px_rgba(124,92,252,0.45)]";
 
 const ghostBtn =
   "inline-flex items-center justify-center px-3.5 text-xs font-semibold rounded-[6px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -117,114 +113,6 @@ function MarketIndices() {
   );
 }
 
-// ── Action buttons ────────────────────────────────────────────────────────────
-
-function UpdatePricesButton() {
-  const queryClient = useQueryClient();
-  const updateTimestamp = useFreshnessStore((s) => s.updateTimestamp);
-  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
-  const [updating, setUpdating] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
-  const handleUpdate = async () => {
-    setUpdating(true);
-    setResult(null);
-    try {
-      const res = await api.updatePrices(portfolioId);
-      updateTimestamp("positions");
-      setResult(`Updated ${res.num_positions}`);
-      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-      queryClient.invalidateQueries({ queryKey: ["chartData"] });
-      setTimeout(() => setResult(null), 3000);
-    } catch (e) {
-      setResult("Failed");
-      setTimeout(() => setResult(null), 5000);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button onClick={handleUpdate} disabled={updating} className={`${ghostBtn} ${BTN_H}`}>
-        {updating ? "Updating..." : "UPDATE"}
-      </button>
-      {result && <span className="text-[10px]" style={{ color: "var(--text-0)" }}>{result}</span>}
-    </div>
-  );
-}
-
-function ScanButton() {
-  const queryClient = useQueryClient();
-  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
-  const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const stopPolling = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-  };
-
-  const handleScan = async () => {
-    setScanning(true);
-    setResult(null);
-    try {
-      await api.scan(portfolioId);
-    } catch (e) {
-      setScanning(false);
-      setResult(e instanceof Error ? e.message : "Scan failed");
-      setTimeout(() => setResult(null), 5000);
-      return;
-    }
-    const startedAt = Date.now();
-    const MAX_POLL_MS = 10 * 60 * 1000;
-    pollRef.current = setInterval(async () => {
-      try {
-        const status = await api.scanStatus(portfolioId);
-        if (status.status === "complete" && status.result) {
-          stopPolling(); setScanning(false);
-          setResult(`Found ${status.result.discovered}, added ${status.result.added}`);
-          queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-          setTimeout(() => setResult(null), 5000);
-        } else if (status.status === "error") {
-          stopPolling(); setScanning(false);
-          setResult(status.error ?? "Scan failed");
-          setTimeout(() => setResult(null), 5000);
-        } else if (status.status === "idle" || Date.now() - startedAt > MAX_POLL_MS) {
-          stopPolling(); setScanning(false);
-          setTimeout(() => setResult(null), 5000);
-        }
-      } catch { /* keep polling */ }
-    }, 10_000);
-  };
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <button onClick={handleScan} disabled={scanning} className={`${ghostBtn} ${BTN_H}`}>
-        {scanning ? "Scanning..." : "SCAN"}
-      </button>
-      {result && <span className="text-[10px]" style={{ color: "var(--text-0)" }}>{result}</span>}
-    </div>
-  );
-}
-
-function AnalyzeExecuteButtons() {
-  const { result, isAnalyzing, isExecuting, runAnalysis, runExecute } = useAnalysisStore();
-  const actionCount = result ? result.summary.approved + result.summary.modified : 0;
-
-  return (
-    <>
-      <button onClick={runAnalysis} disabled={isAnalyzing} className={`${primaryBtn} ${BTN_H}`}>
-        {isAnalyzing ? "Analyzing..." : "ANALYZE"}
-      </button>
-      {actionCount > 0 && (
-        <button onClick={runExecute} disabled={isExecuting} className={`${primaryBtn} ${BTN_H}`}>
-          {isExecuting ? "Executing..." : `EXECUTE ${actionCount}`}
-        </button>
-      )}
-    </>
-  );
-}
 
 function EmergencyClose({ positions }: { positions: PortfolioState["positions"] }) {
   const queryClient = useQueryClient();
@@ -382,7 +270,7 @@ export default function TopBar({
         <MarketIndices />
       </div>
 
-      {/* Right: action buttons */}
+      {/* Right: status + emergency controls */}
       <div className="flex items-center gap-2 shrink-0">
         {(state?.stale_alerts.length ?? 0) > 0 && (
           <span className="text-[10px] text-warning">{state!.stale_alerts.length} stale</span>
@@ -393,10 +281,6 @@ export default function TopBar({
         {isLoading && (
           <span className="text-[10px] text-text-muted animate-pulse">Loading...</span>
         )}
-        <UpdatePricesButton />
-        <ScanButton />
-        <span style={{ width: "1px", height: "20px", background: "var(--border-1)", flexShrink: 0 }} />
-        <AnalyzeExecuteButtons />
         {state && <EmergencyClose positions={state.positions} />}
         {state && <ModeToggle paperMode={state.paper_mode} />}
       </div>

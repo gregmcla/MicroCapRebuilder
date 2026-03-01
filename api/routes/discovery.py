@@ -1,8 +1,10 @@
 """Stock discovery/scan endpoints."""
 
 import concurrent.futures
+import json
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter
@@ -64,6 +66,38 @@ def start_scan(portfolio_id: str):
     thread.start()
 
     return {"status": "running", "message": "Scan started"}
+
+
+@router.get("/watchlist")
+def get_watchlist(portfolio_id: str):
+    """Return active watchlist candidates, sorted by discovery_score desc."""
+    data_dir = Path(__file__).parent.parent.parent / "data" / "portfolios" / portfolio_id
+    wl_path = data_dir / "watchlist.jsonl"
+    if not wl_path.exists():
+        return {"candidates": [], "total": 0}
+
+    candidates = []
+    with open(wl_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get("status", "ACTIVE") == "ACTIVE":
+                    candidates.append({
+                        "ticker": entry.get("ticker", ""),
+                        "score": entry.get("discovery_score", 0),
+                        "sector": entry.get("sector", ""),
+                        "source": entry.get("source", ""),
+                        "notes": entry.get("notes", ""),
+                        "added_date": entry.get("added_date", ""),
+                    })
+            except Exception:
+                continue
+
+    candidates.sort(key=lambda x: x["score"], reverse=True)
+    return {"candidates": candidates[:20], "total": len(candidates)}
 
 
 @router.get("/scan/status")

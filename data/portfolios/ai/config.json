@@ -242,8 +242,13 @@
     },
     "sector_filter": [
       "Technology",
-      "Communication",
-      "Real Estate"
+      "Communication Services",
+      "Real Estate",
+      "Healthcare",
+      "Industrials",
+      "Financial Services",
+      "Consumer Cyclical",
+      "Energy"
     ]
   },
   "universe": {
@@ -263,7 +268,19 @@
           "XLRE",
           "VGT",
           "ARKQ",
-          "PLD"
+          "PLD",
+          "ROBO",
+          "BOTZ",
+          "IGV",
+          "ARKG",
+          "ARKW",
+          "WCLD",
+          "SMH",
+          "FINX",
+          "HACK",
+          "AIQ",
+          "KOMP",
+          "SKYY"
         ]
       }
     },

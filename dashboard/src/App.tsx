@@ -4,6 +4,7 @@ import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
 import TopBar from "./components/TopBar";
+import CommandBar from "./components/CommandBar";
 import PositionsPanel from "./components/PositionsPanel";
 import FocusPane from "./components/FocusPane";
 import CenterPane from "./components/CenterPane";
@@ -25,17 +26,8 @@ export default function App() {
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
       <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
 
-      {/* Deployment bar — thin fill showing % deployed */}
-      {!isOverview && state && (
-        <div className="h-0.5 bg-bg-elevated shrink-0">
-          <div
-            className="h-full bg-accent/30 transition-all duration-500"
-            style={{
-              width: `${Math.min(100, Math.round((state.positions_value / (state.total_equity || 1)) * 100))}%`,
-            }}
-          />
-        </div>
-      )}
+      {/* Command bar — UPDATE · SCAN · ANALYZE (only in portfolio view) */}
+      {!isOverview && <CommandBar />}
 
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">

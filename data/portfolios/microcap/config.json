@@ -222,7 +222,7 @@
       "momentum_breakouts": true,
       "oversold_bounces": true,
       "sector_leaders": true,
-      "volume_anomalies": false
+      "volume_anomalies": true
     },
     "filters": {
       "min_market_cap_m": 300,

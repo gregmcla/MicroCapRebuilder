@@ -11,6 +11,7 @@ import type {
   MarketIndices,
   ChartData,
   ScanJobStatus,
+  WatchlistData,
   PortfolioList,
   OverviewData,
   CreatePortfolioRequest,
@@ -73,6 +74,7 @@ export const api = {
   updatePrices: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
   scan: (pid: string) => post<ScanJobStatus>(`/${pid}/scan`),
   scanStatus: (pid: string) => get<ScanJobStatus>(`/${pid}/scan/status`),
+  getWatchlist: (pid: string) => get<WatchlistData>(`/${pid}/watchlist`),
   sellPosition: (pid: string, ticker: string) =>
     post<{
       ticker: string;

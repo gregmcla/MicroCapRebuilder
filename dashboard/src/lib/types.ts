@@ -26,13 +26,32 @@ export interface PortfolioSummary {
   num_positions: number;
   regime: string | null;
   paper_mode: boolean;
+  unrealized_pnl: number;
+  day_pnl: number;
+  total_return_pct: number;
+  deployed_pct: number;
+  sparkline?: number[];
   error?: string;
+}
+
+export interface CrossPortfolioMover {
+  portfolio_id: string;
+  portfolio_name: string;
+  ticker: string;
+  pnl: number;
+  pnl_pct: number;
+  market_value?: number;
 }
 
 export interface OverviewData {
   total_equity: number;
   total_cash: number;
   total_day_pnl: number;
+  total_unrealized_pnl: number;
+  total_positions: number;
+  top_movers: CrossPortfolioMover[];
+  bottom_movers: CrossPortfolioMover[];
+  all_positions: CrossPortfolioMover[];
   portfolios: PortfolioSummary[];
 }
 
@@ -305,6 +324,21 @@ export interface ScanResult {
   poor_performers_removed: number;
   sector_balanced: Record<string, number>;
   total_active: number;
+  elapsed_seconds?: number;
+}
+
+export interface WatchlistCandidate {
+  ticker: string;
+  score: number;
+  sector: string;
+  source: string;
+  notes: string;
+  added_date: string;
+}
+
+export interface WatchlistData {
+  candidates: WatchlistCandidate[];
+  total: number;
 }
 
 export interface ScanJobStatus {

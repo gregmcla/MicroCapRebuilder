@@ -8,6 +8,166 @@
       "created": "2026-02-16T12:30:20",
       "starting_capital": 50000.0,
       "active": true
+    },
+    "test-largecap": {
+      "id": "test-largecap",
+      "name": "Large Cap Test",
+      "universe": "largecap",
+      "created": "2026-02-16T13:38:03",
+      "starting_capital": 100000,
+      "active": false
+    },
+    "mixed": {
+      "id": "mixed",
+      "name": "Mixed",
+      "universe": "custom",
+      "created": "2026-02-16T13:50:23",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "largecap": {
+      "id": "largecap",
+      "name": "LargeCap",
+      "universe": "largecap",
+      "created": "2026-02-16T13:53:32",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "big-boi": {
+      "id": "big-boi",
+      "name": "Big Boi",
+      "universe": "largecap",
+      "created": "2026-02-16T14:28:51",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "small": {
+      "id": "small",
+      "name": "small",
+      "universe": "smallcap",
+      "created": "2026-02-16T14:47:27",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "tester": {
+      "id": "tester",
+      "name": "Tester",
+      "universe": "largecap",
+      "created": "2026-02-24T15:14:43",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "bbc": {
+      "id": "bbc",
+      "name": "bbc",
+      "universe": "largecap",
+      "created": "2026-02-24T15:58:59",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "test-strategy": {
+      "id": "test-strategy",
+      "name": "Test Strategy",
+      "universe": "largecap",
+      "created": "2026-02-24T19:02:14",
+      "starting_capital": 100000,
+      "active": false
+    },
+    "bwc": {
+      "id": "bwc",
+      "name": "bwc",
+      "universe": "largecap",
+      "created": "2026-02-24T19:05:02",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "pop": {
+      "id": "pop",
+      "name": "pop",
+      "universe": "largecap",
+      "created": "2026-02-24T19:07:09",
+      "starting_capital": 500000.0,
+      "active": false
+    },
+    "lik": {
+      "id": "lik",
+      "name": "lik",
+      "universe": "smallcap",
+      "created": "2026-02-24T19:22:24",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "huy": {
+      "id": "huy",
+      "name": "huy",
+      "universe": "largecap",
+      "created": "2026-02-24T21:46:35",
+      "starting_capital": 5000000.0,
+      "active": false
+    },
+    "large": {
+      "id": "large",
+      "name": "large",
+      "universe": "largecap",
+      "created": "2026-02-24T22:40:36",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "large-micro": {
+      "id": "large-micro",
+      "name": "large micro",
+      "universe": "smallcap",
+      "created": "2026-02-25T12:34:41",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "idk": {
+      "id": "idk",
+      "name": "idk",
+      "universe": "midcap",
+      "created": "2026-03-01T11:56:02",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "largecappy": {
+      "id": "largecappy",
+      "name": "largecappy",
+      "universe": "midcap",
+      "created": "2026-02-25T13:20:50",
+      "starting_capital": 300000.0,
+      "active": false
+    },
+    "largeboi": {
+      "id": "largeboi",
+      "name": "largeboi",
+      "universe": "allcap",
+      "created": "2026-02-25T15:28:02",
+      "starting_capital": 1000000.0,
+      "active": true
+    },
+    "ai": {
+      "id": "ai",
+      "name": "ai",
+      "universe": "allcap",
+      "created": "2026-02-26T16:44:45",
+      "starting_capital": 500000.0,
+      "active": true
+    },
+    "new": {
+      "id": "new",
+      "name": "new",
+      "universe": "allcap",
+      "created": "2026-02-27T08:29:42",
+      "starting_capital": 200000.0,
+      "active": true
+    },
+    "abc": {
+      "id": "abc",
+      "name": "ABC",
+      "universe": "custom",
+      "created": "2026-03-01T12:07:08",
+      "starting_capital": 750000.0,
+      "active": false
     }
   }
 }

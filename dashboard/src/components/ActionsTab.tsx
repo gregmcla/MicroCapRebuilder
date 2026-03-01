@@ -1,7 +1,11 @@
-/** Actions tab — ANALYZE results, EXECUTE flow. */
+/** Actions tab — ANALYZE results, EXECUTE flow, and pre-flight dashboard. */
 
-import { useAnalysisStore } from "../lib/store";
-import type { ReviewedAction } from "../lib/types";
+import { useQuery } from "@tanstack/react-query";
+import { useAnalysisStore, usePortfolioStore } from "../lib/store";
+import { usePortfolioState } from "../hooks/usePortfolioState";
+import { useMarketIndices } from "../hooks/useMarketIndices";
+import { api } from "../lib/api";
+import type { ReviewedAction, WatchlistCandidate } from "../lib/types";
 
 function ConfidenceDot({ confidence }: { confidence: number }) {
   const color =
@@ -138,46 +142,236 @@ const sectionHeaderStyle: React.CSSProperties = {
   color: "var(--text-0)",
 };
 
+// ---------------------------------------------------------------------------
+// Source badge for watchlist candidates
+// ---------------------------------------------------------------------------
+
+const SOURCE_LABELS: Record<string, string> = {
+  MOMENTUM_BREAKOUT: "MOM",
+  SECTOR_LEADER: "SEC",
+  MEAN_REVERSION: "REV",
+  VOLUME_SURGE: "VOL",
+  RSI_OVERSOLD: "RSI",
+  VOLATILITY_CONTRACTION: "VLT",
+};
+
+function SourceBadge({ source }: { source: string }) {
+  const label = SOURCE_LABELS[source] ?? source.slice(0, 3);
+  return (
+    <span style={{
+      fontSize: "8px", fontWeight: 700, letterSpacing: "0.05em",
+      padding: "1px 4px", borderRadius: "3px",
+      background: "rgba(124,92,252,0.15)", color: "var(--accent-bright)",
+    }}>
+      {label}
+    </span>
+  );
+}
+
+function CandidateRow({ c }: { c: WatchlistCandidate }) {
+  const scoreColor = c.score >= 80 ? "var(--green)" : c.score >= 60 ? "var(--amber)" : "var(--text-1)";
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "6px",
+      padding: "5px 0", borderBottom: "1px solid var(--border-0)",
+    }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "var(--text-4)", width: "36px", flexShrink: 0 }}>
+        {c.ticker}
+      </span>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, color: scoreColor, width: "28px", flexShrink: 0 }}>
+        {c.score}
+      </span>
+      <SourceBadge source={c.source} />
+      <span style={{ flex: 1, fontSize: "9.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {c.sector}
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pre-flight dashboard (shown when no analysis result)
+// ---------------------------------------------------------------------------
+
+function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
+  onAnalyze: () => void;
+  lastAnalyzedAt: string | null;
+  error: string | null;
+}) {
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const { data: state } = usePortfolioState();
+  const { data: indices } = useMarketIndices();
+  const { data: wl } = useQuery({
+    queryKey: ["watchlist", portfolioId],
+    queryFn: () => api.getWatchlist(portfolioId),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const { data: scanStatus } = useQuery({
+    queryKey: ["scanStatus", portfolioId],
+    queryFn: () => api.scanStatus(portfolioId),
+    staleTime: Infinity,
+    retry: false,
+  });
+
+  const regime = state?.regime ?? null;
+  const cash = state?.cash ?? 0;
+  const numPositions = state?.num_positions ?? 0;
+  const staleAlerts = state?.stale_alerts ?? [];
+  const deployedPct = state && state.total_equity > 0
+    ? Math.round(state.positions_value / state.total_equity * 100)
+    : 0;
+
+  const regimeColor = regime === "BULL" ? "var(--green)" : regime === "BEAR" ? "var(--red)" : "var(--amber)";
+  const candidates = wl?.candidates ?? [];
+  const totalCandidates = wl?.total ?? 0;
+
+  function relTime(iso: string | null | undefined): string {
+    if (!iso) return "";
+    const sec = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (sec < 90) return "just now";
+    if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
+    if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
+    return `${Math.floor(sec / 86400)}d ago`;
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+    letterSpacing: "0.10em", color: "var(--text-0)", marginBottom: "8px",
+  };
+  const sectionStyle: React.CSSProperties = {
+    padding: "10px 14px",
+    borderBottom: "1px solid var(--border-0)",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflowY: "auto" }}>
+
+      {/* Market context */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Market</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {regime && (
+            <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: regimeColor, flexShrink: 0 }} />
+              <span style={{ fontSize: "11px", fontWeight: 700, color: regimeColor }}>{regime}</span>
+            </div>
+          )}
+          {indices?.sp500 && (
+            <span style={{ fontSize: "10.5px", color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+              S&P <span style={{ color: indices.sp500.change_pct >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                {indices.sp500.change_pct >= 0 ? "+" : ""}{indices.sp500.change_pct.toFixed(2)}%
+              </span>
+            </span>
+          )}
+          {indices?.vix && (
+            <span style={{ fontSize: "10.5px", color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+              VIX <span style={{ fontWeight: 600, color: "var(--text-3)" }}>{indices.vix.value.toFixed(1)}</span>
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Portfolio capacity */}
+      <div style={sectionStyle}>
+        <p style={labelStyle}>Portfolio</p>
+        <div style={{ display: "flex", gap: "16px" }}>
+          <div>
+            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Positions</p>
+            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>{numPositions}</p>
+          </div>
+          <div>
+            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Deployed</p>
+            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>{deployedPct}%</p>
+          </div>
+          <div>
+            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Cash</p>
+            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>
+              ${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </p>
+          </div>
+        </div>
+        {staleAlerts.length > 0 && (
+          <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", gap: "4px" }}>
+            {staleAlerts.slice(0, 6).map((t) => (
+              <span key={t} style={{
+                fontSize: "9px", padding: "2px 6px", borderRadius: "3px",
+                background: "rgba(251,191,36,0.12)", color: "var(--amber)",
+                fontFamily: "var(--font-mono)", fontWeight: 600,
+              }}>
+                {t} stale
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Watchlist candidates */}
+      <div style={{ ...sectionStyle, flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+          <p style={{ ...labelStyle, marginBottom: 0 }}>Watchlist Candidates</p>
+          <span style={{ fontSize: "9px", color: "var(--text-0)" }}>
+            {totalCandidates > 0 ? `${totalCandidates} active` : "—"}
+            {scanStatus?.status === "complete" && scanStatus.finished_at && (
+              <> · {relTime(scanStatus.finished_at)}</>
+            )}
+          </span>
+        </div>
+
+        {candidates.length === 0 ? (
+          <p style={{ fontSize: "11px", color: "var(--text-0)" }}>
+            No watchlist data. Run SCAN first to discover candidates.
+          </p>
+        ) : (
+          <div>
+            <div style={{ display: "flex", gap: "6px", marginBottom: "6px", fontSize: "9px", color: "var(--text-0)", fontWeight: 600, letterSpacing: "0.05em" }}>
+              <span style={{ width: "36px" }}>TICKER</span>
+              <span style={{ width: "28px" }}>SCORE</span>
+              <span>SRC</span>
+              <span style={{ marginLeft: "4px" }}>SECTOR</span>
+            </div>
+            {candidates.map((c) => <CandidateRow key={c.ticker} c={c} />)}
+          </div>
+        )}
+      </div>
+
+      {/* CTA */}
+      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border-0)", background: "var(--surface-0)" }}>
+        {lastAnalyzedAt && (
+          <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "8px" }}>
+            Last run: {lastAnalyzedAt}
+          </p>
+        )}
+        {error && (
+          <p style={{ fontSize: "9px", color: "var(--red)", marginBottom: "6px" }}>{error}</p>
+        )}
+        <button
+          onClick={onAnalyze}
+          style={{
+            width: "100%", padding: "9px 0", fontSize: "11px", fontWeight: 700,
+            letterSpacing: "0.10em", textTransform: "uppercase",
+            background: "linear-gradient(135deg, #7c5cfc 0%, #9b7eff 100%)",
+            color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer",
+            boxShadow: "0 0 16px rgba(124,92,252,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+            transition: "box-shadow 0.15s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 24px rgba(124,92,252,0.55), inset 0 1px 0 rgba(255,255,255,0.15)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 16px rgba(124,92,252,0.35), inset 0 1px 0 rgba(255,255,255,0.15)"; }}
+        >
+          ✦ Analyze
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function ActionsTab() {
   const { result, isAnalyzing, isExecuting, error, lastAnalyzedAt, runAnalysis, runExecute } =
     useAnalysisStore();
 
-  // No analysis yet
+  // No analysis yet → show pre-flight dashboard
   if (!result && !isAnalyzing) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: "var(--text-1)" }}>
-        <div className="text-4xl">&#x1F50D;</div>
-        <p className="text-sm">Run ANALYZE to see recommendations</p>
-        <p className="text-xs" style={{ color: "var(--text-0)" }}>
-          Mommy will score watchlist candidates and propose trades
-        </p>
-        {lastAnalyzedAt && (
-          <p className="text-xs" style={{ color: "var(--text-0)" }}>
-            Last run: {lastAnalyzedAt}
-          </p>
-        )}
-        <button
-          onClick={runAnalysis}
-          className="px-4 py-2 text-sm font-medium rounded-lg transition-all"
-          style={{
-            background: "var(--accent)",
-            color: "#fff",
-            boxShadow: "0 0 12px rgba(124,92,252,0.3)",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(124,92,252,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(124,92,252,0.3)";
-          }}
-        >
-          ANALYZE
-        </button>
-        {error && (
-          <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>
-        )}
-      </div>
-    );
+    return <PreFlightDashboard onAnalyze={runAnalysis} lastAnalyzedAt={lastAnalyzedAt} error={error} />;
   }
 
   // Analyzing spinner

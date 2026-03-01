@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Portfolio management endpoints."""
 
+from datetime import date
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from api.deps import serialize
@@ -107,12 +109,62 @@ def get_overview():
     """Aggregate view across all portfolios."""
     portfolios = list_portfolios(active_only=True)
     summaries = []
-    total_equity = 0
-    total_cash = 0
+    total_equity = 0.0
+    total_cash = 0.0
+    total_day_pnl = 0.0
+    total_unrealized_pnl = 0.0
+    total_positions = 0
+    all_positions = []  # cross-portfolio position list for top/bottom movers
 
     for p in portfolios:
         try:
             state = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
+
+            # Compute day P&L from snapshots — only if markets were open today.
+            snapshots = state.snapshots
+            day_pnl = 0.0
+            market_open_today = date.today().weekday() < 5  # Mon=0 … Fri=4
+            if market_open_today and len(snapshots) >= 1:
+                today_row = snapshots.iloc[-1]
+                snapshot_date = str(today_row.get("date", ""))
+                if snapshot_date.startswith(date.today().isoformat()):
+                    day_pnl = float(today_row.get("day_pnl", 0) or 0)
+
+            # Total return % from starting capital
+            starting_capital = state.config.get("starting_capital", 50000)
+            total_return_pct = 0.0
+            if starting_capital > 0:
+                total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
+
+            # Unrealized P&L and deployment
+            positions = state.positions
+            unrealized_pnl = 0.0
+            deployed_pct = 0.0
+            if len(positions) > 0 and "unrealized_pnl" in positions.columns:
+                unrealized_pnl = float(positions["unrealized_pnl"].sum())
+            if state.total_equity > 0:
+                deployed_pct = round(state.positions_value / state.total_equity * 100, 1)
+
+            # Collect positions for cross-portfolio movers
+            if len(positions) > 0:
+                for _, pos in positions.iterrows():
+                    try:
+                        all_positions.append({
+                            "portfolio_id": p.id,
+                            "portfolio_name": p.name,
+                            "ticker": str(pos["ticker"]),
+                            "pnl": float(pos.get("unrealized_pnl", 0) or 0),
+                            "pnl_pct": float(pos.get("unrealized_pnl_pct", 0) or 0),
+                            "market_value": float(pos.get("market_value", 0) or 0),
+                        })
+                    except Exception:
+                        pass
+
+            # Sparkline: last 30 daily equity values from snapshots
+            sparkline: list[float] = []
+            if len(snapshots) >= 2:
+                sparkline = [float(v) for v in snapshots["total_equity"].tail(30).tolist()]
+
             summary = {
                 "id": p.id, "name": p.name, "universe": p.universe,
                 "equity": state.total_equity, "cash": state.cash,
@@ -120,14 +172,34 @@ def get_overview():
                 "num_positions": state.num_positions,
                 "regime": state.regime.value if state.regime else None,
                 "paper_mode": state.paper_mode,
+                "unrealized_pnl": round(unrealized_pnl, 2),
+                "day_pnl": round(day_pnl, 2),
+                "total_return_pct": round(total_return_pct, 2),
+                "deployed_pct": deployed_pct,
+                "sparkline": sparkline,
             }
             total_equity += state.total_equity
             total_cash += state.cash
+            total_day_pnl += day_pnl
+            total_unrealized_pnl += unrealized_pnl
+            total_positions += state.num_positions
             summaries.append(summary)
         except Exception as e:
             summaries.append({"id": p.id, "name": p.name, "universe": p.universe, "error": str(e)})
 
+    # Sort cross-portfolio positions for top/bottom movers
+    valid = [x for x in all_positions if x["pnl_pct"] != 0]
+    top_movers = sorted(valid, key=lambda x: x["pnl_pct"], reverse=True)[:5]
+    bottom_movers = sorted(valid, key=lambda x: x["pnl_pct"])[:5]
+
     return {
-        "total_equity": total_equity, "total_cash": total_cash,
-        "total_day_pnl": 0, "portfolios": summaries,
+        "total_equity": round(total_equity, 2),
+        "total_cash": round(total_cash, 2),
+        "total_day_pnl": round(total_day_pnl, 2),
+        "total_unrealized_pnl": round(total_unrealized_pnl, 2),
+        "total_positions": total_positions,
+        "top_movers": top_movers,
+        "bottom_movers": bottom_movers,
+        "all_positions": all_positions,
+        "portfolios": summaries,
     }
