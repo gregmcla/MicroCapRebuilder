@@ -236,13 +236,14 @@ export default function PositionsPanel({
             No positions
           </div>
         ) : (
-          sorted.map((pos) => (
-            <PositionRow
-              key={pos.ticker}
-              pos={pos}
-              isSelected={selectedPosition?.ticker === pos.ticker}
-              onClick={() => selectPosition(selectedPosition?.ticker === pos.ticker ? null : pos)}
-            />
+          sorted.map((pos, i) => (
+            <div key={pos.ticker} className={i < 5 ? `anim d${i + 1}` : undefined}>
+              <PositionRow
+                pos={pos}
+                isSelected={selectedPosition?.ticker === pos.ticker}
+                onClick={() => selectPosition(selectedPosition?.ticker === pos.ticker ? null : pos)}
+              />
+            </div>
           ))
         )}
       </div>

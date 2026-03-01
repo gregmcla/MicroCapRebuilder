@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 
@@ -20,6 +21,7 @@ function AggregateBar({
   totalDayPnl: number;
   portfolioCount: number;
 }) {
+  const animatedEquity = useCountUp(totalEquity, 1200, 2);
   const dayColor =
     totalDayPnl > 0 ? "var(--green)" : totalDayPnl < 0 ? "var(--red)" : "var(--text-3)";
 
@@ -42,7 +44,7 @@ function AggregateBar({
           className="font-mono font-bold tabular-nums"
           style={{ fontSize: "22px", color: "var(--text-4)", fontFamily: "var(--font-mono)" }}
         >
-          ${totalEquity.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          ${animatedEquity}
         </p>
       </div>
       <div>
@@ -265,8 +267,10 @@ export default function OverviewPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[10px]">
-            {enriched.map((s) => (
-              <PortfolioCard key={s.id} summary={s} />
+            {enriched.map((s, i) => (
+              <div key={s.id} className={`anim d${Math.min(i + 1, 5)}`}>
+                <PortfolioCard summary={s} />
+              </div>
             ))}
 
             {/* Add portfolio card */}

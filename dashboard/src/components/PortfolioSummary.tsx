@@ -4,6 +4,7 @@ import { useMemo, useEffect, useRef } from "react";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
 import { useUIStore } from "../lib/store";
+import { useCountUp } from "../hooks/useCountUp";
 import type { Snapshot } from "../lib/types";
 
 function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
@@ -105,6 +106,8 @@ export default function PortfolioSummary() {
   const dayColor = (state?.day_pnl ?? 0) >= 0 ? "text-profit" : "text-loss";
   const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
 
+  const animatedEquity = useCountUp(state?.total_equity ?? 0, 1200, 2);
+
   // Shared label style for metric labels
   const labelStyle: React.CSSProperties = {
     fontSize: "9.5px",
@@ -125,12 +128,12 @@ export default function PortfolioSummary() {
       </div>
 
       {/* Hero equity */}
-      <div>
+      <div className="anim d1">
         <div
           className="font-mono leading-none tabular-nums"
           style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)" }}
         >
-          ${(state?.total_equity ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          ${animatedEquity}
         </div>
         <div style={labelStyle}>
           Portfolio Equity
@@ -139,25 +142,25 @@ export default function PortfolioSummary() {
 
       {/* P&L row */}
       <div className="flex items-center gap-6">
-        <div>
+        <div className="anim d2">
           <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
             {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
           <div style={labelStyle}>Total P&L</div>
         </div>
-        <div>
+        <div className="anim d3">
           <div className={`font-mono text-sm tabular-nums font-semibold ${dayColor}`}>
             {(state?.day_pnl ?? 0) >= 0 ? "+" : ""}${(state?.day_pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
           <div style={labelStyle}>Today</div>
         </div>
-        <div>
+        <div className="anim d4">
           <div className={`font-mono text-sm tabular-nums font-semibold ${returnColor}`}>
             {(state?.total_return_pct ?? 0) >= 0 ? "+" : ""}{(state?.total_return_pct ?? 0).toFixed(1)}%
           </div>
           <div style={labelStyle}>Return</div>
         </div>
-        <div>
+        <div className="anim d5">
           <div className="font-mono text-sm tabular-nums text-text-primary">
             ${(state?.cash ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>

@@ -1,9 +1,11 @@
 /** Risk tab — scoreboard, component bars, early warnings. */
 
 import { useRisk, useWarnings } from "../hooks/useRisk";
+import { useCountUp } from "../hooks/useCountUp";
 import type { RiskComponent, Warning } from "../lib/types";
 
 function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
+  const animatedScore = useCountUp(score, 900, 0);
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
   const filled = (score / 100) * circumference;
@@ -38,7 +40,7 @@ function ScoreRing({ score, size = 80 }: { score: number; size?: number }) {
           className="font-mono text-xl font-bold tabular-nums"
           style={{ color: "var(--text-4)" }}
         >
-          {Math.round(score)}
+          {animatedScore}
         </span>
         <span className="text-[10px]" style={{ color: "var(--text-0)" }}>/100</span>
       </div>
