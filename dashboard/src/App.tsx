@@ -3,7 +3,6 @@
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
-import MarketTickerBanner from "./components/MarketTickerBanner";
 import TopBar from "./components/TopBar";
 import PositionsPanel from "./components/PositionsPanel";
 import FocusPane from "./components/FocusPane";
@@ -24,7 +23,6 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
-      <MarketTickerBanner />
       <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
 
       {/* Deployment bar — thin fill showing % deployed */}
