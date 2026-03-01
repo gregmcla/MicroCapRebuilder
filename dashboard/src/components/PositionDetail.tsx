@@ -230,6 +230,10 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
         ? "var(--red)"
         : "var(--text-3)";
 
+  const daysHeld = Math.floor(
+    (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -264,6 +268,34 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
           >
             Back
           </button>
+        </div>
+      </div>
+
+      {/* Stat strip */}
+      <div
+        className="flex items-center gap-5 px-4 py-2 shrink-0 flex-wrap"
+        style={{ borderBottom: "1px solid var(--border-0)", background: "var(--surface-0)" }}
+      >
+        {[
+          { label: "Shares", value: String(pos.shares), color: undefined },
+          { label: "Avg Cost", value: `$${pos.avg_cost_basis.toFixed(2)}`, color: undefined },
+          { label: "Stop", value: `$${pos.stop_loss.toFixed(2)}`, color: "var(--red)" },
+          { label: "Target", value: `$${pos.take_profit.toFixed(2)}`, color: "var(--green)" },
+          { label: "Entry", value: pos.entry_date.slice(0, 10), color: undefined },
+          { label: "Days", value: String(daysHeld), color: undefined },
+        ].map(({ label, value, color }) => (
+          <div key={label}>
+            <div style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
+              {label}
+            </div>
+            <div className="font-mono text-xs font-semibold" style={{ color: color ?? "var(--text-3)" }}>
+              {value}
+            </div>
+          </div>
+        ))}
+        {/* Progress bar — stop→current→target */}
+        <div className="flex-1 min-w-[120px]">
+          <ProgressVisualization pos={pos} />
         </div>
       </div>
 
