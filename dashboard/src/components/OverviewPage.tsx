@@ -734,25 +734,29 @@ export default function OverviewPage() {
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
 
+  const doneRef = useRef(0);
   const handleUpdateAll = async () => {
     const ids = (portfolioList?.portfolios ?? []).filter((p) => p.active).map((p) => p.id);
     if (ids.length === 0) return;
     setUpdatingAll(true);
     setUpdateResult(null);
-    let done = 0;
+    doneRef.current = 0;
     setUpdateResult(`0 / ${ids.length}`);
-    await Promise.allSettled(
-      ids.map((pid) =>
-        api.updatePrices(pid).then(() => {
-          done += 1;
-          setUpdateResult(`${done} / ${ids.length}`);
-        })
-      )
-    );
-    queryClient.invalidateQueries({ queryKey: ["overview"] });
-    setUpdateResult(`${ids.length} updated`);
-    setTimeout(() => setUpdateResult(null), 3000);
-    setUpdatingAll(false);
+    try {
+      await Promise.allSettled(
+        ids.map((pid) =>
+          api.updatePrices(pid).then(() => {
+            doneRef.current += 1;
+            setUpdateResult(`${doneRef.current} / ${ids.length}`);
+          })
+        )
+      );
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      setUpdateResult(`${ids.length} updated`);
+      setTimeout(() => setUpdateResult(null), 3000);
+    } finally {
+      setUpdatingAll(false);
+    }
   };
 
   if (isLoading) {
