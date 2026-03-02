@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
+import ObeliskField from "./ObeliskField";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,7 +106,7 @@ const PORTFOLIO_PALETTE = [
   "#4ade80", // green
 ];
 
-type ViewMode = "map" | "plot";
+type ViewMode = "map" | "obelisk";
 
 function usePortfolioColors(positions: CrossPortfolioMover[]) {
   return useMemo(() => {
@@ -366,7 +367,10 @@ function ScatterPlot({ positions, portfolioColors }: {
 
 // ── All Positions Panel (container with toggle) ───────────────────────────────
 
-function AllPositionsPanel({ positions }: { positions: CrossPortfolioMover[] }) {
+function AllPositionsPanel({ positions, portfolios }: {
+  positions: CrossPortfolioMover[];
+  portfolios: PortfolioSummary[];
+}) {
   const [view, setView] = useState<ViewMode>("map");
   const portfolioColors = usePortfolioColors(positions);
 
@@ -379,7 +383,7 @@ function AllPositionsPanel({ positions }: { positions: CrossPortfolioMover[] }) 
           All Positions — {positions.length}
         </p>
         <div style={{ display: "flex", gap: "2px", background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "5px", padding: "2px" }}>
-          {(["map", "plot"] as ViewMode[]).map((v) => (
+          {(["map", "obelisk"] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -391,14 +395,14 @@ function AllPositionsPanel({ positions }: { positions: CrossPortfolioMover[] }) 
                 transition: "background 0.15s, color 0.15s",
               }}
             >
-              {v === "map" ? "MAP" : "PLOT"}
+              {v === "map" ? "MAP" : "OBELISK"}
             </button>
           ))}
         </div>
       </div>
       {view === "map"
         ? <WeightedMap positions={positions} portfolioColors={portfolioColors} />
-        : <ScatterPlot positions={positions} portfolioColors={portfolioColors} />
+        : <ObeliskField portfolios={portfolios} />
       }
     </div>
   );
@@ -812,7 +816,7 @@ export default function OverviewPage() {
                 ))}
               </div>
 
-              <AllPositionsPanel positions={allPositions} />
+              <AllPositionsPanel positions={allPositions} portfolios={enriched} />
             </>
           )}
         </div>
