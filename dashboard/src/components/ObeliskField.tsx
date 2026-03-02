@@ -351,3 +351,217 @@ export function ObeliskColumn({
     </g>
   );
 }
+
+// ── Color palette (matches PORTFOLIO_PALETTE in OverviewPage) ─────────────────
+
+const PALETTE = [
+  "#34d399", "#818cf8", "#38bdf8", "#fb923c",
+  "#f472b6", "#a78bfa", "#fbbf24", "#4ade80",
+];
+
+// ── ObeliskField ──────────────────────────────────────────────────────────────
+
+interface ObeliskFieldProps {
+  portfolios: PortfolioSummary[];
+}
+
+export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
+  const [animProgress, setAnimProgress] = useState(0);
+  const [crownsVisible, setCrownsVisible] = useState<boolean[]>([]);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const rafRef = useRef<number>(0);
+
+  // Valid portfolios: have sparkline, no error, sorted worst→best return
+  // (sorted so best performer renders last = visually in front)
+  const valid = useMemo(
+    () =>
+      portfolios
+        .filter((p) => !p.error && p.sparkline && p.sparkline.length >= 2)
+        .sort((a, b) => (a.total_return_pct ?? 0) - (b.total_return_pct ?? 0)),
+    [portfolios]
+  );
+
+  // Shared scale: pixels per % point, calibrated to highest absolute return
+  const scale = useMemo(() => {
+    const maxRet = Math.max(
+      1,
+      ...valid.map((p) => {
+        const base = p.sparkline![0];
+        if (base === 0) return 0;
+        return Math.max(
+          ...p.sparkline!.map((v) => Math.abs(((v - base) / base) * 100))
+        );
+      })
+    );
+    return OBELISK_HEIGHT / maxRet;
+  }, [valid]);
+
+  // Pre-compute geometry for all columns
+  const geos = useMemo(
+    () => valid.map((p) => computeObeliskGeometry(p.sparkline!, scale)),
+    [valid, scale]
+  );
+
+  // Load animation: columns grow from base, then crowns ignite ranked by return
+  useEffect(() => {
+    if (valid.length === 0) return;
+    setAnimProgress(0);
+    setCrownsVisible([]);
+
+    const start = performance.now();
+    const duration = 1400;
+    const easeExpoOut = (t: number) => 1 - Math.pow(2, -10 * t);
+
+    const frame = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      setAnimProgress(easeExpoOut(t));
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(frame);
+      } else {
+        // Crown ignition: worst performer first, best last (most dramatic finish)
+        valid.forEach((_, i) => {
+          setTimeout(() => {
+            setCrownsVisible((prev) => {
+              const next = [...prev];
+              next[i] = true;
+              return next;
+            });
+          }, i * 80);
+        });
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [valid.length]);
+
+  // Column x positions: evenly spaced with margins
+  const colXs = useMemo(() => {
+    const margin = 90;
+    const span = CONTAINER_W - margin * 2;
+    return valid.map((_, i) =>
+      valid.length === 1
+        ? CONTAINER_W / 2
+        : margin + (i / (valid.length - 1)) * span
+    );
+  }, [valid.length]);
+
+  if (valid.length === 0) {
+    return (
+      <div style={{
+        height: `${CONTAINER_H}px`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "7px",
+      }}>
+        <p style={{ fontSize: "11px", color: "var(--text-0)" }}>
+          No portfolio history to display
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      position: "relative",
+      background: "var(--surface-1)",
+      border: "1px solid var(--border-0)",
+      borderRadius: "7px",
+      overflow: "hidden",
+    }}>
+      <svg
+        width="100%"
+        viewBox={`0 0 ${CONTAINER_W} ${CONTAINER_H}`}
+        style={{ display: "block" }}
+      >
+        <ObeliskDefs />
+
+        {/* Environment: near-black void with subtle centered radial warmth */}
+        <defs>
+          <radialGradient id="ob-env-grad" cx="50%" cy="60%" r="55%">
+            <stop offset="0%"   stopColor="#0d0d1f" stopOpacity={1} />
+            <stop offset="100%" stopColor="#04040a" stopOpacity={1} />
+          </radialGradient>
+        </defs>
+        <rect width={CONTAINER_W} height={CONTAINER_H} fill="url(#ob-env-grad)" />
+
+        {/* Ground plane */}
+        <line
+          x1={20} y1={BASELINE_Y}
+          x2={CONTAINER_W - 20} y2={BASELINE_Y}
+          stroke="rgba(255,255,255,0.05)" strokeWidth={1}
+        />
+
+        {/* Columns — worst return renders first (behind), best last (in front) */}
+        {valid.map((p, i) => {
+          const geo = geos[i];
+          if (!geo) return null;
+          const color = PALETTE[i % PALETTE.length];
+          return (
+            <g
+              key={p.id}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              style={{ cursor: "default" }}
+            >
+              <ObeliskColumn
+                geo={geo}
+                colX={colXs[i]}
+                color={color}
+                id={p.id}
+                animProgress={animProgress}
+                crownVisible={crownsVisible[i] ?? false}
+              />
+            </g>
+          );
+        })}
+
+        {/* Hover tooltip */}
+        {hoveredIdx !== null && (() => {
+          const p = valid[hoveredIdx];
+          const geo = geos[hoveredIdx];
+          if (!geo) return null;
+          const cx = colXs[hoveredIdx];
+          const ty = geo.colTopY - 32;
+          const ret = geo.finalReturn;
+          const label = `${p.name}  ${ret >= 0 ? "+" : ""}${ret.toFixed(1)}%`;
+          const tw = label.length * 6.5 + 16;
+          const tx = Math.min(Math.max(cx - tw / 2, 8), CONTAINER_W - tw - 8);
+          return (
+            <g>
+              <rect x={tx} y={ty} width={tw} height={18} rx={3}
+                fill="rgba(13,13,26,0.92)"
+                stroke="rgba(255,255,255,0.08)" strokeWidth={1}
+              />
+              <text
+                x={tx + tw / 2} y={ty + 12}
+                textAnchor="middle"
+                fontSize={9.5}
+                fontFamily="monospace"
+                fontWeight={600}
+                fill="rgba(255,255,255,0.75)"
+              >
+                {label}
+              </text>
+            </g>
+          );
+        })()}
+
+        {/* Portfolio labels below ground plane */}
+        {valid.map((p, i) => (
+          <text
+            key={`lbl-${p.id}`}
+            x={colXs[i]}
+            y={BASELINE_Y + 14}
+            textAnchor="middle"
+            fontSize={8.5}
+            fontFamily="monospace"
+            fill="rgba(255,255,255,0.25)"
+            letterSpacing="0.06em"
+          >
+            {p.id.toUpperCase()}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
