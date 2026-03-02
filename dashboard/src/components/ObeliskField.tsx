@@ -4,7 +4,7 @@
  * One vertex row per sparkline point ensures continuous surface variation.
  */
 
-import { useRef, useMemo, useState, useEffect } from "react";
+import React, { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, MeshReflectorMaterial } from "@react-three/drei";
 import * as THREE from "three";
@@ -348,5 +348,351 @@ function ObeliskMesh({
         <meshBasicMaterial visible={false} />
       </mesh>
     </group>
+  );
+}
+
+// ── Ground plane with reflector ──────────────────────────────────────────────
+
+function GroundPlane() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]} receiveShadow>
+      <planeGeometry args={[22, 22]} />
+      <MeshReflectorMaterial
+        blur={[400, 100]}
+        resolution={512}
+        mixBlur={8}
+        mixStrength={0.07}
+        roughness={0.98}
+        depthScale={1.2}
+        minDepthThreshold={0.4}
+        maxDepthThreshold={1.4}
+        color="#030308"
+        metalness={0.04}
+      />
+    </mesh>
+  );
+}
+
+// ── Camera with slow lateral drift ───────────────────────────────────────────
+
+function SceneCamera({ hoveredX }: { hoveredX: number | null }) {
+  const { camera } = useThree();
+  const driftPhase = useRef(0);
+  useFrame((_, delta) => {
+    driftPhase.current += delta * 0.055;
+    const drift = Math.sin(driftPhase.current) * 0.20;
+    const nudge = hoveredX !== null ? hoveredX * 0.10 : 0;
+    const targetX = drift + nudge;
+    camera.position.x += (targetX - camera.position.x) * 0.022;
+  });
+  return null;
+}
+
+// ── Forge front (glowing leading edge during load animation) ─────────────────
+
+interface ForgeFrontProps { colX: number; revealY: number; color: string; }
+
+function ForgeFront({ colX, revealY, color }: ForgeFrontProps) {
+  const geo = useMemo(() => {
+    const w = 0.60;
+    const pts = new Float32Array([
+      colX - w, revealY, COL_DEPTH / 2 + 0.012,
+      colX + w, revealY, COL_DEPTH / 2 + 0.012,
+    ]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [colX, revealY]);
+
+  return (
+    <lineSegments geometry={geo}>
+      <lineBasicMaterial color={color} transparent opacity={0.38} />
+    </lineSegments>
+  );
+}
+
+// ── AnimatedScene (inside Canvas — uses useFrame) ────────────────────────────
+
+interface AnimatedSceneProps {
+  valid: PortfolioSummary[];
+  allData: (ObeliskData | null)[];
+  colXs: number[];
+  animProgress: number;
+  setAnimProgress: React.Dispatch<React.SetStateAction<number>>;
+  crownsVisible: boolean[];
+  setCrownsVisible: React.Dispatch<React.SetStateAction<boolean[]>>;
+  hoveredIdx: number | null;
+  setHoveredIdx: React.Dispatch<React.SetStateAction<number | null>>;
+  startTimeRef: React.MutableRefObject<number | null>;
+  timeoutIds: React.MutableRefObject<ReturnType<typeof setTimeout>[]>;
+}
+
+function AnimatedScene({
+  valid, allData, colXs,
+  animProgress, setAnimProgress,
+  crownsVisible, setCrownsVisible,
+  hoveredIdx, setHoveredIdx,
+  startTimeRef, timeoutIds,
+}: AnimatedSceneProps) {
+  const crownFiredRef = useRef(false);
+
+  useFrame((state) => {
+    if (animProgress >= 1) return;
+    if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime;
+    const elapsed = state.clock.elapsedTime - startTimeRef.current;
+    const t = Math.min(elapsed / LOAD_DURATION, 1);
+    const eased = cubicBezierEase(t);
+    setAnimProgress(eased);
+
+    if (t >= 1 && !crownFiredRef.current) {
+      crownFiredRef.current = true;
+      valid.forEach((_, i) => {
+        const id = setTimeout(() => {
+          setCrownsVisible((prev) => {
+            const next = [...prev];
+            next[i] = true;
+            return next;
+          });
+        }, i * 80);
+        timeoutIds.current.push(id);
+      });
+    }
+  });
+
+  return (
+    <>
+      {valid.map((p, i) => {
+        const data = allData[i];
+        if (!data) return null;
+        const color = PALETTE[i % PALETTE.length];
+        const revealY = data.maxY * animProgress;
+        return (
+          <group key={p.id}>
+            <ObeliskMesh
+              data={data}
+              colX={colXs[i]}
+              color={color}
+              animProgress={animProgress}
+              crownVisible={crownsVisible[i] ?? false}
+              isHovered={hoveredIdx === i}
+              otherHovered={hoveredIdx !== null && hoveredIdx !== i}
+              onEnter={() => setHoveredIdx(i)}
+              onLeave={() => setHoveredIdx(null)}
+            />
+            {animProgress < 0.97 && (
+              <ForgeFront colX={colXs[i]} revealY={revealY} color={color} />
+            )}
+          </group>
+        );
+      })}
+
+      {/* Hover tooltip */}
+      {hoveredIdx !== null && (() => {
+        const p = valid[hoveredIdx];
+        const data = allData[hoveredIdx];
+        if (!data) return null;
+        const ret = data.finalReturn;
+        return (
+          <Html
+            position={[colXs[hoveredIdx], data.maxY + 0.5, 0]}
+            center
+            style={{
+              pointerEvents: "none",
+              background: "rgba(6,6,16,0.94)",
+              border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: "4px",
+              padding: "4px 10px",
+              fontFamily: "monospace",
+              fontSize: "10px",
+              fontWeight: "600",
+              color: "rgba(255,255,255,0.82)",
+              whiteSpace: "nowrap",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {p.name}&nbsp;&nbsp;{ret >= 0 ? "+" : ""}{ret.toFixed(1)}%
+          </Html>
+        );
+      })()}
+
+      {/* ID labels below ground */}
+      {valid.map((p, i) => (
+        <Html
+          key={`lbl-${p.id}`}
+          position={[colXs[i], -0.30, 0]}
+          center
+          style={{
+            pointerEvents: "none",
+            fontFamily: "monospace",
+            fontSize: "7.5px",
+            fontWeight: "700",
+            color: "rgba(255,255,255,0.17)",
+            letterSpacing: "0.09em",
+            textTransform: "uppercase",
+            userSelect: "none",
+          }}
+        >
+          {p.id}
+        </Html>
+      ))}
+    </>
+  );
+}
+
+// ── ObeliskField (default export) ────────────────────────────────────────────
+
+interface ObeliskFieldProps {
+  portfolios: PortfolioSummary[];
+}
+
+export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
+  const [webglSupported] = useState(() => {
+    try {
+      const canvas = document.createElement("canvas");
+      return !!(
+        window.WebGLRenderingContext &&
+        (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  const [animProgress, setAnimProgress] = useState(0);
+  const [crownsVisible, setCrownsVisible] = useState<boolean[]>([]);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  // Sort worst→best (worst renders behind, best in front)
+  const valid = useMemo(
+    () =>
+      portfolios
+        .filter((p) => !p.error && p.sparkline && p.sparkline.length >= 2)
+        .sort((a, b) => (a.total_return_pct ?? 0) - (b.total_return_pct ?? 0)),
+    [portfolios]
+  );
+
+  // P95 global scale: prevents one outlier portfolio from dominating height
+  const globalScale = useMemo(() => {
+    const maxReturns = valid.map((p) => {
+      const base = p.sparkline![0];
+      if (base === 0) return 0;
+      return Math.max(...p.sparkline!.map((v) => Math.abs(((v - base) / base) * 100)));
+    }).sort((a, b) => a - b);
+    const p95 = maxReturns.length > 0
+      ? maxReturns[Math.floor(maxReturns.length * 0.95)]
+      : 1;
+    return MAX_HEIGHT / Math.max(1, p95);
+  }, [valid]);
+
+  const allData = useMemo(
+    () => valid.map((p) => computeObeliskData(p.sparkline!, globalScale)),
+    [valid, globalScale]
+  );
+
+  const colXs = useMemo(() => {
+    const n = valid.length;
+    const margin = 1.5;
+    const span = SCENE_WIDTH - margin * 2;
+    return Array.from({ length: n }, (_, i) =>
+      n === 1 ? 0 : -SCENE_WIDTH / 2 + margin + (i / (n - 1)) * span
+    );
+  }, [valid.length]);
+
+  const startTimeRef = useRef<number | null>(null);
+  const timeoutIds = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    startTimeRef.current = null;
+    setAnimProgress(0);
+    setCrownsVisible([]);
+    timeoutIds.current.forEach(clearTimeout);
+    timeoutIds.current = [];
+    return () => {
+      timeoutIds.current.forEach(clearTimeout);
+    };
+  }, [valid.length]);
+
+  if (!webglSupported) {
+    return (
+      <div style={{ height: "340px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ fontSize: "11px", color: "var(--text-0)", fontFamily: "monospace" }}>
+          WebGL unavailable
+        </p>
+      </div>
+    );
+  }
+
+  if (valid.length === 0) {
+    return (
+      <div style={{ height: "340px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ fontSize: "11px", color: "var(--text-0)", fontFamily: "monospace" }}>
+          No portfolio history to display
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        height: "340px",
+        background: "#03030a",
+        borderRadius: "7px",
+        overflow: "hidden",
+        border: "1px solid var(--border-0)",
+      }}
+    >
+      <Canvas
+        shadows
+        camera={{ position: [0, 2.8, 9.5], fov: 38 }}
+        gl={{ antialias: true, localClippingEnabled: true }}
+        onCreated={({ gl }) => {
+          gl.shadowMap.enabled = true;
+          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+          gl.setClearColor(0x03030a);
+        }}
+      >
+        <fog attach="fog" args={["#03030a", 14, 25]} />
+
+        {/* Lighting rig: directional + rim + minimal ambient */}
+        <ambientLight intensity={0.07} color="#14142a" />
+        <directionalLight
+          position={[5, 9, 4]}
+          intensity={1.6}
+          color="#d0d0f0"
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+          shadow-camera-near={0.5}
+          shadow-camera-far={22}
+          shadow-camera-left={-10}
+          shadow-camera-right={10}
+          shadow-camera-top={10}
+          shadow-camera-bottom={-10}
+        />
+        <directionalLight
+          position={[-4, 2, -3]}
+          intensity={0.20}
+          color="#1e0e32"
+        />
+
+        <GroundPlane />
+
+        <AnimatedScene
+          valid={valid}
+          allData={allData}
+          colXs={colXs}
+          animProgress={animProgress}
+          setAnimProgress={setAnimProgress}
+          crownsVisible={crownsVisible}
+          setCrownsVisible={setCrownsVisible}
+          hoveredIdx={hoveredIdx}
+          setHoveredIdx={setHoveredIdx}
+          startTimeRef={startTimeRef}
+          timeoutIds={timeoutIds}
+        />
+
+        <SceneCamera hoveredX={hoveredIdx !== null ? colXs[hoveredIdx] : null} />
+      </Canvas>
+    </div>
   );
 }
