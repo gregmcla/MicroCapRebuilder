@@ -262,6 +262,7 @@ export function ObeliskColumn({
   geo, colX, color, id, animProgress, crownVisible,
 }: ObeliskColumnProps) {
   const { widths, colTopY, finalReturn, isNewHigh } = geo;
+  const progress = Math.max(0, Math.min(1, animProgress));
   const topWidth = widths[widths.length - 1];
 
   const frontPath = useMemo(() => buildFrontFace(colX, colTopY, widths), [colX, colTopY, widths]);
@@ -270,8 +271,8 @@ export function ObeliskColumn({
   const rimPath   = useMemo(() => buildRimPath(colX, colTopY, widths), [colX, colTopY, widths]);
 
   const colH  = BASELINE_Y - colTopY;
-  const clipY = BASELINE_Y - colH * animProgress;
-  const clipH = colH * animProgress + 40;
+  const clipY = BASELINE_Y - colH * progress;
+  const clipH = colH * progress + 40;
 
   const bodyGradId = `ob-body-${id}`;
   const rimGradId  = `ob-rim-${id}`;
