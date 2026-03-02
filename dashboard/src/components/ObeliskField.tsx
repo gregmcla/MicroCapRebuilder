@@ -241,6 +241,7 @@ function ObeliskMesh({
     () => buildColumnGeometry(data, widthProgress),
     [data, widthProgress]
   );
+  useEffect(() => () => { bodyGeo.dispose(); }, [bodyGeo]);
 
   // Crown strip: top CROWN_ROWS segments only — higher emissive after ignition
   const crownStart = Math.max(0, data.ys.length - 1 - CROWN_ROWS);
@@ -248,6 +249,7 @@ function ObeliskMesh({
     () => buildColumnGeometry(data, widthProgress, crownStart),
     [data, widthProgress, crownStart]
   );
+  useEffect(() => () => { crownGeo.dispose(); }, [crownGeo]);
 
   // Clip plane: reveals column from y=0 upward as animProgress goes 0→1
   const clipPlane = useMemo(
@@ -273,6 +275,7 @@ function ObeliskMesh({
     g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
     return g;
   }, [data]);
+  useEffect(() => () => { hairlineGeo.dispose(); }, [hairlineGeo]);
 
   // Antenna: thin vertical line above crown for new-high portfolios
   const antennaGeo = useMemo(() => {
@@ -283,6 +286,7 @@ function ObeliskMesh({
     g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
     return g;
   }, [data]);
+  useEffect(() => () => { antennaGeo?.dispose(); }, [antennaGeo]);
 
   return (
     <group position={[colX, 0, 0]} rotation={[0, 0, data.lean]}>
@@ -393,16 +397,32 @@ function SceneCamera({ hoveredX }: { hoveredX: number | null }) {
 interface ForgeFrontProps { colX: number; revealY: number; color: string; }
 
 function ForgeFront({ colX, revealY, color }: ForgeFrontProps) {
-  const geo = useMemo(() => {
+  const [geo, setGeo] = useState<THREE.BufferGeometry | null>(null);
+  const revealYRef = useRef(revealY);
+  revealYRef.current = revealY;
+
+  useEffect(() => {
     const w = 0.60;
     const pts = new Float32Array([
-      colX - w, revealY, COL_DEPTH / 2 + 0.012,
-      colX + w, revealY, COL_DEPTH / 2 + 0.012,
+      colX - w, 0, COL_DEPTH / 2 + 0.012,
+      colX + w, 0, COL_DEPTH / 2 + 0.012,
     ]);
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
-    return g;
-  }, [colX, revealY]);
+    setGeo(g);
+    return () => { g.dispose(); };
+  }, [colX]);
+
+  useFrame(() => {
+    if (!geo) return;
+    const attr = geo.getAttribute("position") as THREE.BufferAttribute;
+    const arr = attr.array as Float32Array;
+    arr[1] = revealYRef.current;
+    arr[4] = revealYRef.current;
+    attr.needsUpdate = true;
+  });
+
+  if (!geo) return null;
 
   return (
     <lineSegments geometry={geo}>
@@ -425,6 +445,7 @@ interface AnimatedSceneProps {
   setHoveredIdx: React.Dispatch<React.SetStateAction<number | null>>;
   startTimeRef: React.MutableRefObject<number | null>;
   timeoutIds: React.MutableRefObject<ReturnType<typeof setTimeout>[]>;
+  crownFiredRef: React.MutableRefObject<boolean>;
 }
 
 function AnimatedScene({
@@ -433,9 +454,8 @@ function AnimatedScene({
   crownsVisible, setCrownsVisible,
   hoveredIdx, setHoveredIdx,
   startTimeRef, timeoutIds,
+  crownFiredRef,
 }: AnimatedSceneProps) {
-  const crownFiredRef = useRef(false);
-
   useFrame((state) => {
     if (animProgress >= 1) return;
     if (startTimeRef.current === null) startTimeRef.current = state.clock.elapsedTime;
@@ -600,9 +620,11 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
 
   const startTimeRef = useRef<number | null>(null);
   const timeoutIds = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const crownFiredRef = useRef(false);
 
   useEffect(() => {
     startTimeRef.current = null;
+    crownFiredRef.current = false;
     setAnimProgress(0);
     setCrownsVisible([]);
     timeoutIds.current.forEach(clearTimeout);
@@ -652,7 +674,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
           gl.setClearColor(0x03030a);
         }}
       >
-        <fog attach="fog" args={["#03030a", 14, 25]} />
+        <fogExp2 attach="fog" args={["#03030a", 0.042]} />
 
         {/* Lighting rig: directional + rim + minimal ambient */}
         <ambientLight intensity={0.07} color="#14142a" />
@@ -689,6 +711,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
           setHoveredIdx={setHoveredIdx}
           startTimeRef={startTimeRef}
           timeoutIds={timeoutIds}
+          crownFiredRef={crownFiredRef}
         />
 
         <SceneCamera hoveredX={hoveredIdx !== null ? colXs[hoveredIdx] : null} />
