@@ -370,7 +370,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
   const [animProgress, setAnimProgress] = useState(0);
   const [crownsVisible, setCrownsVisible] = useState<boolean[]>([]);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const rafRef = useRef<number>(0);
+  const rafRef = useRef<number | null>(null);
 
   // Valid portfolios: have sparkline, no error, sorted worst→best return
   // (sorted so best performer renders last = visually in front)
@@ -430,6 +430,8 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
       return ((ay * u + by) * u + cy) * u;
     }
 
+    const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+
     const frame = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
       setAnimProgress(cubicBezierEase(t));
@@ -438,29 +440,32 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
       } else {
         // Crown ignition: worst performer first, best last (most dramatic finish)
         valid.forEach((_, i) => {
-          setTimeout(() => {
+          const id = setTimeout(() => {
             setCrownsVisible((prev) => {
               const next = [...prev];
               next[i] = true;
               return next;
             });
           }, i * 80);
+          timeoutIds.push(id);
         });
       }
     };
 
     rafRef.current = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      timeoutIds.forEach(clearTimeout);
+    };
   }, [valid.length]);
 
   // Column x positions: evenly spaced with margins
   const colXs = useMemo(() => {
+    const n = valid.length;
     const margin = 90;
     const span = CONTAINER_W - margin * 2;
-    return valid.map((_, i) =>
-      valid.length === 1
-        ? CONTAINER_W / 2
-        : margin + (i / (valid.length - 1)) * span
+    return Array.from({ length: n }, (_, i) =>
+      n === 1 ? CONTAINER_W / 2 : margin + (i / (n - 1)) * span
     );
   }, [valid.length]);
 
@@ -543,7 +548,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
           const ty = geo.colTopY - 32;
           const ret = geo.finalReturn;
           const label = `${p.name}  ${ret >= 0 ? "+" : ""}${ret.toFixed(1)}%`;
-          const tw = label.length * 6.5 + 16;
+          const tw = Math.min(160, Math.max(80, label.length * 7 + 16));
           const tx = Math.min(Math.max(cx - tw / 2, 8), CONTAINER_W - tw - 8);
           return (
             <g>
