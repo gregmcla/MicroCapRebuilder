@@ -143,7 +143,6 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const [dims, setDims] = useState({ width: 600, height: 340 });
 
-  // Scaffold — full implementation follows in subsequent tasks
   const series: SeriesData[] = useMemo(() => {
     return portfolios
       .filter((p) => !p.error && (p.sparkline?.length ?? 0) >= 2)
@@ -283,6 +282,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.restore();
 
         // ── Three-pass glow (screen blending) ───────────────────────────────
+        ctx.save();
         ctx.globalCompositeOperation = "screen";
 
         // Pass 1: wide blurred halo
@@ -322,6 +322,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         catmullRomPath(ctx, pts);
         ctx.stroke();
         ctx.restore();
+        ctx.restore(); // end screen blending wrapper
       }
 
       ctx.restore(); // remove clip
