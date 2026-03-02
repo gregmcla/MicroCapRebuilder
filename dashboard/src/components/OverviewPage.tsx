@@ -735,7 +735,7 @@ export default function OverviewPage() {
   const { data: portfolioList } = usePortfolios();
 
   const handleUpdateAll = async () => {
-    const ids = (portfolioList?.portfolios ?? []).map((p) => p.id);
+    const ids = (portfolioList?.portfolios ?? []).filter((p) => p.active).map((p) => p.id);
     if (ids.length === 0) return;
     setUpdatingAll(true);
     setUpdateResult(null);
