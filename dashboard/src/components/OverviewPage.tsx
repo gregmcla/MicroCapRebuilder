@@ -92,7 +92,7 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 }
 
 // ---------------------------------------------------------------------------
-// All Positions Panel — weighted map + obelisk toggle
+// All Positions Panel — weighted map + performance chart toggle
 // ---------------------------------------------------------------------------
 
 const PORTFOLIO_PALETTE = [

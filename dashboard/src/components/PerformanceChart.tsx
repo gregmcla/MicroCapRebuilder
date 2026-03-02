@@ -1,12 +1,7 @@
-import { useRef, useMemo, useState, useEffect, useCallback } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import type { PortfolioSummary } from "../lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const PAD_TOP    = 28;
-const PAD_RIGHT  = 112;
-const PAD_BOTTOM = 24;
-const PAD_LEFT   = 40;
 
 const CHART_PALETTE = [
   "#7dd3c8", // muted teal
@@ -78,14 +73,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     canvas.width  = dims.width  * dpr;
     canvas.height = dims.height * dpr;
     const ctx = canvas.getContext("2d")!;
+    // Assigning canvas.width/height resets the transform matrix, so ctx.scale is safe here.
     ctx.scale(dpr, dpr);
   }, [dims]);
-
-  // Suppress unused-variable warnings for constants reserved for future tasks
-  void PAD_TOP; void PAD_RIGHT; void PAD_BOTTOM; void PAD_LEFT;
-  // useCallback reserved for future tasks
-  const _noop = useCallback(() => {}, []);
-  void _noop;
 
   if (series.length === 0) {
     return (
