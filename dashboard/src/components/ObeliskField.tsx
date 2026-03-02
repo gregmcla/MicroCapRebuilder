@@ -214,3 +214,139 @@ function buildColumnGeometry(
   geo.computeVertexNormals();
   return geo;
 }
+
+// ── ObeliskMesh ──────────────────────────────────────────────────────────────
+
+interface ObeliskMeshProps {
+  data: ObeliskData;
+  colX: number;
+  color: string;
+  animProgress: number;     // 0→1 load animation
+  crownVisible: boolean;    // crown ignition sequencing
+  isHovered: boolean;
+  otherHovered: boolean;    // another column is hovered — dim this one
+  onEnter: () => void;
+  onLeave: () => void;
+}
+
+function ObeliskMesh({
+  data, colX, color, animProgress, crownVisible,
+  isHovered, otherHovered, onEnter, onLeave,
+}: ObeliskMeshProps) {
+  // Width flares emerge slightly ahead of height (1.35x multiplier, clamped to 1)
+  const widthProgress = Math.min(1, animProgress * 1.35);
+
+  // Full column body geometry — one row per sparkline point (sculpted surface)
+  const bodyGeo = useMemo(
+    () => buildColumnGeometry(data, widthProgress),
+    [data, widthProgress]
+  );
+
+  // Crown strip: top CROWN_ROWS segments only — higher emissive after ignition
+  const crownStart = Math.max(0, data.ys.length - 1 - CROWN_ROWS);
+  const crownGeo = useMemo(
+    () => buildColumnGeometry(data, widthProgress, crownStart),
+    [data, widthProgress, crownStart]
+  );
+
+  // Clip plane: reveals column from y=0 upward as animProgress goes 0→1
+  const clipPlane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
+    []
+  );
+  useEffect(() => {
+    clipPlane.constant = data.maxY * animProgress;
+  }, [animProgress, data.maxY, clipPlane]);
+
+  const accentColor = useMemo(() => new THREE.Color(color), [color]);
+  const opacity = otherHovered ? 0.28 : 1.0;
+
+  // Crown hairline: crisp 1px bright line along the top front edge
+  const hairlineGeo = useMemo(() => {
+    const wTop = data.halfWidths[data.halfWidths.length - 1];
+    const yTop = data.ys[data.ys.length - 1];
+    const pts = new Float32Array([
+      -wTop, yTop, COL_DEPTH / 2 + 0.006,
+       wTop, yTop, COL_DEPTH / 2 + 0.006,
+    ]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [data]);
+
+  // Antenna: thin vertical line above crown for new-high portfolios
+  const antennaGeo = useMemo(() => {
+    if (!data.isNewHigh) return null;
+    const yTop = data.ys[data.ys.length - 1];
+    const pts = new Float32Array([0, yTop, 0,  0, yTop + 0.42, 0]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3));
+    return g;
+  }, [data]);
+
+  return (
+    <group position={[colX, 0, 0]} rotation={[0, 0, data.lean]}>
+      {/* Column body: heavy stone-like obsidian surface */}
+      <mesh geometry={bodyGeo} castShadow receiveShadow>
+        <meshPhysicalMaterial
+          color="#07070d"
+          roughness={0.76}
+          metalness={0.08}
+          clearcoat={0.22}
+          clearcoatRoughness={0.5}
+          emissive={accentColor}
+          emissiveIntensity={isHovered ? 0.07 : 0.022}
+          clippingPlanes={[clipPlane]}
+          transparent={otherHovered}
+          opacity={opacity}
+          side={THREE.FrontSide}
+        />
+      </mesh>
+
+      {/* Crown strip: higher emissive — ignites after body animation completes */}
+      {crownVisible && (
+        <mesh geometry={crownGeo} castShadow>
+          <meshPhysicalMaterial
+            color="#0b0b18"
+            roughness={0.5}
+            metalness={0.14}
+            clearcoat={0.32}
+            emissive={accentColor}
+            emissiveIntensity={isHovered ? 0.62 : 0.36}
+            clippingPlanes={[clipPlane]}
+            transparent={otherHovered}
+            opacity={opacity}
+          />
+        </mesh>
+      )}
+
+      {/* Crown hairline: architectural sharp edge, not a blob */}
+      {crownVisible && (
+        <lineSegments geometry={hairlineGeo}>
+          <lineBasicMaterial
+            color={color}
+            transparent
+            opacity={isHovered ? 0.94 : 0.62}
+          />
+        </lineSegments>
+      )}
+
+      {/* New-high antenna: vertical energy line above crown */}
+      {crownVisible && antennaGeo && (
+        <lineSegments geometry={antennaGeo}>
+          <lineBasicMaterial color={color} transparent opacity={0.42} />
+        </lineSegments>
+      )}
+
+      {/* Invisible hit box for hover detection — wider than column for easy targeting */}
+      <mesh
+        position={[0, data.maxY / 2, 0]}
+        onPointerEnter={onEnter}
+        onPointerLeave={onLeave}
+      >
+        <boxGeometry args={[1.0, data.maxY + 0.5, COL_DEPTH * 3]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </group>
+  );
+}
