@@ -10,8 +10,8 @@ export const CONTAINER_H = 340;
 export const BASELINE_Y = 295;     // y of 0% return ground plane
 export const OBELISK_HEIGHT = 245; // max column height in px
 const COL_BASE_WIDTH = 36;
-const FLARE_K = 4.0;
-const SCAR_K = 1.8;
+const FLARE_K = 2.5;
+const SCAR_K = 1.2;
 const MIN_WIDTH = 8;
 const DEPTH_X = 14;
 const DEPTH_Y = -7;
@@ -63,7 +63,8 @@ export function computeObeliskGeometry(
   );
 
   const finalReturn = cum[cum.length - 1];
-  const clampedReturn = Math.max(finalReturn, 0.5);
+  const minHeightReturn = 12 / scale; // guarantee at least 12px of column
+  const clampedReturn = Math.max(finalReturn, minHeightReturn);
   const colTopY = BASELINE_Y - clampedReturn * scale;
 
   const maxCum = Math.max(...cum);
@@ -208,7 +209,7 @@ function PositiveCrown({
   return (
     <g>
       <ellipse cx={colX} cy={cy} rx={rx} ry={5}
-        fill={color} opacity={0.32} filter="url(#ob-crown-blur)" />
+        fill={color} opacity={0.25} filter="url(#ob-crown-blur)" />
       <ellipse cx={colX} cy={cy} rx={rx * 0.6} ry={3}
         fill={color} opacity={0.18} />
       {isNewHigh && (
@@ -494,6 +495,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
       <svg
         width="100%"
         viewBox={`0 0 ${CONTAINER_W} ${CONTAINER_H}`}
+        overflow="hidden"
         style={{ display: "block" }}
       >
         <ObeliskDefs />
