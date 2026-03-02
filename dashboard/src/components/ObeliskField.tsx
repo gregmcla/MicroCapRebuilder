@@ -15,9 +15,9 @@ import type { PortfolioSummary } from "../lib/types";
 const SCENE_WIDTH   = 10;
 const MAX_HEIGHT    = 5.0;
 const COL_DEPTH     = 0.28;
-const COL_BASE_HW   = 0.20;   // base half-width
-const FLARE_K       = 0.30;   // normalized velocity → half-width addition
-const SCAR_K        = 0.18;   // normalized drawdown → half-width subtraction
+const COL_BASE_HW   = 0.16;   // base half-width
+const FLARE_K       = 0.38;   // normalized velocity → half-width addition
+const SCAR_K        = 0.22;   // normalized drawdown → half-width subtraction
 const MIN_HW        = 0.08;
 const MAX_HW        = 0.82;
 const LOAD_DURATION = 1.6;    // seconds
@@ -299,7 +299,7 @@ function ObeliskMesh({
           clearcoat={0.22}
           clearcoatRoughness={0.5}
           emissive={accentColor}
-          emissiveIntensity={isHovered ? 0.07 : 0.022}
+          emissiveIntensity={isHovered ? 0.07 : 0.028}
           clippingPlanes={[clipPlane]}
           transparent={otherHovered}
           opacity={opacity}
@@ -365,7 +365,7 @@ function GroundPlane() {
         blur={[400, 100]}
         resolution={512}
         mixBlur={8}
-        mixStrength={0.07}
+        mixStrength={0.09}
         roughness={0.98}
         depthScale={1.2}
         minDepthThreshold={0.4}
@@ -666,7 +666,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
     >
       <Canvas
         shadows
-        camera={{ position: [0, 2.8, 9.5], fov: 38 }}
+        camera={{ position: [0, 2.2, 9.0], fov: 36 }}
         gl={{ antialias: true, localClippingEnabled: true }}
         onCreated={({ gl }) => {
           gl.shadowMap.enabled = true;
@@ -674,13 +674,13 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
           gl.setClearColor(0x03030a);
         }}
       >
-        <fogExp2 attach="fog" args={["#03030a", 0.042]} />
+        <fogExp2 attach="fog" args={["#03030a", 0.038]} />
 
         {/* Lighting rig: directional + rim + minimal ambient */}
         <ambientLight intensity={0.07} color="#14142a" />
         <directionalLight
           position={[5, 9, 4]}
-          intensity={1.6}
+          intensity={1.8}
           color="#d0d0f0"
           castShadow
           shadow-mapSize={[1024, 1024]}
