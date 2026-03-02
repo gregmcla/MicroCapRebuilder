@@ -410,10 +410,14 @@ function AllPositionsPanel({ positions }: { positions: CrossPortfolioMover[] }) 
 
 function AggregateBar({
   totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalPositions, portfolioCount, onNewPortfolio,
+  onUpdateAll, updatingAll, updateResult,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
   totalUnrealizedPnl: number; totalAllTimePnl: number; totalPositions: number; portfolioCount: number;
   onNewPortfolio: () => void;
+  onUpdateAll: () => void;
+  updatingAll: boolean;
+  updateResult: string | null;
 }) {
   // 0 decimals → then format with commas
   const rawCount = useCountUp(totalEquity, 1200, 0);
@@ -452,7 +456,48 @@ function AggregateBar({
       <StatChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
       <StatChip label="Positions" value={String(totalPositions)} />
       <StatChip label="Portfolios" value={String(portfolioCount)} />
-      <div style={{ marginLeft: "auto" }}>
+      <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
+        <button
+          onClick={onUpdateAll}
+          disabled={updatingAll}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "5px",
+            padding: "0 12px", height: "28px",
+            background: "transparent",
+            border: "1px solid var(--border-1)",
+            borderRadius: "6px",
+            color: updatingAll ? "var(--accent)" : "var(--text-1)",
+            fontSize: "11px", fontWeight: 600,
+            letterSpacing: "0.06em", textTransform: "uppercase",
+            cursor: updatingAll ? "not-allowed" : "pointer",
+            transition: "border-color 0.15s, color 0.15s",
+            opacity: updatingAll ? 0.75 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (!updatingAll) {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--accent)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!updatingAll) {
+              e.currentTarget.style.borderColor = "var(--border-1)";
+              e.currentTarget.style.color = "var(--text-1)";
+            }
+          }}
+        >
+          <svg
+            width="11" height="11" viewBox="0 0 12 12" fill="none"
+            style={{ flexShrink: 0 }}
+            className={updatingAll ? "animate-spin" : ""}
+          >
+            <path
+              d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6"
+              stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+            />
+          </svg>
+          {updateResult ?? "Update All"}
+        </button>
         <button
           onClick={onNewPortfolio}
           style={{
@@ -683,8 +728,32 @@ const sectionLabel: React.CSSProperties = {
 
 export default function OverviewPage() {
   const [showCreate, setShowCreate] = useState(false);
+  const [updatingAll, setUpdatingAll] = useState(false);
+  const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
+
+  const handleUpdateAll = async () => {
+    const ids = (portfolioList?.portfolios ?? []).map((p) => p.id);
+    if (ids.length === 0) return;
+    setUpdatingAll(true);
+    setUpdateResult(null);
+    let done = 0;
+    setUpdateResult(`0 / ${ids.length}`);
+    await Promise.allSettled(
+      ids.map((pid) =>
+        api.updatePrices(pid).then(() => {
+          done += 1;
+          setUpdateResult(`${done} / ${ids.length}`);
+        })
+      )
+    );
+    queryClient.invalidateQueries({ queryKey: ["overview"] });
+    setUpdateResult(`${ids.length} updated`);
+    setTimeout(() => setUpdateResult(null), 3000);
+    setUpdatingAll(false);
+  };
 
   if (isLoading) {
     return (
@@ -714,6 +783,9 @@ export default function OverviewPage() {
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={enriched.length}
         onNewPortfolio={() => setShowCreate(true)}
+        onUpdateAll={handleUpdateAll}
+        updatingAll={updatingAll}
+        updateResult={updateResult}
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
