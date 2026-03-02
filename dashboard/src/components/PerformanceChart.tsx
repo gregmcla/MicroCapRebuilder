@@ -21,7 +21,6 @@ const PAD_LEFT   = 40;
 
 // ── Cubic-bezier easing: cubic-bezier(0.16, 1, 0.3, 1) ──────────────────────
 
-// @ts-expect-error used in Task 5 animation
 function cubicBezierEase(t: number): number {
   const p1x = 0.16, p1y = 1.0, p2x = 0.3, p2y = 1.0;
   const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
@@ -172,6 +171,56 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     () => Math.max(1, ...series.map((s) => s.cum.length)),
     [series]
   );
+
+  const [animProgress,   setAnimProgress]   = useState(0);
+  const [endpointsAlpha, setEndpointsAlpha] = useState(0);
+  const rafRef       = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const endStartRef  = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Reset on series change
+    setAnimProgress(0);
+    setEndpointsAlpha(0);
+    startTimeRef.current = null;
+    endStartRef.current  = null;
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+
+    const DRAW_DURATION = 1.2;  // seconds
+    const FADE_DURATION = 0.3;  // seconds
+
+    function tick(now: number) {
+      const t0 = startTimeRef.current;
+      if (t0 === null) {
+        startTimeRef.current = now;
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      const elapsed = (now - t0) / 1000;
+
+      if (elapsed < DRAW_DURATION) {
+        const t = elapsed / DRAW_DURATION;
+        setAnimProgress(cubicBezierEase(t));
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        setAnimProgress(1);
+        // Start endpoint fade
+        if (endStartRef.current === null) endStartRef.current = now;
+        const fadeElapsed = (now - endStartRef.current) / 1000;
+        const fadeT = Math.min(fadeElapsed / FADE_DURATION, 1);
+        setEndpointsAlpha(fadeT);
+        if (fadeT < 1) {
+          rafRef.current = requestAnimationFrame(tick);
+        }
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, [series.length]); // reset and replay when portfolio count changes
 
   // ResizeObserver
   useEffect(() => {
@@ -388,9 +437,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
-    drawLines(ctx, 1, null);
-    drawEndpoints(ctx, 1);
-  }, [drawGrid, drawLines, drawEndpoints, dims]);
+    drawLines(ctx, animProgress, null);
+    drawEndpoints(ctx, endpointsAlpha);
+  }, [drawGrid, drawLines, drawEndpoints, dims, animProgress, endpointsAlpha]);
 
   if (series.length === 0) {
     return (
