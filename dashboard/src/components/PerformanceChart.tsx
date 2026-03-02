@@ -238,6 +238,58 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [scale, dims]
   );
 
+  const drawEndpoints = useCallback(
+    (ctx: CanvasRenderingContext2D, alpha: number) => {
+      if (alpha <= 0) return;
+      const { toPixelY } = scale;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      // Build list of label items sorted by Y (top of chart first = smallest pixel Y)
+      const items = series.map((s) => {
+        const lastX = toPixelX(s.cum.length - 1, maxLen, chartW);
+        const lastY = toPixelY(s.cum[s.cum.length - 1]);
+        return { s, lastX, lastY };
+      });
+      const sorted = items.slice().sort((a, b) => a.lastY - b.lastY);
+
+      // Assign vertical positions with collision avoidance
+      const MIN_GAP = 12; // px minimum vertical gap between labels
+      const assignedY: number[] = [];
+      for (const item of sorted) {
+        let y = item.lastY;
+        for (const used of assignedY) {
+          if (Math.abs(y - used) < MIN_GAP) {
+            y = used + MIN_GAP;
+          }
+        }
+        assignedY.push(y);
+
+        // Dot at actual line endpoint Y
+        ctx.beginPath();
+        ctx.arc(item.lastX, item.lastY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = item.s.color;
+        ctx.fill();
+
+        // Label: "ID  +XX.X%" in the right zone
+        const ret   = item.s.finalReturn;
+        const sign  = ret >= 0 ? "+" : "";
+        const label = `${item.s.id.toUpperCase()}  ${sign}${ret.toFixed(1)}%`;
+        const labelX = dims.width - PAD_RIGHT + 14;
+
+        ctx.font         = "700 8.5px/1 monospace";
+        ctx.fillStyle    = item.s.color;
+        ctx.textAlign    = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(label, labelX, y);
+      }
+
+      ctx.restore();
+    },
+    [series, scale, dims, chartW, maxLen]
+  );
+
   const drawLines = useCallback(
     (
       ctx: CanvasRenderingContext2D,
@@ -336,8 +388,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
-    drawLines(ctx, 1, null); // progress=1 (full), no hover
-  }, [drawGrid, drawLines, dims]);
+    drawLines(ctx, 1, null);
+    drawEndpoints(ctx, 1);
+  }, [drawGrid, drawLines, drawEndpoints, dims]);
 
   if (series.length === 0) {
     return (
