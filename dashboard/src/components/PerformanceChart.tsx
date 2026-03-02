@@ -92,10 +92,34 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
 
 // ── X scale ──────────────────────────────────────────────────────────────────
 
-// @ts-expect-error used in Task 3 line rendering
 function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
   if (maxLen <= 1) return PAD_LEFT;
   return PAD_LEFT + (dayIdx / (maxLen - 1)) * chartW;
+}
+
+// ── Catmull-Rom spline renderer ───────────────────────────────────────────────
+
+/**
+ * Traces a smooth Catmull-Rom spline through pts onto ctx.
+ * Converts to cubic bezier control points for Canvas bezierCurveTo.
+ */
+function catmullRomPath(
+  ctx: CanvasRenderingContext2D,
+  pts: [number, number][]
+): void {
+  if (pts.length < 2) return;
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+  }
 }
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -137,11 +161,17 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       });
   }, [portfolios]);
 
+  const chartW = dims.width  - PAD_LEFT - PAD_RIGHT;
   const chartH = dims.height - PAD_TOP  - PAD_BOTTOM;
 
   const scale = useMemo(
     () => computeYScale(series.map((s) => s.cum), chartH),
     [series, chartH]
+  );
+
+  const maxLen = useMemo(
+    () => Math.max(1, ...series.map((s) => s.cum.length)),
+    [series]
   );
 
   // ResizeObserver
@@ -209,13 +239,104 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [scale, dims]
   );
 
+  const drawLines = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      progress: number,          // 0→1 clip for mount animation
+      hoveredIdx: number | null  // null = no hover; index = one series fully lit
+    ) => {
+      const { toPixelY } = scale;
+      const clipX = PAD_LEFT + chartW * progress;
+
+      ctx.save();
+      // Clip to animated reveal region
+      ctx.beginPath();
+      ctx.rect(0, PAD_TOP, clipX, chartH + PAD_BOTTOM);
+      ctx.clip();
+
+      for (let si = 0; si < series.length; si++) {
+        const s = series[si];
+        const pts: [number, number][] = s.cum.map((v, i) => [
+          toPixelX(i, maxLen, chartW),
+          toPixelY(v),
+        ]);
+
+        if (pts.length < 2) continue;
+
+        // Dimming: if something is hovered and this isn't it, reduce alpha
+        const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
+
+        // ── Area fill (draw first, source-over, below the glowing lines) ─────
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = baseAlpha * 0.04;
+        const grad = ctx.createLinearGradient(0, toPixelY(scale.yMax), 0, toPixelY(scale.yMin));
+        grad.addColorStop(0, s.color);
+        grad.addColorStop(1, "transparent");
+        ctx.beginPath();
+        catmullRomPath(ctx, pts);
+        ctx.lineTo(pts[pts.length - 1][0], toPixelY(0));
+        ctx.lineTo(pts[0][0], toPixelY(0));
+        ctx.closePath();
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+
+        // ── Three-pass glow (screen blending) ───────────────────────────────
+        ctx.globalCompositeOperation = "screen";
+
+        // Pass 1: wide blurred halo
+        ctx.save();
+        ctx.filter = "blur(2px)";
+        ctx.globalAlpha = baseAlpha * 0.15;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 10;
+        ctx.lineJoin = "round";
+        ctx.lineCap  = "round";
+        ctx.beginPath();
+        catmullRomPath(ctx, pts);
+        ctx.stroke();
+        ctx.restore();
+
+        // Pass 2: inner glow
+        ctx.save();
+        ctx.globalAlpha = baseAlpha * 0.40;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+        ctx.lineCap  = "round";
+        ctx.beginPath();
+        catmullRomPath(ctx, pts);
+        ctx.stroke();
+        ctx.restore();
+
+        // Pass 3: crisp core
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = baseAlpha * 1.0;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        ctx.lineCap  = "round";
+        ctx.beginPath();
+        catmullRomPath(ctx, pts);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      ctx.restore(); // remove clip
+    },
+    [series, scale, chartW, chartH, maxLen]
+  );
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || dims.width === 0) return;
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
-  }, [drawGrid, dims]);
+    drawLines(ctx, 1, null); // progress=1 (full), no hover
+  }, [drawGrid, drawLines, dims]);
 
   if (series.length === 0) {
     return (
