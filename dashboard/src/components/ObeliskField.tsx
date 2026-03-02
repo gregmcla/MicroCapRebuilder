@@ -256,10 +256,11 @@ export interface ObeliskColumnProps {
   id: string;
   animProgress: number;
   crownVisible: boolean;
+  isHovered?: boolean;
 }
 
 export function ObeliskColumn({
-  geo, colX, color, id, animProgress, crownVisible,
+  geo, colX, color, id, animProgress, crownVisible, isHovered = false,
 }: ObeliskColumnProps) {
   const { widths, colTopY, finalReturn, isNewHigh } = geo;
   const progress = Math.max(0, Math.min(1, animProgress));
@@ -289,10 +290,10 @@ export function ObeliskColumn({
           <stop offset="100%" stopColor={color}   stopOpacity={0.18} />
         </linearGradient>
 
-        {/* Rim: portfolio color, bright at crown, dim at base */}
+        {/* Rim: portfolio color, bright at crown, dim at base; brightens on hover */}
         <linearGradient id={rimGradId} x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%"   stopColor={color} stopOpacity={0.15} />
-          <stop offset="100%" stopColor={color} stopOpacity={0.85} />
+          <stop offset="0%"   stopColor={color} stopOpacity={isHovered ? 0.5 : 0.15} />
+          <stop offset="100%" stopColor={color} stopOpacity={isHovered ? 1.0 : 0.85} />
         </linearGradient>
 
         {/* Reflection mask: opaque at top (baseline), fades downward */}
@@ -331,7 +332,7 @@ export function ObeliskColumn({
           d={rimPath}
           fill="none"
           stroke={`url(#${rimGradId})`}
-          strokeWidth={1}
+          strokeWidth={isHovered ? 1.8 : 1}
           filter="url(#ob-rim-blur)"
         />
       </g>
@@ -410,11 +411,28 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
 
     const start = performance.now();
     const duration = 1400;
-    const easeExpoOut = (t: number) => 1 - Math.pow(2, -10 * t);
+
+    // cubic-bezier(0.16, 1, 0.3, 1) — spring-out easing
+    function cubicBezierEase(t: number): number {
+      // Newton-Raphson to solve for bezier parameter from t (x-axis)
+      const p1x = 0.16, p1y = 1.0, p2x = 0.3, p2y = 1.0;
+      const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
+      const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by;
+      // Solve for bezier param u where x(u) = t
+      let u = t;
+      for (let i = 0; i < 8; i++) {
+        const xu = ((ax * u + bx) * u + cx) * u;
+        const dxu = (3 * ax * u + 2 * bx) * u + cx;
+        if (Math.abs(dxu) < 1e-6) break;
+        u -= (xu - t) / dxu;
+      }
+      u = Math.max(0, Math.min(1, u));
+      return ((ay * u + by) * u + cy) * u;
+    }
 
     const frame = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
-      setAnimProgress(easeExpoOut(t));
+      setAnimProgress(cubicBezierEase(t));
       if (t < 1) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
@@ -510,6 +528,7 @@ export default function ObeliskField({ portfolios }: ObeliskFieldProps) {
                 id={p.id}
                 animProgress={animProgress}
                 crownVisible={crownsVisible[i] ?? false}
+                isHovered={hoveredIdx === i}
               />
             </g>
           );
