@@ -21,6 +21,7 @@ const PAD_LEFT   = 40;
 
 // ── Cubic-bezier easing: cubic-bezier(0.16, 1, 0.3, 1) ──────────────────────
 
+// @ts-ignore used in Task 5 animation
 function cubicBezierEase(t: number): number {
   const p1x = 0.16, p1y = 1.0, p2x = 0.3, p2y = 1.0;
   const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
@@ -36,8 +37,6 @@ function cubicBezierEase(t: number): number {
   return ((ay * u + by) * u + cy) * u;
 }
 
-// cubicBezierEase is used by the animation in Task 5 — exported to suppress unused warning.
-export { cubicBezierEase };
 
 // ── Y scale ──────────────────────────────────────────────────────────────────
 
@@ -93,6 +92,7 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
 
 // ── X scale ──────────────────────────────────────────────────────────────────
 
+// @ts-ignore used in Task 3 line rendering
 function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
   if (maxLen <= 1) return PAD_LEFT;
   return PAD_LEFT + (dayIdx / (maxLen - 1)) * chartW;
@@ -137,17 +137,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       });
   }, [portfolios]);
 
-  const chartW = dims.width  - PAD_LEFT - PAD_RIGHT;
   const chartH = dims.height - PAD_TOP  - PAD_BOTTOM;
 
   const scale = useMemo(
     () => computeYScale(series.map((s) => s.cum), chartH),
     [series, chartH]
-  );
-
-  const maxLen = useMemo(
-    () => Math.max(1, ...series.map((s) => s.cum.length)),
-    [series]
   );
 
   // ResizeObserver
@@ -221,11 +215,6 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
   }, [drawGrid, dims]);
-
-  // Suppress unused variable warnings for scale utilities used by future tasks
-  void toPixelX;
-  void maxLen;
-  void chartW;
 
   if (series.length === 0) {
     return (
