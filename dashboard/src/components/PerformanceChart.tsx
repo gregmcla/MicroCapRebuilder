@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import type { PortfolioSummary } from "../lib/types";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -13,6 +13,90 @@ const CHART_PALETTE = [
   "#d4b8a8", // dusty rose
   "#9ab4c4", // slate
 ];
+
+const PAD_TOP    = 28;
+const PAD_RIGHT  = 112;
+const PAD_BOTTOM = 24;
+const PAD_LEFT   = 40;
+
+// ── Cubic-bezier easing: cubic-bezier(0.16, 1, 0.3, 1) ──────────────────────
+
+function cubicBezierEase(t: number): number {
+  const p1x = 0.16, p1y = 1.0, p2x = 0.3, p2y = 1.0;
+  const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
+  const cy = 3 * p1y, by = 3 * (p2y - p1y) - cy, ay = 1 - cy - by;
+  let u = t;
+  for (let i = 0; i < 8; i++) {
+    const xu = ((ax * u + bx) * u + cx) * u;
+    const dxu = (3 * ax * u + 2 * bx) * u + cx;
+    if (Math.abs(dxu) < 1e-6) break;
+    u -= (xu - t) / dxu;
+  }
+  u = Math.max(0, Math.min(1, u));
+  return ((ay * u + by) * u + cy) * u;
+}
+
+// cubicBezierEase is used by the animation in Task 5 — exported to suppress unused warning.
+export { cubicBezierEase };
+
+// ── Y scale ──────────────────────────────────────────────────────────────────
+
+interface YScale {
+  yMin: number;
+  yMax: number;
+  toPixelY: (pct: number) => number;
+  guides: number[];
+}
+
+function computeYScale(allCums: number[][], chartH: number): YScale {
+  let globalMin =  Infinity;
+  let globalMax = -Infinity;
+  for (const cum of allCums) {
+    for (const v of cum) {
+      if (v < globalMin) globalMin = v;
+      if (v > globalMax) globalMax = v;
+    }
+  }
+  if (!isFinite(globalMin)) { globalMin = -10; globalMax = 10; }
+
+  const range = globalMax - globalMin || 20;
+  const pad   = range * 0.12;
+  const yMin  = globalMin - pad;
+  const yMax  = globalMax + pad;
+
+  const toPixelY = (pct: number): number =>
+    PAD_TOP + ((yMax - pct) / (yMax - yMin)) * chartH;
+
+  // Compute 3-5 nice guide values
+  const roughStep = (yMax - yMin) / 4;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(roughStep) || 1)));
+  const niceMultiples = [1, 2, 2.5, 5, 10];
+  const mult = niceMultiples.find((m) => m * magnitude >= roughStep) ?? 10;
+  const step = mult * magnitude;
+
+  const guideSet = new Set<number>();
+  const start = Math.ceil(yMin / step) * step;
+  for (let v = start; v <= yMax + step * 0.01; v += step) {
+    const rounded = Math.round(v * 10) / 10;
+    guideSet.add(rounded);
+  }
+  // Always include 0 if in range
+  if (yMin <= 0 && yMax >= 0) guideSet.add(0);
+
+  const guides = [...guideSet]
+    .filter((v) => v >= yMin && v <= yMax)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
+
+  return { yMin, yMax, toPixelY, guides };
+}
+
+// ── X scale ──────────────────────────────────────────────────────────────────
+
+function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
+  if (maxLen <= 1) return PAD_LEFT;
+  return PAD_LEFT + (dayIdx / (maxLen - 1)) * chartW;
+}
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +137,19 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       });
   }, [portfolios]);
 
+  const chartW = dims.width  - PAD_LEFT - PAD_RIGHT;
+  const chartH = dims.height - PAD_TOP  - PAD_BOTTOM;
+
+  const scale = useMemo(
+    () => computeYScale(series.map((s) => s.cum), chartH),
+    [series, chartH]
+  );
+
+  const maxLen = useMemo(
+    () => Math.max(1, ...series.map((s) => s.cum.length)),
+    [series]
+  );
+
   // ResizeObserver
   useEffect(() => {
     const el = containerRef.current;
@@ -76,6 +173,59 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     // Assigning canvas.width/height resets the transform matrix, so ctx.scale is safe here.
     ctx.scale(dpr, dpr);
   }, [dims]);
+
+  const drawGrid = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const { toPixelY, guides } = scale;
+
+      // Fill background
+      ctx.fillStyle = "#010107";
+      ctx.fillRect(0, 0, dims.width, dims.height);
+
+      ctx.save();
+      ctx.font = "600 8px/1 monospace";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+
+      for (const g of guides) {
+        const py = toPixelY(g);
+        const isZero = g === 0;
+
+        // Horizontal guide line — solid hairline (not dashed)
+        ctx.beginPath();
+        ctx.moveTo(PAD_LEFT - 6, py);
+        ctx.lineTo(dims.width - PAD_RIGHT + 8, py);
+        ctx.strokeStyle = isZero
+          ? "rgba(255,255,255,0.10)"
+          : "rgba(255,255,255,0.05)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Y-axis label
+        const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(0)}%`;
+        ctx.fillStyle = isZero
+          ? "rgba(255,255,255,0.28)"
+          : "rgba(255,255,255,0.18)";
+        ctx.fillText(label, PAD_LEFT - 8, py);
+      }
+
+      ctx.restore();
+    },
+    [scale, dims]
+  );
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || dims.width === 0) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.clearRect(0, 0, dims.width, dims.height);
+    drawGrid(ctx);
+  }, [drawGrid, dims]);
+
+  // Suppress unused variable warnings for scale utilities used by future tasks
+  void toPixelX;
+  void maxLen;
+  void chartW;
 
   if (series.length === 0) {
     return (
