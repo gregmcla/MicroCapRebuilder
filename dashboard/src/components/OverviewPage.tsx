@@ -8,7 +8,7 @@ import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
-import ObeliskField from "./ObeliskField";
+import PerformanceChart from "./PerformanceChart";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -106,7 +106,7 @@ const PORTFOLIO_PALETTE = [
   "#4ade80", // green
 ];
 
-type ViewMode = "map" | "obelisk";
+type ViewMode = "map" | "chart";
 
 function usePortfolioColors(positions: CrossPortfolioMover[]) {
   return useMemo(() => {
@@ -201,7 +201,7 @@ function AllPositionsPanel({ positions, portfolios }: {
           All Positions — {positions.length}
         </p>
         <div style={{ display: "flex", gap: "2px", background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "5px", padding: "2px" }}>
-          {(["map", "obelisk"] as ViewMode[]).map((v) => (
+          {(["map", "chart"] as ViewMode[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -213,14 +213,14 @@ function AllPositionsPanel({ positions, portfolios }: {
                 transition: "background 0.15s, color 0.15s",
               }}
             >
-              {v === "map" ? "MAP" : "OBELISK"}
+              {v === "map" ? "MAP" : "CHART"}
             </button>
           ))}
         </div>
       </div>
       {view === "map"
         ? <WeightedMap positions={positions} portfolioColors={portfolioColors} />
-        : <ObeliskField portfolios={portfolios} />
+        : <PerformanceChart portfolios={portfolios} />
       }
     </div>
   );
