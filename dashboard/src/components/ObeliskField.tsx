@@ -85,7 +85,8 @@ function smoothThrough(pts: [number, number][]): string {
     const my = ((cy + ny) / 2).toFixed(1);
     d += ` Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${mx} ${my}`;
   }
-  d += ` L ${pts[pts.length - 1][0].toFixed(1)} ${pts[pts.length - 1][1].toFixed(1)}`;
+  const last = pts[pts.length - 1];
+  d += ` Q ${last[0].toFixed(1)} ${last[1].toFixed(1)} ${last[0].toFixed(1)} ${last[1].toFixed(1)}`;
   return d;
 }
 
@@ -105,11 +106,13 @@ export function buildFrontFace(
   const leftPath = smoothThrough(L);
   const rightPathRev = smoothThrough([...R].reverse());
 
-  // left edge top→bottom, connect bottom, right edge bottom→top, close
+  // Strip the leading "M x y" from rightPathRev and replace with explicit L
+  const rightContinuation = rightPathRev.replace(/^M\s+[\d.+-]+\s+[\d.+-]+/, "").trimStart();
+
   return (
     leftPath +
     ` L ${R[N - 1][0].toFixed(1)} ${R[N - 1][1].toFixed(1)}` +
-    rightPathRev.slice(rightPathRev.indexOf(" ")) +
+    " " + rightContinuation +
     " Z"
   );
 }
@@ -127,11 +130,13 @@ export function buildRightFace(
   const fr: [number, number][] = ys.map((y, i) => [colX + widths[i] / 2, y]);
   const br: [number, number][] = fr.map(([x, y]) => [x + DEPTH_X, y + DEPTH_Y]);
 
-  let d = `M ${fr[0][0].toFixed(1)} ${fr[0][1].toFixed(1)}`;
-  for (let i = 1; i < N; i++) d += ` L ${fr[i][0].toFixed(1)} ${fr[i][1].toFixed(1)}`;
-  d += ` L ${br[N - 1][0].toFixed(1)} ${br[N - 1][1].toFixed(1)}`;
-  for (let i = N - 2; i >= 0; i--) d += ` L ${br[i][0].toFixed(1)} ${br[i][1].toFixed(1)}`;
-  return d + " Z";
+  const frontEdge = smoothThrough(fr);
+  const backEdgePart = (() => {
+    let s = ` L ${br[N - 1][0].toFixed(1)} ${br[N - 1][1].toFixed(1)}`;
+    for (let i = N - 2; i >= 0; i--) s += ` L ${br[i][0].toFixed(1)} ${br[i][1].toFixed(1)}`;
+    return s;
+  })();
+  return frontEdge + backEdgePart + " Z";
 }
 
 /** Small parallelogram cap at the crown. */
