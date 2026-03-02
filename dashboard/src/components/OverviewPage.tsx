@@ -742,13 +742,15 @@ export default function OverviewPage() {
     setUpdateResult(null);
     doneRef.current = 0;
     setUpdateResult(`0 / ${ids.length}`);
+    const withTimeout = (p: Promise<unknown>, ms: number) =>
+      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
+
     try {
       await Promise.allSettled(
         ids.map((pid) =>
-          api.updatePrices(pid).then(() => {
-            doneRef.current += 1;
-            setUpdateResult(`${doneRef.current} / ${ids.length}`);
-          })
+          withTimeout(api.updatePrices(pid), 30_000)
+            .then(() => { doneRef.current += 1; setUpdateResult(`${doneRef.current} / ${ids.length}`); })
+            .catch(() => { doneRef.current += 1; setUpdateResult(`${doneRef.current} / ${ids.length}`); })
         )
       );
       queryClient.invalidateQueries({ queryKey: ["overview"] });
