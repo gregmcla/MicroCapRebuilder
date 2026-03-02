@@ -172,3 +172,181 @@ export function buildRimPath(
   const R: [number, number][] = ys.map((y, i) => [colX + widths[i] / 2, y]);
   return smoothThrough(R);
 }
+
+// ── SVG Defs ─────────────────────────────────────────────────────────────────
+
+export function ObeliskDefs() {
+  return (
+    <defs>
+      <filter id="ob-rim-blur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="0.8" />
+      </filter>
+      <filter id="ob-crown-blur" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="4" />
+      </filter>
+      <filter id="ob-beam-blur" x="-200%" y="-200%" width="500%" height="500%">
+        <feGaussianBlur stdDeviation="2" />
+      </filter>
+      <filter id="ob-reflect-blur">
+        <feGaussianBlur stdDeviation="1.2" />
+      </filter>
+    </defs>
+  );
+}
+
+// ── Crown components ──────────────────────────────────────────────────────────
+
+function PositiveCrown({
+  colX, colTopY, topWidth, color, isNewHigh, crownVisible,
+}: {
+  colX: number; colTopY: number; topWidth: number;
+  color: string; isNewHigh: boolean; crownVisible: boolean;
+}) {
+  if (!crownVisible) return null;
+  const cy = colTopY - 4;
+  const rx = topWidth * 0.55;
+  return (
+    <g>
+      <ellipse cx={colX} cy={cy} rx={rx} ry={5}
+        fill={color} opacity={0.32} filter="url(#ob-crown-blur)" />
+      <ellipse cx={colX} cy={cy} rx={rx * 0.6} ry={3}
+        fill={color} opacity={0.18} />
+      {isNewHigh && (
+        <line
+          x1={colX} y1={colTopY - 4}
+          x2={colX} y2={colTopY - 22}
+          stroke={color} strokeWidth={1.5} strokeOpacity={0.55}
+          filter="url(#ob-beam-blur)"
+        />
+      )}
+    </g>
+  );
+}
+
+function NegativeCrown({
+  colX, colTopY, topWidth, color, crownVisible,
+}: {
+  colX: number; colTopY: number; topWidth: number;
+  color: string; crownVisible: boolean;
+}) {
+  if (!crownVisible) return null;
+  const shards: [number, number, number, number][] = [
+    [colX - topWidth * 0.3, colTopY,     colX - topWidth * 0.05, colTopY - 4],
+    [colX - topWidth * 0.05, colTopY - 1, colX + topWidth * 0.25, colTopY - 5],
+    [colX + topWidth * 0.18, colTopY,     colX + topWidth * 0.38, colTopY - 3],
+  ];
+  return (
+    <g opacity={0.6}>
+      {shards.map(([x1, y1, x2, y2], i) => (
+        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke={color} strokeWidth={1} opacity={0.5} />
+      ))}
+      <ellipse cx={colX} cy={colTopY} rx={topWidth * 0.4} ry={2.5}
+        fill={color} opacity={0.12} filter="url(#ob-crown-blur)" />
+    </g>
+  );
+}
+
+// ── ObeliskColumn ─────────────────────────────────────────────────────────────
+
+export interface ObeliskColumnProps {
+  geo: ObeliskGeometry;
+  colX: number;
+  color: string;
+  id: string;
+  animProgress: number;
+  crownVisible: boolean;
+}
+
+export function ObeliskColumn({
+  geo, colX, color, id, animProgress, crownVisible,
+}: ObeliskColumnProps) {
+  const { widths, colTopY, finalReturn, isNewHigh } = geo;
+  const topWidth = widths[widths.length - 1];
+
+  const frontPath = useMemo(() => buildFrontFace(colX, colTopY, widths), [colX, colTopY, widths]);
+  const rightPath = useMemo(() => buildRightFace(colX, colTopY, widths), [colX, colTopY, widths]);
+  const capPath   = useMemo(() => buildTopCap(colX, colTopY, topWidth), [colX, colTopY, topWidth]);
+  const rimPath   = useMemo(() => buildRimPath(colX, colTopY, widths), [colX, colTopY, widths]);
+
+  const colH  = BASELINE_Y - colTopY;
+  const clipY = BASELINE_Y - colH * animProgress;
+  const clipH = colH * animProgress + 40;
+
+  const bodyGradId = `ob-body-${id}`;
+  const rimGradId  = `ob-rim-${id}`;
+  const reflMaskId = `ob-rm-${id}`;
+  const clipId     = `ob-clip-${id}`;
+
+  return (
+    <g>
+      <defs>
+        {/* Body: near-black base, portfolio color bleeds into top 10% */}
+        <linearGradient id={bodyGradId} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%"   stopColor="#07070f" stopOpacity={1} />
+          <stop offset="88%"  stopColor="#0d0d1a" stopOpacity={1} />
+          <stop offset="100%" stopColor={color}   stopOpacity={0.18} />
+        </linearGradient>
+
+        {/* Rim: portfolio color, bright at crown, dim at base */}
+        <linearGradient id={rimGradId} x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%"   stopColor={color} stopOpacity={0.15} />
+          <stop offset="100%" stopColor={color} stopOpacity={0.85} />
+        </linearGradient>
+
+        {/* Reflection mask: opaque at top (baseline), fades downward */}
+        <linearGradient id={`${reflMaskId}-g`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="white" stopOpacity={1} />
+          <stop offset="100%" stopColor="white" stopOpacity={0} />
+        </linearGradient>
+        <mask id={reflMaskId}>
+          <rect x={colX - 120} y={BASELINE_Y} width={240} height={50}
+            fill={`url(#${reflMaskId}-g)`} />
+        </mask>
+
+        {/* Animation clip: reveals from bottom upward as animProgress → 1 */}
+        <clipPath id={clipId}>
+          <rect x={colX - 120} y={clipY} width={240} height={clipH} />
+        </clipPath>
+      </defs>
+
+      {/* Floor reflection */}
+      <g
+        transform={`translate(0, ${BASELINE_Y * 2}) scale(1, -1)`}
+        opacity={0.14}
+        filter="url(#ob-reflect-blur)"
+        mask={`url(#${reflMaskId})`}
+      >
+        <path d={frontPath} fill={`url(#${bodyGradId})`} />
+        <path d={rightPath} fill="#030306" />
+      </g>
+
+      {/* Column body — clipped to animate reveal bottom→top */}
+      <g clipPath={`url(#${clipId})`}>
+        <path d={rightPath} fill="#030306" />
+        <path d={capPath}   fill="#09090f" />
+        <path d={frontPath} fill={`url(#${bodyGradId})`} />
+        <path
+          d={rimPath}
+          fill="none"
+          stroke={`url(#${rimGradId})`}
+          strokeWidth={1}
+          filter="url(#ob-rim-blur)"
+        />
+      </g>
+
+      {/* Crown — outside clip so it always glows at the current top */}
+      {finalReturn >= 0 ? (
+        <PositiveCrown
+          colX={colX} colTopY={colTopY} topWidth={topWidth}
+          color={color} isNewHigh={isNewHigh} crownVisible={crownVisible}
+        />
+      ) : (
+        <NegativeCrown
+          colX={colX} colTopY={colTopY} topWidth={topWidth}
+          color={color} crownVisible={crownVisible}
+        />
+      )}
+    </g>
+  );
+}
