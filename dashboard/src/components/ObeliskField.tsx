@@ -74,9 +74,17 @@ export function computeObeliskGeometry(
 
 // ── Path builders ─────────────────────────────────────────────────────────────
 
+/** Y position for each time step: linear interpolation bottom→top. */
+function computeYs(widths: number[], colTopY: number): number[] {
+  const N = widths.length;
+  const colH = BASELINE_Y - colTopY;
+  return widths.map((_, i) => BASELINE_Y - (i / (N - 1)) * colH);
+}
+
 /** Build a smooth path segment through a list of points using quadratic beziers. */
 function smoothThrough(pts: [number, number][]): string {
   if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
   for (let i = 1; i < pts.length; i++) {
     const [cx, cy] = pts[i - 1];
@@ -97,8 +105,8 @@ export function buildFrontFace(
   widths: number[]
 ): string {
   const N = widths.length;
-  const colH = BASELINE_Y - colTopY;
-  const ys = widths.map((_, i) => BASELINE_Y - (i / (N - 1)) * colH);
+  if (N < 2) return "";
+  const ys = computeYs(widths, colTopY);
 
   const L: [number, number][] = ys.map((y, i) => [colX - widths[i] / 2, y]);
   const R: [number, number][] = ys.map((y, i) => [colX + widths[i] / 2, y]);
@@ -107,7 +115,7 @@ export function buildFrontFace(
   const rightPathRev = smoothThrough([...R].reverse());
 
   // Strip the leading "M x y" from rightPathRev and replace with explicit L
-  const rightContinuation = rightPathRev.replace(/^M\s+[\d.+-]+\s+[\d.+-]+/, "").trimStart();
+  const rightContinuation = rightPathRev.replace(/^M\s+[-\d.+]+\s+[-\d.+]+/, "").trimStart();
 
   return (
     leftPath +
@@ -124,8 +132,8 @@ export function buildRightFace(
   widths: number[]
 ): string {
   const N = widths.length;
-  const colH = BASELINE_Y - colTopY;
-  const ys = widths.map((_, i) => BASELINE_Y - (i / (N - 1)) * colH);
+  if (N < 2) return "";
+  const ys = computeYs(widths, colTopY);
 
   const fr: [number, number][] = ys.map((y, i) => [colX + widths[i] / 2, y]);
   const br: [number, number][] = fr.map(([x, y]) => [x + DEPTH_X, y + DEPTH_Y]);
@@ -159,8 +167,8 @@ export function buildRimPath(
   widths: number[]
 ): string {
   const N = widths.length;
-  const colH = BASELINE_Y - colTopY;
-  const ys = widths.map((_, i) => BASELINE_Y - (i / (N - 1)) * colH);
+  if (N < 2) return "";
+  const ys = computeYs(widths, colTopY);
   const R: [number, number][] = ys.map((y, i) => [colX + widths[i] / 2, y]);
   return smoothThrough(R);
 }
