@@ -21,7 +21,7 @@ const PAD_LEFT   = 40;
 
 // ── Cubic-bezier easing: cubic-bezier(0.16, 1, 0.3, 1) ──────────────────────
 
-// @ts-ignore used in Task 5 animation
+// @ts-expect-error used in Task 5 animation
 function cubicBezierEase(t: number): number {
   const p1x = 0.16, p1y = 1.0, p2x = 0.3, p2y = 1.0;
   const cx = 3 * p1x, bx = 3 * (p2x - p1x) - cx, ax = 1 - cx - bx;
@@ -92,7 +92,7 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
 
 // ── X scale ──────────────────────────────────────────────────────────────────
 
-// @ts-ignore used in Task 3 line rendering
+// @ts-expect-error used in Task 3 line rendering
 function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
   if (maxLen <= 1) return PAD_LEFT;
   return PAD_LEFT + (dayIdx / (maxLen - 1)) * chartW;
@@ -196,7 +196,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.stroke();
 
         // Y-axis label
-        const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(0)}%`;
+        const decimals = Math.abs(g) < 1 ? 1 : 0;
+        const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(decimals)}%`;
         ctx.fillStyle = isZero
           ? "rgba(255,255,255,0.28)"
           : "rgba(255,255,255,0.18)";
