@@ -120,14 +120,18 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
 
   // Portfolio color palette (hex strings, cycle if more than palette length)
   const paletteRef = useRef<Record<string, string>>({});
+  const nameRef = useRef<Record<string, string>>({});
 
   // Build palette map from portfolios prop
   useEffect(() => {
-    const map: Record<string, string> = {};
+    const palette: Record<string, string> = {};
+    const names: Record<string, string> = {};
     portfolios.forEach((p, i) => {
-      map[p.id] = PALETTE[i % PALETTE.length];
+      palette[p.id] = PALETTE[i % PALETTE.length];
+      names[p.id] = p.name;
     });
-    paletteRef.current = map;
+    paletteRef.current = palette;
+    nameRef.current = names;
   }, [portfolios]);
 
   // ── Physics step ───────────────────────────────────────────────────────────
@@ -305,8 +309,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           ctx.stroke();
           ctx.setLineDash([]);
           // Label — use the portfolio name from portfolios prop if available
-          const pid_ = pid;
-          const label = pid_.toUpperCase();
+          const label = (nameRef.current[pid] ?? pid).toUpperCase();
           ctx.globalAlpha = 0.45;
           ctx.fillStyle = color;
           ctx.font = "10px 'JetBrains Mono', monospace";
