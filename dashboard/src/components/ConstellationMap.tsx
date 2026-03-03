@@ -522,19 +522,24 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           }
         }}
       />
-      {card && <DetailCard card={card} />}
+      {card && (
+        <DetailCard
+          card={card}
+          containerWidth={canvasRef.current?.getBoundingClientRect().width ?? 600}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Detail Card ─────────────────────────────────────────────────────────────
-function DetailCard({ card }: { card: CardData }) {
+function DetailCard({ card, containerWidth }: { card: CardData; containerWidth: number }) {
   const CARD_W = 160;
   const CARD_H = 118; // approximate rendered height
   const CANVAS_H = 360;
 
   // Horizontal: center on node, clamp left+right
-  const left = Math.max(8, Math.min(card.x - CARD_W / 2, window.innerWidth - CARD_W - 8));
+  const left = Math.max(8, Math.min(card.x - CARD_W / 2, containerWidth - CARD_W - 8));
 
   // Vertical: flip above node when below midpoint, clamp bottom edge
   const topBelow  = card.y + 18;
