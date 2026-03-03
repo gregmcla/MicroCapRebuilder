@@ -95,6 +95,19 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
   return { yMin, yMax, toPixelY, guides };
 }
 
+// ── Drawdown scar helpers ─────────────────────────────────────────────────────
+
+/** Returns running maximum of cum — runMax[i] = max(cum[0..i]). */
+function computeRunningMax(cum: number[]): number[] {
+  const result: number[] = [];
+  let rmax = cum[0];
+  for (const v of cum) {
+    if (v > rmax) rmax = v;
+    result.push(rmax);
+  }
+  return result;
+}
+
 // ── X scale ──────────────────────────────────────────────────────────────────
 
 function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
@@ -312,6 +325,56 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.restore();
     },
     [scale, dims]
+  );
+
+  const drawScars = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const { toPixelY } = scale;
+      const DD_THRESHOLD = 3.0; // minimum drawdown % to show a scar
+
+      for (const s of series) {
+        if (s.cum.length < 4) continue;
+        const runMax = computeRunningMax(s.cum);
+
+        let i = 0;
+        while (i < s.cum.length) {
+          const dd = runMax[i] - s.cum[i];
+          if (dd <= DD_THRESHOLD) { i++; continue; }
+
+          // Scar segment starts here
+          const segStart = i;
+          let maxDd = dd;
+          while (i < s.cum.length && runMax[i] - s.cum[i] > DD_THRESHOLD) {
+            maxDd = Math.max(maxDd, runMax[i] - s.cum[i]);
+            i++;
+          }
+          const segEnd = i - 1;
+          if (segEnd <= segStart) continue;
+
+          // Opacity: sqrt scaling so shallow scars are subtle, deep scars visible
+          // 3% dd → ~0.05 opacity, 15% → ~0.14, 40% → ~0.22 (capped)
+          const opacity = Math.min(Math.sqrt(maxDd / 40) * 0.9, 0.22);
+
+          // Build polygon: peak line top-edge → actual line bottom-edge (reversed)
+          ctx.save();
+          ctx.globalCompositeOperation = "source-over";
+          ctx.globalAlpha = opacity;
+          ctx.fillStyle = "rgb(190, 35, 55)";
+          ctx.beginPath();
+          ctx.moveTo(toPixelX(segStart, maxLen, chartW), toPixelY(runMax[segStart]));
+          for (let j = segStart + 1; j <= segEnd; j++) {
+            ctx.lineTo(toPixelX(j, maxLen, chartW), toPixelY(runMax[j]));
+          }
+          for (let j = segEnd; j >= segStart; j--) {
+            ctx.lineTo(toPixelX(j, maxLen, chartW), toPixelY(s.cum[j]));
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+    },
+    [series, scale, chartW, maxLen],
   );
 
   const drawEndpoints = useCallback(
@@ -614,10 +677,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
+    drawScars(ctx);
     drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
     drawEndpoints(ctx, endpointsAlpha);
     if (hoverX !== null && animProgress >= 1) drawHover(ctx, hoverX);
-  }, [drawGrid, drawLines, drawEndpoints, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx]);
+  }, [drawGrid, drawScars, drawLines, drawEndpoints, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx]);
 
   if (series.length === 0) {
     return (
