@@ -387,6 +387,38 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // Dimming: if something is hovered and this isn't it, reduce alpha
         const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
 
+        // ── Temporal echo trails (drawn before area fill, furthest back) ──────
+        const ECHO_DEFS = [
+          { offset: 0.06, opacity: 0.28, blur: "1px",   width: 2.5 },
+          { offset: 0.12, opacity: 0.14, blur: "2px",   width: 3.5 },
+          { offset: 0.20, opacity: 0.06, blur: "3.5px", width: 5.5 },
+        ] as const;
+
+        for (const echo of ECHO_DEFS) {
+          const echoProgress = Math.max(0, progress - echo.offset);
+          if (echoProgress <= 0) continue;
+          // Slice pts to echo's progress position — shorter line = lags behind main
+          const echoMaxDataIdx = Math.min(
+            Math.floor(echoProgress * (maxLen - 1)),
+            s.cum.length - 1,
+          );
+          const echoPts = pts.slice(0, echoMaxDataIdx + 1);
+          if (echoPts.length < 2) continue;
+
+          ctx.save();
+          ctx.globalCompositeOperation = "screen";
+          ctx.globalAlpha = baseAlpha * echo.opacity;
+          ctx.filter = `blur(${echo.blur})`;
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = echo.width;
+          ctx.lineJoin = "round";
+          ctx.lineCap  = "round";
+          ctx.beginPath();
+          catmullRomPath(ctx, echoPts);
+          ctx.stroke();
+          ctx.restore();
+        }
+
         // ── Area fill (draw first, source-over, below the glowing lines) ─────
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
