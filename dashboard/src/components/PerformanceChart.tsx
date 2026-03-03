@@ -56,7 +56,7 @@ interface YScale {
   guides: number[];
 }
 
-function computeYScale(allCums: number[][], chartH: number): YScale {
+function computeYScale(allCums: number[][], zoneH: number, zoneTop: number = PAD_TOP): YScale {
   let globalMin =  Infinity;
   let globalMax = -Infinity;
   for (const cum of allCums) {
@@ -73,7 +73,7 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
   const yMax  = globalMax + pad;
 
   const toPixelY = (pct: number): number =>
-    PAD_TOP + ((yMax - pct) / (yMax - yMin)) * chartH;
+    zoneTop + ((yMax - pct) / (yMax - yMin)) * zoneH;
 
   // Compute 3-5 nice guide values
   const roughStep = (yMax - yMin) / 4;
@@ -238,9 +238,40 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const chartW = dims.width  - PAD_LEFT - PAD_RIGHT;
   const chartH = dims.height - PAD_TOP  - PAD_BOTTOM;
 
+  // ── Dual-zone Y-scale ────────────────────────────────────────────────────
+  // Detect outlier: split when leader's return > 3x second place AND > 5%
+  const leaderIdx = useMemo(() => {
+    if (series.length < 2) return -1;
+    const top    = series[0].finalReturn;
+    const second = series[1].finalReturn;
+    if (top > 5.0 && top > second * 3.0) return 0;
+    return -1;
+  }, [series]);
+
+  const leaderZoneH = leaderIdx >= 0 ? Math.floor(chartH * 0.50) : chartH;
+  const fieldZoneH  = leaderIdx >= 0 ? chartH - leaderZoneH       : chartH;
+  const separatorY  = leaderIdx >= 0 ? PAD_TOP + leaderZoneH      : -1;
+
+  // Leader scale: covers only the leader series (or all series when no split)
   const scale = useMemo(
-    () => computeYScale(series.map((s) => s.cum), chartH),
-    [series, chartH]
+    () => computeYScale(
+      leaderIdx >= 0 ? [series[leaderIdx].cum] : series.map((s) => s.cum),
+      leaderZoneH,
+      PAD_TOP,
+    ),
+    [series, leaderIdx, leaderZoneH],
+  );
+
+  // Field scale: covers all non-leader series in the bottom zone (same as scale when no split)
+  const fieldScale = useMemo(
+    () => leaderIdx >= 0
+      ? computeYScale(
+          series.filter((_, i) => i !== leaderIdx).map((s) => s.cum),
+          fieldZoneH,
+          PAD_TOP + leaderZoneH,
+        )
+      : scale,
+    [series, leaderIdx, leaderZoneH, fieldZoneH, scale],
   );
 
   const maxLen = useMemo(
@@ -379,7 +410,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
   const drawGrid = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const { toPixelY, guides } = scale;
+      const { toPixelY: leaderPixelY, guides: leaderGuides } = scale;
+      const { toPixelY: fieldPixelY,  guides: fieldGuides  } = fieldScale;
 
       // Fill background
       ctx.fillStyle = "#010107";
@@ -411,27 +443,65 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
 
-      for (const g of guides) {
-        const py = toPixelY(g);
+      // Leader zone guides
+      for (const g of leaderGuides) {
+        const py     = leaderPixelY(g);
         const isZero = g === 0;
-
-        // Horizontal guide line — solid hairline (not dashed)
         ctx.beginPath();
         ctx.moveTo(PAD_LEFT - 6, py);
         ctx.lineTo(dims.width - PAD_RIGHT + 8, py);
-        ctx.strokeStyle = isZero
-          ? "rgba(255,255,255,0.10)"
-          : "rgba(255,255,255,0.05)";
+        ctx.strokeStyle = isZero ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)";
         ctx.lineWidth = 1;
         ctx.stroke();
-
-        // Y-axis label
         const decimals = Math.abs(g) < 1 ? 1 : 0;
         const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(decimals)}%`;
-        ctx.fillStyle = isZero
-          ? "rgba(255,255,255,0.28)"
-          : "rgba(255,255,255,0.18)";
+        ctx.fillStyle = isZero ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.18)";
         ctx.fillText(label, PAD_LEFT - 8, py);
+      }
+
+      // Zone separator (only when split)
+      if (separatorY > 0) {
+        // Glow bloom
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.filter      = "blur(3px)";
+        ctx.beginPath();
+        ctx.moveTo(PAD_LEFT, separatorY);
+        ctx.lineTo(dims.width - PAD_RIGHT, separatorY);
+        ctx.strokeStyle = "rgba(255,255,255,0.40)";
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+        ctx.filter = "none";
+        ctx.restore();
+        // Hard line
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(PAD_LEFT, separatorY);
+        ctx.lineTo(dims.width - PAD_RIGHT, separatorY);
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([5, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
+      // Field zone guides (only when split)
+      if (separatorY > 0) {
+        for (const g of fieldGuides) {
+          const py     = fieldPixelY(g);
+          const isZero = g === 0;
+          ctx.beginPath();
+          ctx.moveTo(PAD_LEFT - 6, py);
+          ctx.lineTo(dims.width - PAD_RIGHT + 8, py);
+          ctx.strokeStyle = isZero ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          const decimals = Math.abs(g) < 1 ? 1 : 0;
+          const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(decimals)}%`;
+          ctx.fillStyle = isZero ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.18)";
+          ctx.fillText(label, PAD_LEFT - 8, py);
+        }
       }
 
       ctx.restore();
@@ -499,13 +569,14 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.fillText("NOW", nowX, PAD_TOP + 4);
       ctx.restore();
     },
-    [scale, dims, chartW, chartH, maxLen]
+    [scale, dims, chartW, chartH, maxLen, fieldScale, separatorY]
   );
 
   const drawScars = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const { toPixelY } = scale;
-      for (const s of series) {
+      for (let si = 0; si < series.length; si++) {
+        const s = series[si];
+        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
         if (s.cum.length < 4) continue;
         const runMax = computeRunningMax(s.cum);
 
@@ -549,7 +620,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         }
       }
     },
-    [series, scale, chartW, maxLen],
+    [series, scale, fieldScale, leaderIdx, chartW, maxLen],
   );
 
   const drawRankStrip = useCallback(
@@ -591,15 +662,15 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const drawEndpoints = useCallback(
     (ctx: CanvasRenderingContext2D, alpha: number) => {
       if (alpha <= 0) return;
-      const { toPixelY } = scale;
 
       ctx.save();
       ctx.globalAlpha = alpha;
 
       // Build list of label items sorted by Y (top of chart first = smallest pixel Y)
-      const items = series.map((s) => {
+      const items = series.map((s, si) => {
+        const { toPixelY: tpy } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
         const lastX = toPixelX(s.cum.length - 1, maxLen, chartW);
-        const lastY = toPixelY(s.cum[s.cum.length - 1]);
+        const lastY = tpy(s.cum[s.cum.length - 1]);
         return { s, lastX, lastY };
       });
       const sorted = items.slice().sort((a, b) => a.lastY - b.lastY);
@@ -637,7 +708,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
       ctx.restore();
     },
-    [series, scale, dims, chartW, maxLen]
+    [series, scale, fieldScale, leaderIdx, dims, chartW, maxLen]
   );
 
   const drawLines = useCallback(
@@ -646,17 +717,21 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       progress: number,          // 0→1 clip for mount animation
       hoveredIdx: number | null  // null = no hover; index = one series fully lit
     ) => {
-      const { toPixelY } = scale;
       const clipX = PAD_LEFT + chartW * progress;
-
-      ctx.save();
-      // Clip to animated reveal region
-      ctx.beginPath();
-      ctx.rect(0, PAD_TOP, clipX, chartH);
-      ctx.clip();
 
       for (let si = 0; si < series.length; si++) {
         const s = series[si];
+        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
+
+        // Per-series clip: restrict to this series' zone
+        const zoneTop    = leaderIdx >= 0 && si !== leaderIdx ? PAD_TOP + leaderZoneH : PAD_TOP;
+        const zoneHeight = leaderIdx >= 0 && si !== leaderIdx ? fieldZoneH            : leaderZoneH;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, zoneTop, clipX, zoneHeight);
+        ctx.clip();
+
         const pts: [number, number][] = s.cum.map((v, i) => [
           toPixelX(i, maxLen, chartW),
           toPixelY(v),
@@ -711,8 +786,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         grad.addColorStop(1, "transparent");
         ctx.beginPath();
         catmullRomPath(ctx, pts);
-        ctx.lineTo(pts[pts.length - 1][0], toPixelY(0));
-        ctx.lineTo(pts[0][0], toPixelY(0));
+        const zoneBottomY = leaderIdx >= 0
+          ? (si === leaderIdx ? separatorY : PAD_TOP + chartH)
+          : PAD_TOP + chartH;
+        ctx.lineTo(pts[pts.length - 1][0], zoneBottomY);
+        ctx.lineTo(pts[0][0], zoneBottomY);
         ctx.closePath();
         ctx.fillStyle = grad;
         ctx.fill();
@@ -760,17 +838,14 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.stroke();
         ctx.restore();
         ctx.restore(); // end screen blending wrapper
+        ctx.restore(); // end per-series clip
       }
-
-      ctx.restore(); // remove clip
     },
-    [series, scale, chartW, chartH, maxLen]
+    [series, scale, fieldScale, leaderIdx, leaderZoneH, fieldZoneH, separatorY, chartW, chartH, maxLen]
   );
 
   const drawHover = useCallback(
     (ctx: CanvasRenderingContext2D, pixelX: number) => {
-      const { toPixelY } = scale;
-
       // Scan line
       ctx.save();
       ctx.beginPath();
@@ -784,7 +859,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       // Crosshair dots + collect tooltip rows
       const rows: { color: string; name: string; ret: number }[] = [];
       ctx.save();
-      for (const s of series) {
+      for (let si = 0; si < series.length; si++) {
+        const s = series[si];
+        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
         const v = interpolateAtX(s.cum, pixelX, maxLen, chartW);
         if (v === null) continue;
         const py = toPixelY(v);
@@ -852,12 +929,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
       ctx.restore();
     },
-    [series, scale, dims, chartW, maxLen]
+    [series, scale, fieldScale, leaderIdx, dims, chartW, maxLen]
   );
 
   const drawPulse = useCallback(
     (ctx: CanvasRenderingContext2D) => {
-      const { toPixelY } = scale;
       const states = pulseStatesRef.current;
       const now    = pulseFrameTimeRef.current;
 
@@ -877,7 +953,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         const dataFrac = (1 - pulseT) * (s.cum.length - 1);
         const dataIdx  = Math.min(Math.round(dataFrac), s.cum.length - 1);
         const pxX      = toPixelX(dataFrac, maxLen, chartW);
-        const pxY      = toPixelY(s.cum[dataIdx]);
+        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
+        const pxY = toPixelY(s.cum[dataIdx]);
 
         // Outer bloom — large, soft
         ctx.save();
@@ -911,7 +988,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.restore();
       }
     },
-    [series, scale, chartW, maxLen],
+    [series, scale, fieldScale, leaderIdx, chartW, maxLen],
   );
 
   const handleMouseMove = useCallback(
