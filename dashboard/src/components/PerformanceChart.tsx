@@ -614,6 +614,15 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // Dimming: if something is hovered and this isn't it, reduce alpha
         const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
 
+        // ── Performance rank modulates glow ──────────────────────────────────
+        // si=0 = best performer (series is sorted by finalReturn desc).
+        // rankFactor: 1.0 for best, tapering to 0.50 for last.
+        const rankN         = series.length;
+        const rankFactor    = rankN <= 1 ? 1.0 : 1.0 - (si / (rankN - 1)) * 0.50;
+        const glowAlpha     = baseAlpha * rankFactor;
+        // Core line width tapers slightly by rank: 1.5px best → 1.0px worst
+        const coreLineWidth = rankN <= 1 ? 1.5 : 1.5 - (si / (rankN - 1)) * 0.5;
+
         // ── Temporal echo trails (drawn before area fill, furthest back) ──────
         for (const echo of ECHO_DEFS) {
           const echoProgress = progress - echo.offset;
@@ -628,7 +637,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
           ctx.save();
           ctx.globalCompositeOperation = "screen";
-          ctx.globalAlpha = baseAlpha * echo.opacity;
+          ctx.globalAlpha = glowAlpha * echo.opacity;
           ctx.filter = `blur(${echo.blur})`;
           ctx.strokeStyle = s.color;
           ctx.lineWidth = echo.width;
@@ -643,7 +652,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // ── Area fill (draw first, source-over, below the glowing lines) ─────
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = baseAlpha * 0.04;
+        ctx.globalAlpha = glowAlpha * 0.04;
         const grad = ctx.createLinearGradient(0, toPixelY(scale.yMax), 0, toPixelY(scale.yMin));
         grad.addColorStop(0, s.color);
         grad.addColorStop(1, "transparent");
@@ -663,7 +672,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // Pass 1: wide blurred halo
         ctx.save();
         ctx.filter = "blur(2px)";
-        ctx.globalAlpha = baseAlpha * 0.15;
+        ctx.globalAlpha = glowAlpha * 0.15;
         ctx.strokeStyle = s.color;
         ctx.lineWidth = 10;
         ctx.lineJoin = "round";
@@ -675,7 +684,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Pass 2: inner glow
         ctx.save();
-        ctx.globalAlpha = baseAlpha * 0.40;
+        ctx.globalAlpha = glowAlpha * 0.40;
         ctx.strokeStyle = s.color;
         ctx.lineWidth = 2;
         ctx.lineJoin = "round";
@@ -688,9 +697,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // Pass 3: crisp core
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = baseAlpha * 1.0;
+        ctx.globalAlpha = glowAlpha * 1.0;
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth   = coreLineWidth;
         ctx.lineJoin = "round";
         ctx.lineCap  = "round";
         ctx.beginPath();
