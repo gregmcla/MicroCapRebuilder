@@ -30,22 +30,27 @@ function fmtPct(v: number, decimals = 1) {
   return `${v >= 0 ? "+" : ""}${v.toFixed(decimals)}%`;
 }
 
-/** Box-shadow glow — lowered thresholds so they actually show. */
-function cardGlow(returnPct: number): string {
-  if (returnPct >= 15)  return "0 0 22px 3px rgba(52,211,153,0.30), 0 0 8px 1px rgba(52,211,153,0.20)";
-  if (returnPct >= 5)   return "0 0 14px 2px rgba(52,211,153,0.18), 0 0 4px 1px rgba(52,211,153,0.10)";
-  if (returnPct >= 1.5) return "0 0 8px 1px rgba(52,211,153,0.10)";
-  if (returnPct <= -8)  return "0 0 14px 2px rgba(248,113,113,0.20), 0 0 4px 1px rgba(248,113,113,0.12)";
-  if (returnPct <= -2)  return "0 0 8px 1px rgba(248,113,113,0.10)";
-  return "none";
-}
-
 // ---------------------------------------------------------------------------
-// Equity sparkline — standalone visible strip
+// Portfolio color palette
 // ---------------------------------------------------------------------------
 
-function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: number }) {
-  const W = 200; const H = 36;
+const PORTFOLIO_COLORS = [
+  "#5ce0d6", // teal
+  "#7c5cfc", // indigo
+  "#fbbf24", // amber
+  "#6b9bd2", // steel blue
+  "#b8a9c9", // lavender
+  "#7dba89", // sage
+  "#d4889e", // dusty rose
+  "#8b95a5", // slate
+];
+
+// ---------------------------------------------------------------------------
+// Equity sparkline — accepts optional height prop
+// ---------------------------------------------------------------------------
+
+function EquitySparkline({ values, returnPct, height = 36 }: { values: number[]; returnPct: number; height?: number }) {
+  const W = 200; const H = height;
   const points = useMemo(() => {
     if (values.length < 2) return "";
     const min = Math.min(...values);
@@ -56,7 +61,7 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
       const y = H - 1 - ((v - min) / range) * (H - 4);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(" ");
-  }, [values]);
+  }, [values, H]);
 
   if (!points) return null;
   const up = returnPct >= 0;
@@ -93,90 +98,36 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 }
 
 // ---------------------------------------------------------------------------
-// All Positions Panel — weighted map + performance chart toggle
+// HeroStrip — replaces AggregateBar
 // ---------------------------------------------------------------------------
 
-type ViewMode = "map" | "chart";
-
-// ── All Positions Panel (container with toggle) ───────────────────────────────
-
-function AllPositionsPanel({ positions, portfolios }: {
-  positions: CrossPortfolioMover[];
-  portfolios: PortfolioSummary[];
-}) {
-  const [view, setView] = useState<ViewMode>("map");
-
-  if (positions.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
-        <p style={{ fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
-          All Positions — {positions.length}
-        </p>
-        <div style={{ display: "flex", gap: "2px", background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "5px", padding: "2px" }}>
-          {(["map", "chart"] as ViewMode[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              style={{
-                fontSize: "9px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
-                padding: "3px 10px", borderRadius: "3px", border: "none", cursor: "pointer",
-                background: view === v ? "var(--accent)" : "transparent",
-                color: view === v ? "white" : "var(--text-0)",
-                transition: "background 0.15s, color 0.15s",
-              }}
-            >
-              {v === "map" ? "MAP" : "CHART"}
-            </button>
-          ))}
-        </div>
-      </div>
-      {view === "map"
-        ? <ConstellationMap positions={positions} portfolios={portfolios} />
-        : <PerformanceChart portfolios={portfolios} />
-      }
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Aggregate header bar
-// ---------------------------------------------------------------------------
-
-function AggregateBar({
-  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalPositions, portfolioCount, onNewPortfolio,
-  onUpdateAll, updatingAll, updateResult,
+function HeroStrip({
+  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl,
+  totalPositions, portfolioCount, onNewPortfolio, onUpdateAll, updatingAll, updateResult,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
-  totalUnrealizedPnl: number; totalAllTimePnl: number; totalPositions: number; portfolioCount: number;
-  onNewPortfolio: () => void;
-  onUpdateAll: () => void;
-  updatingAll: boolean;
-  updateResult: string | null;
+  totalUnrealizedPnl: number; totalAllTimePnl: number;
+  totalPositions: number; portfolioCount: number;
+  onNewPortfolio: () => void; onUpdateAll: () => void;
+  updatingAll: boolean; updateResult: string | null;
 }) {
-  // 0 decimals → then format with commas
   const rawCount = useCountUp(totalEquity, 1200, 0);
   const animatedEquity = Number(rawCount).toLocaleString();
 
-  function StatChip({ label, value, color }: { label: string; value: string; color?: string }) {
-    return (
-      <div className="shrink-0">
-        <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>
-          {label}
-        </p>
-        <p className="font-mono tabular-nums" style={{ fontSize: "15px", fontWeight: 600, color: color ?? "var(--text-3)" }}>
-          {value}
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div
-      className="flex items-center gap-6 px-6 shrink-0"
-      style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", minHeight: "68px" }}
+      style={{
+        padding: "0 24px",
+        minHeight: 72,
+        background: "var(--surface-1)",
+        borderBottom: "1px solid var(--border-0)",
+        display: "flex",
+        alignItems: "center",
+        gap: 20,
+        flexShrink: 0,
+      }}
     >
+      {/* Total Equity */}
       <div className="shrink-0">
         <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>
           Total Equity
@@ -185,14 +136,38 @@ function AggregateBar({
           ${animatedEquity}
         </p>
       </div>
-      <div className="h-8 w-px shrink-0" style={{ background: "var(--border-1)" }} />
-      <StatChip label="All-Time P&L" value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
-      <StatChip label="Unrealized P&L" value={fmt$(totalUnrealizedPnl)} color={pnlColor(totalUnrealizedPnl)} />
-      <StatChip label="Day P&L" value={fmt$(totalDayPnl)} color={pnlColor(totalDayPnl)} />
-      <StatChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-      <StatChip label="Positions" value={String(totalPositions)} />
-      <StatChip label="Portfolios" value={String(portfolioCount)} />
-      <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
+
+      {/* Separator */}
+      <div style={{ width: 1, height: 36, background: "var(--border-1)", flexShrink: 0 }} />
+
+      {/* TODAY */}
+      <div className="shrink-0">
+        <p style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "2px" }}>Today</p>
+        <p className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: pnlColor(totalDayPnl) }}>{fmt$(totalDayPnl)}</p>
+      </div>
+
+      {/* OPEN P&L */}
+      <div className="shrink-0">
+        <p style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "2px" }}>Open P&L</p>
+        <p className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: pnlColor(totalUnrealizedPnl) }}>{fmt$(totalUnrealizedPnl)}</p>
+      </div>
+
+      {/* ALL-TIME */}
+      <div className="shrink-0">
+        <p style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "2px" }}>All-Time</p>
+        <p className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: pnlColor(totalAllTimePnl) }}>{fmt$(totalAllTimePnl)}</p>
+      </div>
+
+      {/* Separator */}
+      <div style={{ width: 1, height: 36, background: "var(--border-1)", flexShrink: 0 }} />
+
+      {/* Right cluster */}
+      <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+        <span style={{ fontSize: "9.5px", color: "var(--text-0)", whiteSpace: "nowrap" }}>
+          ${(totalCash / 1000).toFixed(0)}k cash · {totalPositions} positions · {portfolioCount} portfolios
+        </span>
+
+        {/* Update All button */}
         <button
           onClick={onUpdateAll}
           disabled={updatingAll}
@@ -234,6 +209,8 @@ function AggregateBar({
           </svg>
           {updateResult ?? "Update All"}
         </button>
+
+        {/* New Portfolio button */}
         <button
           onClick={onNewPortfolio}
           style={{
@@ -258,11 +235,14 @@ function AggregateBar({
 }
 
 // ---------------------------------------------------------------------------
-// Portfolio card
+// PortfolioRow — single row in the portfolio table
 // ---------------------------------------------------------------------------
 
-function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; totalEquity: number }) {
+function PortfolioRow({ summary, totalEquity, colorIndex, colorMap }: {
+  summary: PortfolioSummary; totalEquity: number; colorIndex: number; colorMap: Map<string, string>;
+}) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
   const queryClient = useQueryClient();
 
@@ -275,28 +255,120 @@ function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; to
     },
   });
 
-  const regimeColor =
-    summary.regime === "BULL" ? "var(--green)"
-    : summary.regime === "BEAR" ? "var(--red)"
-    : "var(--amber)";
+  const dotColor = colorMap.get(summary.id) ?? PORTFOLIO_COLORS[colorIndex % 8];
+  const allocPct = totalEquity > 0 ? (summary.equity / totalEquity) * 100 : 0;
 
-  const sharePct = totalEquity > 0 ? (summary.equity / totalEquity) * 100 : 0;
-  const glow = !summary.error ? cardGlow(summary.total_return_pct ?? 0) : "none";
-  const hasSparkline = (summary.sparkline?.length ?? 0) >= 2;
+  // Error state
+  if (summary.error) {
+    return (
+      <div
+        style={{
+          height: 48, display: "flex", alignItems: "center", gap: 12,
+          padding: "0 12px", borderBottom: "1px solid var(--border-0)",
+          cursor: "pointer",
+          background: hovered ? "var(--surface-2)" : "transparent",
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={() => setPortfolio(summary.id)}
+      >
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-4)" }}>{summary.name}</span>
+        <span style={{ fontSize: "11px", color: "var(--red)", flex: 1 }}>{summary.error}</span>
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        position: "relative",
-        background: "var(--surface-1)",
-        border: "1px solid var(--border-0)",
-        borderRadius: "8px",
-        boxShadow: glow,
-        transition: "box-shadow 0.3s ease, border-color 0.3s ease",
-        overflow: "hidden",
+        height: 48, display: "flex", alignItems: "center", gap: 12,
+        padding: "0 12px", borderBottom: "1px solid var(--border-0)",
+        cursor: "pointer",
+        background: hovered ? "var(--surface-2)" : "transparent",
+        transition: "background 0.1s",
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => setPortfolio(summary.id)}
     >
-      {/* Delete */}
+      {/* 1. Color dot */}
+      <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+
+      {/* 2. Name + badges */}
+      <div style={{ minWidth: 160, flexShrink: 0 }}>
+        <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-4)" }}>{summary.name}</span>
+        <span style={{ fontSize: "8.5px", textTransform: "uppercase", color: "var(--text-0)", marginLeft: 6 }}>{summary.universe}</span>
+        <span style={{
+          fontSize: "8.5px", fontWeight: 600, textTransform: "uppercase", marginLeft: 4,
+          color: summary.paper_mode ? "var(--amber)" : "var(--green)",
+        }}>
+          {summary.paper_mode ? "Paper" : "Live"}
+        </span>
+      </div>
+
+      {/* 3. Equity + Return */}
+      <div style={{ width: 120, flexShrink: 0 }}>
+        <p className="font-mono font-bold tabular-nums" style={{ fontSize: "14px", color: "var(--text-3)", margin: 0 }}>
+          ${summary.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        </p>
+        <p className="font-mono tabular-nums" style={{ fontSize: "11px", color: pnlColor(summary.total_return_pct), fontWeight: 600, margin: 0 }}>
+          {fmtPct(summary.total_return_pct)}
+        </p>
+      </div>
+
+      {/* 4. Allocation bar */}
+      <div style={{ width: 80, flexShrink: 0 }}>
+        <div style={{ height: 3, borderRadius: 2, background: "var(--surface-3)", marginBottom: 3 }}>
+          <div style={{
+            height: "100%", borderRadius: 2,
+            width: `${Math.min(100, allocPct)}%`,
+            background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
+          }} />
+        </div>
+        <span style={{ fontSize: "9.5px", color: "var(--text-0)" }}>{allocPct.toFixed(1)}%</span>
+      </div>
+
+      {/* 5. Sparkline */}
+      {(summary.sparkline?.length ?? 0) >= 2
+        ? (
+          <div style={{ width: 80, height: 28, flexShrink: 0 }}>
+            <EquitySparkline values={summary.sparkline!} returnPct={summary.total_return_pct ?? 0} height={28} />
+          </div>
+        )
+        : <div style={{ width: 80, flexShrink: 0 }} />
+      }
+
+      {/* 6. Day P&L */}
+      <div style={{ width: 80, flexShrink: 0 }}>
+        <p style={{ fontSize: "9px", textTransform: "uppercase", color: "var(--text-0)", marginBottom: 1, margin: 0 }}>Day</p>
+        <p className="font-mono tabular-nums" style={{ fontSize: "12px", fontWeight: 600, color: pnlColor(summary.day_pnl), margin: 0 }}>
+          {fmt$(summary.day_pnl)}
+        </p>
+      </div>
+
+      {/* 7. Stats */}
+      <div style={{ flex: 1, display: "flex", gap: 6, fontSize: "10px", color: "var(--text-0)", alignItems: "center" }}>
+        <span>{summary.num_positions}p</span>
+        <span style={{ color: "var(--border-2)" }}>·</span>
+        <span>{summary.deployed_pct.toFixed(0)}% dep</span>
+        <span style={{ color: "var(--border-2)" }}>·</span>
+        <span>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+      </div>
+
+      {/* 8. Regime */}
+      {summary.regime && (
+        <span style={{
+          fontSize: "9px", textTransform: "uppercase", fontWeight: 600,
+          width: 65, flexShrink: 0,
+          color: summary.regime === "BULL" ? "var(--green)" : summary.regime === "BEAR" ? "var(--red)" : "var(--amber)",
+        }}>
+          {summary.regime}
+        </span>
+      )}
+      {!summary.regime && <div style={{ width: 65, flexShrink: 0 }} />}
+
+      {/* 9. Delete button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -304,150 +376,134 @@ function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; to
           else setConfirmDelete(true);
         }}
         style={{
-          position: "absolute", top: "8px", right: "8px", zIndex: 10,
-          fontSize: "10px", padding: "2px 6px", background: "none", border: "none",
+          fontSize: "11px", padding: "2px 6px", background: "none", border: "none",
           color: confirmDelete ? "var(--red)" : "transparent",
           fontWeight: confirmDelete ? 600 : 400, cursor: "pointer",
+          flexShrink: 0,
         }}
         onMouseEnter={(e) => { if (!confirmDelete) e.currentTarget.style.color = "rgba(248,113,113,0.50)"; }}
         onMouseLeave={(e) => { if (!confirmDelete) e.currentTarget.style.color = "transparent"; }}
       >
         {deleteMutation.isPending ? "..." : confirmDelete ? "Confirm?" : "×"}
       </button>
-
-      {/* Clickable body */}
-      <button
-        onClick={() => setPortfolio(summary.id)}
-        style={{ width: "100%", textAlign: "left", padding: "14px 14px 0", background: "none", border: "none", cursor: "pointer" }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", paddingRight: "16px" }}>
-          <h3 style={{ flex: 1, fontSize: "13px", fontWeight: 700, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {summary.name}
-          </h3>
-          <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-0)" }}>
-            {summary.universe}
-          </span>
-          <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: summary.paper_mode ? "var(--amber)" : "var(--accent)" }}>
-            {summary.paper_mode ? "Paper" : "Live"}
-          </span>
-        </div>
-
-        {summary.error ? (
-          <div style={{ fontSize: "12px", color: "var(--red)", paddingBottom: "14px" }}>{summary.error}</div>
-        ) : (
-          <>
-            {/* Equity + return */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "6px" }}>
-              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "20px", color: "var(--text-3)" }}>
-                ${summary.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "12px", color: pnlColor(summary.total_return_pct) }}>
-                {fmtPct(summary.total_return_pct)}
-              </span>
-            </div>
-
-            {/* P&L row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "11px" }}>
-              <span style={{ color: "var(--text-0)" }}>All-time</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.all_time_pnl ?? 0), fontWeight: 600 }}>{fmt$(summary.all_time_pnl ?? 0)}</span>
-              <span style={{ color: "var(--border-1)" }}>·</span>
-              <span style={{ color: "var(--text-0)" }}>Day</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.day_pnl) }}>{fmt$(summary.day_pnl)}</span>
-              <span style={{ color: "var(--border-1)" }}>·</span>
-              <span style={{ color: "var(--text-0)" }}>Open</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.unrealized_pnl) }}>{fmt$(summary.unrealized_pnl)}</span>
-            </div>
-          </>
-        )}
-      </button>
-
-      {/* Sparkline strip — full-width, below the P&L row */}
-      {!summary.error && hasSparkline && (
-        <div style={{
-          borderTop: "1px solid var(--border-0)",
-          borderBottom: "1px solid var(--border-0)",
-          background: "var(--surface-0)",
-          height: "40px",
-          overflow: "hidden",
-        }}>
-          <EquitySparkline values={summary.sparkline!} returnPct={summary.total_return_pct ?? 0} />
-        </div>
-      )}
-
-      {/* Bottom stats */}
-      {!summary.error && (
-        <div
-          style={{ padding: "8px 14px 10px", display: "flex", alignItems: "center", gap: "8px", fontSize: "10.5px", color: "var(--text-1)" }}
-          onClick={() => setPortfolio(summary.id)}
-        >
-          {/* Deployment bar */}
-          <div style={{ flex: 1, height: "3px", borderRadius: "2px", background: "var(--surface-3)", overflow: "hidden" }}>
-            <div style={{
-              height: "100%", borderRadius: "2px",
-              width: `${Math.min(100, sharePct)}%`,
-              background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
-            }} />
-          </div>
-          <span className="tabular-nums">{summary.num_positions}p</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}% dep</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          {summary.regime && (
-            <>
-              <span style={{ color: "var(--border-2)" }}>·</span>
-              <span style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime}</span>
-            </>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Movers list
+// PortfolioTable
 // ---------------------------------------------------------------------------
 
-function MoverRow({ mover }: { mover: CrossPortfolioMover }) {
+function PortfolioTable({ summaries, totalEquity, colorMap }: {
+  summaries: PortfolioSummary[]; totalEquity: number; colorMap: Map<string, string>;
+}) {
+  return (
+    <div>
+      {summaries.map((s, i) => (
+        <PortfolioRow
+          key={s.id}
+          summary={s}
+          totalEquity={totalEquity}
+          colorIndex={i}
+          colorMap={colorMap}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MoverRow
+// ---------------------------------------------------------------------------
+
+function MoverRow({ mover, dotColor }: { mover: CrossPortfolioMover; dotColor?: string }) {
   const color = pnlColor(mover.pnl_pct);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", padding: "5px 0", borderBottom: "1px solid var(--border-0)" }}>
-      <span style={{ fontWeight: 700, width: "38px", flexShrink: 0, color: "var(--text-4)", fontFamily: "var(--font-mono)" }}>
-        {mover.ticker}
-      </span>
-      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "11px", padding: "5px 0", borderBottom: "1px solid var(--border-0)" }}>
+      {dotColor && <div style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />}
+      <span style={{ fontWeight: 700, width: 38, flexShrink: 0, color: "var(--text-4)", fontFamily: "var(--font-mono)" }}>{mover.ticker}</span>
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)", fontSize: "10px" }}>
         {mover.portfolio_name}
       </span>
-      <span className="font-mono tabular-nums" style={{ color, fontWeight: 600 }}>
-        {fmtPct(mover.pnl_pct)}
-      </span>
-      <span className="font-mono tabular-nums" style={{ color, width: "56px", textAlign: "right" }}>
-        {fmt$(mover.pnl)}
-      </span>
+      <span className="font-mono tabular-nums" style={{ color, fontWeight: 600 }}>{fmtPct(mover.pnl_pct)}</span>
+      <span className="font-mono tabular-nums" style={{ color, width: 56, textAlign: "right" }}>{fmt$(mover.pnl)}</span>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Capital allocation bar
+// MoversPanel
 // ---------------------------------------------------------------------------
 
-function AllocationBar({ name, equity, totalEquity }: { name: string; equity: number; totalEquity: number }) {
-  const pct = totalEquity > 0 ? (equity / totalEquity) * 100 : 0;
+function MoversPanel({
+  topMovers, bottomMovers, portfolioColors,
+}: { topMovers: CrossPortfolioMover[]; bottomMovers: CrossPortfolioMover[]; portfolioColors: Map<string, string> }) {
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "10.5px" }}>
-        <span style={{ color: "var(--text-2)" }}>{name}</span>
-        <span className="font-mono tabular-nums" style={{ color: "var(--text-1)" }}>{pct.toFixed(1)}%</span>
+    <div style={{ padding: 0 }}>
+      {topMovers.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <p style={{ fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--green)", marginBottom: 6 }}>
+            Top Movers
+          </p>
+          {topMovers.map((m) => (
+            <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} dotColor={portfolioColors.get(m.portfolio_id)} />
+          ))}
+        </div>
+      )}
+      {bottomMovers.length > 0 && (
+        <div>
+          <p style={{ fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--red)", marginBottom: 6 }}>
+            Bottom Movers
+          </p>
+          {bottomMovers.map((m) => (
+            <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} dotColor={portfolioColors.get(m.portfolio_id)} />
+          ))}
+        </div>
+      )}
+      {topMovers.length === 0 && bottomMovers.length === 0 && (
+        <p style={{ fontSize: "11px", color: "var(--text-0)" }}>No open positions.</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// VisualizationStage
+// ---------------------------------------------------------------------------
+
+function VisualizationStage({ positions, portfolios }: { positions: CrossPortfolioMover[]; portfolios: PortfolioSummary[] }) {
+  const [view, setView] = useState<"map" | "chart">("map");
+
+  if (positions.length === 0) return null;
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      {/* Toggle header */}
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 2, background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: 5, padding: 2 }}>
+          {(["map", "chart"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                fontSize: "9px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
+                padding: "3px 10px", borderRadius: 3, border: "none", cursor: "pointer",
+                background: view === v ? "var(--accent)" : "transparent",
+                color: view === v ? "white" : "var(--text-0)",
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              {v === "map" ? "MAP" : "CHART"}
+            </button>
+          ))}
+        </div>
       </div>
-      <div style={{ height: "4px", borderRadius: "2px", background: "var(--surface-3)", overflow: "hidden" }}>
-        <div style={{
-          height: "100%", borderRadius: "2px",
-          width: `${Math.min(100, pct)}%`,
-          background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
-        }} />
+      {/* Visualization */}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {view === "map"
+          ? <ConstellationMap positions={positions} portfolios={portfolios} />
+          : <PerformanceChart portfolios={portfolios} />
+        }
       </div>
     </div>
   );
@@ -457,11 +513,6 @@ function AllocationBar({ name, equity, totalEquity }: { name: string; equity: nu
 // Main page
 // ---------------------------------------------------------------------------
 
-const sectionLabel: React.CSSProperties = {
-  fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase",
-  letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "8px",
-};
-
 export default function OverviewPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -469,8 +520,8 @@ export default function OverviewPage() {
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
-
   const doneRef = useRef(0);
+
   const handleUpdateAll = async () => {
     const ids = (portfolioList?.portfolios ?? []).filter((p) => p.active).map((p) => p.id);
     if (ids.length === 0) return;
@@ -509,14 +560,22 @@ export default function OverviewPage() {
   const names = new Map((portfolioList?.portfolios ?? []).map((p) => [p.id, p.name]));
   const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
   const validSummaries = enriched.filter((s) => !s.error);
+  const sorted = [...enriched].sort((a, b) => (b.equity ?? 0) - (a.equity ?? 0));
   const totalEquity = overview?.total_equity ?? 0;
   const topMovers = overview?.top_movers ?? [];
   const bottomMovers = overview?.bottom_movers ?? [];
   const allPositions = overview?.all_positions ?? [];
 
+  // Build portfolio color map (by portfolio id)
+  const portfolioColorMap = new Map<string, string>();
+  sorted.forEach((s, i) => portfolioColorMap.set(s.id, PORTFOLIO_COLORS[i % 8]));
+
+  // Suppress unused variable warning — validSummaries used by pattern matching above
+  void validSummaries;
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--surface-0)" }}>
-      <AggregateBar
+      <HeroStrip
         totalEquity={totalEquity}
         totalCash={overview?.total_cash ?? 0}
         totalDayPnl={overview?.total_day_pnl ?? 0}
@@ -530,63 +589,31 @@ export default function OverviewPage() {
         updateResult={updateResult}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left: portfolio grid + heatmap */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-          {enriched.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "64px 0", color: "var(--text-1)" }}>
-              <p style={{ fontSize: "18px", marginBottom: "8px" }}>No portfolios yet</p>
-              <p style={{ fontSize: "13px" }}>Create your first portfolio to get started.</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-                {enriched.map((s, i) => (
-                  <div key={s.id} className={`anim d${Math.min(i + 1, 5)}`}>
-                    <PortfolioCard summary={s} totalEquity={totalEquity} />
-                  </div>
-                ))}
-              </div>
-
-              <AllPositionsPanel positions={allPositions} portfolios={enriched} />
-            </>
-          )}
+      {enriched.length === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center", color: "var(--text-1)" }}>
+            <p style={{ fontSize: "18px", marginBottom: 8 }}>No portfolios yet</p>
+            <p style={{ fontSize: "13px" }}>Create your first portfolio to get started.</p>
+          </div>
         </div>
-
-        {/* Right panel */}
-        <aside style={{ width: "260px", flexShrink: 0, overflowY: "auto", borderLeft: "1px solid var(--border-0)", padding: "16px", background: "var(--surface-1)" }}>
-          {validSummaries.length > 0 && (
-            <div style={{ marginBottom: "20px" }}>
-              <p style={sectionLabel}>Capital Allocation</p>
-              {validSummaries.map((s) => (
-                <AllocationBar key={s.id} name={s.name} equity={s.equity} totalEquity={totalEquity} />
-              ))}
+      ) : (
+        <>
+          {/* Middle band: portfolio table + movers */}
+          <div style={{ display: "flex", flexShrink: 0, borderBottom: "1px solid var(--border-0)" }}>
+            <div style={{ flex: 1, overflowX: "auto", padding: "8px 20px" }}>
+              <PortfolioTable summaries={sorted} totalEquity={totalEquity} colorMap={portfolioColorMap} />
             </div>
-          )}
+            <aside style={{ width: 220, flexShrink: 0, borderLeft: "1px solid var(--border-0)", padding: "12px 16px", overflowY: "auto" }}>
+              <MoversPanel topMovers={topMovers} bottomMovers={bottomMovers} portfolioColors={portfolioColorMap} />
+            </aside>
+          </div>
 
-          {topMovers.length > 0 && (
-            <div style={{ marginBottom: "20px" }}>
-              <p style={{ ...sectionLabel, color: "var(--green)" }}>Top Movers</p>
-              {topMovers.map((m) => (
-                <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} />
-              ))}
-            </div>
-          )}
-
-          {bottomMovers.length > 0 && (
-            <div>
-              <p style={{ ...sectionLabel, color: "var(--red)" }}>Bottom Movers</p>
-              {bottomMovers.map((m) => (
-                <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} />
-              ))}
-            </div>
-          )}
-
-          {topMovers.length === 0 && bottomMovers.length === 0 && validSummaries.length > 0 && (
-            <p style={{ fontSize: "11px", color: "var(--text-0)" }}>No open positions to show movers for.</p>
-          )}
-        </aside>
-      </div>
+          {/* Bottom band: visualization stage */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "8px 20px 12px" }}>
+            <VisualizationStage positions={allPositions} portfolios={enriched} />
+          </div>
+        </>
+      )}
 
       {showCreate && <CreatePortfolioModal onClose={() => setShowCreate(false)} />}
     </div>
