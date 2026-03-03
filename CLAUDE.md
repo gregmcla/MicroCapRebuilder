@@ -145,6 +145,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/portfolios/trading-styles` | Available trading style presets |
 | GET | `/api/portfolios/sectors` | Available sectors |
 | GET | `/api/portfolios/overview` | Cross-portfolio overview |
+| GET | `/api/{portfolio_id}/position/{ticker}/info` | Company name + description (yfinance, 24hr in-memory cache) |
 | GET | `/api/{portfolio_id}/state` | Portfolio state (cached prices) |
 | GET | `/api/{portfolio_id}/state/refresh` | Portfolio state (live prices) |
 | POST | `/api/{portfolio_id}/analyze` | Run unified analysis (dry run) |
@@ -289,6 +290,9 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 - **Scan timeout:** cold cache scan can take 5-6 min and crash API from memory pressure. Keep `rotating_3day` on extended tier. 4hr cache TTL reduces cold scan frequency.
 - API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8000`
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
+- **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.
+- **Stale buy prices**: `execute_approved_actions()` now fetches live prices via `fetch_prices_batch()` at execute time before recording transactions. Corrects cases where yfinance cache had prev-close prices. Stop/target % distances are preserved and rescaled.
+- **Company info endpoint**: `GET /api/{portfolio_id}/position/{ticker}/info` — uses `yf.Ticker(t).info` with 5s thread timeout, 24hr in-memory cache. PositionDetailChart shows company name as subtitle; PositionDetailInfo shows name + truncated description.
 
 ---
 

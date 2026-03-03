@@ -212,14 +212,21 @@ def get_overview():
             if len(positions) > 0:
                 for _, pos in positions.iterrows():
                     try:
+                        def _f(v, default=0.0):
+                            import math
+                            try:
+                                fv = float(v)
+                                return default if math.isnan(fv) or math.isinf(fv) else fv
+                            except Exception:
+                                return default
                         all_positions.append({
                             "portfolio_id": p.id,
                             "portfolio_name": p.name,
                             "ticker": str(pos["ticker"]),
-                            "pnl": float(pos.get("unrealized_pnl", 0) or 0),
-                            "pnl_pct": float(pos.get("unrealized_pnl_pct", 0) or 0),
-                            "market_value": float(pos.get("market_value", 0) or 0),
-                            "day_change_pct": float(pos.get("day_change_pct", 0) or 0),
+                            "pnl": _f(pos.get("unrealized_pnl")),
+                            "pnl_pct": _f(pos.get("unrealized_pnl_pct")),
+                            "market_value": _f(pos.get("market_value")),
+                            "day_change_pct": _f(pos.get("day_change_pct")),
                         })
                     except Exception:
                         pass
