@@ -1,6 +1,6 @@
 /** Solar-system portfolio map — portfolios as suns, positions as orbiting planets. */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CrossPortfolioMover, PortfolioSummary } from "../lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -9,6 +9,7 @@ const BASE_SPEED      = 0.014;   // rad/s at reference orbit radius 60px
 const RIPPLE_INTERVAL = 5.0;     // seconds between day-change ripples
 const RIPPLE_DURATION = 0.85;    // seconds per ripple
 const CANVAS_H        = 360;
+const PLANET_R_SCALE  = 700;
 
 // Orbit ring radii (px from sun centre) + max planets per ring
 const ORBIT_RINGS = [
@@ -19,9 +20,9 @@ const ORBIT_RINGS = [
 ];
 
 // ── Colour helpers ─────────────────────────────────────────────────────────────
-function lerpHex(a: string, b: string, t: number): string {
+function lerpHex(hexA: string, hexB: string, t: number): string {
   t = Math.max(0, Math.min(1, t));
-  const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+  const ah = parseInt(hexA.slice(1), 16), bh = parseInt(hexB.slice(1), 16);
   const r  = Math.round(((ah >> 16) & 0xff) * (1 - t) + ((bh >> 16) & 0xff) * t);
   const g  = Math.round(((ah >>  8) & 0xff) * (1 - t) + ((bh >>  8) & 0xff) * t);
   const bl = Math.round(( ah        & 0xff) * (1 - t) + ( bh        & 0xff) * t);
@@ -44,10 +45,11 @@ function sunColor(ret: number): string {
 }
 
 function planetR(mv: number): number {
-  return Math.max(5, Math.min(13, Math.sqrt(Math.max(0, mv) / 700)));
+  return Math.max(5, Math.min(13, Math.sqrt(Math.max(0, mv) / PLANET_R_SCALE)));
 }
 
 function lighten(hex: string, amt: number): string {
+  if (hex.length !== 7) return hex;
   const h = parseInt(hex.slice(1), 16);
   const clamp = (v: number) => Math.min(255, Math.round(v + 255 * amt));
   const r = clamp((h >> 16) & 0xff), g = clamp((h >> 8) & 0xff), b = clamp(h & 0xff);
@@ -55,6 +57,7 @@ function lighten(hex: string, amt: number): string {
 }
 
 function darken(hex: string, amt: number): string {
+  if (hex.length !== 7) return hex;
   const h = parseInt(hex.slice(1), 16);
   const clamp = (v: number) => Math.max(0, Math.round(v - 255 * amt));
   const r = clamp((h >> 16) & 0xff), g = clamp((h >> 8) & 0xff), b = clamp(h & 0xff);
@@ -103,12 +106,20 @@ interface PlanetData {
   radius:       number;
   orbitR:       number;
   speed:        number;
+  /** Initial angle — immutable after buildScene; animation state lives in animRef */
   angle:        number;
-  rippleT:      number;
   pnlPct:       number;
   dayChangePct: number;
   marketValue:  number;
   pnl:          number;
+}
+
+/** Mutable per-planet animation state — kept separate from immutable PlanetData. */
+interface AnimState {
+  angle:   number;
+  /** Ripple phase clock (0..RIPPLE_INTERVAL).
+   *  Ripple fires for the first RIPPLE_DURATION seconds of each RIPPLE_INTERVAL cycle. */
+  rippleT: number;
 }
 
 interface HoverCard {
@@ -156,11 +167,10 @@ function buildScene(
     const portHash = strHash(pid);
 
     for (const pos of sorted) {
-      let ringIdx = 0;
-      for (let ri = 0; ri < ORBIT_RINGS.length; ri++) {
-        if (ringCounts[ri] < ORBIT_RINGS[ri].cap) { ringIdx = ri; break; }
-        ringIdx = ORBIT_RINGS.length - 1;
-      }
+      // findIndex returns -1 when all rings are full — bail out of the planet loop
+      const ringIdx = ORBIT_RINGS.findIndex((ring, ri) => ringCounts[ri] < ring.cap);
+      if (ringIdx === -1) break; // all rings full
+
       const ring = ORBIT_RINGS[ringIdx];
       const posInRing = ringCounts[ringIdx];
       ringCounts[ringIdx]++;
@@ -181,7 +191,6 @@ function buildScene(
         orbitR:       ring.r,
         speed,
         angle,
-        rippleT:      (strHash(pos.ticker) % 500) / 500 * RIPPLE_INTERVAL,
         pnlPct:       pos.pnl_pct ?? 0,
         dayChangePct: pos.day_change_pct ?? 0,
         marketValue:  pos.market_value ?? 0,
@@ -285,10 +294,16 @@ function drawPlanetLabel(ctx: CanvasRenderingContext2D, x: number, y: number, p:
   ctx.restore();
 }
 
-function drawRipple(ctx: CanvasRenderingContext2D, x: number, y: number, p: PlanetData) {
+function drawRipple(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  p: PlanetData,
+  rippleT: number,
+) {
   if (Math.abs(p.dayChangePct) < 0.5) return;
-  const t = p.rippleT / RIPPLE_DURATION;
-  if (t < 0 || t > 1) return;
+  // rippleT is in [0, RIPPLE_INTERVAL); only draw during the first RIPPLE_DURATION seconds
+  const t = rippleT / RIPPLE_DURATION;
+  if (t > 1) return;
   const ringR = p.radius + t * p.radius * 2.4;
   ctx.save();
   ctx.globalAlpha = (1 - t) * 0.55;
@@ -306,53 +321,81 @@ export interface ConstellationMapProps {
 }
 
 export default function ConstellationMap({ positions, portfolios }: ConstellationMapProps) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const sunsRef     = useRef<SunData[]>([]);
-  const planetsRef  = useRef<PlanetData[]>([]);
-  const hoveredRef  = useRef<string | null>(null);
-  const hitRef      = useRef<Array<{key: string; x: number; y: number; r: number}>>([]);
-  const rafRef      = useRef<number>(0);
-  const dimsRef     = useRef({ w: 0, h: 0 });
+  const canvasRef      = useRef<HTMLCanvasElement>(null);
+  const sunsRef        = useRef<SunData[]>([]);
+  const planetsRef     = useRef<PlanetData[]>([]);
+  const animRef        = useRef<Map<string, AnimState>>(new Map());
+  const hoveredRef     = useRef<string | null>(null);
+  const hitRef         = useRef<Array<{key: string; x: number; y: number; r: number}>>([]);
+  const rafRef         = useRef<number>(0);
+  const dimsRef        = useRef({ w: 0, h: 0 });
+  const canvasWidthRef = useRef<number>(800);
+
+  // Refs that let rebuild() always read the latest props without stale closures
+  const positionsRef  = useRef(positions);
+  const portfoliosRef = useRef(portfolios);
+
   const [card, setCard] = useState<HoverCard | null>(null);
 
-  function rebuild(w: number, h: number) {
-    const scene = buildScene(positions, portfolios, w, h);
-    sunsRef.current  = scene.suns;
+  function rebuild() {
+    const { w, h } = dimsRef.current;
+    if (w === 0) return;
+    const scene = buildScene(positionsRef.current, portfoliosRef.current, w, h);
+    sunsRef.current    = scene.suns;
     planetsRef.current = scene.planets;
+
+    // Initialise animation state for any new planet keys; preserve existing state
+    const existing = animRef.current;
+    const next = new Map<string, AnimState>();
+    for (const p of scene.planets) {
+      if (existing.has(p.key)) {
+        next.set(p.key, existing.get(p.key)!);
+      } else {
+        // Spread initial ripple phase so planets don't all pulse simultaneously
+        const initialRipple = (strHash(p.ticker) % 500) / 500 * RIPPLE_INTERVAL;
+        next.set(p.key, { angle: p.angle, rippleT: initialRipple });
+      }
+    }
+    animRef.current = next;
   }
 
+  // Keep prop refs current and rebuild whenever data changes
+  useEffect(() => {
+    positionsRef.current  = positions;
+    portfoliosRef.current = portfolios;
+    rebuild();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, portfolios]);
+
+  // ResizeObserver — runs once, no data dependency, so ResizeObserver never re-subscribes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ro = new ResizeObserver(entries => {
       const cssW = entries[0].contentRect.width;
+      canvasWidthRef.current = cssW;
       const dpr  = window.devicePixelRatio || 1;
       canvas.width  = Math.floor(cssW * dpr);
       canvas.height = Math.floor(CANVAS_H * dpr);
-      const ctx = canvas.getContext("2d")!;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       dimsRef.current = { w: cssW, h: CANVAS_H };
-      rebuild(cssW, CANVAS_H);
+      rebuild();
     });
     ro.observe(canvas);
     return () => ro.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, portfolios]);
+  }, []);
 
+  // Animation loop — stable, never re-created
   useEffect(() => {
-    const { w, h } = dimsRef.current;
-    if (w > 0) rebuild(w, h);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions, portfolios]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
     let last = performance.now();
 
     function frame(now: number) {
       try {
-        const ctx = canvas!.getContext("2d");
+        const canvas = canvasRef.current;
+        if (!canvas || !canvas.isConnected) { rafRef.current = requestAnimationFrame(frame); return; }
+        const ctx = canvas.getContext("2d");
         if (!ctx) { rafRef.current = requestAnimationFrame(frame); return; }
 
         const dt = Math.min((now - last) / 1000, 0.05);
@@ -363,12 +406,16 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
 
         const suns    = sunsRef.current;
         const planets = planetsRef.current;
+        const anim    = animRef.current;
         const hovered = hoveredRef.current;
 
+        // Advance animation state — never mutate PlanetData
         for (const p of planets) {
-          if (p.key !== hovered) p.angle += p.speed * dt;
-          p.rippleT += dt;
-          if (p.rippleT > RIPPLE_INTERVAL) p.rippleT -= RIPPLE_INTERVAL;
+          const st = anim.get(p.key);
+          if (!st) continue;
+          if (p.key !== hovered) st.angle += p.speed * dt;
+          st.rippleT += dt;
+          if (st.rippleT > RIPPLE_INTERVAL) st.rippleT -= RIPPLE_INTERVAL;
         }
 
         ctx.clearRect(0, 0, w, h);
@@ -395,11 +442,14 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
         for (const p of sorted) {
           const sun = sunMap.get(p.portfolioId);
           if (!sun) continue;
-          const px = sun.x + Math.cos(p.angle) * p.orbitR;
-          const py = sun.y + Math.sin(p.angle) * p.orbitR;
+          const st = anim.get(p.key);
+          const angle = st?.angle ?? p.angle;
+          const rippleT = st?.rippleT ?? 0;
+          const px = sun.x + Math.cos(angle) * p.orbitR;
+          const py = sun.y + Math.sin(angle) * p.orbitR;
           hits.push({ key: p.key, x: px, y: py, r: p.radius });
           const alpha = hovered && p.key !== hovered ? 0.22 : 1.0;
-          drawRipple(ctx, px, py, p);
+          drawRipple(ctx, px, py, p, rippleT);
           drawPlanet(ctx, px, py, p, alpha);
           drawPlanetLabel(ctx, px, py, p, alpha);
         }
@@ -439,6 +489,11 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
     }
   }
 
+  const handleMouseLeave = useCallback(() => {
+    hoveredRef.current = null;
+    setCard(null);
+  }, []);
+
   return (
     <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", background: "#05060f", border: "1px solid var(--border-0)" }}>
       <div style={{
@@ -449,17 +504,17 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
         ref={canvasRef}
         style={{ display: "block", width: "100%", height: `${CANVAS_H}px` }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => { hoveredRef.current = null; setCard(null); }}
+        onMouseLeave={handleMouseLeave}
       />
-      {card && <PlanetCard card={card} canvasRef={canvasRef} />}
+      {card && <PlanetCard card={card} canvasWidthRef={canvasWidthRef} />}
     </div>
   );
 }
 
 // ── Detail card ────────────────────────────────────────────────────────────────
-function PlanetCard({ card, canvasRef }: { card: HoverCard; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
+function PlanetCard({ card, canvasWidthRef }: { card: HoverCard; canvasWidthRef: React.RefObject<number> }) {
   const CARD_W = 168, CARD_H = 118;
-  const cw = canvasRef.current?.getBoundingClientRect().width ?? 800;
+  const cw = canvasWidthRef.current;
   const left = Math.max(8, Math.min(card.cssX - CARD_W / 2, cw - CARD_W - 8));
   const flip = card.cssY > CANVAS_H / 2;
   const top  = Math.max(8, flip ? card.cssY - CARD_H - 20 : card.cssY + 20);
