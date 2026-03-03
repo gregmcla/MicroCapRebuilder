@@ -468,6 +468,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
       // Crosshair dots + collect tooltip rows
       const rows: { color: string; name: string; ret: number }[] = [];
+      ctx.save();
       for (const s of series) {
         const v = interpolateAtX(s.cum, pixelX, maxLen, chartW);
         if (v === null) continue;
@@ -478,6 +479,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.fill();
         rows.push({ color: s.color, name: s.id.toUpperCase(), ret: v });
       }
+      ctx.restore();
 
       if (rows.length === 0) return;
 
@@ -487,9 +489,10 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       const CARD_W  = 130;
       const cardH   = rows.length * LINE_H + PAD_H * 2;
 
-      // Position: left of cursor if near right edge
+      // Position: left of cursor if near right edge; clamp to chart left boundary
       let tx = pixelX + 12;
       if (tx + CARD_W > dims.width - PAD_RIGHT) tx = pixelX - CARD_W - 12;
+      tx = Math.max(PAD_LEFT, tx);
       const ty = PAD_TOP + 8;
 
       // Card background
@@ -581,7 +584,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     drawGrid(ctx);
     drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
     drawEndpoints(ctx, endpointsAlpha);
-    if (hoverX !== null) drawHover(ctx, hoverX);
+    if (hoverX !== null && animProgress >= 1) drawHover(ctx, hoverX);
   }, [drawGrid, drawLines, drawEndpoints, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx]);
 
   if (series.length === 0) {
