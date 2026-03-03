@@ -113,6 +113,23 @@ function computeRunningMax(cum: number[]): number[] {
   return result;
 }
 
+/** For each day index, returns the series index (si) with the highest cum return, or -1 if no series has data that far. */
+function computeDailyLeaders(seriesArr: SeriesData[], numDays: number): Int8Array {
+  const leaders = new Int8Array(numDays).fill(-1);
+  for (let d = 0; d < numDays; d++) {
+    let bestSi  = -1;
+    let bestVal = -Infinity;
+    for (let si = 0; si < seriesArr.length; si++) {
+      if (d < seriesArr[si].cum.length && seriesArr[si].cum[d] > bestVal) {
+        bestVal = seriesArr[si].cum[d];
+        bestSi  = si;
+      }
+    }
+    leaders[d] = bestSi;
+  }
+  return leaders;
+}
+
 // ── X-axis time label helper ──────────────────────────────────────────────────
 
 /** Converts a day count into a compact human label: 365+ → "1y", 60+ → "4mo", 14+ → "3w", else "5d" */
@@ -535,6 +552,42 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [series, scale, chartW, maxLen],
   );
 
+  const drawRankStrip = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (series.length < 2) return; // strip not meaningful with one series
+      const leaders = computeDailyLeaders(series, maxLen);
+      const stripY  = dims.height - PAD_BOTTOM + 3; // just inside bottom padding zone
+      const stripH  = 7;
+      const colW    = chartW / maxLen;
+
+      // Background track — faint defined boundary
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.03)";
+      ctx.fillRect(PAD_LEFT, stripY, chartW, stripH);
+
+      // Color columns: one per day
+      for (let d = 0; d < maxLen; d++) {
+        const si = leaders[d];
+        if (si < 0) continue;
+        ctx.globalAlpha = 0.60;
+        ctx.fillStyle   = series[si].color;
+        // Math.max(1, colW) prevents sub-pixel gaps at high data density
+        ctx.fillRect(PAD_LEFT + (d / maxLen) * chartW, stripY, Math.max(1, colW), stripH);
+      }
+      ctx.restore();
+
+      // "RANK" label in left gutter
+      ctx.save();
+      ctx.font          = "600 6px/1 monospace";
+      ctx.fillStyle     = "rgba(255,255,255,0.15)";
+      ctx.textAlign     = "right";
+      ctx.textBaseline  = "middle";
+      ctx.fillText("RANK", PAD_LEFT - 6, stripY + stripH / 2);
+      ctx.restore();
+    },
+    [series, dims, chartW, maxLen],
+  );
+
   const drawEndpoints = useCallback(
     (ctx: CanvasRenderingContext2D, alpha: number) => {
       if (alpha <= 0) return;
@@ -905,10 +958,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     drawGrid(ctx);
     drawScars(ctx);
     drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
+    drawRankStrip(ctx);
     drawEndpoints(ctx, endpointsAlpha);
     drawPulse(ctx);
     if (hoverX !== null && animProgress >= 1) drawHover(ctx, hoverX);
-  }, [drawGrid, drawScars, drawLines, drawEndpoints, drawPulse, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx, pulseTick]);
+  }, [drawGrid, drawScars, drawLines, drawRankStrip, drawEndpoints, drawPulse, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx, pulseTick]);
 
   if (series.length === 0) {
     return (
