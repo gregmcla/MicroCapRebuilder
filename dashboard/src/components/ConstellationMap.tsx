@@ -530,15 +530,24 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
 // ─── Detail Card ─────────────────────────────────────────────────────────────
 function DetailCard({ card }: { card: CardData }) {
   const CARD_W = 160;
-  const left = card.x - CARD_W / 2;
-  const top  = card.y > 200 ? card.y - 118 : card.y + 18;
+  const CARD_H = 118; // approximate rendered height
+  const CANVAS_H = 360;
+
+  // Horizontal: center on node, clamp left+right
+  const left = Math.max(8, Math.min(card.x - CARD_W / 2, window.innerWidth - CARD_W - 8));
+
+  // Vertical: flip above node when below midpoint, clamp bottom edge
+  const topBelow  = card.y + 18;
+  const topAbove  = card.y - CARD_H - 18;
+  const useAbove  = card.y > CANVAS_H / 2;
+  const top = Math.max(8, Math.min(useAbove ? topAbove : topBelow, CANVAS_H - CARD_H - 8));
   const pnlColor = card.pnlPct >= 0 ? "#4ADE80" : "#F87171";
   const dayColor = card.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
   const sign = (v: number) => v >= 0 ? "+" : "";
   return (
     <div style={{
       position:       "absolute",
-      left:           Math.max(8, left),
+      left,
       top,
       width:          CARD_W,
       background:     "rgba(8,10,20,0.90)",
