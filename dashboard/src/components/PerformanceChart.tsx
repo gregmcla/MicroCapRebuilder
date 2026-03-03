@@ -161,6 +161,15 @@ function interpolateAtX(
   return cum[lo] * (1 - t) + cum[hi] * t;
 }
 
+// ── ECG pulse types ───────────────────────────────────────────────────────────
+
+interface PulseState {
+  active:    boolean;
+  startTime: number; // performance.now() when pulse started
+  nextFire:  number; // performance.now() when next pulse fires
+  interval:  number; // ms between pulses
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface SeriesData {
@@ -212,6 +221,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [series]
   );
 
+  const seriesKey = series.map((s) => `${s.id}:${s.finalReturn.toFixed(1)}`).join("|");
+
   const [animProgress,   setAnimProgress]   = useState(0);
   const [endpointsAlpha, setEndpointsAlpha] = useState(0);
   const rafRef       = useRef<number | null>(null);
@@ -222,14 +233,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   // ── ECG pulse state ───────────────────────────────────────────────────────
-  interface PulseState {
-    active:    boolean;
-    startTime: number; // performance.now() when pulse started
-    nextFire:  number; // performance.now() when next pulse fires
-    interval:  number; // ms between pulses
-  }
   const pulseStatesRef = useRef<PulseState[]>([]);
-  const pulseRafRef    = useRef<number | null>(null);
+  const pulseRafRef      = useRef<number | null>(null);
+  const pulseFrameTimeRef = useRef<number>(0);
   const [pulseTick, setPulseTick] = useState(0); // incremented to trigger redraws
 
   useEffect(() => {
@@ -309,6 +315,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         }
       }
 
+      pulseFrameTimeRef.current = now;
       if (needRedraw) setPulseTick((n) => n + 1);
       pulseRafRef.current = requestAnimationFrame(tick);
     }
@@ -317,7 +324,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     return () => {
       if (pulseRafRef.current !== null) cancelAnimationFrame(pulseRafRef.current);
     };
-  }, [series.length]); // restart when portfolio count changes
+  }, [seriesKey]); // restart when portfolio identities or returns change
 
   // ResizeObserver
   useEffect(() => {
@@ -696,13 +703,14 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     (ctx: CanvasRenderingContext2D) => {
       const { toPixelY } = scale;
       const states = pulseStatesRef.current;
-      const now    = performance.now();
+      const now    = pulseFrameTimeRef.current;
 
       for (let si = 0; si < series.length; si++) {
         const ps = states[si];
         if (!ps?.active) continue;
 
         const s       = series[si];
+        if (s.cum.length < 2) continue;
         const elapsed = now - ps.startTime;
         const pulseT  = Math.min(elapsed / PULSE_DURATION_MS, 1);
 
@@ -723,6 +731,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.arc(pxX, pxY, 10, 0, Math.PI * 2);
         ctx.fillStyle = s.color;
         ctx.fill();
+        ctx.filter = "none";
         ctx.restore();
 
         // Mid glow — tighter, portfolio color
@@ -733,6 +742,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.arc(pxX, pxY, 5, 0, Math.PI * 2);
         ctx.fillStyle = s.color;
         ctx.fill();
+        ctx.filter = "none";
         ctx.restore();
 
         // White-hot core — no blur, pure white, small
