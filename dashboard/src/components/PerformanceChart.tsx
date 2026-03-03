@@ -113,6 +113,16 @@ function computeRunningMax(cum: number[]): number[] {
   return result;
 }
 
+// ── X-axis time label helper ──────────────────────────────────────────────────
+
+/** Converts a day count into a compact human label: 365+ → "1y", 60+ → "4mo", 14+ → "3w", else "5d" */
+function daysAgo(n: number): string {
+  if (n >= 365) return Math.round(n / 365) + "y";
+  if (n >= 60)  return Math.round(n / 30)  + "mo";
+  if (n >= 14)  return Math.round(n / 7)   + "w";
+  return n + "d";
+}
+
 // ── X scale ──────────────────────────────────────────────────────────────────
 
 function toPixelX(dayIdx: number, maxLen: number, chartW: number): number {
@@ -358,6 +368,25 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.fillStyle = "#010107";
       ctx.fillRect(0, 0, dims.width, dims.height);
 
+      // ── Chromatic background zones (only when zero line is in range) ──────
+      if (scale.yMin < 0 && scale.yMax > 0) {
+        const zeroY = scale.toPixelY(0);
+
+        // Green zone above zero
+        const greenGrad = ctx.createLinearGradient(0, PAD_TOP, 0, zeroY);
+        greenGrad.addColorStop(0, "rgba(80,200,120,0.04)");
+        greenGrad.addColorStop(1, "rgba(80,200,120,0)");
+        ctx.fillStyle = greenGrad;
+        ctx.fillRect(PAD_LEFT, PAD_TOP, chartW, zeroY - PAD_TOP);
+
+        // Red zone below zero
+        const redGrad = ctx.createLinearGradient(0, zeroY, 0, PAD_TOP + chartH);
+        redGrad.addColorStop(0, "rgba(200,60,60,0)");
+        redGrad.addColorStop(1, "rgba(200,60,60,0.06)");
+        ctx.fillStyle = redGrad;
+        ctx.fillRect(PAD_LEFT, zeroY, chartW, PAD_TOP + chartH - zeroY);
+      }
+
       ctx.save();
       ctx.font = "600 8px/1 monospace";
       ctx.textAlign = "right";
@@ -387,8 +416,71 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       }
 
       ctx.restore();
+
+      // ── X-axis time markers ───────────────────────────────────────────────
+      if (maxLen > 1) {
+        const stepSize = Math.max(1, Math.round(maxLen / 5));
+        ctx.save();
+        ctx.font      = "600 7px/1 monospace";
+        ctx.fillStyle = "rgba(255,255,255,0.14)";
+        ctx.textAlign = "center";
+
+        for (let d = stepSize; d < maxLen - stepSize / 2; d += stepSize) {
+          const tickX = toPixelX(d, maxLen, chartW);
+
+          // 4px tick mark at bottom of chart area
+          ctx.beginPath();
+          ctx.moveTo(tickX, PAD_TOP + chartH);
+          ctx.lineTo(tickX, PAD_TOP + chartH + 4);
+          ctx.strokeStyle = "rgba(255,255,255,0.14)";
+          ctx.lineWidth   = 1;
+          ctx.stroke();
+
+          // Label: how far from NOW this point is ("~4mo", "~1y", etc.)
+          ctx.fillText(daysAgo(maxLen - 1 - d), tickX, PAD_TOP + chartH + 12);
+        }
+
+        ctx.restore();
+      }
+
+      // ── NOW beacon (right edge of data) ──────────────────────────────────
+      const nowX = toPixelX(maxLen - 1, maxLen, chartW);
+
+      // Blurred bloom
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.filter      = "blur(3px)";
+      ctx.beginPath();
+      ctx.moveTo(nowX, PAD_TOP);
+      ctx.lineTo(nowX, PAD_TOP + chartH);
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth   = 2;
+      ctx.stroke();
+      ctx.filter = "none";
+      ctx.restore();
+
+      // Hard dashed line
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.moveTo(nowX, PAD_TOP);
+      ctx.lineTo(nowX, PAD_TOP + chartH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // "NOW" label
+      ctx.save();
+      ctx.font         = "700 7px/1 monospace";
+      ctx.fillStyle    = "rgba(255,255,255,0.20)";
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText("NOW", nowX, PAD_TOP + 4);
+      ctx.restore();
     },
-    [scale, dims]
+    [scale, dims, chartW, chartH, maxLen]
   );
 
   const drawScars = useCallback(
