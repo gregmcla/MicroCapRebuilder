@@ -5,6 +5,19 @@ export interface TickerInfo {
   name: string;
   description: string | null;
   sector: string | null;
+  industry: string | null;
+  website: string | null;
+  employees: number | null;
+  market_cap: number | null;
+  trailing_pe: number | null;
+  forward_pe: number | null;
+  week_52_high: number | null;
+  week_52_low: number | null;
+  analyst_target: number | null;
+  analyst_rating: string | null;
+  analyst_count: number | null;
+  dividend_yield: number | null;
+  beta: number | null;
 }
 
 // --- Portfolio types ---

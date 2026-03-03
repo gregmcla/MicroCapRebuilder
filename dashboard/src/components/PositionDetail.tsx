@@ -9,6 +9,7 @@ import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import CandlestickChart from "./CandlestickChart";
+import CompanyInfoModal from "./CompanyInfoModal";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -223,6 +224,7 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
   const clearSelection = useUIStore((s) => s.selectPosition);
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [range, setRange] = useState("1M");
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
 
   const { data: tickerInfo } = useQuery({
     queryKey: ["tickerInfo", pos.ticker],
@@ -256,19 +258,21 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
       >
         {/* Left: ticker + company name + P&L numbers */}
         <div className="flex items-baseline gap-3">
-          <div className="flex flex-col leading-none">
+          <button
+            className="flex flex-col leading-none text-left group"
+            onClick={() => setShowCompanyModal(true)}
+            title="Company info"
+          >
             <span
-              className="font-mono font-bold"
+              className="font-mono font-bold transition-colors group-hover:text-accent"
               style={{ fontSize: "22px", color: "var(--text-4)", letterSpacing: "-0.01em" }}
             >
               {pos.ticker}
             </span>
-            {tickerInfo?.name && tickerInfo.name !== pos.ticker && (
-              <span style={{ fontSize: "11px", color: "var(--text-1)", marginTop: "2px" }}>
-                {tickerInfo.name}
-              </span>
-            )}
-          </div>
+            <span style={{ fontSize: "11px", color: "var(--text-1)", marginTop: "2px" }}>
+              {tickerInfo?.name && tickerInfo.name !== pos.ticker ? tickerInfo.name : "View company info"}
+            </span>
+          </button>
           <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
             {pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(2)}%
           </span>
@@ -350,6 +354,10 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
       <div className="flex-1 min-h-0 p-3">
         <CandlestickChart ticker={pos.ticker} range={range} position={pos} />
       </div>
+
+      {showCompanyModal && (
+        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} />
+      )}
     </div>
   );
 }
@@ -359,16 +367,10 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
 // ---------------------------------------------------------------------------
 
 export function PositionDetailInfo({ pos }: { pos: Position }) {
-  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const daysHeld = Math.floor(
     (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
   );
-
-  const { data: tickerInfo } = useQuery({
-    queryKey: ["tickerInfo", pos.ticker],
-    queryFn: () => api.getTickerInfo(portfolioId, pos.ticker),
-    staleTime: 24 * 60 * 60 * 1000,
-  });
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
 
   const pnlColor =
     pos.unrealized_pnl_pct > 0
@@ -380,9 +382,18 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
   return (
     <div className="px-4 py-3">
       {/* Compact header: ticker + P&L% + SELL */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold" style={{ color: "var(--text-4)" }}>{pos.ticker}</span>
+          <button
+            className="text-sm font-bold transition-colors"
+            style={{ color: "var(--text-4)" }}
+            onClick={() => setShowCompanyModal(true)}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-4)"; }}
+            title="Company info"
+          >
+            {pos.ticker}
+          </button>
           <span className="font-mono text-xs font-semibold" style={{ color: pnlColor }}>
             {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
             {pos.unrealized_pnl_pct.toFixed(2)}%
@@ -390,22 +401,6 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
         </div>
         <SellButton pos={pos} />
       </div>
-
-      {/* Company name + description */}
-      {tickerInfo && (
-        <div className="mb-2">
-          {tickerInfo.name !== pos.ticker && (
-            <div className="text-xs font-semibold mb-0.5" style={{ color: "var(--text-2)" }}>
-              {tickerInfo.name}
-            </div>
-          )}
-          {tickerInfo.description && (
-            <div className="text-xs leading-relaxed" style={{ color: "var(--text-1)" }}>
-              {tickerInfo.description}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Stop/Target progress bar */}
       <ProgressVisualization pos={pos} />
@@ -423,6 +418,10 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
           <DetailRow label="Take Profit" value={`$${pos.take_profit.toFixed(2)}`} color="var(--green)" />
         </div>
       </div>
+
+      {showCompanyModal && (
+        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} />
+      )}
     </div>
   );
 }

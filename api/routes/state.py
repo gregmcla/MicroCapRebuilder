@@ -88,12 +88,37 @@ def get_ticker_info(portfolio_id: str, ticker: str):
     def fetch():
         try:
             import yfinance as yf
+            import math
             info = yf.Ticker(ticker).info
+
+            def _safe(v, default=None):
+                try:
+                    if v is None:
+                        return default
+                    fv = float(v)
+                    return default if math.isnan(fv) or math.isinf(fv) else fv
+                except Exception:
+                    return default
+
             result["name"] = info.get("longName") or info.get("shortName") or ticker
             result["sector"] = info.get("sector") or None
+            result["industry"] = info.get("industry") or None
+            result["website"] = info.get("website") or None
+            result["employees"] = info.get("fullTimeEmployees") or None
+            result["market_cap"] = _safe(info.get("marketCap"))
+            result["trailing_pe"] = _safe(info.get("trailingPE"))
+            result["forward_pe"] = _safe(info.get("forwardPE"))
+            result["week_52_high"] = _safe(info.get("fiftyTwoWeekHigh"))
+            result["week_52_low"] = _safe(info.get("fiftyTwoWeekLow"))
+            result["analyst_target"] = _safe(info.get("targetMeanPrice"))
+            result["analyst_rating"] = info.get("recommendationKey") or None
+            result["analyst_count"] = info.get("numberOfAnalystOpinions") or None
+            result["dividend_yield"] = _safe(info.get("dividendYield"))
+            result["beta"] = _safe(info.get("beta"))
+
             summary = info.get("longBusinessSummary") or ""
-            if len(summary) > 220:
-                truncated = summary[:220]
+            if len(summary) > 300:
+                truncated = summary[:300]
                 last_period = truncated.rfind(". ")
                 summary = truncated[: last_period + 1] if last_period > 80 else truncated.rstrip() + "…"
             result["description"] = summary or None
