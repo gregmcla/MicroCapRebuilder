@@ -177,7 +177,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 
 **TopBar:** M GScott (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | CLOSE ALL | PAPER/LIVE
 
-**Position rows:** ticker | sparkline (max 140px) | price | day P&L ($/%) | overall P&L ($/%) | dot
+**Position rows:** ticker | price | day P&L ($/%) | overall P&L ($/%) | range dot
 
 **Position detail (split):**
 - `PositionDetailChart` — right pane (chart, P&L cards, range selector)
@@ -186,6 +186,15 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 **react-resizable-panels v4:** uses `Group`, `Panel`, `Separator` — NOT PanelGroup/PanelResizeHandle.
 
 **Keyboard shortcuts:** A = analyze, E = execute, R = refresh, Escape = close detail
+
+**Overview page (MAP view):** `ConstellationMap.tsx` — canvas physics simulation. Each position = glowing node (size = market value, color = P&L). Nodes cluster by portfolio with faint dashed rings + name labels. Force-directed physics (spring gravity + pairwise repulsion + boundary walls). Hover dims others + shows glassmorphic detail card. Click pins the card. Stars parallax with mouse. `nodeKey = "ticker:portfolioId"` — handles duplicate tickers across portfolios. Design doc: `docs/plans/2026-03-03-neural-constellation-design.md`.
+
+**PerformanceChart upgrades (2026-03-03):**
+- Glow 2-3× stronger, echo trails boosted, area fills more opaque, rank strip doubled in size
+- CSS radial-gradient vignette overlay burning in from corners
+- Dual-zone Y-scale: when one portfolio return > 5% AND > 3× second place, chart splits 50/50 — leader gets top zone with own scale, field gets bottom zone with own scale, glowing separator between
+- Outlier detection: `top > 5.0 && top > second * 3.0` — `leaderIdx = 0`, `fieldScale` separate useMemo
+- Per-series `ctx.save()`/`ctx.restore()` clipping inside loop — `pts.length < 2` guard must call `ctx.restore()` before `continue`
 
 ---
 
@@ -264,6 +273,9 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 ## Known Gotchas
 
 - `ALE`, `JBT` tickers appear delisted — fail price fetch consistently
+- **Duplicate tickers across portfolios** (e.g., APA in largeboi + new + klop): `ConstellationMap` uses `nodeKey = "ticker:portfolioId"` for hover/click identity — never use ticker alone as a node key. `positions.find()` must match both `ticker` AND `portfolio_id`.
+- **day_change "immediate" after buy**: `bought_today` positions use `avg_cost_basis` as baseline. If yfinance cache was stale at analyze time, the recorded buy price differs from fresh prices → shows non-zero day_change on first UPDATE. This is expected behavior, not a bug.
+- **Dual-zone canvas clipping**: each series gets its own `ctx.save()`/`ctx.clip()`/`ctx.restore()` in PerformanceChart. Any early `continue` inside the series loop MUST call `ctx.restore()` first or canvas state leaks.
 - `stale_alerts` must load from tracker file even when `fetch_prices=False`
 - `FactorLearner.get_factor_summary()` is a method, not a module-level function
 - `PreservationStatus` is a dataclass — use `.active` not `.get()`
