@@ -368,6 +368,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.fillStyle = "#010107";
       ctx.fillRect(0, 0, dims.width, dims.height);
 
+      ctx.save();
       // ── Chromatic background zones (only when zero line is in range) ──────
       if (scale.yMin < 0 && scale.yMax > 0) {
         const zeroY = scale.toPixelY(0);
@@ -386,6 +387,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.fillStyle = redGrad;
         ctx.fillRect(PAD_LEFT, zeroY, chartW, PAD_TOP + chartH - zeroY);
       }
+      ctx.restore();
 
       ctx.save();
       ctx.font = "600 8px/1 monospace";
@@ -421,19 +423,19 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       if (maxLen > 1) {
         const stepSize = Math.max(1, Math.round(maxLen / 5));
         ctx.save();
-        ctx.font      = "600 7px/1 monospace";
-        ctx.fillStyle = "rgba(255,255,255,0.14)";
-        ctx.textAlign = "center";
+        ctx.font        = "600 7px/1 monospace";
+        ctx.fillStyle   = "rgba(255,255,255,0.14)";
+        ctx.textAlign   = "center";
+        ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        ctx.lineWidth   = 1;
 
-        for (let d = stepSize; d < maxLen - stepSize / 2; d += stepSize) {
+        for (let d = stepSize; d < maxLen - 1 - stepSize / 2; d += stepSize) {
           const tickX = toPixelX(d, maxLen, chartW);
 
           // 4px tick mark at bottom of chart area
           ctx.beginPath();
           ctx.moveTo(tickX, PAD_TOP + chartH);
           ctx.lineTo(tickX, PAD_TOP + chartH + 4);
-          ctx.strokeStyle = "rgba(255,255,255,0.14)";
-          ctx.lineWidth   = 1;
           ctx.stroke();
 
           // Label: how far from NOW this point is ("~4mo", "~1y", etc.)
