@@ -19,6 +19,7 @@ import type {
   GenerateStrategyRequest,
   GeneratedStrategy,
   TradingStyle,
+  TickerInfo,
 } from "./types";
 
 const BASE = "/api";
@@ -109,6 +110,9 @@ export const api = {
   getPortfolioConfig: (pid: string) => get<Record<string, unknown>>(`/portfolios/${pid}/config`),
   updatePortfolioConfig: (pid: string, changes: Record<string, unknown>) =>
     put<{ success: boolean; message: string }>(`/portfolios/${pid}/config`, { changes }),
+
+  getTickerInfo: (pid: string, ticker: string) =>
+    get<TickerInfo>(`/${pid}/position/${ticker}/info`),
 
   // --- Market endpoints (global, not portfolio-scoped) ---
   getMarketIndices: () => get<MarketIndices>("/market/indices"),

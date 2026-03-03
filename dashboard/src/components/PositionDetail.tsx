@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
@@ -221,7 +221,14 @@ function SellButton({ pos }: { pos: Position }) {
 
 export function PositionDetailChart({ pos }: { pos: Position }) {
   const clearSelection = useUIStore((s) => s.selectPosition);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const [range, setRange] = useState("1M");
+
+  const { data: tickerInfo } = useQuery({
+    queryKey: ["tickerInfo", pos.ticker],
+    queryFn: () => api.getTickerInfo(portfolioId, pos.ticker),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
 
   const pnlColor =
     pos.unrealized_pnl_pct > 0
@@ -247,14 +254,21 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
         className="flex items-center justify-between px-4 shrink-0"
         style={{ borderBottom: "1px solid var(--border-0)", minHeight: "52px" }}
       >
-        {/* Left: ticker + P&L numbers */}
+        {/* Left: ticker + company name + P&L numbers */}
         <div className="flex items-baseline gap-3">
-          <span
-            className="font-mono font-bold"
-            style={{ fontSize: "22px", color: "var(--text-4)", letterSpacing: "-0.01em" }}
-          >
-            {pos.ticker}
-          </span>
+          <div className="flex flex-col leading-none">
+            <span
+              className="font-mono font-bold"
+              style={{ fontSize: "22px", color: "var(--text-4)", letterSpacing: "-0.01em" }}
+            >
+              {pos.ticker}
+            </span>
+            {tickerInfo?.name && tickerInfo.name !== pos.ticker && (
+              <span style={{ fontSize: "11px", color: "var(--text-1)", marginTop: "2px" }}>
+                {tickerInfo.name}
+              </span>
+            )}
+          </div>
           <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
             {pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(2)}%
           </span>
@@ -345,9 +359,16 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
 // ---------------------------------------------------------------------------
 
 export function PositionDetailInfo({ pos }: { pos: Position }) {
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const daysHeld = Math.floor(
     (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
   );
+
+  const { data: tickerInfo } = useQuery({
+    queryKey: ["tickerInfo", pos.ticker],
+    queryFn: () => api.getTickerInfo(portfolioId, pos.ticker),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
 
   const pnlColor =
     pos.unrealized_pnl_pct > 0
@@ -359,7 +380,7 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
   return (
     <div className="px-4 py-3">
       {/* Compact header: ticker + P&L% + SELL */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold" style={{ color: "var(--text-4)" }}>{pos.ticker}</span>
           <span className="font-mono text-xs font-semibold" style={{ color: pnlColor }}>
@@ -369,6 +390,22 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
         </div>
         <SellButton pos={pos} />
       </div>
+
+      {/* Company name + description */}
+      {tickerInfo && (
+        <div className="mb-2">
+          {tickerInfo.name !== pos.ticker && (
+            <div className="text-xs font-semibold mb-0.5" style={{ color: "var(--text-2)" }}>
+              {tickerInfo.name}
+            </div>
+          )}
+          {tickerInfo.description && (
+            <div className="text-xs leading-relaxed" style={{ color: "var(--text-1)" }}>
+              {tickerInfo.description}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stop/Target progress bar */}
       <ProgressVisualization pos={pos} />

@@ -1,0 +1,9 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+dfa21054,2026-03-03,SJM,BUY,697,113.0,78761.0,106.22,135.6,SIGNAL,SIDEWAYS,78.7,"{""momentum"": 82.2, ""volatility"": 64.0, ""volume"": 99.5, ""relative_strength"": 72.8, ""mean_reversion"": 75.2, ""rsi"": 90.0, ""composite"": 78.7}",
+2d484c82,2026-03-03,CIVI,BUY,1826,27.38,49995.88,25.74,32.86,SIGNAL,SIDEWAYS,67.3,"{""momentum"": 45.7, ""volatility"": 53.7, ""volume"": 100, ""relative_strength"": 45.6, ""mean_reversion"": 90.4, ""rsi"": 90.0, ""composite"": 67.3}",
+7aef830a,2026-03-03,GILD,BUY,541,147.74,79927.34,138.88,177.29,SIGNAL,SIDEWAYS,66.0,"{""momentum"": 74.1, ""volatility"": 61.8, ""volume"": 44.1, ""relative_strength"": 51.9, ""mean_reversion"": 92.7, ""rsi"": 70.0, ""composite"": 66.0}",
+6a73d474,2026-03-03,HAYW,BUY,3128,15.76,49297.28,14.81,18.92,SIGNAL,SIDEWAYS,66.4,"{""momentum"": 43.3, ""volatility"": 64.0, ""volume"": 81.5, ""relative_strength"": 57.2, ""mean_reversion"": 93.1, ""rsi"": 70.0, ""composite"": 66.4}",
+972de936,2026-03-03,NTNX,BUY,1267,39.44,49970.48,37.07,47.33,SIGNAL,SIDEWAYS,62.5,"{""momentum"": 47.8, ""volatility"": 40.8, ""volume"": 92.2, ""relative_strength"": 51.1, ""mean_reversion"": 94.6, ""rsi"": 70.0, ""composite"": 62.5}",
+a354d573,2026-03-03,INTU,BUY,60,430.85,25851.0,405.0,517.02,SIGNAL,SIDEWAYS,52.9,"{""momentum"": 29.8, ""volatility"": 40.1, ""volume"": 54.9, ""relative_strength"": 33.2, ""mean_reversion"": 84.2, ""rsi"": 90.0, ""composite"": 52.9}",
+9792c969,2026-03-03,NET,BUY,215,174.71,37562.65,164.23,209.65,SIGNAL,SIDEWAYS,51.4,"{""momentum"": 43.3, ""volatility"": 23.5, ""volume"": 26.7, ""relative_strength"": 61.0, ""mean_reversion"": 92.0, ""rsi"": 70.0, ""composite"": 51.4}",
+SELL_CIVI_2026-03-03,2026-03-03,CIVI,SELL,1826,27.38,49995.88,0.0,0.0,MANUAL,,,{},

@@ -1,5 +1,12 @@
 /** TypeScript interfaces for API responses. */
 
+export interface TickerInfo {
+  ticker: string;
+  name: string;
+  description: string | null;
+  sector: string | null;
+}
+
 // --- Portfolio types ---
 
 export interface PortfolioMeta {

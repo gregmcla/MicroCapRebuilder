@@ -1,11 +1,17 @@
 """Portfolio state endpoints."""
 
+import threading
+import time
 from datetime import date
 
 from fastapi import APIRouter
 from api.deps import serialize
 
 from portfolio_state import load_portfolio_state, save_positions, save_snapshot, invalidate_regime_cache
+
+# In-memory cache for ticker company info (name + description) — 24hr TTL
+_ticker_info_cache: dict[str, tuple[dict, float]] = {}
+_TICKER_INFO_TTL = 86400
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -67,6 +73,39 @@ def _serialize_state(state):
         "starting_capital": starting_capital,
         "timestamp": serialize(state.timestamp),
     }
+
+
+@router.get("/position/{ticker}/info")
+def get_ticker_info(portfolio_id: str, ticker: str):
+    """Company name and short description for a ticker."""
+    now = time.time()
+    cached = _ticker_info_cache.get(ticker)
+    if cached and now - cached[1] < _TICKER_INFO_TTL:
+        return cached[0]
+
+    result: dict = {"ticker": ticker, "name": ticker, "description": None, "sector": None}
+
+    def fetch():
+        try:
+            import yfinance as yf
+            info = yf.Ticker(ticker).info
+            result["name"] = info.get("longName") or info.get("shortName") or ticker
+            result["sector"] = info.get("sector") or None
+            summary = info.get("longBusinessSummary") or ""
+            if len(summary) > 220:
+                truncated = summary[:220]
+                last_period = truncated.rfind(". ")
+                summary = truncated[: last_period + 1] if last_period > 80 else truncated.rstrip() + "…"
+            result["description"] = summary or None
+        except Exception:
+            pass
+
+    t = threading.Thread(target=fetch, daemon=True)
+    t.start()
+    t.join(timeout=5)
+
+    _ticker_info_cache[ticker] = (result, now)
+    return result
 
 
 @router.get("/state")
