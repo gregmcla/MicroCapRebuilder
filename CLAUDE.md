@@ -292,7 +292,8 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
 - **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.
 - **Stale buy prices**: `execute_approved_actions()` now fetches live prices via `fetch_prices_batch()` at execute time before recording transactions. Corrects cases where yfinance cache had prev-close prices. Stop/target % distances are preserved and rescaled.
-- **Company info endpoint**: `GET /api/{portfolio_id}/position/{ticker}/info` — uses `yf.Ticker(t).info` with 5s thread timeout, 24hr in-memory cache. PositionDetailChart shows company name as subtitle; PositionDetailInfo shows name + truncated description.
+- **Company info endpoint**: `GET /api/{portfolio_id}/position/{ticker}/info` — uses `yf.Ticker(t).info` with 5s thread timeout, 24hr in-memory cache. Clicking a ticker opens `CompanyInfoModal` (glassmorphic popup with sector/industry, stats grid, analyst rating, description, website).
+- **ErrorBoundary in App.tsx**: wraps the entire body row. Any render crash shows a "Render error / Try again" fallback instead of blanking the whole page. Error message + component stack logged to console. Never remove this.
 
 ---
 
