@@ -121,6 +121,22 @@ function catmullRomPath(
   }
 }
 
+/** Linear interpolation of a series' cum return at a given pixel X. */
+function interpolateAtX(
+  cum: number[],
+  pixelX: number,
+  maxLen: number,
+  chartW: number
+): number | null {
+  if (cum.length === 0) return null;
+  const fracIdx = ((pixelX - PAD_LEFT) / chartW) * (maxLen - 1);
+  if (fracIdx < 0 || fracIdx > cum.length - 1) return null;
+  const lo = Math.floor(fracIdx);
+  const hi = Math.min(lo + 1, cum.length - 1);
+  const t  = fracIdx - lo;
+  return cum[lo] * (1 - t) + cum[hi] * t;
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface SeriesData {
@@ -177,6 +193,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const rafRef       = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const endStartRef  = useRef<number | null>(null);
+
+  const [hoverX,     setHoverX]     = useState<number | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   useEffect(() => {
     // Reset on series change
@@ -433,15 +452,137 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [series, scale, chartW, chartH, maxLen]
   );
 
+  const drawHover = useCallback(
+    (ctx: CanvasRenderingContext2D, pixelX: number) => {
+      const { toPixelY } = scale;
+
+      // Scan line
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pixelX, PAD_TOP);
+      ctx.lineTo(pixelX, dims.height - PAD_BOTTOM);
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+
+      // Crosshair dots + collect tooltip rows
+      const rows: { color: string; name: string; ret: number }[] = [];
+      for (const s of series) {
+        const v = interpolateAtX(s.cum, pixelX, maxLen, chartW);
+        if (v === null) continue;
+        const py = toPixelY(v);
+        ctx.beginPath();
+        ctx.arc(pixelX, py, 4, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        rows.push({ color: s.color, name: s.id.toUpperCase(), ret: v });
+      }
+
+      if (rows.length === 0) return;
+
+      // Tooltip — fixed order (series is sorted by finalReturn on mount, rows follows that order)
+      const LINE_H  = 16;
+      const PAD_H   = 8;
+      const CARD_W  = 130;
+      const cardH   = rows.length * LINE_H + PAD_H * 2;
+
+      // Position: left of cursor if near right edge
+      let tx = pixelX + 12;
+      if (tx + CARD_W > dims.width - PAD_RIGHT) tx = pixelX - CARD_W - 12;
+      const ty = PAD_TOP + 8;
+
+      // Card background
+      ctx.save();
+      ctx.fillStyle   = "rgba(4,4,12,0.94)";
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(tx, ty, CARD_W, cardH, 4);
+      } else {
+        ctx.rect(tx, ty, CARD_W, cardH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      // Rows
+      ctx.font         = "600 8.5px/1 monospace";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const ry  = ty + PAD_H + i * LINE_H + LINE_H / 2;
+
+        // Color dot
+        ctx.beginPath();
+        ctx.arc(tx + 10, ry, 3, 0, Math.PI * 2);
+        ctx.fillStyle = row.color;
+        ctx.fill();
+
+        // Name
+        ctx.fillStyle = "rgba(255,255,255,0.65)";
+        ctx.textAlign = "left";
+        ctx.fillText(row.name, tx + 20, ry);
+
+        // Return value
+        const sign  = row.ret >= 0 ? "+" : "";
+        const label = `${sign}${row.ret.toFixed(1)}%`;
+        ctx.fillStyle = row.ret >= 0 ? "rgba(180,230,210,0.85)" : "rgba(230,160,160,0.85)";
+        ctx.textAlign = "right";
+        ctx.fillText(label, tx + CARD_W - 8, ry);
+      }
+
+      ctx.restore();
+    },
+    [series, scale, dims, chartW, maxLen]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = e.clientX - rect.left;
+
+      // Clamp to chart area only (not label zone)
+      if (x < PAD_LEFT || x > dims.width - PAD_RIGHT) {
+        setHoverX(null);
+        setHoveredIdx(null);
+        return;
+      }
+
+      setHoverX(x);
+
+      // Determine closest series to cursor Y
+      const { toPixelY } = scale;
+      const y = e.clientY - rect.top;
+      let closest = 0;
+      let closestDist = Infinity;
+      series.forEach((s, i) => {
+        const v = interpolateAtX(s.cum, x, maxLen, chartW);
+        if (v === null) return;
+        const dist = Math.abs(toPixelY(v) - y);
+        if (dist < closestDist) { closestDist = dist; closest = i; }
+      });
+      setHoveredIdx(closest);
+    },
+    [series, scale, dims, chartW, maxLen]
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverX(null);
+    setHoveredIdx(null);
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || dims.width === 0) return;
     const ctx = canvas.getContext("2d")!;
     ctx.clearRect(0, 0, dims.width, dims.height);
     drawGrid(ctx);
-    drawLines(ctx, animProgress, null);
+    drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
     drawEndpoints(ctx, endpointsAlpha);
-  }, [drawGrid, drawLines, drawEndpoints, dims, animProgress, endpointsAlpha]);
+    if (hoverX !== null) drawHover(ctx, hoverX);
+  }, [drawGrid, drawLines, drawEndpoints, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx]);
 
   if (series.length === 0) {
     return (
@@ -479,6 +620,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       <canvas
         ref={canvasRef}
         style={{ display: "block", width: "100%", height: "100%" }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
       />
     </div>
   );
