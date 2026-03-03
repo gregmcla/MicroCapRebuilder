@@ -721,7 +721,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
       for (let si = 0; si < series.length; si++) {
         const s = series[si];
-        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
+        const { toPixelY, yMax: zoneYMax, yMin: zoneYMin } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
 
         // Per-series clip: restrict to this series' zone
         const zoneTop    = leaderIdx >= 0 && si !== leaderIdx ? PAD_TOP + leaderZoneH : PAD_TOP;
@@ -737,7 +737,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
           toPixelY(v),
         ]);
 
-        if (pts.length < 2) continue;
+        if (pts.length < 2) { ctx.restore(); continue; }
 
         // Dimming: if something is hovered and this isn't it, reduce alpha
         const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
@@ -781,7 +781,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = glowAlpha * 0.14;
-        const grad = ctx.createLinearGradient(0, toPixelY(scale.yMax), 0, toPixelY(scale.yMin));
+        const grad = ctx.createLinearGradient(0, toPixelY(zoneYMax), 0, toPixelY(zoneYMin));
         grad.addColorStop(0, s.color);
         grad.addColorStop(1, "transparent");
         ctx.beginPath();
@@ -1007,19 +1007,19 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       setHoverX(x);
 
       // Determine closest series to cursor Y
-      const { toPixelY } = scale;
       const y = e.clientY - rect.top;
       let closest = 0;
       let closestDist = Infinity;
-      series.forEach((s, i) => {
+      series.forEach((s, si) => {
+        const { toPixelY: sToPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
         const v = interpolateAtX(s.cum, x, maxLen, chartW);
         if (v === null) return;
-        const dist = Math.abs(toPixelY(v) - y);
-        if (dist < closestDist) { closestDist = dist; closest = i; }
+        const dist = Math.abs(sToPixelY(v) - y);
+        if (dist < closestDist) { closestDist = dist; closest = si; }
       });
       setHoveredIdx(closest);
     },
-    [series, scale, dims, chartW, maxLen]
+    [series, scale, fieldScale, leaderIdx, dims, chartW, maxLen]
   );
 
   const handleMouseLeave = useCallback(() => {
