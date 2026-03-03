@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import type { CrossPortfolioMover, PortfolioSummary } from "../lib/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -109,13 +109,12 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
   const paletteRef = useRef<Record<string, string>>({});
 
   // Build palette map from portfolios prop
-  useMemo(() => {
+  useEffect(() => {
     const map: Record<string, string> = {};
     portfolios.forEach((p, i) => {
       map[p.id] = PALETTE[i % PALETTE.length];
     });
     paletteRef.current = map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [portfolios]);
 
   // ── Physics step ───────────────────────────────────────────────────────────
@@ -227,192 +226,195 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
     let last = performance.now();
 
     function frame(now: number) {
-      const dt = Math.min((now - last) / 16.67, 2.5); // normalized to 60fps
-      last = now;
+      try {
+        const dt = Math.min((now - last) / 16.67, 2.5); // normalized to 60fps
+        last = now;
 
-      const { w, h } = dimsRef.current;
-      if (w === 0 || h === 0) { rafRef.current = requestAnimationFrame(frame); return; }
+        const { w, h } = dimsRef.current;
+        if (w === 0 || h === 0) { rafRef.current = requestAnimationFrame(frame); return; }
 
-      const nodes   = nodesRef.current;
-      const stars   = starsRef.current;
-      const mouse   = mouseRef.current;
-      const hover   = hoverRef.current;
-      const palette = paletteRef.current;
+        const nodes   = nodesRef.current;
+        const stars   = starsRef.current;
+        const mouse   = mouseRef.current;
+        const hover   = hoverRef.current;
+        const palette = paletteRef.current;
 
-      stepPhysics(nodes, w, h, dt);
+        stepPhysics(nodes, w, h, dt);
 
-      // ── Draw ──────────────────────────────────────────────────────────────
-      ctx.clearRect(0, 0, w, h);
+        // ── Draw ──────────────────────────────────────────────────────────────
+        ctx.clearRect(0, 0, w, h);
 
-      // Background
-      ctx.fillStyle = "#07090f";
-      ctx.fillRect(0, 0, w, h);
+        // Background
+        ctx.fillStyle = "#07090f";
+        ctx.fillRect(0, 0, w, h);
 
-      // Stars — layer 1 (slow)
-      const mxOff1 = mouse.x * 0.015, myOff1 = mouse.y * 0.015;
-      const mxOff2 = mouse.x * 0.030, myOff2 = mouse.y * 0.030;
+        // Stars — layer 1 (slow)
+        const mxOff1 = mouse.x * 0.015, myOff1 = mouse.y * 0.015;
+        const mxOff2 = mouse.x * 0.030, myOff2 = mouse.y * 0.030;
 
-      ctx.save();
-      stars.slow.forEach(s => {
-        s.x = (s.x + s.dx * dt + w) % w;
-        s.y = (s.y + s.dy * dt + h) % h;
-        const sx = (s.x + mxOff1 + w) % w;
-        const sy = (s.y + myOff1 + h) % h;
-        ctx.beginPath();
-        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
-        ctx.fill();
-      });
-      stars.fast.forEach(s => {
-        s.x = (s.x + s.dx * dt + w) % w;
-        s.y = (s.y + s.dy * dt + h) % h;
-        const sx = (s.x + mxOff2 + w) % w;
-        const sy = (s.y + myOff2 + h) % h;
-        ctx.beginPath();
-        ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,255,255,0.25)";
-        ctx.fill();
-      });
-      ctx.restore();
-
-      // Cluster wells
-      const anchors = clusterAnchors(nodes.map(n => n.portfolioId), w, h);
-      const portfolioIds = [...new Set(nodes.map(n => n.portfolioId))];
-      portfolioIds.forEach(pid => {
-        const anchor = anchors[pid];
-        if (!anchor) return;
-        const color = palette[pid] ?? "#7C5CFC";
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(anchor.x, anchor.y, 80, 0, Math.PI * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 5]);
-        ctx.globalAlpha = 0.18;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        // Label — use the portfolio name from portfolios prop if available
-        const pid_ = pid;
-        const label = pid_.toUpperCase();
-        ctx.globalAlpha = 0.45;
-        ctx.fillStyle = color;
-        ctx.font = "10px 'JetBrains Mono', monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(label, anchor.x, anchor.y - 86);
+        stars.slow.forEach(s => {
+          s.x = (s.x + s.dx * dt + w) % w;
+          s.y = (s.y + s.dy * dt + h) % h;
+          const sx = (s.x + mxOff1 + w) % w;
+          const sy = (s.y + myOff1 + h) % h;
+          ctx.beginPath();
+          ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.4)";
+          ctx.fill();
+        });
+        stars.fast.forEach(s => {
+          s.x = (s.x + s.dx * dt + w) % w;
+          s.y = (s.y + s.dy * dt + h) % h;
+          const sx = (s.x + mxOff2 + w) % w;
+          const sy = (s.y + myOff2 + h) % h;
+          ctx.beginPath();
+          ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(255,255,255,0.25)";
+          ctx.fill();
+        });
         ctx.restore();
-      });
 
-      // Arc connections (same portfolio pairs, skip if cluster > 12 nodes)
-      portfolioIds.forEach(pid => {
-        const cluster = nodes.filter(n => n.portfolioId === pid);
-        if (cluster.length > 12) return;
-        const color = palette[pid] ?? "#7C5CFC";
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 0.6;
-        ctx.globalAlpha = 0.10;
-        for (let i = 0; i < cluster.length; i++) {
-          for (let j = i + 1; j < cluster.length; j++) {
-            ctx.beginPath();
-            ctx.moveTo(cluster[i].x, cluster[i].y);
-            ctx.lineTo(cluster[j].x, cluster[j].y);
-            ctx.stroke();
-          }
-        }
-        ctx.restore();
-      });
-
-      // Nodes
-      const t = now / 1000;
-      const isHovering = hover !== null;
-
-      nodes.forEach(nd => {
-        const isHovered = nd.ticker === hover;
-        const dimmed = isHovering && !isHovered;
-
-        // Breathing radius
-        const period = 3 + (tickerPhase(nd.ticker) / (Math.PI * 2)) * 2; // 3–5s
-        const breathR = nd.r + Math.sin(t * (Math.PI * 2 / period) + nd.phase) * 2;
-        const drawR   = breathR + (isHovered ? 3 : 0);
-
-        // Color
-        const color = nodeColor(nd.pnlPct);
-
-        // Ripple ring
-        const RIPPLE_INTERVAL = 4;
-        if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT >= RIPPLE_INTERVAL) {
-          nd.rippleT = 0;
-        }
-        if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT < 0.8) {
-          const progress = nd.rippleT / 0.8;
-          const rr = drawR + progress * drawR * 1.5;
+        // Cluster wells
+        const anchors = clusterAnchors(nodes.map(n => n.portfolioId), w, h);
+        const portfolioIds = [...new Set(nodes.map(n => n.portfolioId))];
+        portfolioIds.forEach(pid => {
+          const anchor = anchors[pid];
+          if (!anchor) return;
+          const color = palette[pid] ?? "#7C5CFC";
           ctx.save();
           ctx.beginPath();
-          ctx.arc(nd.x, nd.y, rr, 0, Math.PI * 2);
+          ctx.arc(anchor.x, anchor.y, 80, 0, Math.PI * 2);
           ctx.strokeStyle = color;
           ctx.lineWidth = 1;
-          ctx.globalAlpha = (1 - progress) * 0.4 * (dimmed ? 0.3 : 1);
+          ctx.setLineDash([3, 5]);
+          ctx.globalAlpha = 0.18;
           ctx.stroke();
-          ctx.restore();
-        }
-
-        // Three-pass glow
-        const baseAlpha = dimmed ? 0.35 : 1.0;
-        const glowMult  = isHovered ? 2.0 : 1.0;
-
-        // Pass 1 — outer halo
-        ctx.save();
-        ctx.shadowBlur  = 32 * glowMult;
-        ctx.shadowColor = color;
-        ctx.globalAlpha = 0.12 * baseAlpha;
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.restore();
-
-        // Pass 2 — mid glow
-        ctx.save();
-        ctx.shadowBlur  = 12 * glowMult;
-        ctx.shadowColor = color;
-        ctx.globalAlpha = 0.35 * baseAlpha;
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.restore();
-
-        // Pass 3 — core
-        ctx.save();
-        ctx.globalAlpha = 1.0 * baseAlpha;
-        ctx.beginPath();
-        ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.restore();
-
-        // Ticker label
-        ctx.save();
-        ctx.font = "9px 'JetBrains Mono', monospace";
-        ctx.textAlign = "center";
-        ctx.fillStyle = `rgba(255,255,255,${dimmed ? 0.25 : 0.65})`;
-        ctx.fillText(nd.ticker, nd.x, nd.y + drawR + 10);
-        ctx.restore();
-
-        // Day change label (only if significant)
-        if (Math.abs(nd.dayChangePct) > 0.5 && !dimmed) {
-          const sign = nd.dayChangePct >= 0 ? "+" : "";
-          ctx.save();
-          ctx.font = "8px 'JetBrains Mono', monospace";
+          ctx.setLineDash([]);
+          // Label — use the portfolio name from portfolios prop if available
+          const pid_ = pid;
+          const label = pid_.toUpperCase();
+          ctx.globalAlpha = 0.45;
+          ctx.fillStyle = color;
+          ctx.font = "10px 'JetBrains Mono', monospace";
           ctx.textAlign = "center";
-          ctx.fillStyle = nd.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
-          ctx.globalAlpha = 0.85;
-          ctx.fillText(`${sign}${nd.dayChangePct.toFixed(2)}%`, nd.x, nd.y - drawR - 8);
+          ctx.fillText(label, anchor.x, anchor.y - 86);
           ctx.restore();
-        }
-      });
+        });
 
-      rafRef.current = requestAnimationFrame(frame);
+        // Arc connections (same portfolio pairs, skip if cluster > 12 nodes)
+        portfolioIds.forEach(pid => {
+          const cluster = nodes.filter(n => n.portfolioId === pid);
+          if (cluster.length > 12) return;
+          const color = palette[pid] ?? "#7C5CFC";
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 0.6;
+          ctx.globalAlpha = 0.10;
+          for (let i = 0; i < cluster.length; i++) {
+            for (let j = i + 1; j < cluster.length; j++) {
+              ctx.beginPath();
+              ctx.moveTo(cluster[i].x, cluster[i].y);
+              ctx.lineTo(cluster[j].x, cluster[j].y);
+              ctx.stroke();
+            }
+          }
+          ctx.restore();
+        });
+
+        // Nodes
+        const t = now / 1000;
+        const isHovering = hover !== null;
+
+        nodes.forEach(nd => {
+          const isHovered = nd.ticker === hover;
+          const dimmed = isHovering && !isHovered;
+
+          // Breathing radius
+          const period = 3 + (tickerPhase(nd.ticker) / (Math.PI * 2)) * 2; // 3–5s
+          const breathR = nd.r + Math.sin(t * (Math.PI * 2 / period) + nd.phase) * 2;
+          const drawR   = breathR + (isHovered ? 3 : 0);
+
+          // Color
+          const color = nodeColor(nd.pnlPct);
+
+          // Ripple ring
+          const RIPPLE_INTERVAL = 4;
+          if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT >= RIPPLE_INTERVAL) {
+            nd.rippleT = 0;
+          }
+          if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT < 0.8) {
+            const progress = nd.rippleT / 0.8;
+            const rr = drawR + progress * drawR * 1.5;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(nd.x, nd.y, rr, 0, Math.PI * 2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = (1 - progress) * 0.4 * (dimmed ? 0.3 : 1);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Three-pass glow
+          const baseAlpha = dimmed ? 0.35 : 1.0;
+          const glowMult  = isHovered ? 2.0 : 1.0;
+
+          // Pass 1 — outer halo
+          ctx.save();
+          ctx.shadowBlur  = 32 * glowMult;
+          ctx.shadowColor = color;
+          ctx.globalAlpha = 0.12 * baseAlpha;
+          ctx.beginPath();
+          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.restore();
+
+          // Pass 2 — mid glow
+          ctx.save();
+          ctx.shadowBlur  = 12 * glowMult;
+          ctx.shadowColor = color;
+          ctx.globalAlpha = 0.35 * baseAlpha;
+          ctx.beginPath();
+          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.restore();
+
+          // Pass 3 — core
+          ctx.save();
+          ctx.globalAlpha = 1.0 * baseAlpha;
+          ctx.beginPath();
+          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.restore();
+
+          // Ticker label
+          ctx.save();
+          ctx.font = "9px 'JetBrains Mono', monospace";
+          ctx.textAlign = "center";
+          ctx.fillStyle = `rgba(255,255,255,${dimmed ? 0.25 : 0.65})`;
+          ctx.fillText(nd.ticker, nd.x, nd.y + drawR + 10);
+          ctx.restore();
+
+          // Day change label (only if significant)
+          if (Math.abs(nd.dayChangePct) > 0.5 && !dimmed) {
+            const sign = nd.dayChangePct >= 0 ? "+" : "";
+            ctx.save();
+            ctx.font = "8px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillStyle = nd.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
+            ctx.globalAlpha = 0.85;
+            ctx.fillText(`${sign}${nd.dayChangePct.toFixed(2)}%`, nd.x, nd.y - drawR - 8);
+            ctx.restore();
+          }
+        });
+      } catch (err) {
+        console.error("[ConstellationMap] frame error:", err);
+      }
+      rafRef.current = requestAnimationFrame(frame); // always reschedule, outside try
     }
 
     rafRef.current = requestAnimationFrame(frame);
