@@ -20,6 +20,8 @@ const ECHO_DEFS = [
   { offset: 0.20, opacity: 0.06, blur: "3.5px", width: 5.5 },
 ] as const;
 
+const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
+
 const PAD_TOP    = 28;
 const PAD_RIGHT  = 112;
 const PAD_BOTTOM = 24;
@@ -99,6 +101,7 @@ function computeYScale(allCums: number[][], chartH: number): YScale {
 
 /** Returns running maximum of cum — runMax[i] = max(cum[0..i]). */
 function computeRunningMax(cum: number[]): number[] {
+  if (cum.length === 0) return [];
   const result: number[] = [];
   let rmax = cum[0];
   for (const v of cum) {
@@ -330,8 +333,6 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const drawScars = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       const { toPixelY } = scale;
-      const DD_THRESHOLD = 3.0; // minimum drawdown % to show a scar
-
       for (const s of series) {
         if (s.cum.length < 4) continue;
         const runMax = computeRunningMax(s.cum);
@@ -339,12 +340,14 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         let i = 0;
         while (i < s.cum.length) {
           const dd = runMax[i] - s.cum[i];
-          if (dd <= DD_THRESHOLD) { i++; continue; }
+          if (dd <= DD_SCAR_THRESHOLD) { i++; continue; }
 
           // Scar segment starts here
           const segStart = i;
           let maxDd = dd;
-          while (i < s.cum.length && runMax[i] - s.cum[i] > DD_THRESHOLD) {
+          // Inner loop guaranteed to execute at least once (dd > DD_SCAR_THRESHOLD on entry),
+          // so i is always advanced before segEnd is computed — no infinite-loop risk.
+          while (i < s.cum.length && runMax[i] - s.cum[i] > DD_SCAR_THRESHOLD) {
             maxDd = Math.max(maxDd, runMax[i] - s.cum[i]);
             i++;
           }
