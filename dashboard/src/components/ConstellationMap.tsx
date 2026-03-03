@@ -31,6 +31,7 @@ interface CardData {
 interface PhysNode {
   ticker: string;
   portfolioId: string;
+  nodeKey: string;       // "ticker:portfolioId" — unique across duplicate tickers
   pnlPct: number;
   dayChangePct: number;
   marketValue: number;
@@ -213,6 +214,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
         return {
           ticker:       pos.ticker,
           portfolioId:  pos.portfolio_id,
+          nodeKey:      `${pos.ticker}:${pos.portfolio_id}`,
           pnlPct:       pos.pnl_pct,
           dayChangePct: pos.day_change_pct ?? 0,
           marketValue:  pos.market_value ?? 0,
@@ -343,7 +345,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
         const isHovering = hover !== null;
 
         nodes.forEach(nd => {
-          const isHovered = nd.ticker === hover;
+          const isHovered = nd.nodeKey === hover;
           const dimmed = isHovering && !isHovered;
 
           // Breathing radius
@@ -457,12 +459,12 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           let foundNode: PhysNode | null = null;
           for (const nd of nodesRef.current) {
             const dx = nd.x - cx, dy = nd.y - cy;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; foundNode = nd; break; }
+            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.nodeKey; foundNode = nd; break; }
           }
           hoverRef.current = found;
 
           if (foundNode && clickRef.current === null) {
-            const pos = positions.find(p => p.ticker === foundNode!.ticker);
+            const pos = positions.find(p => p.ticker === foundNode!.ticker && p.portfolio_id === foundNode!.portfolioId);
             if (pos) {
               setCard({
                 ticker:         foundNode.ticker,
@@ -497,7 +499,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           let foundNode: PhysNode | null = null;
           for (const nd of nodesRef.current) {
             const dx = nd.x - cx, dy = nd.y - cy;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; foundNode = nd; break; }
+            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.nodeKey; foundNode = nd; break; }
           }
           if (found === clickRef.current) {
             clickRef.current = null;
@@ -505,7 +507,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           } else {
             clickRef.current = found;
             if (foundNode) {
-              const pos = positions.find(p => p.ticker === foundNode!.ticker);
+              const pos = positions.find(p => p.ticker === foundNode!.ticker && p.portfolio_id === foundNode!.portfolioId);
               if (pos) {
                 setCard({
                   ticker:         foundNode.ticker,
