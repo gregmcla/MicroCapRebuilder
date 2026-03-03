@@ -42,6 +42,7 @@ export interface CrossPortfolioMover {
   pnl: number;
   pnl_pct: number;
   market_value?: number;
+  day_change_pct?: number;
 }
 
 export interface OverviewData {

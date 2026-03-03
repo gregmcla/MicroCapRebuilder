@@ -219,6 +219,7 @@ def get_overview():
                             "pnl": float(pos.get("unrealized_pnl", 0) or 0),
                             "pnl_pct": float(pos.get("unrealized_pnl_pct", 0) or 0),
                             "market_value": float(pos.get("market_value", 0) or 0),
+                            "day_change_pct": float(pos.get("day_change_pct", 0) or 0),
                         })
                     except Exception:
                         pass
