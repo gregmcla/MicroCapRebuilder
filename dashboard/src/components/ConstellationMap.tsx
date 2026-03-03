@@ -1,615 +1,502 @@
+/** Solar-system portfolio map — portfolios as suns, positions as orbiting planets. */
+
 import { useEffect, useRef, useState } from "react";
 import type { CrossPortfolioMover, PortfolioSummary } from "../lib/types";
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const K_SPRING  = 0.012;   // cluster gravity strength
-const K_REP     = 1800;    // node-node repulsion
-const K_WALL    = 0.3;     // boundary push
-const DAMPING   = 0.88;
-const WALL_PAD  = 24;
-const MIN_R     = 8;
-const MAX_R     = 28;
+// ── Constants ──────────────────────────────────────────────────────────────────
+const SUN_R           = 26;
+const BASE_SPEED      = 0.014;   // rad/s at reference orbit radius 60px
+const RIPPLE_INTERVAL = 5.0;     // seconds between day-change ripples
+const RIPPLE_DURATION = 0.85;    // seconds per ripple
+const CANVAS_H        = 360;
 
-const PALETTE = [
-  "#7C5CFC", "#22D3EE", "#F59E0B", "#10B981",
-  "#F43F5E", "#A78BFA", "#34D399", "#FBBF24",
+// Orbit ring radii (px from sun centre) + max planets per ring
+const ORBIT_RINGS = [
+  { r: 62,  cap: 5 },
+  { r: 94,  cap: 8 },
+  { r: 126, cap: 10 },
+  { r: 158, cap: 12 },
 ];
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface CardData {
-  ticker: string;
+// ── Colour helpers ─────────────────────────────────────────────────────────────
+function lerpHex(a: string, b: string, t: number): string {
+  t = Math.max(0, Math.min(1, t));
+  const ah = parseInt(a.slice(1), 16), bh = parseInt(b.slice(1), 16);
+  const r  = Math.round(((ah >> 16) & 0xff) * (1 - t) + ((bh >> 16) & 0xff) * t);
+  const g  = Math.round(((ah >>  8) & 0xff) * (1 - t) + ((bh >>  8) & 0xff) * t);
+  const bl = Math.round(( ah        & 0xff) * (1 - t) + ( bh        & 0xff) * t);
+  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${bl.toString(16).padStart(2,"0")}`;
+}
+
+function planetColor(pct: number): string {
+  if (pct >=  8) return "#00ff9c";
+  if (pct >=  2) return lerpHex("#4ade80", "#00ff9c",  (pct - 2) / 6);
+  if (pct >=  0) return lerpHex("#94a3b8", "#4ade80",   pct / 2);
+  if (pct >= -2) return lerpHex("#fbbf24", "#94a3b8",  (pct + 2) / 2);
+  if (pct >= -8) return lerpHex("#ef4444", "#fbbf24",  (pct + 8) / 6);
+  return "#ef4444";
+}
+
+function sunColor(ret: number): string {
+  if (ret >= 5)  return "#22c55e";
+  if (ret >= 0)  return "#f59e0b";
+  return "#ef4444";
+}
+
+function planetR(mv: number): number {
+  return Math.max(5, Math.min(13, Math.sqrt(Math.max(0, mv) / 700)));
+}
+
+function lighten(hex: string, amt: number): string {
+  const h = parseInt(hex.slice(1), 16);
+  const clamp = (v: number) => Math.min(255, Math.round(v + 255 * amt));
+  const r = clamp((h >> 16) & 0xff), g = clamp((h >> 8) & 0xff), b = clamp(h & 0xff);
+  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+}
+
+function darken(hex: string, amt: number): string {
+  const h = parseInt(hex.slice(1), 16);
+  const clamp = (v: number) => Math.max(0, Math.round(v - 255 * amt));
+  const r = clamp((h >> 16) & 0xff), g = clamp((h >> 8) & 0xff), b = clamp(h & 0xff);
+  return `#${r.toString(16).padStart(2,"0")}${g.toString(16).padStart(2,"0")}${b.toString(16).padStart(2,"0")}`;
+}
+
+function strHash(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+// ── Sun layout ─────────────────────────────────────────────────────────────────
+function layoutSuns(count: number, w: number, h: number): Array<{x: number; y: number}> {
+  const cx = w / 2, cy = h / 2;
+  if (count <= 0) return [];
+  if (count === 1) return [{ x: cx, y: cy }];
+  if (count === 2) return [{ x: w * 0.27, y: cy }, { x: w * 0.73, y: cy }];
+  if (count === 3) return [
+    { x: cx,       y: h * 0.26 },
+    { x: w * 0.23, y: h * 0.72 },
+    { x: w * 0.77, y: h * 0.72 },
+  ];
+  if (count === 4) return [
+    { x: w * 0.26, y: h * 0.29 }, { x: w * 0.74, y: h * 0.29 },
+    { x: w * 0.26, y: h * 0.73 }, { x: w * 0.74, y: h * 0.73 },
+  ];
+  const r = Math.min(w * 0.37, h * 0.37);
+  return Array.from({ length: count }, (_, i) => ({
+    x: cx + Math.cos(-Math.PI / 2 + (i / count) * Math.PI * 2) * r,
+    y: cy + Math.sin(-Math.PI / 2 + (i / count) * Math.PI * 2) * r,
+  }));
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface SunData {
+  id: string; name: string; color: string; x: number; y: number;
+}
+
+interface PlanetData {
+  key:          string;
+  ticker:       string;
+  portfolioId:  string;
   portfolioName: string;
-  portfolioColor: string;
-  marketValue: number;
-  pnl: number;
-  pnlPct: number;
+  color:        string;
+  radius:       number;
+  orbitR:       number;
+  speed:        number;
+  angle:        number;
+  rippleT:      number;
+  pnlPct:       number;
   dayChangePct: number;
-  x: number;   // CSS px (not canvas px)
-  y: number;   // CSS px
+  marketValue:  number;
+  pnl:          number;
 }
 
-interface PhysNode {
-  ticker: string;
-  portfolioId: string;
-  nodeKey: string;       // "ticker:portfolioId" — unique across duplicate tickers
-  pnlPct: number;
-  dayChangePct: number;
-  marketValue: number;
-  r: number;           // visual radius
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  anchorX: number;     // cluster anchor
-  anchorY: number;
-  phase: number;       // breathing phase offset (0–2π)
-  rippleT: number;     // ripple timer (counts up, emits at 4s intervals)
+interface HoverCard {
+  ticker: string; portfolioName: string; color: string;
+  marketValue: number; pnl: number; pnlPct: number; dayChangePct: number;
+  cssX: number; cssY: number;
 }
 
-interface Star {
-  x: number;
-  y: number;
-  r: number;
-  speed: number;
-  dx: number;
-  dy: number;
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function nodeRadius(marketValue: number): number {
-  return Math.max(MIN_R, Math.min(MAX_R, Math.sqrt((marketValue ?? 5000) / 500)));
-}
-
-function tickerPhase(ticker: string): number {
-  let h = 0;
-  for (let i = 0; i < ticker.length; i++) h = (h * 31 + ticker.charCodeAt(i)) >>> 0;
-  return (h % 1000) / 1000 * Math.PI * 2;
-}
-
-function clusterAnchors(
-  portfolioIds: string[],
+// ── Scene builder ──────────────────────────────────────────────────────────────
+function buildScene(
+  positions: CrossPortfolioMover[],
+  portfolios: PortfolioSummary[],
   w: number,
   h: number,
-): Record<string, { x: number; y: number }> {
-  const ids = [...new Set(portfolioIds)];
-  const cx = w / 2, cy = h / 2;
-  const spread = Math.min(w, h) * 0.30;
-  const result: Record<string, { x: number; y: number }> = {};
-  ids.forEach((id, i) => {
-    const angle = -Math.PI / 2 + (i / ids.length) * Math.PI * 2;
-    result[id] = {
-      x: cx + Math.cos(angle) * spread,
-      y: cy + Math.sin(angle) * spread,
-    };
-  });
-  return result;
-}
+): { suns: SunData[]; planets: PlanetData[] } {
+  const activePids = new Set(positions.map(p => p.portfolio_id));
+  const activePorts = portfolios.filter(p => !p.error && activePids.has(p.id));
+  const sunPositions = layoutSuns(activePorts.length, w, h);
 
-function makeStars(count: number, w: number, h: number, speedRange: [number, number]): Star[] {
-  const stars: Star[] = [];
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = speedRange[0] + Math.random() * (speedRange[1] - speedRange[0]);
-    stars.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 0.5 + Math.random() * 0.9,
-      speed,
-      dx: Math.cos(angle) * speed,
-      dy: Math.sin(angle) * speed,
-    });
+  const suns: SunData[] = activePorts.map((p, i) => ({
+    id:    p.id,
+    name:  p.name ?? p.id,
+    color: sunColor(p.total_return_pct ?? 0),
+    x:     sunPositions[i]?.x ?? w / 2,
+    y:     sunPositions[i]?.y ?? h / 2,
+  }));
+
+  const sunMap = new Map(suns.map(s => [s.id, s]));
+
+  const byPort = new Map<string, CrossPortfolioMover[]>();
+  for (const pos of positions) {
+    const arr = byPort.get(pos.portfolio_id) ?? [];
+    arr.push(pos);
+    byPort.set(pos.portfolio_id, arr);
   }
-  return stars;
+
+  const planets: PlanetData[] = [];
+
+  for (const [pid, posGroup] of byPort.entries()) {
+    const sun = sunMap.get(pid);
+    if (!sun) continue;
+
+    const sorted = [...posGroup].sort((a, b) => (b.market_value ?? 0) - (a.market_value ?? 0));
+    const ringCounts = ORBIT_RINGS.map(() => 0);
+    const portHash = strHash(pid);
+
+    for (const pos of sorted) {
+      let ringIdx = 0;
+      for (let ri = 0; ri < ORBIT_RINGS.length; ri++) {
+        if (ringCounts[ri] < ORBIT_RINGS[ri].cap) { ringIdx = ri; break; }
+        ringIdx = ORBIT_RINGS.length - 1;
+      }
+      const ring = ORBIT_RINGS[ringIdx];
+      const posInRing = ringCounts[ringIdx];
+      ringCounts[ringIdx]++;
+
+      const ringOffset = ((portHash + ringIdx * 1234) % 10000) / 10000 * Math.PI * 2;
+      const tickerOffset = (strHash(pos.ticker) % 10000) / 10000 * 0.4;
+      const angle = ringOffset + (posInRing / ring.cap) * Math.PI * 2 + tickerOffset;
+      const speed = BASE_SPEED * Math.sqrt(62 / ring.r);
+      const r = planetR(pos.market_value ?? 3000);
+
+      planets.push({
+        key:          `${pos.ticker}:${pid}`,
+        ticker:       pos.ticker,
+        portfolioId:  pid,
+        portfolioName: sun.name,
+        color:        planetColor(pos.pnl_pct ?? 0),
+        radius:       r,
+        orbitR:       ring.r,
+        speed,
+        angle,
+        rippleT:      (strHash(pos.ticker) % 500) / 500 * RIPPLE_INTERVAL,
+        pnlPct:       pos.pnl_pct ?? 0,
+        dayChangePct: pos.day_change_pct ?? 0,
+        marketValue:  pos.market_value ?? 0,
+        pnl:          pos.pnl ?? 0,
+      });
+    }
+  }
+
+  return { suns, planets };
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ── Draw helpers ───────────────────────────────────────────────────────────────
+function drawSun(ctx: CanvasRenderingContext2D, sun: SunData) {
+  const { x, y, color } = sun;
+  const r = SUN_R;
+
+  const corona = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 3.0);
+  corona.addColorStop(0, color + "22");
+  corona.addColorStop(1, color + "00");
+  ctx.beginPath(); ctx.arc(x, y, r * 3.0, 0, Math.PI * 2);
+  ctx.fillStyle = corona; ctx.fill();
+
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 1.8);
+  glow.addColorStop(0, color + "55");
+  glow.addColorStop(1, color + "00");
+  ctx.beginPath(); ctx.arc(x, y, r * 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = glow; ctx.fill();
+
+  const surface = ctx.createRadialGradient(x - r * 0.32, y - r * 0.32, 0, x, y, r);
+  surface.addColorStop(0, lighten(color, 0.52));
+  surface.addColorStop(0.45, color);
+  surface.addColorStop(1, darken(color, 0.42));
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = surface; ctx.fill();
+
+  const spec = ctx.createRadialGradient(x - r * 0.36, y - r * 0.36, 0, x - r * 0.36, y - r * 0.36, r * 0.58);
+  spec.addColorStop(0, "rgba(255,255,255,0.75)");
+  spec.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = spec; ctx.fill();
+}
+
+function drawSunLabel(ctx: CanvasRenderingContext2D, sun: SunData) {
+  ctx.save();
+  ctx.font = "700 8.5px 'JetBrains Mono', monospace";
+  ctx.fillStyle = sun.color;
+  ctx.globalAlpha = 0.72;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText(sun.name.toUpperCase(), sun.x, sun.y - SUN_R * 3.0 - 3);
+  ctx.restore();
+}
+
+function drawOrbit(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.save();
+  ctx.globalAlpha = 0.13;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.6;
+  ctx.setLineDash([2, 8]);
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawPlanet(ctx: CanvasRenderingContext2D, x: number, y: number, p: PlanetData, alpha: number) {
+  const { color, radius: r } = p;
+
+  ctx.save(); ctx.globalAlpha = 0.08 * alpha;
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 3.4);
+  halo.addColorStop(0, color); halo.addColorStop(1, "transparent");
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(x, y, r * 3.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  ctx.save(); ctx.globalAlpha = 0.28 * alpha;
+  const inner = ctx.createRadialGradient(x, y, 0, x, y, r * 1.7);
+  inner.addColorStop(0, color); inner.addColorStop(1, "transparent");
+  ctx.fillStyle = inner;
+  ctx.beginPath(); ctx.arc(x, y, r * 1.7, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  ctx.save(); ctx.globalAlpha = alpha;
+  const core = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r);
+  core.addColorStop(0, lighten(color, 0.5));
+  core.addColorStop(0.55, color);
+  core.addColorStop(1, darken(color, 0.32));
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawPlanetLabel(ctx: CanvasRenderingContext2D, x: number, y: number, p: PlanetData, alpha: number) {
+  if (p.radius < 7) return;
+  ctx.save();
+  ctx.font = "600 7px 'JetBrains Mono', monospace";
+  ctx.fillStyle = `rgba(255,255,255,${0.62 * alpha})`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(p.ticker, x, y + p.radius + 4);
+  ctx.restore();
+}
+
+function drawRipple(ctx: CanvasRenderingContext2D, x: number, y: number, p: PlanetData) {
+  if (Math.abs(p.dayChangePct) < 0.5) return;
+  const t = p.rippleT / RIPPLE_DURATION;
+  if (t < 0 || t > 1) return;
+  const ringR = p.radius + t * p.radius * 2.4;
+  ctx.save();
+  ctx.globalAlpha = (1 - t) * 0.55;
+  ctx.strokeStyle = p.color;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(x, y, ringR, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 export interface ConstellationMapProps {
   positions: CrossPortfolioMover[];
   portfolios: PortfolioSummary[];
 }
 
 export default function ConstellationMap({ positions, portfolios }: ConstellationMapProps) {
-  const canvasRef  = useRef<HTMLCanvasElement>(null);
-  const nodesRef   = useRef<PhysNode[]>([]);
-  const starsRef   = useRef<{ slow: Star[]; fast: Star[] }>({ slow: [], fast: [] });
-  const rafRef     = useRef<number>(0);
-  const dimsRef    = useRef({ w: 0, h: 0 });
-  const mouseRef   = useRef({ x: 0, y: 0 });
-  const hoverRef   = useRef<string | null>(null);
-  const clickRef   = useRef<string | null>(null);
-  const [card, setCard] = useState<CardData | null>(null);
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const sunsRef     = useRef<SunData[]>([]);
+  const planetsRef  = useRef<PlanetData[]>([]);
+  const hoveredRef  = useRef<string | null>(null);
+  const hitRef      = useRef<Array<{key: string; x: number; y: number; r: number}>>([]);
+  const rafRef      = useRef<number>(0);
+  const dimsRef     = useRef({ w: 0, h: 0 });
+  const [card, setCard] = useState<HoverCard | null>(null);
 
-  // Portfolio color palette (hex strings, cycle if more than palette length)
-  const paletteRef = useRef<Record<string, string>>({});
-  const nameRef = useRef<Record<string, string>>({});
-
-  // Build palette map from portfolios prop
-  useEffect(() => {
-    const palette: Record<string, string> = {};
-    const names: Record<string, string> = {};
-    portfolios.forEach((p, i) => {
-      palette[p.id] = PALETTE[i % PALETTE.length];
-      names[p.id] = p.name;
-    });
-    paletteRef.current = palette;
-    nameRef.current = names;
-  }, [portfolios]);
-
-  // ── Physics step ───────────────────────────────────────────────────────────
-  function stepPhysics(nodes: PhysNode[], w: number, h: number, dt: number) {
-    const n = nodes.length;
-
-    // Reset forces
-    const fx = new Float32Array(n);
-    const fy = new Float32Array(n);
-
-    for (let i = 0; i < n; i++) {
-      const a = nodes[i];
-
-      // 1. Spring toward cluster anchor
-      fx[i] += K_SPRING * (a.anchorX - a.x);
-      fy[i] += K_SPRING * (a.anchorY - a.y);
-
-      // 2. Pairwise repulsion
-      for (let j = i + 1; j < n; j++) {
-        const b = nodes[j];
-        const dx = a.x - b.x;
-        const dy = a.y - b.y;
-        const dist2 = dx * dx + dy * dy;
-        const minDist = a.r + b.r + 14;
-        if (dist2 < 120 * 120 && dist2 > 0.01) {
-          const dist = Math.sqrt(dist2);
-          const overlap = Math.max(0, minDist - dist);
-          const f = (K_REP / dist2) + (overlap > 0 ? 0.8 * overlap : 0);
-          const nx = dx / dist, ny = dy / dist;
-          fx[i] += nx * f; fy[i] += ny * f;
-          fx[j] -= nx * f; fy[j] -= ny * f;
-        }
-      }
-
-      // 3. Boundary walls
-      const left   = WALL_PAD + a.r, right  = w - WALL_PAD - a.r;
-      const top    = WALL_PAD + a.r, bottom = h - WALL_PAD - a.r;
-      if (a.x < left)   fx[i] += K_WALL * (left   - a.x);
-      if (a.x > right)  fx[i] += K_WALL * (right  - a.x);
-      if (a.y < top)    fy[i] += K_WALL * (top    - a.y);
-      if (a.y > bottom) fy[i] += K_WALL * (bottom - a.y);
-    }
-
-    // Integrate
-    for (let i = 0; i < n; i++) {
-      const nd = nodes[i];
-      nd.vx = (nd.vx + fx[i]) * DAMPING;
-      nd.vy = (nd.vy + fy[i]) * DAMPING;
-      nd.x += nd.vx * dt;
-      nd.y += nd.vy * dt;
-      nd.rippleT += dt;
-    }
+  function rebuild(w: number, h: number) {
+    const scene = buildScene(positions, portfolios, w, h);
+    sunsRef.current  = scene.suns;
+    planetsRef.current = scene.planets;
   }
 
-  // ── Init / resize ──────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ro = new ResizeObserver(entries => {
-      const { width } = entries[0].contentRect;
-      const h = 360;
-      canvas.width  = Math.floor(width);
-      canvas.height = h;
-      dimsRef.current = { w: canvas.width, h };
-
-      // Rebuild stars on resize
-      starsRef.current = {
-        slow: makeStars(60,  canvas.width, h, [0.03, 0.06]),
-        fast: makeStars(120, canvas.width, h, [0.06, 0.12]),
-      };
-
-      // Rebuild cluster anchors + scatter nodes
-      const { w } = dimsRef.current;
-      const anchors = clusterAnchors(positions.map(p => p.portfolio_id), w, h);
-      nodesRef.current = positions.map(pos => {
-        const anchor = anchors[pos.portfolio_id] ?? { x: w / 2, y: h / 2 };
-        const r = nodeRadius(pos.market_value ?? 5000);
-        return {
-          ticker:       pos.ticker,
-          portfolioId:  pos.portfolio_id,
-          nodeKey:      `${pos.ticker}:${pos.portfolio_id}`,
-          pnlPct:       pos.pnl_pct,
-          dayChangePct: pos.day_change_pct ?? 0,
-          marketValue:  pos.market_value ?? 0,
-          r,
-          x: anchor.x + (Math.random() - 0.5) * 80,
-          y: anchor.y + (Math.random() - 0.5) * 80,
-          vx: 0, vy: 0,
-          anchorX: anchor.x,
-          anchorY: anchor.y,
-          phase:    tickerPhase(pos.ticker),
-          rippleT:  Math.random() * 4,
-        };
-      });
+      const cssW = entries[0].contentRect.width;
+      const dpr  = window.devicePixelRatio || 1;
+      canvas.width  = Math.floor(cssW * dpr);
+      canvas.height = Math.floor(CANVAS_H * dpr);
+      const ctx = canvas.getContext("2d")!;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dimsRef.current = { w: cssW, h: CANVAS_H };
+      rebuild(cssW, CANVAS_H);
     });
-
     ro.observe(canvas);
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, portfolios]);
 
-  // ── rAF render loop ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const { w, h } = dimsRef.current;
+    if (w > 0) rebuild(w, h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positions, portfolios]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-    if (!ctx) return;
-
     let last = performance.now();
 
     function frame(now: number) {
       try {
-        const dt = Math.min((now - last) / 16.67, 2.5); // normalized to 60fps
+        const ctx = canvas!.getContext("2d");
+        if (!ctx) { rafRef.current = requestAnimationFrame(frame); return; }
+
+        const dt = Math.min((now - last) / 1000, 0.05);
         last = now;
 
         const { w, h } = dimsRef.current;
-        if (w === 0 || h === 0) { rafRef.current = requestAnimationFrame(frame); return; }
+        if (w === 0) { rafRef.current = requestAnimationFrame(frame); return; }
 
-        const nodes   = nodesRef.current;
-        const stars   = starsRef.current;
-        const mouse   = mouseRef.current;
-        const hover   = hoverRef.current;
-        const palette = paletteRef.current;
+        const suns    = sunsRef.current;
+        const planets = planetsRef.current;
+        const hovered = hoveredRef.current;
 
-        stepPhysics(nodes, w, h, dt);
+        for (const p of planets) {
+          if (p.key !== hovered) p.angle += p.speed * dt;
+          p.rippleT += dt;
+          if (p.rippleT > RIPPLE_INTERVAL) p.rippleT -= RIPPLE_INTERVAL;
+        }
 
-        // ── Draw ──────────────────────────────────────────────────────────────
         ctx.clearRect(0, 0, w, h);
-
-        // Background
-        ctx.fillStyle = "#07090f";
+        ctx.fillStyle = "#05060f";
         ctx.fillRect(0, 0, w, h);
 
-        // Stars — layer 1 (slow)
-        const mxOff1 = mouse.x * 0.015, myOff1 = mouse.y * 0.015;
-        const mxOff2 = mouse.x * 0.030, myOff2 = mouse.y * 0.030;
+        const sunMap = new Map(suns.map(s => [s.id, s]));
 
-        ctx.save();
-        stars.slow.forEach(s => {
-          s.x = (s.x + s.dx * dt + w) % w;
-          s.y = (s.y + s.dy * dt + h) % h;
-          const sx = (s.x + mxOff1 + w) % w;
-          const sy = (s.y + myOff1 + h) % h;
-          ctx.beginPath();
-          ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255,255,255,0.4)";
-          ctx.fill();
-        });
-        stars.fast.forEach(s => {
-          s.x = (s.x + s.dx * dt + w) % w;
-          s.y = (s.y + s.dy * dt + h) % h;
-          const sx = (s.x + mxOff2 + w) % w;
-          const sy = (s.y + myOff2 + h) % h;
-          ctx.beginPath();
-          ctx.arc(sx, sy, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(255,255,255,0.25)";
-          ctx.fill();
-        });
-        ctx.restore();
+        // Orbit rings — one per unique (portfolioId, orbitR) pair
+        const drawnRings = new Set<string>();
+        for (const p of planets) {
+          const rk = `${p.portfolioId}:${p.orbitR}`;
+          if (drawnRings.has(rk)) continue;
+          drawnRings.add(rk);
+          const sun = sunMap.get(p.portfolioId);
+          if (sun) drawOrbit(ctx, sun.x, sun.y, p.orbitR, sun.color);
+        }
 
-        // Cluster wells
-        const anchors = clusterAnchors(nodes.map(n => n.portfolioId), w, h);
-        const portfolioIds = [...new Set(nodes.map(n => n.portfolioId))];
-        portfolioIds.forEach(pid => {
-          const anchor = anchors[pid];
-          if (!anchor) return;
-          const color = palette[pid] ?? "#7C5CFC";
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(anchor.x, anchor.y, 80, 0, Math.PI * 2);
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 5]);
-          ctx.globalAlpha = 0.18;
-          ctx.stroke();
-          ctx.setLineDash([]);
-          // Label — use the portfolio name from portfolios prop if available
-          const label = (nameRef.current[pid] ?? pid).toUpperCase();
-          ctx.globalAlpha = 0.45;
-          ctx.fillStyle = color;
-          ctx.font = "10px 'JetBrains Mono', monospace";
-          ctx.textAlign = "center";
-          ctx.fillText(label, anchor.x, anchor.y - 86);
-          ctx.restore();
-        });
+        for (const sun of suns) { drawSun(ctx, sun); drawSunLabel(ctx, sun); }
 
-        // Arc connections (same portfolio pairs, skip if cluster > 12 nodes)
-        portfolioIds.forEach(pid => {
-          const cluster = nodes.filter(n => n.portfolioId === pid);
-          if (cluster.length > 12) return;
-          const color = palette[pid] ?? "#7C5CFC";
-          ctx.save();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 0.6;
-          ctx.globalAlpha = 0.10;
-          for (let i = 0; i < cluster.length; i++) {
-            for (let j = i + 1; j < cluster.length; j++) {
-              ctx.beginPath();
-              ctx.moveTo(cluster[i].x, cluster[i].y);
-              ctx.lineTo(cluster[j].x, cluster[j].y);
-              ctx.stroke();
-            }
-          }
-          ctx.restore();
-        });
+        const sorted = [...planets].sort((a, b) => b.orbitR - a.orbitR);
+        const hits: typeof hitRef.current = [];
 
-        // Nodes
-        const t = now / 1000;
-        const isHovering = hover !== null;
-
-        nodes.forEach(nd => {
-          const isHovered = nd.nodeKey === hover;
-          const dimmed = isHovering && !isHovered;
-
-          // Breathing radius
-          const period = 3 + (tickerPhase(nd.ticker) / (Math.PI * 2)) * 2; // 3–5s
-          const breathR = nd.r + Math.sin(t * (Math.PI * 2 / period) + nd.phase) * 2;
-          const drawR   = breathR + (isHovered ? 3 : 0);
-
-          // Color
-          const color = nodeColor(nd.pnlPct);
-
-          // Ripple ring
-          const RIPPLE_INTERVAL = 4;
-          if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT >= RIPPLE_INTERVAL) {
-            nd.rippleT = 0;
-          }
-          if (Math.abs(nd.dayChangePct) > 1 && nd.rippleT < 0.8) {
-            const progress = nd.rippleT / 0.8;
-            const rr = drawR + progress * drawR * 1.5;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(nd.x, nd.y, rr, 0, Math.PI * 2);
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 1;
-            ctx.globalAlpha = (1 - progress) * 0.4 * (dimmed ? 0.3 : 1);
-            ctx.stroke();
-            ctx.restore();
-          }
-
-          // Three-pass glow
-          const baseAlpha = dimmed ? 0.35 : 1.0;
-          const glowMult  = isHovered ? 2.0 : 1.0;
-
-          // Pass 1 — outer halo
-          ctx.save();
-          ctx.shadowBlur  = 32 * glowMult;
-          ctx.shadowColor = color;
-          ctx.globalAlpha = 0.12 * baseAlpha;
-          ctx.beginPath();
-          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.restore();
-
-          // Pass 2 — mid glow
-          ctx.save();
-          ctx.shadowBlur  = 12 * glowMult;
-          ctx.shadowColor = color;
-          ctx.globalAlpha = 0.35 * baseAlpha;
-          ctx.beginPath();
-          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.restore();
-
-          // Pass 3 — core
-          ctx.save();
-          ctx.globalAlpha = 1.0 * baseAlpha;
-          ctx.beginPath();
-          ctx.arc(nd.x, nd.y, drawR, 0, Math.PI * 2);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.restore();
-
-          // Ticker label
-          ctx.save();
-          ctx.font = "9px 'JetBrains Mono', monospace";
-          ctx.textAlign = "center";
-          ctx.fillStyle = `rgba(255,255,255,${dimmed ? 0.25 : 0.65})`;
-          ctx.fillText(nd.ticker, nd.x, nd.y + drawR + 10);
-          ctx.restore();
-
-          // Day change label (only if significant)
-          if (Math.abs(nd.dayChangePct) > 0.5 && !dimmed) {
-            const sign = nd.dayChangePct >= 0 ? "+" : "";
-            ctx.save();
-            ctx.font = "8px 'JetBrains Mono', monospace";
-            ctx.textAlign = "center";
-            ctx.fillStyle = nd.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
-            ctx.globalAlpha = 0.85;
-            ctx.fillText(`${sign}${nd.dayChangePct.toFixed(2)}%`, nd.x, nd.y - drawR - 8);
-            ctx.restore();
-          }
-        });
+        for (const p of sorted) {
+          const sun = sunMap.get(p.portfolioId);
+          if (!sun) continue;
+          const px = sun.x + Math.cos(p.angle) * p.orbitR;
+          const py = sun.y + Math.sin(p.angle) * p.orbitR;
+          hits.push({ key: p.key, x: px, y: py, r: p.radius });
+          const alpha = hovered && p.key !== hovered ? 0.22 : 1.0;
+          drawRipple(ctx, px, py, p);
+          drawPlanet(ctx, px, py, p, alpha);
+          drawPlanetLabel(ctx, px, py, p, alpha);
+        }
+        hitRef.current = hits;
       } catch (err) {
-        console.error("[ConstellationMap] frame error:", err);
+        console.error("[SolarMap] frame:", err);
       }
-      rafRef.current = requestAnimationFrame(frame); // always reschedule, outside try
+      rafRef.current = requestAnimationFrame(frame);
     }
 
     rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    let found: typeof hitRef.current[number] | null = null;
+    for (const h of hitRef.current) {
+      const dx = h.x - cx, dy = h.y - cy;
+      if (dx * dx + dy * dy < (h.r + 12) ** 2) { found = h; break; }
+    }
+
+    if (found) {
+      hoveredRef.current = found.key;
+      const p = planetsRef.current.find(pl => pl.key === found!.key);
+      if (p) setCard({ ticker: p.ticker, portfolioName: p.portfolioName, color: p.color,
+        marketValue: p.marketValue, pnl: p.pnl, pnlPct: p.pnlPct,
+        dayChangePct: p.dayChangePct, cssX: found.x, cssY: found.y });
+    } else {
+      hoveredRef.current = null;
+      setCard(null);
+    }
+  }
+
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", borderRadius: 8, overflow: "hidden", background: "#05060f", border: "1px solid var(--border-0)" }}>
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1,
+        background: "radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0,0,0,0.65) 100%)",
+      }} />
       <canvas
         ref={canvasRef}
-        style={{ display: "block", width: "100%", height: "360px" }}
-        onMouseMove={e => {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          const scaleX = canvas.width / rect.width;
-          const scaleY = canvas.height / rect.height;
-          const cx = (e.clientX - rect.left) * scaleX;
-          const cy = (e.clientY - rect.top)  * scaleY;
-          mouseRef.current = { x: cx, y: cy };
-
-          let found: string | null = null;
-          let foundNode: PhysNode | null = null;
-          for (const nd of nodesRef.current) {
-            const dx = nd.x - cx, dy = nd.y - cy;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.nodeKey; foundNode = nd; break; }
-          }
-          hoverRef.current = found;
-
-          if (foundNode && clickRef.current === null) {
-            const pos = positions.find(p => p.ticker === foundNode!.ticker && p.portfolio_id === foundNode!.portfolioId);
-            if (pos) {
-              setCard({
-                ticker:         foundNode.ticker,
-                portfolioName:  pos.portfolio_name,
-                portfolioColor: paletteRef.current[pos.portfolio_id] ?? "#7C5CFC",
-                marketValue:    pos.market_value ?? 0,
-                pnl:            pos.pnl,
-                pnlPct:         pos.pnl_pct,
-                dayChangePct:   pos.day_change_pct ?? 0,
-                x: foundNode.x / scaleX,
-                y: foundNode.y / scaleY,
-              });
-            }
-          } else if (!foundNode && clickRef.current === null) {
-            setCard(null);
-          }
-        }}
-        onMouseLeave={() => {
-          hoverRef.current = null;
-          mouseRef.current = { x: 0, y: 0 };
-          if (clickRef.current === null) setCard(null);
-        }}
-        onClick={e => {
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const rect = canvas.getBoundingClientRect();
-          const scaleX = canvas.width / rect.width;
-          const scaleY = canvas.height / rect.height;
-          const cx = (e.clientX - rect.left) * scaleX;
-          const cy = (e.clientY - rect.top)  * scaleY;
-          let found: string | null = null;
-          let foundNode: PhysNode | null = null;
-          for (const nd of nodesRef.current) {
-            const dx = nd.x - cx, dy = nd.y - cy;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.nodeKey; foundNode = nd; break; }
-          }
-          if (found === clickRef.current) {
-            clickRef.current = null;
-            setCard(null);
-          } else {
-            clickRef.current = found;
-            if (foundNode) {
-              const pos = positions.find(p => p.ticker === foundNode!.ticker && p.portfolio_id === foundNode!.portfolioId);
-              if (pos) {
-                setCard({
-                  ticker:         foundNode.ticker,
-                  portfolioName:  pos.portfolio_name,
-                  portfolioColor: paletteRef.current[pos.portfolio_id] ?? "#7C5CFC",
-                  marketValue:    pos.market_value ?? 0,
-                  pnl:            pos.pnl,
-                  pnlPct:         pos.pnl_pct,
-                  dayChangePct:   pos.day_change_pct ?? 0,
-                  x: foundNode.x / scaleX,
-                  y: foundNode.y / scaleY,
-                });
-              }
-            } else {
-              setCard(null);
-            }
-          }
-        }}
+        style={{ display: "block", width: "100%", height: `${CANVAS_H}px` }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => { hoveredRef.current = null; setCard(null); }}
       />
-      {card && (
-        <DetailCard
-          card={card}
-          containerWidth={canvasRef.current?.getBoundingClientRect().width ?? 600}
-        />
-      )}
+      {card && <PlanetCard card={card} canvasRef={canvasRef} />}
     </div>
   );
 }
 
-// ─── Detail Card ─────────────────────────────────────────────────────────────
-function DetailCard({ card, containerWidth }: { card: CardData; containerWidth: number }) {
-  const CARD_W = 160;
-  const CARD_H = 118; // approximate rendered height
-  const CANVAS_H = 360;
-
-  // Horizontal: center on node, clamp left+right
-  const left = Math.max(8, Math.min(card.x - CARD_W / 2, containerWidth - CARD_W - 8));
-
-  // Vertical: flip above node when below midpoint, clamp bottom edge
-  const topBelow  = card.y + 18;
-  const topAbove  = card.y - CARD_H - 18;
-  const useAbove  = card.y > CANVAS_H / 2;
-  const top = Math.max(8, Math.min(useAbove ? topAbove : topBelow, CANVAS_H - CARD_H - 8));
-  const pnlColor = card.pnlPct >= 0 ? "#4ADE80" : "#F87171";
-  const dayColor = card.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
+// ── Detail card ────────────────────────────────────────────────────────────────
+function PlanetCard({ card, canvasRef }: { card: HoverCard; canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
+  const CARD_W = 168, CARD_H = 118;
+  const cw = canvasRef.current?.getBoundingClientRect().width ?? 800;
+  const left = Math.max(8, Math.min(card.cssX - CARD_W / 2, cw - CARD_W - 8));
+  const flip = card.cssY > CANVAS_H / 2;
+  const top  = Math.max(8, flip ? card.cssY - CARD_H - 20 : card.cssY + 20);
   const sign = (v: number) => v >= 0 ? "+" : "";
+  const pc = card.pnlPct >= 0 ? "#4ade80" : "#f87171";
+  const dc = card.dayChangePct >= 0 ? "#4ade80" : "#f87171";
+
   return (
     <div style={{
-      position:       "absolute",
-      left,
-      top,
-      width:          CARD_W,
-      background:     "rgba(8,10,20,0.90)",
-      backdropFilter: "blur(12px)",
-      border:         "1px solid rgba(255,255,255,0.08)",
-      borderRadius:   8,
-      padding:        "10px 14px",
-      pointerEvents:  "none",
-      transition:     "opacity 120ms",
-      zIndex:         10,
+      position: "absolute", left, top, width: CARD_W, zIndex: 10,
+      background: "rgba(5,6,15,0.94)", backdropFilter: "blur(16px)",
+      border: "1px solid rgba(255,255,255,0.09)", borderRadius: 9,
+      padding: "11px 14px", pointerEvents: "none",
+      boxShadow: `0 0 0 1px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.55), 0 0 16px ${card.color}18`,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: card.portfolioColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: card.portfolioColor, opacity: 0.85 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+        <div style={{ width: 7, height: 7, borderRadius: "50%", background: card.color, flexShrink: 0,
+          boxShadow: `0 0 8px ${card.color}` }} />
+        <span style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: "0.09em", color: card.color, opacity: 0.8 }}>
           {card.portfolioName}
         </span>
       </div>
-      <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700, color: "#fff", lineHeight: 1.1, marginBottom: 6 }}>
+      <div style={{ fontSize: 22, fontFamily: "monospace", fontWeight: 800, color: "#fff", lineHeight: 1, marginBottom: 7, letterSpacing: "-0.01em" }}>
         {card.ticker}
       </div>
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
-        ${Math.round(card.marketValue).toLocaleString("en-US")}
+      <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.4)", marginBottom: 5 }}>
+        ${Math.round(card.marketValue).toLocaleString()}
       </div>
-      <div style={{ fontSize: 12, color: pnlColor, fontFamily: "monospace" }}>
-        {sign(card.pnl)}${Math.abs(card.pnl).toFixed(2)}&nbsp;
-        <span style={{ opacity: 0.8 }}>{sign(card.pnlPct)}{card.pnlPct.toFixed(1)}%</span>
+      <div style={{ fontSize: 13.5, color: pc, fontFamily: "monospace", fontWeight: 700 }}>
+        {sign(card.pnl)}${Math.abs(card.pnl).toFixed(0)}
+        <span style={{ fontSize: 11, opacity: 0.8, marginLeft: 6 }}>{sign(card.pnlPct)}{card.pnlPct.toFixed(1)}%</span>
       </div>
       {Math.abs(card.dayChangePct) > 0.01 && (
-        <div style={{ fontSize: 11, color: dayColor, fontFamily: "monospace", marginTop: 2, opacity: 0.85 }}>
+        <div style={{ fontSize: 10.5, color: dc, fontFamily: "monospace", marginTop: 4, opacity: 0.85 }}>
           today {sign(card.dayChangePct)}{card.dayChangePct.toFixed(2)}%
         </div>
       )}
     </div>
   );
-}
-
-// ─── Color helpers ─────────────────────────────────────────────────────────────
-function lerpColor(a: string, b: string, t: number): string {
-  const ah = parseInt(a.slice(1), 16);
-  const bh = parseInt(b.slice(1), 16);
-  const ar = (ah >> 16) & 0xff, ag = (ah >> 8) & 0xff, ab_ = ah & 0xff;
-  const br = (bh >> 16) & 0xff, bg = (bh >> 8) & 0xff, bb_ = bh & 0xff;
-  const r  = Math.round(ar + (br - ar) * t);
-  const g  = Math.round(ag + (bg - ag) * t);
-  const b_ = Math.round(ab_ + (bb_ - ab_) * t);
-  return `#${((r << 16) | (g << 8) | b_).toString(16).padStart(6, "0")}`;
-}
-
-function nodeColor(pnlPct: number): string {
-  if (pnlPct >= 8)  return "#00FF9C";
-  if (pnlPct >= 2)  return lerpColor("#4ADE80", "#00FF9C", (pnlPct - 2) / 6);
-  if (pnlPct >= -2) return lerpColor("#94A3B8", "#4ADE80", (pnlPct + 2) / 4);
-  if (pnlPct >= -8) return lerpColor("#FBBF24", "#94A3B8", (pnlPct + 8) / 6);
-  return "#EF4444";
 }
