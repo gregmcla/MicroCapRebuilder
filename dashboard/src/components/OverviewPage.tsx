@@ -9,6 +9,7 @@ import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import PerformanceChart from "./PerformanceChart";
+import ConstellationMap from "./ConstellationMap";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -95,93 +96,7 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 // All Positions Panel — weighted map + performance chart toggle
 // ---------------------------------------------------------------------------
 
-const PORTFOLIO_PALETTE = [
-  "#34d399", // emerald
-  "#818cf8", // indigo
-  "#38bdf8", // sky
-  "#fb923c", // orange
-  "#f472b6", // pink
-  "#a78bfa", // violet
-  "#fbbf24", // amber
-  "#4ade80", // green
-];
-
 type ViewMode = "map" | "chart";
-
-function usePortfolioColors(positions: CrossPortfolioMover[]) {
-  return useMemo(() => {
-    const ids = [...new Set(positions.map((p) => p.portfolio_id))].sort();
-    const map: Record<string, string> = {};
-    ids.forEach((id, i) => { map[id] = PORTFOLIO_PALETTE[i % PORTFOLIO_PALETTE.length]; });
-    return map;
-  }, [positions]);
-}
-
-function blockBg(pct: number) {
-  if (pct >= 12)  return "rgba(52,211,153,0.55)";
-  if (pct >= 6)   return "rgba(52,211,153,0.36)";
-  if (pct >= 2)   return "rgba(52,211,153,0.20)";
-  if (pct >= 0)   return "rgba(52,211,153,0.08)";
-  if (pct >= -2)  return "rgba(248,113,113,0.08)";
-  if (pct >= -6)  return "rgba(248,113,113,0.20)";
-  if (pct >= -12) return "rgba(248,113,113,0.36)";
-  return "rgba(248,113,113,0.55)";
-}
-
-// ── View 1: Weighted Map ─────────────────────────────────────────────────────
-
-function WeightedMap({ positions, portfolioColors }: {
-  positions: CrossPortfolioMover[];
-  portfolioColors: Record<string, string>;
-}) {
-  const sorted = useMemo(
-    () => [...positions].sort((a, b) => b.pnl_pct - a.pnl_pct),
-    [positions]
-  );
-
-  return (
-    <div style={{
-      display: "flex", flexWrap: "wrap", gap: "2px", padding: "6px",
-      background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "7px",
-    }}>
-      {sorted.map((pos) => {
-        const mv = pos.market_value ?? 1000;
-        // sqrt normalization + flex-basis 0 so flex-grow is the sole size driver
-        const flexGrow = Math.max(Math.sqrt(mv / 500), 0.8);
-        const portfolioColor = portfolioColors[pos.portfolio_id] ?? "#818cf8";
-        const pnlColor = pos.pnl_pct >= 0 ? "var(--green)" : "var(--red)";
-        return (
-          <div
-            key={`${pos.portfolio_id}-${pos.ticker}`}
-            title={`${pos.ticker} · ${pos.portfolio_name} · ${fmtPct(pos.pnl_pct)} · $${mv.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            style={{
-              background: blockBg(pos.pnl_pct),
-              borderRadius: "4px",
-              borderTop: `2px solid ${portfolioColor}`,
-              borderLeft: "1px solid rgba(255,255,255,0.04)",
-              borderRight: "1px solid rgba(255,255,255,0.04)",
-              borderBottom: "1px solid rgba(255,255,255,0.04)",
-              padding: "4px 7px",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: "1px",
-              cursor: "pointer", transition: "opacity 0.15s",
-              minWidth: "46px",
-              flex: `${flexGrow} 0 0`,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.7")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-          >
-            <span style={{ fontSize: "9.5px", fontWeight: 700, color: "var(--text-4)", fontFamily: "var(--font-mono)", letterSpacing: "0.03em" }}>
-              {pos.ticker}
-            </span>
-            <span style={{ fontSize: "9px", fontWeight: 600, color: pnlColor, fontFamily: "var(--font-mono)" }}>
-              {fmtPct(pos.pnl_pct, 1)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 // ── All Positions Panel (container with toggle) ───────────────────────────────
 
@@ -190,7 +105,6 @@ function AllPositionsPanel({ positions, portfolios }: {
   portfolios: PortfolioSummary[];
 }) {
   const [view, setView] = useState<ViewMode>("map");
-  const portfolioColors = usePortfolioColors(positions);
 
   if (positions.length === 0) return null;
 
@@ -219,7 +133,7 @@ function AllPositionsPanel({ positions, portfolios }: {
         </div>
       </div>
       {view === "map"
-        ? <WeightedMap positions={positions} portfolioColors={portfolioColors} />
+        ? <ConstellationMap positions={positions} portfolios={portfolios} />
         : <PerformanceChart portfolios={portfolios} />
       }
     </div>
