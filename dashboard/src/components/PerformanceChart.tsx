@@ -203,9 +203,11 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         setAnimProgress(cubicBezierEase(t));
         rafRef.current = requestAnimationFrame(tick);
       } else {
-        setAnimProgress(1);
-        // Start endpoint fade
-        if (endStartRef.current === null) endStartRef.current = now;
+        // Start endpoint fade — transition fires once
+        if (endStartRef.current === null) {
+          endStartRef.current = now;
+          setAnimProgress(1);
+        }
         const fadeElapsed = (now - endStartRef.current) / 1000;
         const fadeT = Math.min(fadeElapsed / FADE_DURATION, 1);
         setEndpointsAlpha(fadeT);
@@ -351,7 +353,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.save();
       // Clip to animated reveal region
       ctx.beginPath();
-      ctx.rect(0, PAD_TOP, clipX, chartH + PAD_BOTTOM);
+      ctx.rect(0, PAD_TOP, clipX, chartH);
       ctx.clip();
 
       for (let si = 0; si < series.length; si++) {
