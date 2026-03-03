@@ -15,9 +15,9 @@ const CHART_PALETTE = [
 ];
 
 const ECHO_DEFS = [
-  { offset: 0.06, opacity: 0.28, blur: "1px",   width: 2.5 },
-  { offset: 0.12, opacity: 0.14, blur: "2px",   width: 3.5 },
-  { offset: 0.20, opacity: 0.06, blur: "3.5px", width: 5.5 },
+  { offset: 0.06, opacity: 0.40, blur: "2px", width: 3.5 },
+  { offset: 0.12, opacity: 0.25, blur: "3px", width: 5.0 },
+  { offset: 0.20, opacity: 0.12, blur: "5px", width: 8.0 },
 ] as const;
 
 const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
@@ -392,7 +392,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Green zone above zero
         const greenGrad = ctx.createLinearGradient(0, PAD_TOP, 0, zeroY);
-        greenGrad.addColorStop(0, "rgba(80,200,120,0.04)");
+        greenGrad.addColorStop(0, "rgba(80,200,120,0.12)");
         greenGrad.addColorStop(1, "rgba(80,200,120,0)");
         ctx.fillStyle = greenGrad;
         ctx.fillRect(PAD_LEFT, PAD_TOP, chartW, zeroY - PAD_TOP);
@@ -400,7 +400,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // Red zone below zero
         const redGrad = ctx.createLinearGradient(0, zeroY, 0, PAD_TOP + chartH);
         redGrad.addColorStop(0, "rgba(200,60,60,0)");
-        redGrad.addColorStop(1, "rgba(200,60,60,0.06)");
+        redGrad.addColorStop(1, "rgba(200,60,60,0.15)");
         ctx.fillStyle = redGrad;
         ctx.fillRect(PAD_LEFT, zeroY, chartW, PAD_TOP + chartH - zeroY);
       }
@@ -557,7 +557,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       if (series.length < 2) return; // strip not meaningful with one series
       const leaders = computeDailyLeaders(series, maxLen);
       const stripY  = dims.height - PAD_BOTTOM + 3; // just inside bottom padding zone
-      const stripH  = 7;
+      const stripH  = 14;
       const colW    = chartW / maxLen;
 
       // Background track — faint defined boundary
@@ -569,7 +569,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       for (let d = 0; d < maxLen; d++) {
         const si = leaders[d];
         if (si < 0) continue;
-        ctx.globalAlpha = 0.60;
+        ctx.globalAlpha = 0.85;
         ctx.fillStyle   = series[si].color;
         // Math.max(1, colW) prevents sub-pixel gaps at high data density
         ctx.fillRect(PAD_LEFT + (d / maxLen) * chartW, stripY, Math.max(1, colW), stripH);
@@ -705,7 +705,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // ── Area fill (draw first, source-over, below the glowing lines) ─────
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = glowAlpha * 0.04;
+        ctx.globalAlpha = glowAlpha * 0.14;
         const grad = ctx.createLinearGradient(0, toPixelY(scale.yMax), 0, toPixelY(scale.yMin));
         grad.addColorStop(0, s.color);
         grad.addColorStop(1, "transparent");
@@ -724,10 +724,10 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Pass 1: wide blurred halo
         ctx.save();
-        ctx.filter = "blur(2px)";
-        ctx.globalAlpha = glowAlpha * 0.15;
+        ctx.filter = "blur(7px)";
+        ctx.globalAlpha = glowAlpha * 0.30;
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 14;
         ctx.lineJoin = "round";
         ctx.lineCap  = "round";
         ctx.beginPath();
@@ -737,7 +737,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Pass 2: inner glow
         ctx.save();
-        ctx.globalAlpha = glowAlpha * 0.40;
+        ctx.globalAlpha = glowAlpha * 0.65;
         ctx.strokeStyle = s.color;
         ctx.lineWidth = 2;
         ctx.lineJoin = "round";
@@ -995,6 +995,16 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
             "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(255,255,255,0.006) 1px, rgba(255,255,255,0.006) 2px)",
           pointerEvents: "none",
           zIndex: 1,
+        }}
+      />
+      {/* Vignette overlay — radial burn from corners */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.60) 100%)",
+          pointerEvents: "none",
+          zIndex: 2,
         }}
       />
       <canvas
