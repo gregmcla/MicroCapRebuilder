@@ -14,6 +14,12 @@ const CHART_PALETTE = [
   "#9ab4c4", // slate
 ];
 
+const ECHO_DEFS = [
+  { offset: 0.06, opacity: 0.28, blur: "1px",   width: 2.5 },
+  { offset: 0.12, opacity: 0.14, blur: "2px",   width: 3.5 },
+  { offset: 0.20, opacity: 0.06, blur: "3.5px", width: 5.5 },
+] as const;
+
 const PAD_TOP    = 28;
 const PAD_RIGHT  = 112;
 const PAD_BOTTOM = 24;
@@ -388,14 +394,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
 
         // ── Temporal echo trails (drawn before area fill, furthest back) ──────
-        const ECHO_DEFS = [
-          { offset: 0.06, opacity: 0.28, blur: "1px",   width: 2.5 },
-          { offset: 0.12, opacity: 0.14, blur: "2px",   width: 3.5 },
-          { offset: 0.20, opacity: 0.06, blur: "3.5px", width: 5.5 },
-        ] as const;
-
         for (const echo of ECHO_DEFS) {
-          const echoProgress = Math.max(0, progress - echo.offset);
+          const echoProgress = progress - echo.offset;
           if (echoProgress <= 0) continue;
           // Slice pts to echo's progress position — shorter line = lags behind main
           const echoMaxDataIdx = Math.min(
