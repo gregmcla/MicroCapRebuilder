@@ -22,6 +22,8 @@ const ECHO_DEFS = [
 
 const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
 
+const PULSE_DURATION_MS = 1800; // ms for one pulse to travel endpoint → origin
+
 const PAD_TOP    = 28;
 const PAD_RIGHT  = 112;
 const PAD_BOTTOM = 24;
@@ -219,6 +221,17 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
   const [hoverX,     setHoverX]     = useState<number | null>(null);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
+  // ── ECG pulse state ───────────────────────────────────────────────────────
+  interface PulseState {
+    active:    boolean;
+    startTime: number; // performance.now() when pulse started
+    nextFire:  number; // performance.now() when next pulse fires
+    interval:  number; // ms between pulses
+  }
+  const pulseStatesRef = useRef<PulseState[]>([]);
+  const pulseRafRef    = useRef<number | null>(null);
+  const [pulseTick, setPulseTick] = useState(0); // incremented to trigger redraws
+
   useEffect(() => {
     // Reset on series change
     setAnimProgress(0);
@@ -264,6 +277,47 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, [series.length]); // reset and replay when portfolio count changes
+
+  // ECG pulse RAF loop — fires independently of mount animation
+  useEffect(() => {
+    const now = performance.now();
+    pulseStatesRef.current = series.map((s, i) => ({
+      active:    false,
+      startTime: 0,
+      // Stagger first fires: wait for mount animation + endpoint fade + buffer
+      nextFire:  now + 2000 + i * 700,
+      // Deterministic interval derived from portfolio data — each portfolio has its own rhythm
+      interval:  4000 + i * 500 + (Math.abs(Math.round(s.finalReturn * 97)) % 900),
+    }));
+
+    function tick(now: number) {
+      let needRedraw = false;
+
+      for (const ps of pulseStatesRef.current) {
+        if (!ps.active && now >= ps.nextFire) {
+          ps.active    = true;
+          ps.startTime = now;
+          needRedraw   = true;
+        }
+        if (ps.active) {
+          const elapsed = now - ps.startTime;
+          if (elapsed >= PULSE_DURATION_MS) {
+            ps.active    = false;
+            ps.nextFire  = now + ps.interval;
+          }
+          needRedraw = true;
+        }
+      }
+
+      if (needRedraw) setPulseTick((n) => n + 1);
+      pulseRafRef.current = requestAnimationFrame(tick);
+    }
+
+    pulseRafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (pulseRafRef.current !== null) cancelAnimationFrame(pulseRafRef.current);
+    };
+  }, [series.length]); // restart when portfolio count changes
 
   // ResizeObserver
   useEffect(() => {
@@ -638,6 +692,62 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     [series, scale, dims, chartW, maxLen]
   );
 
+  const drawPulse = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      const { toPixelY } = scale;
+      const states = pulseStatesRef.current;
+      const now    = performance.now();
+
+      for (let si = 0; si < series.length; si++) {
+        const ps = states[si];
+        if (!ps?.active) continue;
+
+        const s       = series[si];
+        const elapsed = now - ps.startTime;
+        const pulseT  = Math.min(elapsed / PULSE_DURATION_MS, 1);
+
+        // Bell-curve alpha: fades in, peaks at midpoint, fades out
+        const pulseAlpha = Math.sin(pulseT * Math.PI);
+
+        // Position: moves from endpoint (pulseT=0) to origin (pulseT=1) along the line
+        const dataFrac = (1 - pulseT) * (s.cum.length - 1);
+        const dataIdx  = Math.min(Math.round(dataFrac), s.cum.length - 1);
+        const pxX      = toPixelX(dataFrac, maxLen, chartW);
+        const pxY      = toPixelY(s.cum[dataIdx]);
+
+        // Outer bloom — large, soft
+        ctx.save();
+        ctx.globalAlpha = pulseAlpha * 0.40;
+        ctx.filter      = "blur(7px)";
+        ctx.beginPath();
+        ctx.arc(pxX, pxY, 10, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.restore();
+
+        // Mid glow — tighter, portfolio color
+        ctx.save();
+        ctx.globalAlpha = pulseAlpha * 0.75;
+        ctx.filter      = "blur(2px)";
+        ctx.beginPath();
+        ctx.arc(pxX, pxY, 5, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.fill();
+        ctx.restore();
+
+        // White-hot core — no blur, pure white, small
+        ctx.save();
+        ctx.globalAlpha = pulseAlpha * 0.95;
+        ctx.beginPath();
+        ctx.arc(pxX, pxY, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+        ctx.restore();
+      }
+    },
+    [series, scale, chartW, maxLen],
+  );
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -683,8 +793,9 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     drawScars(ctx);
     drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
     drawEndpoints(ctx, endpointsAlpha);
+    drawPulse(ctx);
     if (hoverX !== null && animProgress >= 1) drawHover(ctx, hoverX);
-  }, [drawGrid, drawScars, drawLines, drawEndpoints, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx]);
+  }, [drawGrid, drawScars, drawLines, drawEndpoints, drawPulse, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx, pulseTick]);
 
   if (series.length === 0) {
     return (
