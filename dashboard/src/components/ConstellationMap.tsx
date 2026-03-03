@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CrossPortfolioMover, PortfolioSummary } from "../lib/types";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -16,6 +16,18 @@ const PALETTE = [
 ];
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+interface CardData {
+  ticker: string;
+  portfolioName: string;
+  portfolioColor: string;
+  marketValue: number;
+  pnl: number;
+  pnlPct: number;
+  dayChangePct: number;
+  x: number;   // CSS px (not canvas px)
+  y: number;   // CSS px
+}
+
 interface PhysNode {
   ticker: string;
   portfolioId: string;
@@ -104,6 +116,7 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
   const mouseRef   = useRef({ x: 0, y: 0 });
   const hoverRef   = useRef<string | null>(null);
   const clickRef   = useRef<string | null>(null);
+  const [card, setCard] = useState<CardData | null>(null);
 
   // Portfolio color palette (hex strings, cycle if more than palette length)
   const paletteRef = useRef<Record<string, string>>({});
@@ -433,22 +446,41 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           const rect = canvas.getBoundingClientRect();
           const scaleX = canvas.width / rect.width;
           const scaleY = canvas.height / rect.height;
-          mouseRef.current = {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top)  * scaleY,
-          };
-          // Hover detection
-          const mx = mouseRef.current.x, my = mouseRef.current.y;
+          const cx = (e.clientX - rect.left) * scaleX;
+          const cy = (e.clientY - rect.top)  * scaleY;
+          mouseRef.current = { x: cx, y: cy };
+
           let found: string | null = null;
+          let foundNode: PhysNode | null = null;
           for (const nd of nodesRef.current) {
-            const dx = nd.x - mx, dy = nd.y - my;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; break; }
+            const dx = nd.x - cx, dy = nd.y - cy;
+            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; foundNode = nd; break; }
           }
           hoverRef.current = found;
+
+          if (foundNode && clickRef.current === null) {
+            const pos = positions.find(p => p.ticker === foundNode!.ticker);
+            if (pos) {
+              setCard({
+                ticker:         foundNode.ticker,
+                portfolioName:  pos.portfolio_name,
+                portfolioColor: paletteRef.current[pos.portfolio_id] ?? "#7C5CFC",
+                marketValue:    pos.market_value ?? 0,
+                pnl:            pos.pnl,
+                pnlPct:         pos.pnl_pct,
+                dayChangePct:   pos.day_change_pct ?? 0,
+                x: foundNode.x / scaleX,
+                y: foundNode.y / scaleY,
+              });
+            }
+          } else if (!foundNode && clickRef.current === null) {
+            setCard(null);
+          }
         }}
         onMouseLeave={() => {
           hoverRef.current = null;
           mouseRef.current = { x: 0, y: 0 };
+          if (clickRef.current === null) setCard(null);
         }}
         onClick={e => {
           const canvas = canvasRef.current;
@@ -456,16 +488,89 @@ export default function ConstellationMap({ positions, portfolios }: Constellatio
           const rect = canvas.getBoundingClientRect();
           const scaleX = canvas.width / rect.width;
           const scaleY = canvas.height / rect.height;
-          const mx = (e.clientX - rect.left) * scaleX;
-          const my = (e.clientY - rect.top)  * scaleY;
+          const cx = (e.clientX - rect.left) * scaleX;
+          const cy = (e.clientY - rect.top)  * scaleY;
           let found: string | null = null;
+          let foundNode: PhysNode | null = null;
           for (const nd of nodesRef.current) {
-            const dx = nd.x - mx, dy = nd.y - my;
-            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; break; }
+            const dx = nd.x - cx, dy = nd.y - cy;
+            if (Math.sqrt(dx * dx + dy * dy) < nd.r + 10) { found = nd.ticker; foundNode = nd; break; }
           }
-          clickRef.current = found === clickRef.current ? null : found;
+          if (found === clickRef.current) {
+            clickRef.current = null;
+            setCard(null);
+          } else {
+            clickRef.current = found;
+            if (foundNode) {
+              const pos = positions.find(p => p.ticker === foundNode!.ticker);
+              if (pos) {
+                setCard({
+                  ticker:         foundNode.ticker,
+                  portfolioName:  pos.portfolio_name,
+                  portfolioColor: paletteRef.current[pos.portfolio_id] ?? "#7C5CFC",
+                  marketValue:    pos.market_value ?? 0,
+                  pnl:            pos.pnl,
+                  pnlPct:         pos.pnl_pct,
+                  dayChangePct:   pos.day_change_pct ?? 0,
+                  x: foundNode.x / scaleX,
+                  y: foundNode.y / scaleY,
+                });
+              }
+            } else {
+              setCard(null);
+            }
+          }
         }}
       />
+      {card && <DetailCard card={card} />}
+    </div>
+  );
+}
+
+// ─── Detail Card ─────────────────────────────────────────────────────────────
+function DetailCard({ card }: { card: CardData }) {
+  const CARD_W = 160;
+  const left = card.x - CARD_W / 2;
+  const top  = card.y > 200 ? card.y - 118 : card.y + 18;
+  const pnlColor = card.pnlPct >= 0 ? "#4ADE80" : "#F87171";
+  const dayColor = card.dayChangePct >= 0 ? "#4ADE80" : "#F87171";
+  const sign = (v: number) => v >= 0 ? "+" : "";
+  return (
+    <div style={{
+      position:       "absolute",
+      left:           Math.max(8, left),
+      top,
+      width:          CARD_W,
+      background:     "rgba(8,10,20,0.90)",
+      backdropFilter: "blur(12px)",
+      border:         "1px solid rgba(255,255,255,0.08)",
+      borderRadius:   8,
+      padding:        "10px 14px",
+      pointerEvents:  "none",
+      transition:     "opacity 120ms",
+      zIndex:         10,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: card.portfolioColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.08em", color: card.portfolioColor, opacity: 0.85 }}>
+          {card.portfolioName}
+        </span>
+      </div>
+      <div style={{ fontSize: 18, fontFamily: "monospace", fontWeight: 700, color: "#fff", lineHeight: 1.1, marginBottom: 6 }}>
+        {card.ticker}
+      </div>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
+        ${Math.round(card.marketValue).toLocaleString("en-US")}
+      </div>
+      <div style={{ fontSize: 12, color: pnlColor, fontFamily: "monospace" }}>
+        {sign(card.pnl)}${Math.abs(card.pnl).toFixed(2)}&nbsp;
+        <span style={{ opacity: 0.8 }}>{sign(card.pnlPct)}{card.pnlPct.toFixed(1)}%</span>
+      </div>
+      {Math.abs(card.dayChangePct) > 0.01 && (
+        <div style={{ fontSize: 11, color: dayColor, fontFamily: "monospace", marginTop: 2, opacity: 0.85 }}>
+          today {sign(card.dayChangePct)}{card.dayChangePct.toFixed(2)}%
+        </div>
+      )}
     </div>
   );
 }
