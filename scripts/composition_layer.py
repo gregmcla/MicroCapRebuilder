@@ -53,7 +53,8 @@ class CompositionLayer:
         self,
         state: PortfolioState,
         layer1_output: Dict,
-        layer2_output: Dict
+        layer2_output: Dict,
+        sector_map: Optional[Dict[str, str]] = None
     ) -> Dict:
         """
         Process Layer 3: Filter buys by composition limits, generate rebalancing.
@@ -62,6 +63,8 @@ class CompositionLayer:
             state: Current portfolio state
             layer1_output: Output from Layer 1 (sells)
             layer2_output: Output from Layer 2 (buy proposals)
+            sector_map: Optional dict mapping ticker -> sector (from watchlist or AI layer).
+                        Used to resolve sectors for proposals without a static mapping.
 
         Returns:
             dict with:
@@ -86,6 +89,18 @@ class CompositionLayer:
         current_sectors = self._analyze_sectors(state)
         current_top3_pct = self._calculate_top3_pct(state)
 
+        # Build a running simulation of sector dollar-values so that each
+        # successive proposal sees the portfolio *after* all previously approved
+        # proposals have been added — not just the original snapshot.
+        # Seed with current held-position market values keyed by sector.
+        simulated_sector_values: Dict[str, float] = defaultdict(float)
+        for sector, pct in current_sectors.items():
+            simulated_sector_values[sector] = pct / 100.0 * state.total_equity
+        simulated_equity: float = state.total_equity
+
+        # Simulated positions list for top-3 checks (market_value column only needed)
+        simulated_positions = state.positions.copy()
+
         # Filter buy proposals
         filtered_buys = []
         blocked_buys = []
@@ -93,9 +108,9 @@ class CompositionLayer:
         warnings = []
 
         for proposal in buy_proposals:
-            # Check sector limit
+            # Check sector limit using the running simulation state
             sector_ok, sector_violation = self._check_sector_limit(
-                proposal, state, current_sectors
+                proposal, simulated_sector_values, simulated_equity, sector_map
             )
             if not sector_ok:
                 blocked_buys.append(proposal)
@@ -105,16 +120,28 @@ class CompositionLayer:
             # Check correlation (skip for now - implement in later iteration)
             # correlation_ok, corr_violation = self._check_correlation(proposal, state)
 
-            # Check top-3 limit
+            # Check top-3 limit using the running simulated positions
             top3_ok, top3_violation = self._check_top3_limit(
-                proposal, state, current_top3_pct
+                proposal, simulated_positions, simulated_equity
             )
             if not top3_ok:
                 blocked_buys.append(proposal)
                 violations.append(top3_violation)
                 continue
 
-            # Approved
+            # Approved — update the running simulation so the next proposal
+            # sees this one as already part of the portfolio.
+            proposal_sector = self._resolve_sector(proposal.ticker, sector_map)
+            simulated_sector_values[proposal_sector] += proposal.total_value
+            simulated_equity += proposal.total_value
+            new_row = pd.DataFrame([{
+                "ticker": proposal.ticker,
+                "market_value": proposal.total_value,
+                "shares": proposal.shares,
+                "current_price": proposal.price,
+            }])
+            simulated_positions = pd.concat([simulated_positions, new_row], ignore_index=True)
+
             filtered_buys.append(proposal)
 
         # Generate warnings for current composition issues
@@ -176,25 +203,38 @@ class CompositionLayer:
 
         return (top3_value / state.total_equity * 100) if state.total_equity > 0 else 0.0
 
+    def _resolve_sector(self, ticker: str, sector_map: Optional[Dict[str, str]] = None) -> str:
+        """
+        Resolve sector for a ticker, preferring the provided sector_map over
+        the static sector_mapping file (which may not have watchlist candidates).
+        """
+        if sector_map and ticker in sector_map:
+            return sector_map[ticker]
+        return get_sector(ticker, self.sector_mapping)
+
     def _check_sector_limit(
         self,
         proposal: BuyProposal,
-        state: PortfolioState,
-        current_sectors: Dict[str, float]
+        simulated_sector_values: Dict[str, float],
+        simulated_equity: float,
+        sector_map: Optional[Dict[str, str]] = None
     ) -> tuple[bool, Optional[CompositionViolation]]:
         """
         Check if buy would violate sector concentration limit.
 
+        Uses the running simulated portfolio (dollar values + equity) so that
+        multiple proposals in the same cycle do not all see the original snapshot.
+
         Returns:
             (is_ok, violation_or_none)
         """
-        sector = get_sector(proposal.ticker, self.sector_mapping)
-        current_sector_pct = current_sectors.get(sector, 0.0)
+        sector = self._resolve_sector(proposal.ticker, sector_map)
+        current_sector_dollars = simulated_sector_values.get(sector, 0.0)
 
-        # Calculate new sector percentage after buy
-        new_sector_value = (current_sector_pct / 100 * state.total_equity) + proposal.total_value
-        new_total_equity = state.total_equity  # Approximation (ignores cash decrease)
-        new_sector_pct = (new_sector_value / new_total_equity * 100)
+        # Project what the sector value and total equity would be after this buy
+        new_sector_value = current_sector_dollars + proposal.total_value
+        new_total_equity = simulated_equity + proposal.total_value
+        new_sector_pct = (new_sector_value / new_total_equity * 100) if new_total_equity > 0 else 0.0
 
         if new_sector_pct > self.sector_limit_pct:
             violation = CompositionViolation(
@@ -211,32 +251,32 @@ class CompositionLayer:
     def _check_top3_limit(
         self,
         proposal: BuyProposal,
-        state: PortfolioState,
-        current_top3_pct: float
+        simulated_positions: pd.DataFrame,
+        simulated_equity: float,
     ) -> tuple[bool, Optional[CompositionViolation]]:
         """
         Check if buy would violate top-3 concentration limit.
 
+        Uses the running simulated positions DataFrame so that previously approved
+        proposals in the same cycle are already reflected in the concentration check.
+
         Returns:
             (is_ok, violation_or_none)
         """
-        # Simulate portfolio with new position
-        simulated_positions = state.positions.copy()
-
-        # Add new position
+        # Append proposed position to the current simulation snapshot
         new_row = pd.DataFrame([{
             "ticker": proposal.ticker,
             "market_value": proposal.total_value,
             "shares": proposal.shares,
             "current_price": proposal.price,
         }])
-        simulated_positions = pd.concat([simulated_positions, new_row], ignore_index=True)
+        projected = pd.concat([simulated_positions, new_row], ignore_index=True)
 
-        # Calculate new top-3
-        sorted_positions = simulated_positions.sort_values("market_value", ascending=False)
+        # Calculate new top-3 against projected equity (includes this buy)
+        sorted_positions = projected.sort_values("market_value", ascending=False)
         new_top3_value = sorted_positions.head(3)["market_value"].sum()
-        new_total_equity = state.total_equity  # Approximation
-        new_top3_pct = (new_top3_value / new_total_equity * 100)
+        new_total_equity = simulated_equity + proposal.total_value
+        new_top3_pct = (new_top3_value / new_total_equity * 100) if new_total_equity > 0 else 0.0
 
         if new_top3_pct > self.top3_limit_pct:
             violation = CompositionViolation(

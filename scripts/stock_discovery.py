@@ -98,6 +98,18 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> float:
     return float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
 
 
+def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
+    """
+    Fuzzy sector match: handles mismatches like "Communication" vs "Communication Services".
+    Returns True if the yfinance sector string contains any filter string, or vice versa.
+    """
+    yf_lower = yf_sector.lower()
+    return any(
+        f.lower() in yf_lower or yf_lower in f.lower()
+        for f in filter_sectors
+    )
+
+
 class StockDiscovery:
     """
     Discovers new stock candidates through multiple scanning strategies.
@@ -235,7 +247,13 @@ class StockDiscovery:
             avg_vol = int(_vol_mean) if pd.notna(_vol_mean) else 0
             min_vol = filters.get("min_avg_volume", 200000)
             if avg_vol < min_vol:
-                return False
+                # Escape hatch: let through stocks whose recent 5-day average
+                # volume is at least 2× the minimum — catches emerging momentum
+                # stocks that spiked recently but have a low 3-month average.
+                _recent_mean = df["Volume"].iloc[-5:].mean()
+                recent_vol = int(_recent_mean) if pd.notna(_recent_mean) else 0
+                if recent_vol < min_vol * 2:
+                    return False
 
         return True
 
@@ -258,7 +276,7 @@ class StockDiscovery:
         sector_filter = self.discovery_config.get("sector_filter")
         if sector_filter:
             stock_sector = info.get("sector", "")
-            if stock_sector not in sector_filter:
+            if not _sector_matches(stock_sector, sector_filter):
                 return False
 
         return True

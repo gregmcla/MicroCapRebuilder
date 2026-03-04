@@ -22,6 +22,7 @@ Usage:
 """
 
 import json
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -262,10 +263,10 @@ class StockScorer:
             return 0.0
 
         lookback = min(days, len(df))
-        start_price = df["Close"].iloc[-lookback]
-        end_price = df["Close"].iloc[-1]
+        start_price = float(df["Close"].iloc[-lookback])
+        end_price = float(df["Close"].iloc[-1])
 
-        if start_price <= 0:
+        if math.isnan(start_price) or math.isnan(end_price) or start_price <= 0:
             return 0.0
 
         return ((end_price - start_price) / start_price) * 100
@@ -387,10 +388,10 @@ class StockScorer:
             return 50.0  # Neutral score if insufficient data
 
         lookback = min(self.lookback_days, len(df))
-        start_price = df["Close"].iloc[-lookback]
-        end_price = df["Close"].iloc[-1]
+        start_price = float(df["Close"].iloc[-lookback])
+        end_price = float(df["Close"].iloc[-1])
 
-        if start_price <= 0:
+        if math.isnan(start_price) or math.isnan(end_price) or start_price <= 0:
             return 50.0
 
         pct_change = ((end_price - start_price) / start_price) * 100
@@ -414,6 +415,8 @@ class StockScorer:
             return 50.0
 
         volatility = returns.std() * 100  # As percentage
+        if math.isnan(volatility):
+            return 50.0
 
         # Map to 0-100 scale (inverted - lower volatility = higher score)
         # 0% vol = 100, 5%+ daily vol = 0
@@ -431,10 +434,10 @@ class StockScorer:
         if "Volume" not in df.columns:
             return 50.0
 
-        recent_vol = df["Volume"].iloc[-5:].mean()
-        avg_vol = df["Volume"].iloc[-20:].mean()
+        recent_vol = float(df["Volume"].iloc[-5:].mean())
+        avg_vol = float(df["Volume"].iloc[-20:].mean())
 
-        if avg_vol <= 0:
+        if math.isnan(avg_vol) or math.isnan(recent_vol) or avg_vol <= 0:
             return 50.0
 
         vol_ratio = recent_vol / avg_vol
@@ -459,13 +462,19 @@ class StockScorer:
         # Calculate returns over matching period
         lookback = min(self.lookback_days, len(df), len(benchmark_df))
 
-        stock_start = df["Close"].iloc[-lookback]
-        stock_end = df["Close"].iloc[-1]
-        stock_return = ((stock_end - stock_start) / stock_start) * 100 if stock_start > 0 else 0
+        stock_start = float(df["Close"].iloc[-lookback])
+        stock_end = float(df["Close"].iloc[-1])
+        if math.isnan(stock_start) or math.isnan(stock_end) or stock_start <= 0:
+            stock_return = 0.0
+        else:
+            stock_return = ((stock_end - stock_start) / stock_start) * 100
 
-        bench_start = benchmark_df["Close"].iloc[-lookback]
-        bench_end = benchmark_df["Close"].iloc[-1]
-        bench_return = ((bench_end - bench_start) / bench_start) * 100 if bench_start > 0 else 0
+        bench_start = float(benchmark_df["Close"].iloc[-lookback])
+        bench_end = float(benchmark_df["Close"].iloc[-1])
+        if math.isnan(bench_start) or math.isnan(bench_end) or bench_start <= 0:
+            bench_return = 0.0
+        else:
+            bench_return = ((bench_end - bench_start) / bench_start) * 100
 
         # Relative strength = outperformance
         outperformance = stock_return - bench_return
@@ -484,10 +493,10 @@ class StockScorer:
         if df is None or len(df) < 20:
             return 50.0
 
-        current_price = df["Close"].iloc[-1]
-        sma_20 = df["Close"].iloc[-20:].mean()
+        current_price = float(df["Close"].iloc[-1])
+        sma_20 = float(df["Close"].iloc[-20:].mean())
 
-        if sma_20 <= 0:
+        if math.isnan(current_price) or math.isnan(sma_20) or sma_20 <= 0:
             return 50.0
 
         # Distance from SMA as percentage
@@ -516,10 +525,10 @@ class StockScorer:
         tr3 = abs(low - close.shift(1))
 
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        atr = tr.iloc[-14:].mean()
+        atr = float(tr.iloc[-14:].mean())
 
-        current_price = close.iloc[-1]
-        if current_price <= 0:
+        current_price = float(close.iloc[-1])
+        if math.isnan(atr) or math.isnan(current_price) or current_price <= 0:
             return 3.0
 
         atr_pct = (atr / current_price) * 100
@@ -555,7 +564,12 @@ class StockScorer:
         )
 
         current_price = float(df["Close"].iloc[-1])
+        if math.isnan(current_price) or current_price <= 0:
+            return None
+
         atr_pct = self.calculate_atr_percent(df)
+        if math.isnan(atr_pct) or atr_pct <= 0:
+            atr_pct = 2.0  # Safe fallback: 2% ATR
 
         return StockScore(
             ticker=ticker,

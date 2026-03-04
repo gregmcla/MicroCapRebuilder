@@ -95,6 +95,24 @@ class OpportunityLayer:
             "low_conviction_pct": 5.0
         })
 
+        # Validate conviction multiplier config: if min_conviction >= 60 and the
+        # "acceptable" multiplier is < 1.0, stocks scoring 60-74 can never reach
+        # min_conviction (e.g. 74 × 0.75 = 55.5 < 60) — the "acceptable" band is
+        # a dead zone.  Log a clear warning so the misconfiguration is visible.
+        import logging
+        acceptable_mult = self.conviction_multipliers.get("acceptable", 1.0)
+        if self.min_conviction >= 60 and acceptable_mult < 1.0:
+            logging.warning(
+                "OpportunityLayer config dead zone: min_conviction=%s but "
+                "conviction_multipliers.acceptable=%.2f. Stocks scoring 60–74 "
+                "can never reach min_conviction (e.g. 74 × %.2f = %.1f). "
+                "Set acceptable multiplier to 1.0 or raise it above 1.0 to fix.",
+                self.min_conviction,
+                acceptable_mult,
+                acceptable_mult,
+                74 * acceptable_mult,
+            )
+
     def process(self, state: PortfolioState, risk_layer_output: dict) -> dict:
         """
         Main entry point for Layer 2 processing.
@@ -114,6 +132,20 @@ class OpportunityLayer:
             return {"conviction_scores": {}, "buy_proposals": []}
 
         current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+
+        # Guard: if positions are empty but num_positions > 0, the positions DataFrame
+        # failed to load. An empty current_tickers set would let ALL watchlist tickers
+        # pass the filter — including ones we already own. Bail out early to avoid
+        # proposing buys for potentially already-held positions.
+        if state.positions.empty and state.num_positions > 0:
+            import logging
+            logging.warning(
+                "OpportunityLayer: positions DataFrame is empty but num_positions=%d. "
+                "Possible load failure — skipping buy proposals to avoid duplicate buys.",
+                state.num_positions,
+            )
+            return {"conviction_scores": {}, "buy_proposals": []}
+
         candidates = [t for t in watchlist if t not in current_tickers]
         if not candidates:
             return {"conviction_scores": {}, "buy_proposals": []}
@@ -126,10 +158,12 @@ class OpportunityLayer:
         conviction_scores = {}
         price_map = {}
         for stock_score in stock_scores:
+            # Always populate price_map for every scored stock so _generate_buy_proposals
+            # never has to fall back to state.price_cache (which only has held positions).
+            price_map[stock_score.ticker] = stock_score.current_price
             conviction = self.calculate_conviction(stock_score, state.regime)
             if conviction.final_conviction >= self.min_conviction:
                 conviction_scores[conviction.ticker] = conviction
-                price_map[conviction.ticker] = stock_score.current_price
 
         # Generate buy proposals from high-conviction candidates
         buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map)

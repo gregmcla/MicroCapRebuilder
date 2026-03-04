@@ -17,6 +17,7 @@ Usage:
 """
 
 import json
+import threading
 from dataclasses import dataclass, asdict, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -191,13 +192,14 @@ class WatchlistManager:
                             entry.notes = stock.notes
                         break
             else:
-                # Add new entry
+                # Add new entry — normalize missing sector to "Unknown" so
+                # downstream code can reliably check sector == "Unknown" vs ""
                 new_entry = WatchlistEntry(
                     ticker=stock.ticker,
                     added_date=stock.discovered_date,
                     source=stock.source,
                     discovery_score=stock.discovery_score,
-                    sector=stock.sector,
+                    sector=stock.sector if stock.sector else "Unknown",
                     market_cap_m=stock.market_cap_m,
                     avg_volume=stock.avg_volume,
                     last_checked=date.today().isoformat(),
@@ -309,6 +311,69 @@ class WatchlistManager:
         self._save_watchlist(final_entries)
         return to_remove
 
+    def _fetch_sector_with_timeout(self, ticker: str, timeout: float = 5.0) -> str:
+        """
+        Fetch sector for a single ticker from yfinance using a daemon thread
+        with a hard timeout (same pattern as StockDiscovery._get_stock_info).
+
+        Returns the sector string, or "" on failure/timeout.
+        """
+        import yfinance as yf
+
+        result: list = [""]
+
+        def _fetch() -> None:
+            try:
+                info = yf.Ticker(ticker).info
+                result[0] = info.get("sector", "")
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_fetch, daemon=True)
+        t.start()
+        t.join(timeout=timeout)
+        return result[0]
+
+    def _backfill_missing_sectors(self, entries: List[WatchlistEntry], batch_limit: int = 20) -> int:
+        """
+        Self-healing backfill: find ACTIVE entries with missing/Unknown sector
+        and attempt to fetch from yfinance. Updates entries in-place.
+
+        Args:
+            entries: The current list of WatchlistEntry objects (mutated in-place).
+            batch_limit: Maximum number of tickers to backfill per call (avoids
+                         slowing down the scan cycle).
+
+        Returns:
+            Number of entries successfully backfilled with a real sector.
+        """
+        needs_backfill = [
+            e for e in entries
+            if e.status == "ACTIVE" and (not e.sector or e.sector == "Unknown")
+        ]
+
+        if not needs_backfill:
+            return 0
+
+        batch = needs_backfill[:batch_limit]
+        print(f"  Backfilling sectors for {len(batch)} watchlist entries (of {len(needs_backfill)} missing)...")
+
+        filled = 0
+        for entry in batch:
+            sector = self._fetch_sector_with_timeout(entry.ticker, timeout=5.0)
+            if sector and sector != "Unknown":
+                entry.sector = sector
+                filled += 1
+            else:
+                # Explicitly mark as Unknown so we don't retry endlessly
+                # (next backfill cycle will skip entries already == "Unknown"
+                #  that haven't been re-discovered with real data)
+                if not entry.sector:
+                    entry.sector = "Unknown"
+
+        print(f"  Sector backfill: {filled}/{len(batch)} resolved")
+        return filled
+
     def update_watchlist(self, run_discovery: bool = True) -> Dict:
         """
         Full watchlist update cycle.
@@ -330,6 +395,7 @@ class WatchlistManager:
         stats = {
             "discovered": 0,
             "added": 0,
+            "sectors_backfilled": 0,
             "marked_stale": 0,
             "removed": 0,
             "poor_performers_removed": 0,
@@ -348,6 +414,17 @@ class WatchlistManager:
                 stats["added"] = self.add_discovered_stocks(discovered)
             except Exception as e:
                 print(f"Discovery error: {e}")
+
+        # Self-healing sector backfill: fix entries with missing/Unknown sector
+        # (up to 20 per cycle to avoid slowing down scans)
+        try:
+            entries = self._load_watchlist()
+            filled = self._backfill_missing_sectors(entries, batch_limit=20)
+            if filled > 0:
+                self._save_watchlist(entries)
+            stats["sectors_backfilled"] = filled
+        except Exception as e:
+            print(f"Sector backfill error: {e}")
 
         stats["marked_stale"] = self.mark_stale_tickers()
         stats["removed"] = self.remove_stale_tickers()

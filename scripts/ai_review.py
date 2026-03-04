@@ -86,12 +86,16 @@ def build_review_prompt(
 ) -> str:
     """Build the prompt for AI review."""
 
+    sector_map = portfolio_context.get("sector_map", {})
+
     actions_text = ""
     for i, action in enumerate(proposed_actions, 1):
+        sector = sector_map.get(action.ticker, "Unknown")
         actions_text += f"""
 Action {i}:
   Type: {action.action_type}
   Ticker: {action.ticker}
+  Sector: {sector}
   Shares: {action.shares}
   Price: ${action.price:.2f}
   Stop Loss: ${action.stop_loss:.2f} ({((action.price - action.stop_loss) / action.price * 100):.1f}% risk)
@@ -101,6 +105,19 @@ Action {i}:
   Market Regime: {action.regime}
   Quant Reason: {action.reason}
 """
+
+    projected_sectors = portfolio_context.get("projected_sector_allocation", {})
+    if projected_sectors:
+        sorted_sectors = sorted(projected_sectors.items(), key=lambda x: x[1], reverse=True)
+        sector_lines = "\n".join(f"  {s}: {p:.1f}%" for s, p in sorted_sectors)
+        sector_section = f"""
+PROJECTED SECTOR ALLOCATION (after all proposed buys):
+{sector_lines}
+
+If any sector is heavily overweighted relative to portfolio diversity goals, consider VETOing or MODIFYing (reducing size) lower-conviction picks in that sector.
+"""
+    else:
+        sector_section = ""
 
     prompt = f"""You are GScott's risk management AI. You review proposed trades from the quantitative system and decide whether to APPROVE, MODIFY, or VETO each one.
 
@@ -113,7 +130,7 @@ PORTFOLIO CONTEXT:
 
 CURRENT POSITIONS:
 {json.dumps(portfolio_context.get('positions', []), indent=2)}
-
+{sector_section}
 PROPOSED ACTIONS TO REVIEW:
 {actions_text}
 
@@ -136,6 +153,7 @@ DECISION GUIDELINES:
 - APPROVE if the quant signal is strong AND you see no red flags
 - MODIFY if the idea is good but position size or levels should be adjusted
 - VETO if you see risks the quant model missed (correlation, sector concentration, timing, macro)
+- Use your judgment on sector concentration — there are no hard rules, but use common sense: if 60%+ of proposed capital is going into one sector, critically evaluate whether each pick genuinely earns its spot or if some are just riding the sector wave
 
 - ROTATION SELLS: Sells labeled "ROTATION: Upgrading to {{ticker}}" sell a modestly-performing position to fund a higher-scoring candidate. A 20+ point score gap generally justifies the switch.
 

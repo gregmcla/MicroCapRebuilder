@@ -48,6 +48,7 @@ from portfolio_state import (
 )
 from risk_layer import RiskLayer
 from execution_sequencer import ExecutionSequencer
+from data_files import get_watchlist_file
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -185,10 +186,25 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         all_buys = layer2_output["buy_proposals"] + layer2_output.get("rotation_buys", [])
         layer2_for_l3 = {**layer2_output, "buy_proposals": all_buys}
 
+        # Build sector_map from watchlist so Layer 3 can resolve sectors for
+        # proposed buys (watchlist candidates won't be in the static file yet).
+        l3_sector_map: dict = {}
+        try:
+            watchlist_file = get_watchlist_file(state.portfolio_id)
+            if watchlist_file.exists():
+                with open(watchlist_file) as _wf:
+                    for _line in _wf:
+                        if _line.strip():
+                            _entry = json.loads(_line)
+                            if _entry.get("sector"):
+                                l3_sector_map[_entry["ticker"]] = _entry["sector"]
+        except Exception:
+            pass
+
         # Run Layer 3: Portfolio Composition
         print("\nRunning Layer 3: Portfolio Composition...")
         layer3 = CompositionLayer(config)
-        layer3_output = layer3.process(state, layer1_output, layer2_for_l3)
+        layer3_output = layer3.process(state, layer1_output, layer2_for_l3, sector_map=l3_sector_map)
 
         # Remove originally proposed buys and add only filtered buys
         proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
@@ -377,7 +393,54 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
 
+    # Build sector map from watchlist (ticker → sector)
+    sector_map = {}
+    try:
+        watchlist_file = get_watchlist_file(state.portfolio_id)
+        if watchlist_file.exists():
+            with open(watchlist_file) as f:
+                for line in f:
+                    if line.strip():
+                        entry = json.loads(line)
+                        if entry.get("sector"):
+                            sector_map[entry["ticker"]] = entry["sector"]
+    except Exception:
+        pass
+
+    # Compute projected sector breakdown after proposed buys
+    projected_sectors: dict = {}
+    projected_equity = state.total_equity
+    # Seed with current held positions (use sector_map for lookup)
+    if not state.positions.empty:
+        for _, pos in state.positions.iterrows():
+            sec = sector_map.get(pos["ticker"], "Unknown")
+            projected_sectors[sec] = projected_sectors.get(sec, 0.0) + pos["market_value"]
+    # Add proposed buys
+    buy_proposals = [a for a in proposed_actions if a.action_type == "BUY"]
+    for action in buy_proposals:
+        sec = sector_map.get(action.ticker, "Unknown")
+        projected_sectors[sec] = projected_sectors.get(sec, 0.0) + (action.shares * action.price)
+        projected_equity += action.shares * action.price
+    # Convert to percentages
+    projected_sector_pct = {
+        sec: round(val / projected_equity * 100, 1)
+        for sec, val in projected_sectors.items()
+    } if projected_equity > 0 else {}
+
+    # Surface stale position alerts before AI review
+    stale_positions = state.stale_alerts  # dict: ticker -> consecutive_days_without_price_update
+    if stale_positions:
+        print(f"\n  ⚠️  {len(stale_positions)} position(s) have stale prices (no update for 2+ days):")
+        for ticker, days in stale_positions.items():
+            print(f"     {ticker}: {days} consecutive day(s) without a price update")
+
     # Build portfolio context for AI
+    stale_note = (
+        f"Note: the following positions have stale prices and may not reflect current market "
+        f"values (days without update): "
+        + ", ".join(f"{t} ({d}d)" for t, d in stale_positions.items())
+    ) if stale_positions else ""
+
     portfolio_context = {
         "total_equity": state.total_equity,
         "cash": state.cash,
@@ -387,12 +450,16 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         "positions": [
             {
                 "ticker": pos["ticker"],
+                "sector": sector_map.get(pos["ticker"], "Unknown"),
                 "shares": pos["shares"],
                 "pnl_pct": pos.get("unrealized_pnl_pct", 0),
                 "weight": (pos["market_value"] / state.total_equity * 100) if state.total_equity > 0 else 0
             }
             for _, pos in state.positions.iterrows()
-        ] if not state.positions.empty else []
+        ] if not state.positions.empty else [],
+        "projected_sector_allocation": projected_sector_pct,
+        "sector_map": sector_map,
+        "stale_positions_note": stale_note,
     }
 
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context)
@@ -419,6 +486,9 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         "portfolio_context": portfolio_context,
         "regime": regime.value,
         "timestamp": datetime.now().isoformat(),
+        # stale_positions: dict of ticker -> consecutive_days without a price update (>= 2)
+        # Surfaced here so the API and dashboard can display a warning to the user.
+        "stale_positions": stale_positions,
     }
 
     return result
@@ -438,8 +508,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     if not actions_to_execute:
         return {"executed": 0, "message": "No actions to execute"}
 
-    # Load fresh state for execution
-    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
+    # Load fresh state for execution with live prices so stop/target checks use today's prices
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
     transactions = []
 
     # Fetch live prices for all buy tickers so we record the real fill price,
