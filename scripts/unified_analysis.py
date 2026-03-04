@@ -413,17 +413,29 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
 
     # ─── Bug #9: Apply warning severity position size reductions ─────────────
     # Applied post-hoc to all buy proposals regardless of which path generated them.
+    # Drop proposals that would fall below a minimum position value after reduction
+    # rather than passing useless micro-positions to AI review.
     if warning_severity in ("CAUTION", "DANGER"):
         size_reduction = 0.25 if warning_severity == "CAUTION" else 0.50
         label = "25%" if warning_severity == "CAUTION" else "50%"
+        min_position_value = max(500.0, state.total_equity * 0.005)  # $500 or 0.5% of equity
         reduced_count = 0
+        kept_actions = []
         for action in proposed_actions:
             if action.action_type != "BUY":
+                kept_actions.append(action)
                 continue
             original_shares = action.shares
-            action.shares = max(1, int(action.shares * (1 - size_reduction)))
+            new_shares = int(action.shares * (1 - size_reduction))
+            position_value = new_shares * action.price
+            if new_shares < 1 or position_value < min_position_value:
+                print(f"  ⚠️  Dropping {action.ticker} buy: reduced to ${position_value:.0f} ({new_shares} shares) below minimum ${min_position_value:.0f}")
+                continue
+            action.shares = new_shares
             if action.shares != original_shares:
                 reduced_count += 1
+            kept_actions.append(action)
+        proposed_actions = kept_actions
         if reduced_count:
             print(f"  ⚠️  Warning severity {warning_severity}: reduced shares by {label} on {reduced_count} buy proposal(s)")
 
