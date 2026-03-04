@@ -349,6 +349,31 @@ def get_warnings(portfolio_id: str = None) -> List[Warning]:
     return system.check_all()
 
 
+def get_warning_severity(portfolio_id: str = None) -> str:
+    """
+    Return a severity level based on active warnings.
+
+    Levels:
+        "NORMAL"  — no HIGH or CRITICAL warnings
+        "CAUTION" — at least one HIGH warning (reduce position sizing 25%)
+        "DANGER"  — at least one CRITICAL warning (reduce position sizing 50%)
+
+    The highest severity wins: DANGER takes precedence over CAUTION.
+    """
+    try:
+        warnings = get_warnings(portfolio_id=portfolio_id)
+    except Exception:
+        return "NORMAL"
+
+    severities = {w.severity for w in warnings}
+
+    if WarningSeverity.CRITICAL in severities:
+        return "DANGER"
+    if WarningSeverity.HIGH in severities:
+        return "CAUTION"
+    return "NORMAL"
+
+
 def format_warnings(warnings: List[Warning]) -> str:
     """Format warnings for display."""
     if not warnings:

@@ -19,6 +19,7 @@ from enhanced_structures import (
 from stock_scorer import StockScorer
 from portfolio_state import PortfolioState
 from market_regime import MarketRegime
+from capital_preservation import get_preservation_status
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -39,8 +40,9 @@ class RiskLayer:
         self.config = config or load_config()
         self.layer1_config = self.config.get("enhanced_trading", {}).get("layer1", {})
         self.enabled = self.layer1_config.get("enable_reeval", True)
-        self.min_score_drop_alert = self.layer1_config.get("min_score_drop_for_alert", 20)
-        self.min_score_drop_sell = self.layer1_config.get("min_score_drop_for_sell", 30)
+        self.min_score_drop_alert = self.layer1_config.get("min_score_drop_for_alert", 15)
+        self.min_score_drop_sell = self.layer1_config.get("min_score_drop_for_sell", 20)
+        self.min_score_drop_partial = self.layer1_config.get("min_score_drop_for_partial", 15)
 
     def _get_entry_score_from_transactions(self, ticker: str, state: PortfolioState) -> float:
         """Get composite_score from most recent BUY transaction for ticker."""
@@ -78,6 +80,13 @@ class RiskLayer:
         scores = scorer.score_watchlist(tickers)
         score_map = {s.ticker: s for s in scores if s}
 
+        # Check capital preservation once for all positions (Bug #13)
+        try:
+            preservation = get_preservation_status()
+        except Exception:
+            preservation = None
+        preservation_active = preservation is not None and preservation.active
+
         stops = {}
 
         for _, pos in state.positions.iterrows():
@@ -91,8 +100,10 @@ class RiskLayer:
 
             trailing_stop = None
             if self.layer1_config.get("enable_trailing_stops", True):
+                # Bug #13: tighten trailing stop parameters when preservation is active
                 trailing_stop = self._calculate_trailing_stop(
-                    current_price, entry_price, current_stop
+                    current_price, entry_price, current_stop,
+                    preservation_active=preservation_active
                 )
 
             # Get real ATR from scoring
@@ -115,6 +126,9 @@ class RiskLayer:
             stop_type = self._determine_stop_type(
                 fixed_stop, trailing_stop, volatility_stop, regime_stop, recommended_stop
             )
+            # Bug #13: annotate stop type when preservation mode tightened the stop
+            if preservation_active and trailing_stop and abs(trailing_stop - recommended_stop) < 0.01:
+                stop_type = "trailing[preservation-tightened]"
 
             stops[ticker] = StopLevels(
                 ticker=ticker,
@@ -130,16 +144,29 @@ class RiskLayer:
         return stops
 
     def _calculate_trailing_stop(
-        self, current_price: float, entry_price: float, current_stop: float
+        self, current_price: float, entry_price: float, current_stop: float,
+        preservation_active: bool = False
     ) -> Optional[float]:
-        """Calculate trailing stop if position is up enough."""
+        """Calculate trailing stop if position is up enough.
+
+        When capital preservation is active (Bug #13), tightens the trigger
+        threshold by 20% (e.g. 10% → 8%) and the trail distance by 30%
+        (e.g. 8% → 5.6%) so stops activate sooner and sit closer to price.
+        """
         trigger_pct = self.layer1_config.get("trailing_stop_trigger_pct", 10.0) / 100
         distance_pct = self.layer1_config.get("trailing_stop_distance_pct", 8.0) / 100
+
+        preservation_note = ""
+        if preservation_active:
+            # Tighten trigger: normal 10% → 8% (×0.8); tighten distance by 30%
+            trigger_pct = trigger_pct * 0.8
+            distance_pct = distance_pct * 0.7
+            preservation_note = " [preservation-tightened]"  # surfaced in stop_type label if needed
 
         gain_pct = (current_price - entry_price) / entry_price
 
         if gain_pct >= trigger_pct:
-            # Position is up 10%+, trail the stop
+            # Position is up enough; trail the stop
             min_stop = entry_price * 1.05  # Never go below entry + 5%
             trailing = current_price * (1 - distance_pct)
             return max(trailing, min_stop, current_stop)
@@ -220,6 +247,13 @@ class RiskLayer:
                 "deterioration_alerts": deterioration_alerts
             }
 
+        # Check capital preservation status once for the sell-proposal loop (Bug #13)
+        try:
+            pres_status = get_preservation_status()
+        except Exception:
+            pres_status = None
+        pres_active = pres_status is not None and pres_status.active
+
         # Re-score all positions
         tickers = state.positions["ticker"].tolist()
         scorer = StockScorer(regime=state.regime)
@@ -238,11 +272,13 @@ class RiskLayer:
             # Check stop loss (using dynamic stop)
             if effective_stop > 0 and current_price <= effective_stop:
                 stop_type_note = f" ({stop_levels.stop_type})" if stop_levels else ""
+                # Bug #13: note when preservation mode caused the tighter stop
+                pres_note = " [capital preservation active]" if pres_active and stop_levels and "preservation-tightened" in stop_levels.stop_type else ""
                 sell_proposals.append(SellProposal(
                     ticker=ticker,
                     shares=int(pos["shares"]),
                     current_price=current_price,
-                    reason=f"STOP LOSS{stop_type_note} triggered: ${current_price:.2f} <= ${effective_stop:.2f}",
+                    reason=f"STOP LOSS{stop_type_note} triggered: ${current_price:.2f} <= ${effective_stop:.2f}{pres_note}",
                     urgency_level=UrgencyLevel.EMERGENCY,
                     urgency_score=100,
                     stop_loss=effective_stop,
@@ -265,6 +301,7 @@ class RiskLayer:
             score_drop = entry_score - current_score
 
             if score_drop >= self.min_score_drop_sell:
+                # Bug #4: full exit on 20+ point drop
                 deterioration = DeteriorationSignal(
                     ticker=ticker,
                     entry_score=entry_score,
@@ -278,7 +315,7 @@ class RiskLayer:
                     ticker=ticker,
                     shares=int(pos["shares"]),
                     current_price=current_price,
-                    reason=f"QUALITY DEGRADATION: Score dropped {score_drop:.0f} points ({entry_score:.0f} → {current_score:.0f})",
+                    reason=f"QUALITY DEGRADATION (full exit): Score dropped {score_drop:.0f} points ({entry_score:.0f} → {current_score:.0f})",
                     urgency_level=UrgencyLevel.HIGH if score_drop >= 40 else UrgencyLevel.MEDIUM,
                     urgency_score=min(100, int(50 + score_drop)),
                     deterioration=deterioration,
@@ -286,13 +323,39 @@ class RiskLayer:
                     take_profit=take_profit
                 ))
 
-            elif score_drop >= self.min_score_drop_alert:
+            elif score_drop >= self.min_score_drop_partial:
+                # Bug #4: partial exit (50% of shares) on 15–19 point drop
                 deterioration = DeteriorationSignal(
                     ticker=ticker,
                     entry_score=entry_score,
                     current_score=current_score,
                     score_drop=score_drop,
                     urgency_score=min(100, int(30 + score_drop))
+                )
+                deterioration_alerts.append(deterioration)
+
+                partial_shares = int(pos["shares"]) // 2
+                if partial_shares > 0:
+                    sell_proposals.append(SellProposal(
+                        ticker=ticker,
+                        shares=partial_shares,
+                        current_price=current_price,
+                        reason=f"QUALITY DETERIORATION (partial exit 50%): Score dropped {score_drop:.0f} points ({entry_score:.0f} → {current_score:.0f})",
+                        urgency_level=UrgencyLevel.MEDIUM,
+                        urgency_score=min(100, int(30 + score_drop)),
+                        deterioration=deterioration,
+                        stop_loss=effective_stop,
+                        take_profit=take_profit
+                    ))
+
+            elif score_drop >= self.min_score_drop_alert:
+                # Alert only — no sell
+                deterioration = DeteriorationSignal(
+                    ticker=ticker,
+                    entry_score=entry_score,
+                    current_score=current_score,
+                    score_drop=score_drop,
+                    urgency_score=min(100, int(20 + score_drop))
                 )
                 deterioration_alerts.append(deterioration)
 

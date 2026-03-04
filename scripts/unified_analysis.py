@@ -30,12 +30,14 @@ from risk_manager import RiskManager
 from opportunity_layer import OpportunityLayer
 from composition_layer import CompositionLayer
 from capital_preservation import get_preservation_status
+from early_warning import get_warning_severity
 from enhanced_structures import ProposedAction
 from ai_review import (
     ReviewedAction, ReviewDecision,
     review_proposed_actions, format_review_summary
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem
+from factor_learning import apply_weight_adjustments as _apply_weight_adjustments
 from data_files import get_mode_indicator
 from portfolio_state import (
     load_portfolio_state,
@@ -49,6 +51,7 @@ from portfolio_state import (
 from risk_layer import RiskLayer
 from execution_sequencer import ExecutionSequencer
 from data_files import get_watchlist_file
+from trade_analyzer import TradeAnalyzer
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -98,6 +101,17 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         print(f"  [WARN] Capital preservation check failed: {e}")
         print(f"  [WARN] Defaulting to preservation_active=True (safe default)")
         preservation_active = True  # Fail safe: halt buys on error
+
+    # Check early warning severity (Bug #9)
+    try:
+        warning_severity = get_warning_severity(portfolio_id=portfolio_id)
+        if warning_severity == "DANGER":
+            print("🔴 EARLY WARNING: DANGER level — position sizing reduced 50%")
+        elif warning_severity == "CAUTION":
+            print("🟠 EARLY WARNING: CAUTION level — position sizing reduced 25%")
+    except Exception as e:
+        print(f"  [WARN] Early warning severity check failed: {e}")
+        warning_severity = "NORMAL"
 
     proposed_actions = []
 
@@ -182,6 +196,9 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             for sell, buy in zip(layer2_output["rotation_sells"], layer2_output["rotation_buys"]):
                 print(f"     SELL {sell.ticker} → BUY {buy.ticker} ({sell.reason})")
 
+        # Track rotation buy tickers so we can block them under preservation (Bug #8)
+        rotation_buy_tickers = {b.ticker for b in layer2_output.get("rotation_buys", [])}
+
         # Merge rotation buys into Layer 3 input so composition checks them too
         all_buys = layer2_output["buy_proposals"] + layer2_output.get("rotation_buys", [])
         layer2_for_l3 = {**layer2_output, "buy_proposals": all_buys}
@@ -209,8 +226,12 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         # Remove originally proposed buys and add only filtered buys
         proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
 
-        # Add filtered buys back
+        # Add filtered buys back — skip rotation buys when preservation is active (Bug #8)
         for buy_proposal in layer3_output["filtered_buys"]:
+            is_rotation_buy = buy_proposal.ticker in rotation_buy_tickers
+            if preservation_active and is_rotation_buy:
+                print(f"  🛡️  Blocked rotation BUY {buy_proposal.ticker}: capital preservation mode active (rotation SELL side still executes)")
+                continue
             conviction = buy_proposal.conviction_score
             proposed_actions.append(ProposedAction(
                 action_type="BUY",
@@ -390,6 +411,22 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         # Update proposed_actions to only include sequenced actions
         proposed_actions = [pa.action for pa in execution_plan.sequenced_actions]
 
+    # ─── Bug #9: Apply warning severity position size reductions ─────────────
+    # Applied post-hoc to all buy proposals regardless of which path generated them.
+    if warning_severity in ("CAUTION", "DANGER"):
+        size_reduction = 0.25 if warning_severity == "CAUTION" else 0.50
+        label = "25%" if warning_severity == "CAUTION" else "50%"
+        reduced_count = 0
+        for action in proposed_actions:
+            if action.action_type != "BUY":
+                continue
+            original_shares = action.shares
+            action.shares = max(1, int(action.shares * (1 - size_reduction)))
+            if action.shares != original_shares:
+                reduced_count += 1
+        if reduced_count:
+            print(f"  ⚠️  Warning severity {warning_severity}: reduced shares by {label} on {reduced_count} buy proposal(s)")
+
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
 
@@ -441,12 +478,39 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         + ", ".join(f"{t} ({d}d)" for t, d in stale_positions.items())
     ) if stale_positions else ""
 
+    # Calculate real win rate from completed trades using the same path as strategy_health.py
+    try:
+        _trade_analyzer = TradeAnalyzer()
+        _trade_stats = _trade_analyzer.calculate_trade_stats()
+        _min_trades_for_win_rate = 5
+        if _trade_stats is not None and _trade_stats.total_trades >= _min_trades_for_win_rate:
+            win_rate = _trade_stats.win_rate_pct / 100.0
+        else:
+            win_rate = 0.5  # Fallback: insufficient completed trades
+    except Exception as e:
+        print(f"  [WARN] Win rate calculation failed: {e}")
+        win_rate = 0.5
+
+    # Build warning note for AI context (Bug #9)
+    warning_note = ""
+    if warning_severity == "DANGER":
+        warning_note = (
+            "SYSTEM WARNING: Early warning system has flagged DANGER level conditions "
+            "(critical warnings active). Position sizes have been reduced 50%. "
+            "Apply extra scrutiny to all buy proposals."
+        )
+    elif warning_severity == "CAUTION":
+        warning_note = (
+            "SYSTEM WARNING: Early warning system has flagged CAUTION level conditions "
+            "(high-severity warnings active). Position sizes have been reduced 25%."
+        )
+
     portfolio_context = {
         "total_equity": state.total_equity,
         "cash": state.cash,
         "num_positions": state.num_positions,
         "regime": regime.value,
-        "win_rate": 0.5,  # Could calculate from transactions
+        "win_rate": win_rate,
         "positions": [
             {
                 "ticker": pos["ticker"],
@@ -460,6 +524,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         "projected_sector_allocation": projected_sector_pct,
         "sector_map": sector_map,
         "stale_positions_note": stale_note,
+        "system_warning_level": warning_severity,
+        "system_warning_note": warning_note,
     }
 
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context)
@@ -642,6 +708,18 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             print(f"    [warn] Post-mortem generation failed: {e}")
 
     print(f"\n✅ Executed {len(transactions)} action(s)")
+
+    # ─── Periodic Factor Weight Learning ─────────────────────────────────────
+    # Apply learned weight adjustments to config after executing trades.
+    # Only triggers when there are enough completed trades (threshold enforced
+    # inside apply_weight_adjustments → suggest_weight_adjustments → min_trades).
+    try:
+        if sell_pairs:
+            # New sells create new post-mortems — good time to re-evaluate weights
+            _apply_weight_adjustments(portfolio_id=portfolio_id)
+    except Exception as e:
+        print(f"  [factor_learning] Weight adjustment skipped: {e}")
+
     return {"executed": len(transactions), "transactions": transactions}
 
 

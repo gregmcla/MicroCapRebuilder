@@ -26,9 +26,12 @@ Usage:
 """
 
 import json
-from datetime import date
+import logging
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Tuple
+
+import pandas as pd
 
 from enhanced_structures import (
     BuyProposal, ConvictionScore, ConvictionLevel,
@@ -37,6 +40,7 @@ from enhanced_structures import (
 from stock_scorer import StockScorer, StockScore
 from portfolio_state import PortfolioState, load_watchlist
 from market_regime import MarketRegime, get_position_size_multiplier
+from data_files import get_transactions_file
 
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
@@ -99,7 +103,6 @@ class OpportunityLayer:
         # "acceptable" multiplier is < 1.0, stocks scoring 60-74 can never reach
         # min_conviction (e.g. 74 × 0.75 = 55.5 < 60) — the "acceptable" band is
         # a dead zone.  Log a clear warning so the misconfiguration is visible.
-        import logging
         acceptable_mult = self.conviction_multipliers.get("acceptable", 1.0)
         if self.min_conviction >= 60 and acceptable_mult < 1.0:
             logging.warning(
@@ -138,7 +141,6 @@ class OpportunityLayer:
         # pass the filter — including ones we already own. Bail out early to avoid
         # proposing buys for potentially already-held positions.
         if state.positions.empty and state.num_positions > 0:
-            import logging
             logging.warning(
                 "OpportunityLayer: positions DataFrame is empty but num_positions=%d. "
                 "Possible load failure — skipping buy proposals to avoid duplicate buys.",
@@ -149,6 +151,40 @@ class OpportunityLayer:
         candidates = [t for t in watchlist if t not in current_tickers]
         if not candidates:
             return {"conviction_scores": {}, "buy_proposals": []}
+
+        # ── Bug #7 fix: Cooldown after stop-out ──────────────────────────────
+        # Exclude tickers that were stopped out in the last 7 days to prevent
+        # immediately re-entering a position that just triggered a stop loss.
+        cooled_down_tickers: set = set()
+        try:
+            tx_file = get_transactions_file(state.portfolio_id)
+            if tx_file.exists():
+                tx_df = pd.read_csv(tx_file, dtype=str)
+                if not tx_df.empty and "date" in tx_df.columns and "reason" in tx_df.columns:
+                    cutoff = date.today() - timedelta(days=7)
+                    for _, row in tx_df.iterrows():
+                        try:
+                            tx_date = date.fromisoformat(str(row["date"])[:10])
+                        except Exception:
+                            continue
+                        if tx_date >= cutoff and str(row.get("reason", "")).upper() == "STOP_LOSS":
+                            ticker = str(row.get("ticker", "")).strip().upper()
+                            if ticker:
+                                cooled_down_tickers.add(ticker)
+        except Exception as e:
+            logging.warning("OpportunityLayer: failed to load cooldown tickers: %s", e)
+
+        if cooled_down_tickers:
+            before = len(candidates)
+            candidates = [t for t in candidates if t not in cooled_down_tickers]
+            excluded = before - len(candidates)
+            if excluded:
+                logging.info(
+                    "OpportunityLayer: excluded %d candidate(s) due to 7-day stop-loss cooldown: %s",
+                    excluded,
+                    sorted(cooled_down_tickers & set([t for t in watchlist if t not in current_tickers])),
+                )
+        # ─────────────────────────────────────────────────────────────────────
 
         # Use StockScorer to get base composite scores
         scorer = StockScorer(regime=state.regime)
@@ -168,12 +204,22 @@ class OpportunityLayer:
         # Generate buy proposals from high-conviction candidates
         buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map)
 
-        # If no normal buys (likely low cash) but good candidates exist, try rotation
+        # ── Bug #6 fix: Rotation trigger ─────────────────────────────────────
+        # Trigger rotation when:
+        #   (a) No normal buy proposals were generated (likely low cash), OR
+        #   (b) Portfolio is fully deployed (cash < 5% of equity) AND there are
+        #       high-conviction candidates that could upgrade held positions.
+        # This makes rotation useful even when some cash is technically available.
         rotation_output = {"rotation_sells": [], "rotation_buys": []}
-        if not buy_proposals and conviction_scores:
+        fully_deployed = (
+            state.total_equity > 0
+            and state.cash < state.total_equity * 0.05
+        )
+        if conviction_scores and (not buy_proposals or fully_deployed):
             rotation_output = self._generate_rotation_proposals(
                 conviction_scores, state, risk_layer_output, price_map
             )
+        # ─────────────────────────────────────────────────────────────────────
 
         return {
             "conviction_scores": conviction_scores,

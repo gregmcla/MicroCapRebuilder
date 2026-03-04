@@ -31,6 +31,7 @@ CONFIG_FILE = DATA_DIR / "config.json"
 from data_files import (
     get_transactions_file, get_post_mortems_file,
     get_factor_performance_file, load_config as load_config_from_files,
+    save_config,
 )
 
 
@@ -330,6 +331,75 @@ class FactorLearner:
         suggestions.sort(key=lambda x: abs(x.change_pct), reverse=True)
         return suggestions
 
+    def apply_weight_adjustments(self, portfolio_id: str = None) -> bool:
+        """
+        Apply suggested weight adjustments to the portfolio's config.json.
+
+        Only proceeds when there are suggestions with at least MEDIUM confidence.
+        Constraints enforced:
+          - Each factor weight: min 5%, max 40%
+          - All weights normalized to sum exactly 1.0
+
+        Returns True if any weights were actually changed, False otherwise.
+        """
+        effective_portfolio_id = portfolio_id or self.portfolio_id
+
+        # Only adjust default_weights (not regime_weights — blending handles regime influence)
+        suggestions = self.suggest_weight_adjustments(current_regime=None)
+
+        # Filter to MEDIUM/HIGH confidence only — LOW confidence means mixed signals
+        actionable = [s for s in suggestions if s.confidence in ("MEDIUM", "HIGH")]
+        if not actionable:
+            print("[factor_learning] No actionable weight suggestions (need MEDIUM+ confidence).")
+            return False
+
+        # Load fresh config for writing
+        config = load_config_from_files(effective_portfolio_id)
+        scoring = config.setdefault("scoring", {})
+        current_defaults = dict(scoring.get("default_weights", {}))
+
+        if not current_defaults:
+            print("[factor_learning] No default_weights in config — skipping apply.")
+            return False
+
+        # Apply each suggestion
+        changed = []
+        updated_weights = dict(current_defaults)
+        for s in actionable:
+            if s.factor not in updated_weights:
+                continue
+            old = updated_weights[s.factor]
+            # Clamp to [0.05, 0.40]
+            new = max(0.05, min(0.40, s.suggested_weight))
+            if abs(new - old) < 0.001:
+                continue
+            updated_weights[s.factor] = round(new, 4)
+            changed.append((s.factor, old, new, s.confidence, s.reason))
+
+        if not changed:
+            print("[factor_learning] Weight changes below minimum threshold — no update needed.")
+            return False
+
+        # Normalize so weights sum to 1.0
+        total = sum(updated_weights.values())
+        if total > 0:
+            updated_weights = {k: round(v / total, 4) for k, v in updated_weights.items()}
+            # Fix floating-point rounding: assign remainder to largest weight
+            diff = round(1.0 - sum(updated_weights.values()), 4)
+            if diff != 0:
+                largest = max(updated_weights, key=updated_weights.get)
+                updated_weights[largest] = round(updated_weights[largest] + diff, 4)
+
+        scoring["default_weights"] = updated_weights
+        save_config(config, effective_portfolio_id)
+
+        print("[factor_learning] Applied weight adjustments to config.json:")
+        for factor, old, new, conf, reason in changed:
+            direction = "+" if new > old else ""
+            print(f"  {factor}: {old:.1%} → {new:.1%} ({direction}{(new-old)*100:.1f}pp) [{conf}] {reason}")
+        print(f"  Normalized weights sum: {sum(updated_weights.values()):.4f}")
+        return True
+
     def calculate_confidence_multiplier(
         self,
         factor_scores: Dict[str, float],
@@ -495,6 +565,17 @@ def get_weight_suggestions(regime: str = None, portfolio_id: str = None) -> List
     """Get weight adjustment suggestions."""
     learner = FactorLearner(portfolio_id=portfolio_id)
     return learner.suggest_weight_adjustments(regime)
+
+
+def apply_weight_adjustments(portfolio_id: str = None) -> bool:
+    """
+    Persist learned weight adjustments to config.json for the given portfolio.
+
+    Call this after executing trades when there are 10+ completed trades.
+    Returns True if config was updated, False otherwise.
+    """
+    learner = FactorLearner(portfolio_id=portfolio_id)
+    return learner.apply_weight_adjustments(portfolio_id=portfolio_id)
 
 
 def get_confidence_multiplier(

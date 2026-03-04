@@ -111,23 +111,55 @@ class StockScorer:
         self._weights = self._load_weights()
 
     def _load_weights(self) -> Dict[str, float]:
-        """Load weights from config based on current regime."""
+        """
+        Load weights from config based on current regime.
+
+        When regime weights exist they are blended with the learned default_weights
+        rather than replacing them entirely.  This ensures the learning pipeline's
+        adjustments to default_weights still have influence even in a strong regime.
+
+        Blend formula (per factor):
+            blended = regime_blend * regime_weight + (1 - regime_blend) * default_weight
+
+        The blend ratio is controlled by ``scoring.regime_weight_blend`` in config
+        (default 0.7 → 70% regime, 30% defaults).  Result is normalized to sum 1.0.
+        """
         scoring_config = self.config.get("scoring", {})
 
-        # If regime specified and regime weights exist, use those
-        if self.regime is not None:
-            regime_key = self.regime.value.upper()
-            regime_weights = scoring_config.get("regime_weights", {}).get(regime_key)
-            if regime_weights:
-                return regime_weights
+        # Resolve the best available default weights (learned > config > hardcoded)
+        default_weights = scoring_config.get("default_weights") or dict(self.DEFAULT_WEIGHTS)
 
-        # Fall back to default weights from config
-        default_weights = scoring_config.get("default_weights")
-        if default_weights:
+        # If no regime or no regime weights exist, just use defaults
+        if self.regime is None:
             return default_weights
 
-        # Final fallback to hardcoded defaults
-        return self.DEFAULT_WEIGHTS
+        regime_key = self.regime.value.upper()
+        regime_weights = scoring_config.get("regime_weights", {}).get(regime_key)
+        if not regime_weights:
+            return default_weights
+
+        # Blend regime weights with defaults so learned adjustments still have influence
+        blend = float(scoring_config.get("regime_weight_blend", 0.7))
+        blend = max(0.0, min(1.0, blend))  # clamp to [0, 1]
+
+        all_factors = set(regime_weights) | set(default_weights)
+        blended: Dict[str, float] = {}
+        for factor in all_factors:
+            rw = regime_weights.get(factor, default_weights.get(factor, 0.0))
+            dw = default_weights.get(factor, regime_weights.get(factor, 0.0))
+            blended[factor] = blend * rw + (1.0 - blend) * dw
+
+        # Normalize so weights sum to exactly 1.0
+        total = sum(blended.values())
+        if total > 0:
+            blended = {k: round(v / total, 4) for k, v in blended.items()}
+            # Fix floating-point rounding: add remainder to largest weight
+            diff = round(1.0 - sum(blended.values()), 4)
+            if diff != 0:
+                largest = max(blended, key=blended.get)
+                blended[largest] = round(blended[largest] + diff, 4)
+
+        return blended
 
     def get_active_weights(self) -> Dict[str, float]:
         """Return the currently active weights for transparency."""

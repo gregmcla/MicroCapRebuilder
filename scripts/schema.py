@@ -88,3 +88,5 @@ class Reason:
     INTELLIGENCE = "INTELLIGENCE"  # AI portfolio intelligence decision
     TRIM_PROFIT = "TRIM_PROFIT"    # Partial profit taking
     REBALANCE = "REBALANCE"        # Portfolio rebalancing
+    LIQUIDITY_DROP = "LIQUIDITY_DROP"  # Volume collapsed vs 3-month avg
+    STAGNATION = "STAGNATION"          # Held >45 days with <±5% movement
