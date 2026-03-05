@@ -271,7 +271,7 @@ function AggregateBar({
             cursor: scanAllRunning ? "not-allowed" : "pointer",
             transition: "border-color 0.15s, color 0.15s",
             opacity: scanAllRunning ? 0.75 : 1,
-            maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            whiteSpace: "nowrap",
           }}
           onMouseEnter={(e) => {
             if (!scanAllRunning) {
