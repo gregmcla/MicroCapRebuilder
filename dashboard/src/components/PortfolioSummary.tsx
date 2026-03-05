@@ -7,89 +7,114 @@ import { useCountUp } from "../hooks/useCountUp";
 import type { Snapshot } from "../lib/types";
 import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── Fourier Ghost Stack ────────────────────────────────────────────────────
 
-function rrect(
-  ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
-) {
-  if (typeof ctx.roundRect === "function") {
-    ctx.roundRect(x, y, w, h, r);
-  } else {
-    const rx = Math.min(r, w / 2, h / 2);
-    ctx.moveTo(x + rx, y);
-    ctx.lineTo(x + w - rx, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + rx);
-    ctx.lineTo(x + w, y + h - rx);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
-    ctx.lineTo(x + rx, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - rx);
-    ctx.lineTo(x, y + rx);
-    ctx.quadraticCurveTo(x, y, x + rx, y);
-    ctx.closePath();
-  }
+const HARMONIC_PALETTE = [
+  "#7c3aed", // violet   (k=1, fundamental — slowest drift)
+  "#2563eb", // indigo
+  "#06b6d4", // cyan
+  "#10b981", // emerald
+  "#eab308", // yellow
+  "#f97316", // orange
+  "#ef4444", // red      (k=7, fastest drift)
+];
+
+const ω_BASE = 0.35; // rad/s per harmonic number
+
+interface Harmonic {
+  k: number;
+  amp: number;
+  phase: number;
+  colorIdx: number;
+  energyFrac: number; // fraction of total signal energy
 }
 
-// ── EquityWaveform ────────────────────────────────────────────────────────────
+/**
+ * Discrete Fourier Transform — returns top maxH harmonics sorted by frequency.
+ * Input signal should be normalized (e.g. zero-mean, unit-max-amplitude).
+ */
+function dft(signal: number[], maxH = 7): Harmonic[] {
+  const N = signal.length;
+  if (N < 4) return [];
+
+  const all: Array<{ k: number; amp: number; phase: number }> = [];
+
+  for (let k = 1; k <= Math.floor(N / 2); k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const θ = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(θ);
+      im -= signal[n] * Math.sin(θ); // negated so phase = atan2(im, re) gives correct reconstruction
+    }
+    const amp = (2 / N) * Math.sqrt(re * re + im * im);
+    all.push({ k, amp, phase: Math.atan2(im, re) });
+  }
+
+  const totalE = all.reduce((s, h) => s + h.amp * h.amp, 0) || 1;
+
+  // Top N by amplitude
+  const top = [...all].sort((a, b) => b.amp - a.amp).slice(0, maxH);
+  // Re-sort by k so color assignment follows frequency order (low→violet, high→red)
+  top.sort((a, b) => a.k - b.k);
+
+  return top.map((h, i) => ({
+    ...h,
+    colorIdx: i % HARMONIC_PALETTE.length,
+    energyFrac: (h.amp * h.amp) / totalE,
+  }));
+}
+
+// ── EquityCurve ────────────────────────────────────────────────────────────
 
 export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const [dims, setDims] = useState({ width: 600, height: 200 });
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const animRef      = useRef<number | null>(null);
-  const startRef     = useRef<number | null>(null);
-  const [animProg, setAnimProg] = useState(0);
 
-  // Last 30 snapshots; compute day_pnl from equity delta if missing
-  const bars = useMemo(() => {
+  // Refs for the RAF draw loop — avoid stale closures, no re-render on change
+  const dimsRef      = useRef(dims);
+  const signalRef    = useRef<number[]>([]);
+  const equitiesRef  = useRef<number[]>([]);
+  const harmonicsRef = useRef<Harmonic[]>([]);
+  const hoverRef     = useRef<number | null>(null); // hovered harmonic index
+  const timeRef      = useRef(0);
+  const lastTsRef    = useRef<number | null>(null);
+  const rafRef       = useRef<number | null>(null);
+
+  // ── Compute signal + harmonics ────────────────────────────────────────
+  const computed = useMemo(() => {
     const recent = snapshots.slice(-30);
-    return recent.map((s, i) => {
-      const equity = s.total_equity ?? s.cash + s.positions_value;
-      let pnl = s.day_pnl ?? 0;
-      if (pnl === 0 && i > 0) {
-        const prev = recent[i - 1];
-        pnl = equity - (prev.total_equity ?? prev.cash + prev.positions_value);
-      }
-      return { date: s.date, equity, pnl };
-    });
+    if (recent.length < 4) return null;
+    const equities = recent.map(s => s.total_equity ?? s.cash + s.positions_value);
+    const mean = equities.reduce((a, b) => a + b, 0) / equities.length;
+    const detrended = equities.map(v => v - mean);
+    const maxAmp = Math.max(...detrended.map(Math.abs), 1);
+    const signal = detrended.map(v => v / maxAmp);
+    return { signal, equities, harmonics: dft(signal, 7) };
   }, [snapshots]);
 
-  const maxAmp = useMemo(
-    () => Math.max(...bars.map((b) => Math.abs(b.pnl)), 1),
-    [bars],
-  );
-
-  // Mount animation
+  // Sync computed data to refs
+  useEffect(() => { dimsRef.current = dims; }, [dims]);
   useEffect(() => {
-    setAnimProg(0);
-    startRef.current = null;
-    if (animRef.current) cancelAnimationFrame(animRef.current);
+    if (!computed) return;
+    signalRef.current    = computed.signal;
+    equitiesRef.current  = computed.equities;
+    harmonicsRef.current = computed.harmonics;
+  }, [computed]);
 
-    function tick(now: number) {
-      if (!startRef.current) startRef.current = now;
-      const t = Math.min((now - startRef.current) / 900, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setAnimProg(eased);
-      if (t < 1) animRef.current = requestAnimationFrame(tick);
-    }
-    animRef.current = requestAnimationFrame(tick);
-    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [bars.length]);
-
-  // ResizeObserver
+  // ── ResizeObserver ────────────────────────────────────────────────────
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => {
+    const ro = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
-      setDims({ width, height });
+      setDims({ width: Math.max(width, 100), height: Math.max(height, 60) });
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // DPR scaling
+  // ── DPR canvas sizing ─────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -100,202 +125,279 @@ export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
     ctx.scale(dpr, dpr);
   }, [dims]);
 
-  // Draw
+  // ── RAF draw loop ─────────────────────────────────────────────────────
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || bars.length === 0) return;
-    const ctx = canvas.getContext("2d")!;
-    const { width: W, height: H } = dims;
+    function frame(ts: number) {
+      if (lastTsRef.current !== null) {
+        timeRef.current += (ts - lastTsRef.current) / 1000;
+      }
+      lastTsRef.current = ts;
+      paint();
+      rafRef.current = requestAnimationFrame(frame);
+    }
 
-    ctx.clearRect(0, 0, W, H);
+    function paint() {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    // Background
-    ctx.fillStyle = "#010107";
-    ctx.fillRect(0, 0, W, H);
+      const { width: W, height: H } = dimsRef.current;
+      const signal    = signalRef.current;
+      const equities  = equitiesRef.current;
+      const harmonics = harmonicsRef.current;
+      const hoverH    = hoverRef.current;
+      const t         = timeRef.current;
 
-    const PAD_X   = 20;
-    const PAD_Y   = 14;
-    const chartW  = W - PAD_X * 2;
-    const chartH  = H - PAD_Y * 2;
-    const baseline = PAD_Y + chartH / 2;
-    const maxBarH  = chartH / 2 - 6;
-    const n        = bars.length;
-    const barSlot  = chartW / n;
-    const barW     = Math.max(3, barSlot * 0.60);
-    const gap      = (barSlot - barW) / 2;
+      ctx.clearRect(0, 0, W, H);
+      if (signal.length < 2) return;
 
-    // Baseline — subtle glow then hard line
-    ctx.save();
-    ctx.globalAlpha = 0.25;
-    ctx.filter = "blur(3px)";
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(PAD_X, baseline);
-    ctx.lineTo(W - PAD_X, baseline);
-    ctx.stroke();
-    ctx.filter = "none";
-    ctx.restore();
+      const N     = signal.length;
+      const PX    = 16, PY = 14;
+      const CW    = W - PX * 2;
+      const CH    = H - PY * 2;
+      const cy    = PY + CH / 2;     // center Y (zero line)
+      const halfH = CH * 0.43;       // half-height for amplitude scale
+      const DRAW  = 128;             // interpolation resolution for smooth sinusoids
 
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(PAD_X, baseline);
-    ctx.lineTo(W - PAD_X, baseline);
-    ctx.stroke();
-    ctx.restore();
+      const xAt  = (i: number)  => PX + (i / (DRAW - 1)) * CW;
+      const yAt  = (v: number)  => cy - v * halfH;
 
-    // Bars
-    bars.forEach((bar, i) => {
-      const isPos  = bar.pnl >= 0;
-      const color  = isPos ? "#34d399" : "#f87171";
-      const colorDim = isPos ? "rgba(52,211,153,0.25)" : "rgba(248,113,113,0.25)";
+      // ── Background ───────────────────────────────────────────────────
+      ctx.fillStyle = "#010107";
+      ctx.fillRect(0, 0, W, H);
 
-      // Power scale: compresses outliers so small moves still register
-      const rawH = Math.pow(Math.abs(bar.pnl) / maxAmp, 0.55) * maxBarH;
-      const barH = rawH * animProg;
-      if (barH < 0.5) return;
-
-      const x        = PAD_X + i * barSlot + gap;
-      const isHovered = hoverIdx === i;
-      const alpha     = hoverIdx !== null && !isHovered ? 0.45 : 1.0;
-
-      // ── Glow pass (blurred) ──────────────────────────────────────────────
+      // ── Zero line ────────────────────────────────────────────────────
       ctx.save();
-      ctx.globalAlpha = alpha * 0.35;
+      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath(); ctx.moveTo(PX, cy); ctx.lineTo(W - PX, cy); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      // ── Pass 1: harmonic glow (screen blend, blurred) ─────────────────
+      harmonics.forEach((h, hi) => {
+        const color  = HARMONIC_PALETTE[h.colorIdx];
+        const baseA  = Math.max(0.18, Math.pow(h.energyFrac, 0.32));
+        const isHov  = hoverH === hi;
+        const dimmed = hoverH !== null && !isHov;
+        const alpha  = dimmed ? 0.06 : (isHov ? 0.9 : baseA);
+        const phOff  = h.k * ω_BASE * t;
+
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.filter = `blur(${isHov ? 8 : 4}px)`;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isHov ? 3 : 1.8;
+        ctx.lineJoin  = "round";
+        ctx.beginPath();
+        for (let i = 0; i < DRAW; i++) {
+          const nFrac = (i / (DRAW - 1)) * (N - 1);
+          const x = xAt(i);
+          const y = yAt(h.amp * Math.cos(2 * Math.PI * h.k * nFrac / N + h.phase + phOff));
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.filter = "none";
+        ctx.restore();
+      });
+
+      // ── Pass 2: harmonic crisp lines (screen blend) ───────────────────
+      harmonics.forEach((h, hi) => {
+        const color  = HARMONIC_PALETTE[h.colorIdx];
+        const baseA  = Math.max(0.28, Math.pow(h.energyFrac, 0.32));
+        const isHov  = hoverH === hi;
+        const dimmed = hoverH !== null && !isHov;
+        const alpha  = dimmed ? 0.04 : (isHov ? 1.0 : baseA);
+        const phOff  = h.k * ω_BASE * t;
+
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isHov ? 1.5 : 0.8;
+        ctx.lineJoin  = "round";
+        ctx.beginPath();
+        for (let i = 0; i < DRAW; i++) {
+          const nFrac = (i / (DRAW - 1)) * (N - 1);
+          const x = xAt(i);
+          const y = yAt(h.amp * Math.cos(2 * Math.PI * h.k * nFrac / N + h.phase + phOff));
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // ── Actual equity curve — static "ground truth" ───────────────────
+      const sumAlpha = hoverH !== null ? 0.4 : 0.88;
+
+      // Glow
+      ctx.save();
+      ctx.globalCompositeOperation = "screen";
+      ctx.globalAlpha = sumAlpha * 0.55;
       ctx.filter = "blur(5px)";
-      ctx.fillStyle = color;
-      // top spike
+      ctx.strokeStyle = "#c4b5fd";
+      ctx.lineWidth = 3;
+      ctx.lineJoin  = "round";
       ctx.beginPath();
-      rrect(ctx, x - 2, baseline - barH - 2, barW + 4, barH + 2, 3);
-      ctx.fill();
-      // bottom mirror
-      ctx.beginPath();
-      rrect(ctx, x - 2, baseline, barW + 4, barH + 2, 3);
-      ctx.fill();
+      signal.forEach((v, n) => {
+        const x = PX + (n / (N - 1)) * CW;
+        const y = yAt(v);
+        n === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
       ctx.filter = "none";
       ctx.restore();
 
-      // ── Crisp bars with gradient ─────────────────────────────────────────
+      // Crisp line
       ctx.save();
-      ctx.globalAlpha = alpha;
-
-      // Top spike: bright tip → dim base
-      const gradUp = ctx.createLinearGradient(0, baseline - barH, 0, baseline);
-      gradUp.addColorStop(0, color);
-      gradUp.addColorStop(1, colorDim);
-      ctx.fillStyle = gradUp;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = sumAlpha;
+      ctx.strokeStyle = "#ddd6fe";
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin  = "round";
       ctx.beginPath();
-      rrect(ctx, x, baseline - barH, barW, barH, 2);
-      ctx.fill();
-
-      // Bottom mirror: dim base → bright tip
-      const gradDown = ctx.createLinearGradient(0, baseline, 0, baseline + barH);
-      gradDown.addColorStop(0, colorDim);
-      gradDown.addColorStop(1, color);
-      ctx.fillStyle = gradDown;
-      ctx.beginPath();
-      rrect(ctx, x, baseline, barW, barH, 2);
-      ctx.fill();
-
+      signal.forEach((v, n) => {
+        const x = PX + (n / (N - 1)) * CW;
+        const y = yAt(v);
+        n === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
       ctx.restore();
 
-      // ── Hover scan line ──────────────────────────────────────────────────
-      if (isHovered) {
+      // Endpoint pulse dot
+      {
+        const lastV = signal[signal.length - 1];
+        const ex = PX + CW;
+        const ey = yAt(lastV);
+
         ctx.save();
-        ctx.strokeStyle = "rgba(255,255,255,0.18)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(x + barW / 2, PAD_Y);
-        ctx.lineTo(x + barW / 2, H - PAD_Y);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = 0.7;
+        ctx.filter = "blur(5px)";
+        ctx.fillStyle = "#c4b5fd";
+        ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.filter = "none";
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = "#e9d5ff";
+        ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
+
+      // ── Hover: harmonic label ─────────────────────────────────────────
+      if (hoverH !== null && hoverH >= 0 && hoverH < harmonics.length) {
+        const h = harmonics[hoverH];
+        const color = HARMONIC_PALETTE[h.colorIdx];
+        const txt = `H${h.k}  ·  ${(h.energyFrac * 100).toFixed(0)}% signal energy`;
+
+        // Glow behind text
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        ctx.globalAlpha = 0.4;
+        ctx.filter = "blur(3px)";
+        ctx.font = "600 8px monospace";
+        ctx.textBaseline = "top";
+        ctx.textAlign    = "left";
+        ctx.fillStyle = color;
+        ctx.fillText(txt, PX + 4, PY + 4);
+        ctx.filter = "none";
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.font = "600 8px monospace";
+        ctx.textBaseline = "top";
+        ctx.textAlign    = "left";
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.92;
+        ctx.fillText(txt, PX + 4, PY + 4);
+        ctx.restore();
+      }
+
+      // ── Return % label (top-right) ────────────────────────────────────
+      if (equities.length >= 2 && hoverH === null) {
+        const retPct  = ((equities[equities.length - 1] - equities[0]) / equities[0]) * 100;
+        const sign    = retPct >= 0 ? "+" : "";
+        const retColor = retPct >= 0 ? "#34d399" : "#f87171";
+
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.font = "700 9px monospace";
+        ctx.textAlign    = "right";
+        ctx.textBaseline = "top";
+        ctx.fillStyle    = retColor;
+        ctx.globalAlpha  = 0.7;
+        ctx.fillText(`${sign}${retPct.toFixed(1)}%`, W - PX - 4, PY + 4);
+        ctx.restore();
+      }
+
+      // ── Scanlines ─────────────────────────────────────────────────────
+      ctx.save();
+      ctx.globalAlpha = 0.03;
+      ctx.fillStyle   = "#000";
+      for (let sy = 0; sy < H; sy += 3) ctx.fillRect(0, sy, W, 1);
+      ctx.restore();
+
+      // ── Vignette ──────────────────────────────────────────────────────
+      ctx.save();
+      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.08, W / 2, H / 2, W * 0.62);
+      vg.addColorStop(0, "transparent");
+      vg.addColorStop(1, "rgba(1,1,10,0.58)");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    rafRef.current = requestAnimationFrame(frame);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      lastTsRef.current = null;
+    };
+  }, []); // runs once — RAF reads from refs
+
+  // ── Mouse: find closest harmonic at cursor ────────────────────────────
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const { width: W, height: H } = dimsRef.current;
+    const harmonics = harmonicsRef.current;
+    const signal    = signalRef.current;
+    const t         = timeRef.current;
+    const N         = signal.length;
+    if (N < 2) return;
+
+    const PX = 16, PY = 14;
+    const CW = W - PX * 2;
+    const CH = H - PY * 2;
+    const cy    = PY + CH / 2;
+    const halfH = CH * 0.43;
+
+    // Interpolated data index at mouse x
+    const n0 = ((mx - PX) / CW) * (N - 1);
+
+    let closest: number | null = null;
+    let closestDist = 32; // px threshold
+
+    harmonics.forEach((h, hi) => {
+      const phOff = h.k * ω_BASE * t;
+      const val = h.amp * Math.cos(2 * Math.PI * h.k * n0 / N + h.phase + phOff);
+      const y   = cy - val * halfH;
+      const d   = Math.abs(my - y);
+      if (d < closestDist) { closestDist = d; closest = hi; }
     });
 
-    // ── Tooltip ────────────────────────────────────────────────────────────
-    if (hoverIdx !== null && hoverIdx >= 0 && hoverIdx < bars.length) {
-      const bar     = bars[hoverIdx];
-      const barSlotX = PAD_X + hoverIdx * barSlot + gap;
-      const cx      = barSlotX + barW / 2;
+    hoverRef.current = closest;
+  }, []);
 
-      const dateStr  = String(bar.date).slice(0, 10);
-      const equityStr = "$" + bar.equity.toLocaleString(undefined, { maximumFractionDigits: 0 });
-      const pnlStr   = (bar.pnl >= 0 ? "+" : "") + "$" + Math.abs(bar.pnl).toLocaleString(undefined, { maximumFractionDigits: 0 });
-      const pnlColor = bar.pnl >= 0 ? "#34d399" : "#f87171";
+  const handleMouseLeave = useCallback(() => { hoverRef.current = null; }, []);
 
-      const CW = 148, CH = 54;
-      let tx = cx + 10;
-      if (tx + CW > W - PAD_X) tx = cx - CW - 10;
-      tx = Math.max(PAD_X, tx);
-      const ty = PAD_Y + 6;
-
-      ctx.save();
-      ctx.fillStyle   = "rgba(4,4,12,0.94)";
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth   = 1;
-      ctx.beginPath();
-      rrect(ctx, tx, ty, CW, CH, 4);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.font         = "600 8px/1 monospace";
-      ctx.textBaseline = "middle";
-
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.textAlign = "left";
-      ctx.fillText(dateStr, tx + 10, ty + 14);
-
-      ctx.fillStyle = "rgba(255,255,255,0.88)";
-      ctx.fillText(equityStr, tx + 10, ty + 32);
-
-      ctx.fillStyle = pnlColor;
-      ctx.textAlign = "right";
-      ctx.fillText(pnlStr, tx + CW - 10, ty + 32);
-
-      ctx.restore();
-    }
-
-    // ── Return label (top-left) ────────────────────────────────────────────
-    if (bars.length >= 2 && animProg >= 1) {
-      const first  = bars[0].equity;
-      const last   = bars[bars.length - 1].equity;
-      const retPct = ((last - first) / first) * 100;
-      const sign   = retPct >= 0 ? "+" : "";
-      const retColor = retPct >= 0 ? "#34d399" : "#f87171";
-
-      ctx.save();
-      ctx.font         = "700 9px/1 monospace";
-      ctx.textAlign    = "right";
-      ctx.textBaseline = "top";
-      ctx.fillStyle    = retColor;
-      ctx.globalAlpha  = 0.75;
-      ctx.fillText(`${sign}${retPct.toFixed(1)}%`, W - PAD_X - 4, PAD_Y + 4);
-      ctx.restore();
-    }
-  }, [bars, dims, animProg, hoverIdx, maxAmp]);
-
-  // Mouse
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x   = e.clientX - rect.left;
-      const PAD_X  = 20;
-      const chartW = dims.width - PAD_X * 2;
-      const slot   = chartW / bars.length;
-      const idx    = Math.floor((x - PAD_X) / slot);
-      setHoverIdx(idx >= 0 && idx < bars.length ? idx : null);
-    },
-    [bars.length, dims.width],
-  );
-
-  const handleMouseLeave = useCallback(() => setHoverIdx(null), []);
-
-  if (snapshots.length < 2) return null;
+  if (!computed || snapshots.length < 2) return null;
 
   return (
     <div ref={containerRef} style={{ width: "100%", height: "100%", position: "relative" }}>
