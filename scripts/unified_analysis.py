@@ -442,8 +442,15 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
 
-    # Build sector map from watchlist (ticker → sector)
+    # Build sector map: positions.csv sector column (most reliable) + watchlist
     sector_map = {}
+    # 1. Seed from positions.csv sector column (set at buy time)
+    if not state.positions.empty and "sector" in state.positions.columns:
+        for _, pos in state.positions.iterrows():
+            s = str(pos.get("sector", "")).strip()
+            if s and s not in ("", "nan", "Unknown"):
+                sector_map[pos["ticker"]] = s
+    # 2. Fill in missing from watchlist
     try:
         watchlist_file = get_watchlist_file(state.portfolio_id)
         if watchlist_file.exists():
@@ -451,7 +458,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                 for line in f:
                     if line.strip():
                         entry = json.loads(line)
-                        if entry.get("sector"):
+                        if entry.get("sector") and entry["ticker"] not in sector_map:
                             sector_map[entry["ticker"]] = entry["sector"]
     except Exception:
         pass
@@ -459,10 +466,13 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     # Compute projected sector breakdown after proposed buys
     projected_sectors: dict = {}
     projected_equity = state.total_equity
-    # Seed with current held positions (use sector_map for lookup)
+    # Seed with current held positions (prefer positions.csv sector column)
     if not state.positions.empty:
         for _, pos in state.positions.iterrows():
-            sec = sector_map.get(pos["ticker"], "Unknown")
+            ticker = pos["ticker"]
+            pos_sector = str(pos.get("sector", "")).strip() if "sector" in pos.index else ""
+            sec = pos_sector if pos_sector and pos_sector not in ("nan", "Unknown", "") \
+                else sector_map.get(ticker, "Unknown")
             projected_sectors[sec] = projected_sectors.get(sec, 0.0) + pos["market_value"]
     # Add proposed buys
     buy_proposals = [a for a in proposed_actions if a.action_type == "BUY"]
@@ -688,8 +698,12 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         shares = tx["shares"]
 
         if action.action_type == "BUY":
+            ticker_sector = analysis_result.get("portfolio_context", {}).get(
+                "sector_map", {}
+            ).get(action.ticker, "")
             state = update_position(state, action.ticker, shares, action.price,
-                                    tx["stop_loss"], tx["take_profit"])
+                                    tx["stop_loss"], tx["take_profit"],
+                                    sector=ticker_sector)
         elif action.action_type == "SELL":
             state = remove_position(state, action.ticker)
 

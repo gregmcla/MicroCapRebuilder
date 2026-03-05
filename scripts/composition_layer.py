@@ -184,7 +184,12 @@ class CompositionLayer:
         for _, pos in state.positions.iterrows():
             ticker = pos["ticker"]
             market_value = pos["market_value"]
-            sector = get_sector(ticker, self.sector_mapping)
+            # Prefer sector stored at buy time in positions.csv, fall back to static mapping
+            pos_sector = str(pos.get("sector", "")).strip() if "sector" in pos.index else ""
+            if pos_sector and pos_sector not in ("nan", "Unknown", ""):
+                sector = pos_sector
+            else:
+                sector = get_sector(ticker, self.sector_mapping)
             sector_values[sector] += market_value
 
         # Convert to percentages

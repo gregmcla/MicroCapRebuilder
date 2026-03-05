@@ -565,6 +565,7 @@ def update_position(
     price: float,
     stop_loss: float,
     take_profit: float,
+    sector: str = "",
 ) -> PortfolioState:
     """
     Add a new position or average into an existing one.
@@ -602,6 +603,11 @@ def update_position(
         )
         df.at[idx, "stop_loss"] = stop_loss
         df.at[idx, "take_profit"] = take_profit
+        # Update sector if we now have one and didn't before
+        if sector and ("sector" not in df.columns or not df.at[idx, "sector"]):
+            if "sector" not in df.columns:
+                df["sector"] = ""
+            df.at[idx, "sector"] = sector
     else:
         # Add new position
         new_row = {
@@ -615,6 +621,7 @@ def update_position(
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "entry_date": date.today().isoformat(),
+            "sector": sector,
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 
