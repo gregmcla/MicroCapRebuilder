@@ -1,15 +1,33 @@
 /** Overview page — shown when activePortfolioId === "overview". */
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
+import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import PerformanceChart from "./PerformanceChart";
 import ConstellationMap from "./ConstellationMap";
+
+// ---------------------------------------------------------------------------
+// Scan-all types
+// ---------------------------------------------------------------------------
+
+interface ScanAllPortfolioResult {
+  status: "running" | "complete" | "error";
+  added: number;
+  active: number;
+  error: string | null;
+}
+
+interface ScanAllState {
+  running: boolean;
+  currentId: string | null;
+  results: Record<string, ScanAllPortfolioResult>;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -470,6 +488,13 @@ export default function OverviewPage() {
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
 
+  const [scanAll, setScanAll] = useState<ScanAllState>({
+    running: false,
+    currentId: null,
+    results: {},
+  });
+  const scanCancelledRef = useRef(false);
+
   const doneRef = useRef(0);
   const handleUpdateAll = async () => {
     const ids = (portfolioList?.portfolios ?? []).filter((p) => p.active).map((p) => p.id);
@@ -496,6 +521,104 @@ export default function OverviewPage() {
       setUpdatingAll(false);
     }
   };
+
+  const handleScanAll = async () => {
+    const ids = (portfolioList?.portfolios ?? [])
+      .filter((p) => p.active)
+      .map((p) => p.id);
+    if (ids.length === 0) return;
+
+    scanCancelledRef.current = false;
+    setScanAll({ running: true, currentId: ids[0], results: {} });
+
+    for (const id of ids) {
+      if (scanCancelledRef.current) break;
+
+      // Mark this portfolio as running
+      setScanAll((prev) => ({
+        ...prev,
+        currentId: id,
+        results: {
+          ...prev.results,
+          [id]: { status: "running", added: 0, active: 0, error: null },
+        },
+      }));
+
+      try {
+        // Fire the scan
+        await api.scan(id);
+
+        // Poll until complete or timeout (9 min frontend guard)
+        const FRONTEND_TIMEOUT_MS = 9 * 60 * 1000;
+        const POLL_INTERVAL_MS = 3000;
+        const deadline = Date.now() + FRONTEND_TIMEOUT_MS;
+
+        let finalStatus: ScanJobStatus = { status: "running" };
+        while (Date.now() < deadline && !scanCancelledRef.current) {
+          await new Promise((res) => setTimeout(res, POLL_INTERVAL_MS));
+          finalStatus = await api.scanStatus(id);
+          if (finalStatus.status !== "running") break;
+        }
+
+        if (finalStatus.status === "complete" && finalStatus.result) {
+          setScanAll((prev) => ({
+            ...prev,
+            results: {
+              ...prev.results,
+              [id]: {
+                status: "complete",
+                added: finalStatus.result!.added,
+                active: finalStatus.result!.total_active,
+                error: null,
+              },
+            },
+          }));
+          // Refresh overview data so card stats update live
+          queryClient.invalidateQueries({ queryKey: ["overview"] });
+        } else {
+          // Timeout or backend error — non-fatal, continue chain
+          setScanAll((prev) => ({
+            ...prev,
+            results: {
+              ...prev.results,
+              [id]: {
+                status: "error",
+                added: 0,
+                active: 0,
+                error: finalStatus.error ?? "Scan timed out",
+              },
+            },
+          }));
+        }
+      } catch (err) {
+        setScanAll((prev) => ({
+          ...prev,
+          results: {
+            ...prev.results,
+            [id]: {
+              status: "error",
+              added: 0,
+              active: 0,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          },
+        }));
+      }
+    }
+
+    // Chain complete
+    setScanAll((prev) => ({ ...prev, running: false, currentId: null }));
+    // Clear results after 5s
+    setTimeout(() => {
+      if (!scanCancelledRef.current) {
+        setScanAll({ running: false, currentId: null, results: {} });
+      }
+    }, 5000);
+  };
+
+  useEffect(() => {
+    return () => { scanCancelledRef.current = true; };
+  }, []);
 
   if (isLoading) {
     return (
