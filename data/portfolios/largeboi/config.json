@@ -210,7 +210,7 @@
     },
     "rotation": {
       "enabled": true,
-      "min_upgrade_score_gap": 15,
+      "min_upgrade_score_gap": 8,
       "max_rotations_per_cycle": 3,
       "min_held_days_before_rotation": 3,
       "max_unrealized_loss_pct_for_rotation": -15

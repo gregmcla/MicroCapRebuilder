@@ -499,6 +499,10 @@ class OpportunityLayer:
             proposals.append(proposal)
             remaining_cash -= total_value
 
+            # Stop if remaining cash (after reserve) is too small for any meaningful buy
+            if remaining_cash - cash_reserve < min_meaningful_buy:
+                break
+
         return proposals
 
     def _generate_rotation_proposals(
