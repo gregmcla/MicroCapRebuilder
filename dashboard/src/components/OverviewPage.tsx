@@ -165,6 +165,7 @@ function AllPositionsPanel({ positions, portfolios }: {
 function AggregateBar({
   totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalPositions, portfolioCount, onNewPortfolio,
   onUpdateAll, updatingAll, updateResult,
+  onScanAll, scanAllRunning, scanAllLabel,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
   totalUnrealizedPnl: number; totalAllTimePnl: number; totalPositions: number; portfolioCount: number;
@@ -172,6 +173,9 @@ function AggregateBar({
   onUpdateAll: () => void;
   updatingAll: boolean;
   updateResult: string | null;
+  onScanAll: () => void;
+  scanAllRunning: boolean;
+  scanAllLabel: string | null;
 }) {
   // 0 decimals → then format with commas
   const rawCount = useCountUp(totalEquity, 1200, 0);
@@ -251,6 +255,45 @@ function AggregateBar({
             />
           </svg>
           {updateResult ?? "Update All"}
+        </button>
+        <button
+          onClick={onScanAll}
+          disabled={scanAllRunning}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "5px",
+            padding: "0 12px", height: "28px",
+            background: "transparent",
+            border: "1px solid var(--border-1)",
+            borderRadius: "6px",
+            color: scanAllRunning ? "var(--accent)" : "var(--text-1)",
+            fontSize: "11px", fontWeight: 600,
+            letterSpacing: "0.06em", textTransform: "uppercase",
+            cursor: scanAllRunning ? "not-allowed" : "pointer",
+            transition: "border-color 0.15s, color 0.15s",
+            opacity: scanAllRunning ? 0.75 : 1,
+            maxWidth: "180px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+          onMouseEnter={(e) => {
+            if (!scanAllRunning) {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--accent)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!scanAllRunning) {
+              e.currentTarget.style.borderColor = "var(--border-1)";
+              e.currentTarget.style.color = "var(--text-1)";
+            }
+          }}
+        >
+          <span
+            style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              background: "currentColor", opacity: scanAllRunning ? 1 : 0.6, flexShrink: 0,
+              animation: scanAllRunning ? "pulse 1s ease-in-out infinite" : "none",
+            }}
+          />
+          {scanAllLabel ?? "Scan All"}
         </button>
         <button
           onClick={onNewPortfolio}
@@ -631,6 +674,19 @@ export default function OverviewPage() {
   const summaries = overview?.portfolios ?? [];
   const names = new Map((portfolioList?.portfolios ?? []).map((p) => [p.id, p.name]));
   const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
+
+  const scanAllLabel = useMemo(() => {
+    if (!scanAll.running && Object.keys(scanAll.results).length > 0) {
+      const totalAdded = Object.values(scanAll.results).reduce((sum, r) => sum + r.added, 0);
+      const n = Object.keys(scanAll.results).length;
+      return `+${totalAdded} added · ${n} scanned`;
+    }
+    if (scanAll.running && scanAll.currentId) {
+      const name = names.get(scanAll.currentId) ?? scanAll.currentId;
+      return `Scanning ${name}…`;
+    }
+    return null;
+  }, [scanAll, names]);
   const validSummaries = enriched.filter((s) => !s.error);
   const totalEquity = overview?.total_equity ?? 0;
   const topMovers = overview?.top_movers ?? [];
@@ -651,6 +707,9 @@ export default function OverviewPage() {
         onUpdateAll={handleUpdateAll}
         updatingAll={updatingAll}
         updateResult={updateResult}
+        onScanAll={handleScanAll}
+        scanAllRunning={scanAll.running}
+        scanAllLabel={scanAllLabel}
       />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
