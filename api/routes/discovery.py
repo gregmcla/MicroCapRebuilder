@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 # In-memory job store: portfolio_id -> job dict
 _scan_jobs: Dict[str, Dict[str, Any]] = {}
 
-SCAN_TIMEOUT_SECONDS = 900  # 15 minutes — first cold-cache run on large universe can be slow
+SCAN_TIMEOUT_SECONDS = 480  # 8 minutes — covers cold-cache scans with margin
 
 
 def _run_scan_job(portfolio_id: str) -> None:
