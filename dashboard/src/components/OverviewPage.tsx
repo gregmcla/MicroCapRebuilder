@@ -705,17 +705,7 @@ export default function OverviewPage() {
     return () => { scanCancelledRef.current = true; };
   }, []);
 
-  if (isLoading) {
-    return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-0)" }}>
-        <p className="animate-pulse" style={{ color: "var(--text-1)" }}>Loading portfolios...</p>
-      </div>
-    );
-  }
-
-  const summaries = overview?.portfolios ?? [];
   const names = new Map((portfolioList?.portfolios ?? []).map((p) => [p.id, p.name]));
-  const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
 
   const scanAllLabel = useMemo(() => {
     if (!scanAll.running && Object.keys(scanAll.results).length > 0) {
@@ -729,6 +719,17 @@ export default function OverviewPage() {
     }
     return null;
   }, [scanAll, names]);
+
+  if (isLoading) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-0)" }}>
+        <p className="animate-pulse" style={{ color: "var(--text-1)" }}>Loading portfolios...</p>
+      </div>
+    );
+  }
+
+  const summaries = overview?.portfolios ?? [];
+  const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
   const validSummaries = enriched.filter((s) => !s.error);
   const totalEquity = overview?.total_equity ?? 0;
   const topMovers = overview?.top_movers ?? [];
