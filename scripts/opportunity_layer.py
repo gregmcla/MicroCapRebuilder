@@ -473,8 +473,10 @@ class OpportunityLayer:
             # Don't exceed remaining cash (minus reserve)
             position_value = min(position_value, remaining_cash - cash_reserve)
 
-            if position_value < price:
-                continue  # Can't afford even 1 share
+            # Skip if position would be too small to be meaningful
+            min_notional = max(price * 5, 250.0)  # at least 5 shares or $250
+            if position_value < min_notional:
+                continue
 
             shares = int(position_value / price)
             if shares < 1:
@@ -648,7 +650,8 @@ class OpportunityLayer:
             conviction_value = state.total_equity * (base_size_pct / 100.0)
             position_value = min(conviction_value, sell_proceeds)
 
-            if position_value < buy_price:
+            min_notional = max(buy_price * 5, 250.0)  # at least 5 shares or $250
+            if position_value < min_notional:
                 continue
 
             buy_shares = int(position_value / buy_price)
