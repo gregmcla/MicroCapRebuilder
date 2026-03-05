@@ -322,7 +322,11 @@ function AggregateBar({
 // Portfolio card
 // ---------------------------------------------------------------------------
 
-function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; totalEquity: number }) {
+function PortfolioCard({ summary, totalEquity, scanResult }: {
+  summary: PortfolioSummary;
+  totalEquity: number;
+  scanResult?: ScanAllPortfolioResult;
+}) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
   const queryClient = useQueryClient();
@@ -460,6 +464,44 @@ function PortfolioCard({ summary, totalEquity }: { summary: PortfolioSummary; to
               <span style={{ color: "var(--border-2)" }}>·</span>
               <span style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime}</span>
             </>
+          )}
+        </div>
+      )}
+
+      {/* Scan badge — only visible when scan-all has state for this card */}
+      {scanResult && (
+        <div
+          style={{
+            padding: "5px 14px 7px",
+            borderTop: "1px solid var(--border-0)",
+            display: "flex", alignItems: "center", gap: "6px",
+            fontSize: "10px", color: "var(--text-1)",
+          }}
+        >
+          <span
+            style={{
+              width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0,
+              background:
+                scanResult.status === "complete" ? "var(--green)"
+                : scanResult.status === "error"   ? "var(--red)"
+                : "var(--amber)",
+              animation: scanResult.status === "running"
+                ? "pulse 1s ease-in-out infinite"
+                : "none",
+            }}
+          />
+          {scanResult.status === "running" && (
+            <span style={{ color: "var(--amber)" }}>Scanning…</span>
+          )}
+          {scanResult.status === "complete" && (
+            <span style={{ color: "var(--green)" }}>
+              +{scanResult.added} added · {scanResult.active} active
+            </span>
+          )}
+          {scanResult.status === "error" && (
+            <span style={{ color: "var(--red)" }}>
+              Scan error{scanResult.error ? ` — ${scanResult.error.slice(0, 40)}` : ""}
+            </span>
           )}
         </div>
       )}
@@ -725,7 +767,11 @@ export default function OverviewPage() {
               <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
                 {enriched.map((s, i) => (
                   <div key={s.id} className={`anim d${Math.min(i + 1, 5)}`}>
-                    <PortfolioCard summary={s} totalEquity={totalEquity} />
+                    <PortfolioCard
+                      summary={s}
+                      totalEquity={totalEquity}
+                      scanResult={scanAll.results[s.id]}
+                    />
                   </div>
                 ))}
               </div>
