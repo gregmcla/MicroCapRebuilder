@@ -206,6 +206,9 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, pr
         df["day_change"] = 0.0
     if "day_change_pct" not in df.columns:
         df["day_change_pct"] = 0.0
+    # Ensure price_high column exists — tracks highest price since entry for trailing stops
+    if "price_high" not in df.columns:
+        df["price_high"] = df["current_price"]
 
     for idx, row in df.iterrows():
         ticker = row["ticker"]
@@ -226,6 +229,10 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, pr
         df.at[idx, "market_value"] = round(market_value, 2)
         df.at[idx, "unrealized_pnl"] = round(unrealized_pnl, 2)
         df.at[idx, "unrealized_pnl_pct"] = round(unrealized_pnl_pct, 2)
+
+        # Update high watermark — never decreases
+        existing_high = float(row.get("price_high", 0) or 0)
+        df.at[idx, "price_high"] = round(max(current_price, existing_high), 2)
 
         # Day change: for positions entered today, use avg_cost as baseline
         # (we didn't own it at yesterday's close, so prev_close is misleading)
@@ -622,6 +629,7 @@ def update_position(
             "take_profit": take_profit,
             "entry_date": date.today().isoformat(),
             "sector": sector,
+            "price_high": price,  # high watermark for trailing stop — updated on every price refresh
         }
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
 

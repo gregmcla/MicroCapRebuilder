@@ -100,9 +100,14 @@ class RiskLayer:
 
             trailing_stop = None
             if self.layer1_config.get("enable_trailing_stops", True):
+                # Use price_high (historical high since entry) as trailing stop anchor
+                price_high = float(pos.get("price_high", 0) or 0)
+                if price_high <= 0:
+                    price_high = current_price
                 # Bug #13: tighten trailing stop parameters when preservation is active
                 trailing_stop = self._calculate_trailing_stop(
                     current_price, entry_price, current_stop,
+                    price_high=price_high,
                     preservation_active=preservation_active
                 )
 
@@ -145,9 +150,14 @@ class RiskLayer:
 
     def _calculate_trailing_stop(
         self, current_price: float, entry_price: float, current_stop: float,
+        price_high: float = None,
         preservation_active: bool = False
     ) -> Optional[float]:
         """Calculate trailing stop if position is up enough.
+
+        Uses price_high (historical max since entry) as the trailing anchor so
+        the stop only moves up, never down. Falls back to current_price if
+        price_high is unavailable.
 
         When capital preservation is active (Bug #13), tightens the trigger
         threshold by 20% (e.g. 10% → 8%) and the trail distance by 30%
@@ -156,6 +166,9 @@ class RiskLayer:
         trigger_pct = self.layer1_config.get("trailing_stop_trigger_pct", 10.0) / 100
         distance_pct = self.layer1_config.get("trailing_stop_distance_pct", 8.0) / 100
 
+        # Use the historical high as the anchor; fall back to current price
+        anchor = price_high if (price_high and price_high > 0) else current_price
+
         preservation_note = ""
         if preservation_active:
             # Tighten trigger: normal 10% → 8% (×0.8); tighten distance by 30%
@@ -163,12 +176,12 @@ class RiskLayer:
             distance_pct = distance_pct * 0.7
             preservation_note = " [preservation-tightened]"  # surfaced in stop_type label if needed
 
-        gain_pct = (current_price - entry_price) / entry_price
+        gain_pct = (anchor - entry_price) / entry_price
 
         if gain_pct >= trigger_pct:
-            # Position is up enough; trail the stop
+            # Position is up enough; trail the stop from the historical high
             min_stop = entry_price * 1.05  # Never go below entry + 5%
-            trailing = current_price * (1 - distance_pct)
+            trailing = anchor * (1 - distance_pct)
             return max(trailing, min_stop, current_stop)
 
         return None
