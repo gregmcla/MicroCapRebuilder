@@ -44,6 +44,17 @@ def _serialize_state(state):
         total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
         all_time_pnl = state.total_equity - starting_capital
 
+    # Realized P&L = cash + cost of open positions - starting capital
+    # Excludes unrealized gains: only reflects locked-in gains from closed trades
+    positions_df = state.positions
+    if not positions_df.empty and "avg_cost_basis" in positions_df.columns:
+        cost_deployed = float(
+            (positions_df["avg_cost_basis"] * positions_df["shares"]).sum()
+        )
+    else:
+        cost_deployed = 0.0
+    realized_pnl = round(state.cash + cost_deployed - starting_capital, 2)
+
     # Zero out stale day_change values in positions when markets are closed.
     # The CSV retains the last computed day_change (from the last trading session)
     # which would show as today's gain/loss when markets haven't opened.
@@ -70,6 +81,7 @@ def _serialize_state(state):
         "day_pnl_pct": day_pnl_pct,
         "total_return_pct": total_return_pct,
         "all_time_pnl": round(all_time_pnl, 2),
+        "realized_pnl": realized_pnl,
         "starting_capital": starting_capital,
         "timestamp": serialize(state.timestamp),
     }
