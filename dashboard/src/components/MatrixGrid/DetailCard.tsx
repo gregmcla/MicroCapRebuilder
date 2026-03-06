@@ -62,7 +62,7 @@ export default function DetailCard({ pos, onClose }: DetailCardProps) {
               }}>
                 {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}%
               </div>
-              <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>ALL-TIME</div>
+              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>ALL-TIME</div>
             </div>
           </div>
 
@@ -81,7 +81,7 @@ export default function DetailCard({ pos, onClose }: DetailCardProps) {
               { label: "BETA", val: pos.beta != null ? String(pos.beta) : "N/A" },
             ].map((s) => (
               <div key={s.label}>
-                <div style={{ fontSize: 7, color: "#333", letterSpacing: "0.14em" }}>{s.label}</div>
+                <div style={{ fontSize: 7, color: "#666", letterSpacing: "0.14em" }}>{s.label}</div>
                 <div style={{
                   fontSize: 13, color: s.color ?? "#aaa", fontWeight: 500,
                   marginTop: 2,
@@ -107,7 +107,7 @@ export default function DetailCard({ pos, onClose }: DetailCardProps) {
 
         <div style={{ height: 1, background: `linear-gradient(90deg,transparent,${col}33,transparent)` }} />
         <div style={{
-          padding: "6px 0", textAlign: "center", fontSize: 8, color: "#222",
+          padding: "6px 0", textAlign: "center", fontSize: 8, color: "#555",
           letterSpacing: "0.12em", background: "rgba(255,255,255,0.01)",
         }}>
           ESC OR CLICK OUTSIDE TO CLOSE

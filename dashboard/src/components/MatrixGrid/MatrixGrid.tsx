@@ -263,7 +263,7 @@ export default function MatrixGrid({
             flexShrink: 0,
           }}>
             <EKGStrip portfolios={portfolios} />
-            <div style={{ position: "absolute", top: 2, right: 6, fontSize: 7, color: "#222", letterSpacing: "0.12em" }}>
+            <div style={{ position: "absolute", top: 2, right: 6, fontSize: 7, color: "#555", letterSpacing: "0.12em" }}>
               PORTFOLIO VITALS
             </div>
           </div>
@@ -298,20 +298,20 @@ export default function MatrixGrid({
                 { l: "AVG P&L", v: `${avgP}%`, c: pc(parseFloat(avgP)) },
               ].map((s) => (
                 <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span style={{ fontSize: 6, color: "#333", letterSpacing: "0.12em" }}>{s.l}</span>
+                  <span style={{ fontSize: 6, color: "#666", letterSpacing: "0.12em" }}>{s.l}</span>
                   <span style={{ fontSize: 11, color: s.c, fontWeight: 600 }}>{s.v}</span>
                 </div>
               ))}
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 6, color: "#333", letterSpacing: "0.12em" }}>W/L</span>
+                <span style={{ fontSize: 6, color: "#666", letterSpacing: "0.12em" }}>W/L</span>
                 <span style={{ fontSize: 11, fontWeight: 600 }}>
                   <span style={{ color: "#4ade80" }}>{wins}</span>
-                  <span style={{ color: "#252525" }}>/</span>
+                  <span style={{ color: "#444" }}>/</span>
                   <span style={{ color: "#f87171" }}>{positions.length - wins}</span>
                 </span>
               </div>
             </div>
-            <span style={{ fontSize: 7, color: "#1a1a1a", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
+            <span style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
             {(["value", "perf", "alpha", "portfolio"] as const).map((k, n) => (
               <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
                 padding: "2px 8px", fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -323,7 +323,7 @@ export default function MatrixGrid({
               }}>
                 {sortBy === k && <span style={{ marginRight: 3 }}>&#9658;</span>}
                 {k}
-                <span style={{ fontSize: 6, color: "#1a1a1a", marginLeft: 4 }}>[{n + 1}]</span>
+                <span style={{ fontSize: 6, color: "#555", marginLeft: 4 }}>[{n + 1}]</span>
               </button>
             ))}
           </div>
@@ -331,7 +331,7 @@ export default function MatrixGrid({
             {onBack && (
               <button onClick={onBack} style={{
                 padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
-                background: "transparent", color: "#333",
+                background: "transparent", color: "#666",
                 border: "1px solid rgba(255,255,255,0.04)",
                 cursor: "pointer", letterSpacing: "0.08em", marginRight: 8,
               }}>&larr; BACK</button>
@@ -451,7 +451,7 @@ export default function MatrixGrid({
 
                   {/* Value + sparkline */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                    <span style={{ fontSize: 7, color: "#292929" }}>{fv(pos.value)}</span>
+                    <span style={{ fontSize: 7, color: "#888" }}>{fv(pos.value)}</span>
                     <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={40} h={12} />
                   </div>
 
@@ -475,12 +475,12 @@ export default function MatrixGrid({
           padding: "4px 20px",
           borderTop: "1px solid rgba(74,222,128,0.04)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: 7, color: "#1a1a1a", letterSpacing: "0.1em", flexShrink: 0,
+          fontSize: 7, color: "#555", letterSpacing: "0.1em", flexShrink: 0,
         }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             {top && <span>&#9650; <span style={{ color: "#4ade80" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
             {bot && <span>&#9660; <span style={{ color: "#f87171" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
-            <span style={{ color: "#161616" }}>&#9474;</span>
+            <span style={{ color: "#555" }}>&#9474;</span>
             <span>KEYS: [1-4] SORT &middot; [ESC] RESET &middot; CLICK CELL FOR DETAIL</span>
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -520,7 +520,7 @@ export default function MatrixGrid({
             { l: "SECTOR", v: hovered.sector },
           ].map((s) => (
             <div key={s.l}>
-              <div style={{ fontSize: 6, color: "#222", letterSpacing: "0.14em" }}>{s.l}</div>
+              <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em" }}>{s.l}</div>
               <div style={{ fontSize: 11, color: s.c ?? "#888", fontWeight: 500 }}>{s.v}</div>
             </div>
           ))}

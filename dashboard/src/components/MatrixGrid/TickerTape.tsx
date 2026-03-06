@@ -27,7 +27,7 @@ export default function TickerTape({ positions }: TickerTapeProps) {
             color: item.day >= 0 ? "#4ade8088" : "#f8717188",
             
           }}>
-            <span style={{ color: "#333", marginRight: 4 }}>{item.ticker}</span>
+            <span style={{ color: "#666", marginRight: 4 }}>{item.ticker}</span>
             {item.day >= 0 ? "▲" : "▼"} {item.day >= 0 ? "+" : ""}{item.day.toFixed(2)}%
           </span>
         ))}
