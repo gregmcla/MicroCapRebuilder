@@ -8,6 +8,8 @@ import TickerTape from "./TickerTape";
 import DetailCard from "./DetailCard";
 import BackgroundCanvas from "./BackgroundCanvas";
 import EKGStrip from "./EKGStrip";
+import ActionsTab from "../ActionsTab";
+import { useAnalysisStore } from "../../lib/store";
 
 const BOOT_LINES = [
   "[SYS] MATRIX v3.0 initializing...",
@@ -33,7 +35,14 @@ export default function MatrixGrid({
   scanStatus,
   showSecondaryTabs = true,
 }: MatrixGridProps) {
-  const [viewTab, setViewTab] = useState<"grid" | "watchlist" | "activity" | "logs">("grid");
+  const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs">("grid");
+  const analysisResult = useAnalysisStore((s) => s.result);
+  const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
+
+  // Auto-switch to ACTIONS tab when analysis finishes
+  useEffect(() => {
+    if (analysisResult && !isAnalyzing) setViewTab("actions");
+  }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"value" | "perf" | "alpha" | "portfolio">("value");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
@@ -366,11 +375,13 @@ export default function MatrixGrid({
           display: "flex", alignItems: "flex-end", gap: 0, flexShrink: 0,
         }}>
           {(showSecondaryTabs
-            ? ["grid", "watchlist", "activity", "logs"] as const
+            ? ["grid", "actions", "watchlist", "activity", "logs"] as const
             : ["grid"] as const
           ).map((tab) => {
+            const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
               grid: `GRID [${sorted.length}]`,
+              actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${[...analysisResult.approved, ...analysisResult.modified].length}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
               activity: `ACTIVITY [${transactions.length}]`,
               logs: "LOGS",
@@ -385,9 +396,9 @@ export default function MatrixGrid({
                   fontSize: 8, letterSpacing: "0.1em",
                   fontFamily: MATRIX_FONT,
                   background: "transparent",
-                  color: active ? "#4ade80" : "#555",
+                  color: active ? "#4ade80" : hasActions ? "#facc15" : "#555",
                   border: "none",
-                  borderBottom: active ? "2px solid #4ade80" : "2px solid transparent",
+                  borderBottom: active ? "2px solid #4ade80" : hasActions ? "2px solid #facc1566" : "2px solid transparent",
                   cursor: "pointer",
                   transition: "all 0.12s",
                   marginBottom: -1,
@@ -505,6 +516,13 @@ export default function MatrixGrid({
             })}
           </div>
         </div>
+
+        {/* ACTIONS PANEL */}
+        {viewTab === "actions" && (
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: "var(--surface-0)" }}>
+            <ActionsTab />
+          </div>
+        )}
 
         {/* WATCHLIST PANEL */}
         {viewTab === "watchlist" && (
