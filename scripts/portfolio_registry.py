@@ -68,6 +68,7 @@ UNIVERSE_PRESETS = {
         "etf_sources": ["IWM", "IJR", "VB"],
         "exchange_listings_enabled": True,
         "extended_max": 3000,
+        "total_watchlist_slots": 150,
     },
     "midcap": {
         "label": "Mid-Cap ($2B–$10B)",
@@ -94,6 +95,7 @@ UNIVERSE_PRESETS = {
         "etf_sources": ["IJH", "VO", "MDY"],
         "exchange_listings_enabled": True,
         "extended_max": 3000,
+        "total_watchlist_slots": 180,
     },
     "largecap": {
         "label": "Large-Cap ($10B+)",
@@ -120,6 +122,7 @@ UNIVERSE_PRESETS = {
         "etf_sources": ["SPY", "IVV", "VOO"],
         "exchange_listings_enabled": True,
         "extended_max": 3000,
+        "total_watchlist_slots": 200,
     },
     "allcap": {
         "label": "All-Cap (Everything)",
@@ -146,6 +149,7 @@ UNIVERSE_PRESETS = {
         "etf_sources": [],  # Uses all DEFAULT_ETFS — no restriction
         "exchange_listings_enabled": True,
         "extended_max": 3000,
+        "total_watchlist_slots": 250,
     },
     "custom": {
         "label": "Custom Universe",
@@ -357,6 +361,7 @@ def create_portfolio(
     sectors: list[str] = None,
     trading_style: str = None,
     ai_config: dict = None,
+    sector_weights: dict = None,
 ) -> PortfolioMeta:
     """Create a new portfolio: directory, config, and registry entry.
 
@@ -462,6 +467,17 @@ def create_portfolio(
         # "All" sectors — no filter
         config["discovery"].pop("sector_filter", None)
 
+    # --- Sector watchlist config ---
+    if "watchlist" not in config["discovery"]:
+        config["discovery"]["watchlist"] = {}
+    config["discovery"]["watchlist"]["total_watchlist_slots"] = preset.get(
+        "total_watchlist_slots", config["discovery"].get("watchlist", {}).get("max_tickers", 150)
+    )
+    if sector_weights:
+        config["discovery"]["watchlist"]["sector_weights"] = dict(sector_weights)
+    else:
+        config["discovery"]["watchlist"].pop("sector_weights", None)
+
     # --- Layer 4: AI-generated overrides ---
     if ai_config:
         if "scoring_weights" in ai_config:
@@ -483,6 +499,10 @@ def create_portfolio(
                 sector_etfs.insert(0, base_etf)
             config["universe"]["sources"]["etf_holdings"]["etfs"] = list(dict.fromkeys(sector_etfs))
             config["discovery"]["sector_filter"] = ai_config["sectors"]
+        if "sector_weights" in ai_config:
+            if "watchlist" not in config["discovery"]:
+                config["discovery"]["watchlist"] = {}
+            config["discovery"]["watchlist"]["sector_weights"] = ai_config["sector_weights"]
         if "etf_sources" in ai_config:
             existing = config["universe"]["sources"]["etf_holdings"]["etfs"]
             for etf in ai_config["etf_sources"]:
