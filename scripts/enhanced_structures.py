@@ -11,8 +11,11 @@ Defines dataclasses for:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 from enum import Enum
+
+if TYPE_CHECKING:
+    from social_sentiment import SocialSignal
 
 
 class UrgencyLevel(Enum):

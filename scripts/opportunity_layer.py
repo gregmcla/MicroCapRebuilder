@@ -218,7 +218,8 @@ class OpportunityLayer:
         )
         if conviction_scores and (not buy_proposals or fully_deployed):
             rotation_output = self._generate_rotation_proposals(
-                conviction_scores, state, risk_layer_output, price_map
+                conviction_scores, state, risk_layer_output, price_map,
+                social_signals=social_signals
             )
         # ─────────────────────────────────────────────────────────────────────
 
@@ -518,7 +519,8 @@ class OpportunityLayer:
         conviction_scores: Dict[str, "ConvictionScore"],
         state: "PortfolioState",
         risk_layer_output: dict,
-        price_map: Dict[str, float]
+        price_map: Dict[str, float],
+        social_signals=None
     ) -> dict:
         """
         Generate rotation sell+buy pairs when portfolio is fully deployed.
