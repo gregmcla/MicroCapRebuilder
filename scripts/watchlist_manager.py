@@ -40,6 +40,18 @@ from data_files import (
 )
 
 
+def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
+    """Fuzzy sector match: handles yfinance naming mismatches.
+    Returns True if the yfinance sector contains any filter string or vice versa.
+    Mirrors the same helper in stock_discovery.py to avoid circular imports.
+    """
+    yf_lower = yf_sector.lower()
+    return any(
+        f.lower() in yf_lower or yf_lower in f.lower()
+        for f in filter_sectors
+    )
+
+
 @dataclass
 class WatchlistEntry:
     """Enhanced watchlist entry with metadata."""
@@ -84,6 +96,10 @@ class WatchlistManager:
         self.discovery_config = self.config.get("discovery", {}).get("watchlist", {})
         self.max_tickers = self.discovery_config.get("max_tickers", 150)
         self.stale_days = self.discovery_config.get("stale_days_threshold", 30)
+        self.sector_weights = self.discovery_config.get("sector_weights", {})
+        self.total_watchlist_slots = self.discovery_config.get(
+            "total_watchlist_slots", self.max_tickers
+        )
         # Resolve paths based on portfolio
         self._watchlist_file = get_watchlist_file(portfolio_id) if portfolio_id else WATCHLIST_FILE
         self._core_watchlist_file = get_core_watchlist_file(portfolio_id) if portfolio_id else CORE_WATCHLIST_FILE
@@ -429,10 +445,12 @@ class WatchlistManager:
         stats["marked_stale"] = self.mark_stale_tickers()
         stats["removed"] = self.remove_stale_tickers()
 
-        # Balance sectors
-        stats["sector_balanced"] = self.balance_sectors()
+        # Balance sectors — skip in bucketed mode (bucket sizes already enforce distribution)
+        if not self._is_bucketed_mode():
+            stats["sector_balanced"] = self.balance_sectors()
 
-        stats["removed"] += self.enforce_max_size()
+        # Enforce size limits (per-bucket in bucketed mode, global in flat mode)
+        stats["removed"] += self.enforce_bucket_sizes()
         stats["total_active"] = len(self.get_active_tickers())
 
         return stats
@@ -640,6 +658,64 @@ class WatchlistManager:
                 missing.append(sector)
 
         return missing
+
+    def _is_bucketed_mode(self) -> bool:
+        """True when sector_weights config is present and non-empty."""
+        return bool(self.sector_weights)
+
+    def _compute_bucket_sizes(self) -> Dict[str, int]:
+        """Compute per-sector slot limits proportional to sector_weights.
+
+        Rounding correction ensures sum == total_watchlist_slots exactly.
+        """
+        total_weight = sum(self.sector_weights.values()) or 1
+        total = self.total_watchlist_slots
+        sorted_sectors = sorted(
+            self.sector_weights.items(), key=lambda x: x[1], reverse=True
+        )
+        bucket_sizes: Dict[str, int] = {}
+        allocated = 0
+        for sector, weight in sorted_sectors:
+            size = round(total * weight / total_weight)
+            bucket_sizes[sector] = size
+            allocated += size
+        # Rounding correction: add/subtract from highest-weight sector
+        diff = total - allocated
+        if diff != 0 and sorted_sectors:
+            bucket_sizes[sorted_sectors[0][0]] += diff
+        return bucket_sizes
+
+    def enforce_bucket_sizes(self) -> int:
+        """Enforce per-sector slot limits when in bucketed mode.
+
+        In global mode, delegates to enforce_max_size() (unchanged behavior).
+
+        Returns:
+            Number of tickers removed.
+        """
+        if not self._is_bucketed_mode():
+            return self.enforce_max_size()
+
+        entries = self._load_watchlist()
+        core_tickers = self._load_core_watchlist()
+        bucket_sizes = self._compute_bucket_sizes()
+
+        to_remove: Set[str] = set()
+        for sector, limit in bucket_sizes.items():
+            sector_entries = [
+                e for e in entries
+                if e.status == "ACTIVE" and _sector_matches(e.sector, [sector])
+            ]
+            sector_entries.sort(key=lambda x: x.discovery_score, reverse=True)
+            for entry in sector_entries[limit:]:
+                if entry.ticker not in core_tickers:
+                    to_remove.add(entry.ticker)
+
+        if to_remove:
+            new_entries = [e for e in entries if e.ticker not in to_remove]
+            self._save_watchlist(new_entries)
+
+        return len(to_remove)
 
 
 def get_watchlist_tickers(portfolio_id: str = None) -> List[str]:
