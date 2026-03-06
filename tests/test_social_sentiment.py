@@ -10,7 +10,7 @@ from social_sentiment import SocialSentimentProvider, SocialSignal, classify_hea
 def test_classify_heat_cold():
     assert classify_heat(None, None) == "COLD"
     assert classify_heat(None, 40.0) == "COLD"
-    assert classify_heat(80, 40.0) == "COLD"
+    assert classify_heat(80, 40.0) == "COLD"  # ST cold (40%) overrides rank-WARM (51-100 band)
 
 
 def test_classify_heat_warm():
@@ -25,6 +25,19 @@ def test_classify_heat_hot():
 
 def test_classify_heat_spiking():
     assert classify_heat(10, 80.0) == "SPIKING"  # rank <=20 AND >75% bullish
+
+
+def test_classify_heat_spiking_boundary():
+    # 75.0 exactly is NOT > 75, so SPIKING threshold is not met → HOT
+    assert classify_heat(10, 75.0) == "HOT"
+    # 75.1 crosses the threshold → SPIKING
+    assert classify_heat(10, 75.1) == "SPIKING"
+    # rank exactly at 50 → HOT (rank 21-50 inclusive)
+    assert classify_heat(50, None) == "HOT"
+    # rank exactly at 100 → WARM (rank 51-100 inclusive)
+    assert classify_heat(100, None) == "WARM"
+    # rank 101 → COLD
+    assert classify_heat(101, None) == "COLD"
 
 
 def test_classify_heat_hot_not_spiking_without_both():

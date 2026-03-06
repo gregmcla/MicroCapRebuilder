@@ -188,7 +188,8 @@ class SocialSentimentProvider:
         if self._cache_file.exists():
             try:
                 return json.loads(self._cache_file.read_text())
-            except Exception:
+            except Exception as e:
+                print(f"[social] Cache load failed, starting fresh: {e}")
                 return {}
         return {}
 
