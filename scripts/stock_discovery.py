@@ -454,11 +454,11 @@ class StockDiscovery:
                     by_bucket[bucket_key].append(candidate)
                     break  # assign to first matching bucket only
 
-        # Fill each bucket: top N by discovery_score (candidates already sorted)
+        # Fill each bucket: top N by discovery_score
         selected: List[DiscoveredStock] = []
         for bucket_key, limit in bucket_sizes.items():
             bucket = by_bucket[bucket_key]
-            # No need to re-sort: candidates were pre-sorted by score in run_all_scans
+            bucket.sort(key=lambda x: x.discovery_score, reverse=True)
             selected.extend(bucket[:limit])
 
         return selected
