@@ -46,6 +46,7 @@ class CreatePortfolioRequest(BaseModel):
     sectors: list[str] | None = None
     trading_style: str | None = None
     ai_config: dict | None = None
+    sector_weights: dict[str, int] | None = None
 
 
 @router.get("")
@@ -66,6 +67,7 @@ def create_new_portfolio(req: CreatePortfolioRequest):
             universe=req.universe, starting_capital=req.starting_capital,
             sectors=req.sectors, trading_style=req.trading_style,
             ai_config=req.ai_config,
+            sector_weights=req.sector_weights,
         )
         return {"portfolio": asdict(meta), "message": f"Created portfolio '{req.name}'"}
     except ValueError as e:
@@ -85,6 +87,7 @@ def generate_strategy_endpoint(req: GenerateStrategyRequest):
         strategy = generate_strategy(req.prompt, req.universe, req.starting_capital)
         return {
             "sectors": strategy.sectors,
+            "sector_weights": strategy.sector_weights,
             "trading_style": strategy.trading_style,
             "scoring_weights": strategy.scoring_weights,
             "stop_loss_pct": strategy.stop_loss_pct,
