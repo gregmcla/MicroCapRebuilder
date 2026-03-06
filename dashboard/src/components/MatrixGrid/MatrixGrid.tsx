@@ -299,7 +299,7 @@ export default function MatrixGrid({
             ].map((s) => (
               <div key={s.l} style={{ textAlign: "right" }}>
                 <div style={{ fontSize: 7, color: "#222", letterSpacing: "0.14em" }}>{s.l}</div>
-                <div style={{ fontSize: 13, color: s.c, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
+                <div style={{ fontSize: 13, color: s.c, fontWeight: 600 }}>{s.v}</div>
               </div>
             ))}
             <div style={{ textAlign: "right" }}>
@@ -312,7 +312,7 @@ export default function MatrixGrid({
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ fontSize: 7, color: "#222", letterSpacing: "0.14em" }}>SYS.CLK</div>
-              <div style={{ fontSize: 10, color: "#4ade8044", fontVariantNumeric: "tabular-nums" }}>{clock}</div>
+              <div style={{ fontSize: 10, color: "#4ade8044" }}>{clock}</div>
             </div>
           </div>
         </div>
@@ -475,14 +475,14 @@ export default function MatrixGrid({
                     <span className="matrix-tk" style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.04em", transition: "all 0.12s" }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: 8, fontWeight: 500, color: pc(pos.perf), fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontSize: 8, fontWeight: 500, color: pc(pos.perf) }}>
                       {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
                     </span>
                   </div>
 
                   {/* Value + sparkline */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                    <span style={{ fontSize: 7, color: "#292929", fontVariantNumeric: "tabular-nums" }}>{fv(pos.value)}</span>
+                    <span style={{ fontSize: 7, color: "#292929" }}>{fv(pos.value)}</span>
                     <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={40} h={12} />
                   </div>
 
@@ -551,7 +551,7 @@ export default function MatrixGrid({
           ].map((s) => (
             <div key={s.l}>
               <div style={{ fontSize: 6, color: "#222", letterSpacing: "0.14em" }}>{s.l}</div>
-              <div style={{ fontSize: 11, color: s.c ?? "#888", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
+              <div style={{ fontSize: 11, color: s.c ?? "#888", fontWeight: 500 }}>{s.v}</div>
             </div>
           ))}
           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>

@@ -84,7 +84,7 @@ export default function DetailCard({ pos, onClose }: DetailCardProps) {
                 <div style={{ fontSize: 7, color: "#333", letterSpacing: "0.14em" }}>{s.label}</div>
                 <div style={{
                   fontSize: 13, color: s.color ?? "#aaa", fontWeight: 500,
-                  marginTop: 2, fontVariantNumeric: "tabular-nums",
+                  marginTop: 2,
                 }}>{s.val}</div>
               </div>
             ))}
