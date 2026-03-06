@@ -67,6 +67,10 @@ class WatchlistEntry:
     last_checked: str = ""
     status: str = "ACTIVE"  # ACTIVE, STALE, REMOVED
     notes: str = ""
+    # Social sentiment (populated by SocialSentimentProvider after scan)
+    social_heat: str = ""            # COLD / WARM / HOT / SPIKING
+    social_rank: Optional[int] = None  # ApeWisdom rank (1=most mentioned)
+    social_bullish_pct: Optional[float] = None  # Stocktwits bullish %
 
     def __post_init__(self):
         if not self.added_date:
@@ -454,6 +458,25 @@ class WatchlistManager:
         # Enforce size limits (per-bucket in bucketed mode, global in flat mode)
         stats["removed"] += self.enforce_bucket_sizes()
         stats["total_active"] = len(self.get_active_tickers())
+
+        # Enrich active entries with social sentiment
+        try:
+            from social_sentiment import SocialSentimentProvider
+            entries = self._load_watchlist()
+            active_entries = [e for e in entries if e.status == "ACTIVE"]
+            if active_entries:
+                provider = SocialSentimentProvider(portfolio_id=self.portfolio_id)
+                tickers = [e.ticker for e in active_entries]
+                signals = provider.get_signals(tickers)
+                for entry in active_entries:
+                    sig = signals.get(entry.ticker)
+                    if sig:
+                        entry.social_heat = sig.heat
+                        entry.social_rank = sig.ape_rank
+                        entry.social_bullish_pct = sig.st_bullish_pct
+                self._save_watchlist(entries)
+        except Exception as e:
+            print(f"[watchlist] Social enrichment failed (non-fatal): {e}")
 
         return stats
 
