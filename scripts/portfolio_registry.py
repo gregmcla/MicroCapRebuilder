@@ -66,6 +66,8 @@ UNIVERSE_PRESETS = {
             "max_price": 500.0,
         },
         "etf_sources": ["IWM", "IJR", "VB"],
+        "exchange_listings_enabled": True,
+        "extended_max": 3000,
     },
     "midcap": {
         "label": "Mid-Cap ($2B–$10B)",
@@ -90,6 +92,8 @@ UNIVERSE_PRESETS = {
             "max_price": 1000.0,
         },
         "etf_sources": ["IJH", "VO", "MDY"],
+        "exchange_listings_enabled": True,
+        "extended_max": 3000,
     },
     "largecap": {
         "label": "Large-Cap ($10B+)",
@@ -114,6 +118,8 @@ UNIVERSE_PRESETS = {
             "max_price": 5000.0,
         },
         "etf_sources": ["SPY", "IVV", "VOO"],
+        "exchange_listings_enabled": True,
+        "extended_max": 3000,
     },
     "allcap": {
         "label": "All-Cap (Everything)",
@@ -138,6 +144,8 @@ UNIVERSE_PRESETS = {
             "max_price": 5000.0,
         },
         "etf_sources": [],  # Uses all DEFAULT_ETFS — no restriction
+        "exchange_listings_enabled": True,
+        "extended_max": 3000,
     },
     "custom": {
         "label": "Custom Universe",
@@ -401,6 +409,18 @@ def create_portfolio(
     config["universe"]["sources"]["etf_holdings"]["etfs"] = list(preset["etf_sources"])
     config["universe"]["filters"] = dict(preset["discovery_filters"])
 
+    # Exchange listings: enabled for smallcap/midcap/largecap/allcap, off for microcap
+    if "exchange_listings" not in config["universe"]["sources"]:
+        config["universe"]["sources"]["exchange_listings"] = {}
+    config["universe"]["sources"]["exchange_listings"]["enabled"] = preset.get("exchange_listings_enabled", False)
+
+    # Extended tier size: larger for exchange-listing-enabled portfolios
+    if "tiers" not in config["universe"]:
+        config["universe"]["tiers"] = {}
+    if "extended" not in config["universe"]["tiers"]:
+        config["universe"]["tiers"]["extended"] = {}
+    config["universe"]["tiers"]["extended"]["max_tickers"] = preset.get("extended_max", 1000)
+
     # --- Layer 2: Trading style overrides ---
     if trading_style and trading_style in TRADING_STYLES:
         style = TRADING_STYLES[trading_style]
@@ -417,6 +437,7 @@ def create_portfolio(
             config["enhanced_trading"]["layer1"] = {}
         config["enhanced_trading"]["layer1"]["trailing_stop_trigger_pct"] = style["trailing_stop_trigger_pct"]
         config["enhanced_trading"]["layer1"]["trailing_stop_distance_pct"] = style["trailing_stop_distance_pct"]
+
 
     # --- Layer 3: Sector focus ---
     if sectors and len(sectors) < len(ALL_SECTORS):
