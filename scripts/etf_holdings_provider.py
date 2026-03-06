@@ -511,6 +511,50 @@ FALLBACK_HOLDINGS = {
         "PLD", "AMT", "EQIX", "CCI", "PSA", "O", "SPG", "WELL", "DLR", "VICI",
         "AVB", "EQR", "SBAC", "WY", "ARE", "VTR", "MAA", "UDR", "ESS", "INVH",
     ],
+    # --- Defense & Aerospace ETFs ---
+    "ITA": [
+        "RTX", "LMT", "NOC", "GD", "BA", "L3H", "HII", "TDG", "HEI", "LDOS",
+        "SAIC", "BAH", "CACI", "KTOS", "BWXT", "DRS", "TXT", "SPR", "HXL", "CW",
+        "MOOG", "AXON", "ACHR", "JOBY", "RKLB", "SPCE", "ASTR", "RDW", "LUNR", "MNTS",
+    ],
+    "PPA": [
+        "RTX", "LMT", "NOC", "GD", "BA", "L3H", "HII", "TDG", "HEI", "LDOS",
+        "SAIC", "BAH", "KTOS", "BWXT", "DRS", "MOOG", "CW", "TXT", "SPR", "HXL",
+        "AXON", "RKLB", "ACHR", "JOBY", "OSIS", "MRCY", "VVX", "TGI", "AEROJET",
+    ],
+    # --- Cybersecurity ETFs ---
+    "HACK": [
+        "PANW", "CRWD", "FTNT", "ZS", "NET", "OKTA", "S", "CYBR", "TENB", "QLYS",
+        "RPD", "SAIL", "VRNS", "PING", "CWAN", "LYFT", "CHKP", "SIEM", "OSPN", "EVBG",
+        "CACI", "LDOS", "SAIC", "BAH", "LEIDOS", "MFNC", "PFPT", "MIME", "IRTC", "TELOS",
+    ],
+    "CIBR": [
+        "PANW", "CRWD", "FTNT", "ZS", "NET", "OKTA", "S", "CYBR", "TENB", "QLYS",
+        "RPD", "VRNS", "CHKP", "CACI", "SAIC", "LDOS", "BAH", "SAIL", "PING", "OSPN",
+        "TELOS", "BBAI", "PLTR", "MSFT", "GOOGL", "CSCO", "IBM", "ANET", "FFIV", "JNPR",
+    ],
+    "BUG": [
+        "PANW", "CRWD", "FTNT", "ZS", "NET", "OKTA", "S", "CYBR", "TENB", "QLYS",
+        "RPD", "VRNS", "CHKP", "SAIL", "PING", "OSPN", "BBAI", "PLTR", "TELOS", "CACI",
+        "SAIC", "BAH", "LDOS", "MSFT", "GOOGL", "CSCO", "ANET", "FFIV", "JNPR", "F5",
+    ],
+    # --- Energy / Oil & Gas ETFs ---
+    "FENY": [
+        "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "VLO", "OKE", "WMB",
+        "HES", "KMI", "FANG", "DVN", "HAL", "BKR", "TRGP", "CTRA", "OXY", "APA",
+        "RRC", "AR", "SM", "EQT", "MRO", "CHRD", "NOG", "MGY", "MTDR", "PR",
+    ],
+    "OIH": [
+        "SLB", "HAL", "BKR", "FTI", "NOV", "OIS", "WTTR", "LBRT", "PUMP", "NINE",
+        "NR", "HP", "AROC", "PKD", "PTEN", "RES", "SOI", "FET", "CCLP", "KLXE",
+        "DNOW", "MRC", "DRIL", "FLOTEK", "ODP", "NGAS", "TUSK", "DKNG", "NEX", "CKH",
+    ],
+    # --- Small-cap Tech ETF ---
+    "PSCT": [
+        "SMCI", "CRDO", "ONTO", "FORM", "ICHR", "COHU", "ACLS", "MKSI", "UCTT", "AEHR",
+        "AMBA", "CEVA", "EMKR", "SLAB", "LYTS", "PCYG", "SMTC", "PDFS", "RMBS", "SITM",
+        "OSIS", "PLXS", "SANM", "CTS", "TTEC", "PCVX", "DIOD", "KLIC", "AEIS", "NTGR",
+    ],
 }
 
 
