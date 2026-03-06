@@ -423,6 +423,8 @@ export default function PortfolioSummary() {
   const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
   const realizedPnl = state?.realized_pnl ?? 0;
   const realizedColor = realizedPnl >= 0 ? "text-profit" : "text-loss";
+  const cagrPct = state?.cagr_pct ?? 0;
+  const cagrColor = cagrPct >= 0 ? "text-profit" : "text-loss";
 
   const animatedEquity = useCountUp(state?.total_equity ?? 0, 1200, 2);
 
@@ -494,6 +496,15 @@ export default function PortfolioSummary() {
               </div>
               <div style={labelStyle}>Return</div>
             </div>
+            {/* CAGR */}
+            {cagrPct !== 0 && (
+              <div>
+                <div className={`font-mono text-sm tabular-nums font-semibold ${cagrColor}`}>
+                  {cagrPct >= 0 ? "+" : ""}{cagrPct.toFixed(1)}%
+                </div>
+                <div style={labelStyle}>CAGR</div>
+              </div>
+            )}
             {/* Cash */}
             <div>
               <div className="font-mono text-sm tabular-nums text-text-primary">

@@ -44,6 +44,17 @@ def _serialize_state(state):
         total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
         all_time_pnl = state.total_equity - starting_capital
 
+    # CAGR — annualized total return using snapshot history (252 trading days/yr)
+    cagr_pct = 0.0
+    snaps = state.snapshots
+    if not snaps.empty and "total_equity" in snaps.columns and len(snaps) >= 2:
+        _start_eq = float(snaps.iloc[0]["total_equity"])
+        _end_eq = float(snaps.iloc[-1]["total_equity"])
+        _days = len(snaps)
+        if _start_eq > 0 and _days > 0:
+            _years = _days / 252
+            cagr_pct = round(((_end_eq / _start_eq) ** (1 / _years) - 1) * 100, 2)
+
     # Realized P&L: replay buy→sell pairs from transaction history.
     # Only counts trades where we have a complete BUY record — excludes
     # manual close-all remnants from before transaction tracking began.
@@ -95,6 +106,7 @@ def _serialize_state(state):
         "total_return_pct": total_return_pct,
         "all_time_pnl": round(all_time_pnl, 2),
         "realized_pnl": realized_pnl,
+        "cagr_pct": cagr_pct,
         "starting_capital": starting_capital,
         "timestamp": serialize(state.timestamp),
     }

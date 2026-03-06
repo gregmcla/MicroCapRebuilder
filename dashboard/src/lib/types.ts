@@ -160,6 +160,7 @@ export interface PortfolioState {
   total_return_pct: number;
   all_time_pnl: number;
   realized_pnl: number;
+  cagr_pct: number;
   starting_capital: number;
   timestamp: string;
 }
