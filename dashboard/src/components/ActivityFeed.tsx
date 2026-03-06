@@ -28,14 +28,15 @@ const reasonBadge: Record<string, { label: string; bg: string; color: string }> 
   STOP_LOSS: { label: "STOP", bg: "rgba(248,113,113,0.12)", color: "var(--red)" },
   TAKE_PROFIT: { label: "TARGET", bg: "rgba(52,211,153,0.12)", color: "var(--green)" },
   MANUAL: { label: "MANUAL", bg: "var(--surface-3)", color: "var(--text-1)" },
+  INTELLIGENCE: { label: "AI", bg: "rgba(139,92,246,0.12)", color: "var(--accent)" },
 };
 
-const FACTOR_LABELS: Record<string, string> = {
-  momentum: "Mom",
-  relative_strength: "RS",
-  mean_reversion: "MR",
-  volume: "Vol",
-  volatility: "Vty",
+const FACTOR_NAMES: Record<string, string> = {
+  momentum: "momentum",
+  relative_strength: "relative strength",
+  mean_reversion: "mean reversion",
+  volume: "volume",
+  volatility: "volatility",
   rsi: "RSI",
 };
 
@@ -43,7 +44,6 @@ function parseFactorScores(raw: string | null | undefined): Record<string, numbe
   if (!raw) return {};
   try {
     const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    // exclude composite key
     return Object.fromEntries(
       Object.entries(parsed).filter(([k]) => k !== "composite")
     ) as Record<string, number>;
@@ -54,11 +54,31 @@ function parseFactorScores(raw: string | null | undefined): Record<string, numbe
 
 function reasonText(tx: Transaction): string {
   if (tx.action === "BUY") {
-    const rank = tx.signal_rank ? `Ranked #${Math.round(tx.signal_rank)} in scan · ` : "";
-    const score = tx.composite_score ? `Score ${tx.composite_score.toFixed(0)}` : "";
-    const regime = tx.regime_at_entry ? ` · ${tx.regime_at_entry} regime` : "";
-    return `${rank}${score}${regime}`;
+    const factors = parseFactorScores(tx.factor_scores);
+    const top = Object.entries(factors).sort(([, a], [, b]) => b - a).slice(0, 2);
+    const parts: string[] = [];
+
+    if (tx.signal_rank && tx.composite_score) {
+      parts.push(`Ranked #${Math.round(tx.signal_rank)} in the scan with a composite score of ${tx.composite_score.toFixed(0)}/100.`);
+    } else if (tx.signal_rank) {
+      parts.push(`Ranked #${Math.round(tx.signal_rank)} in the scan.`);
+    } else if (tx.composite_score) {
+      parts.push(`Composite score of ${tx.composite_score.toFixed(0)}/100.`);
+    }
+
+    if (top.length >= 2) {
+      parts.push(`${FACTOR_NAMES[top[0][0]] ?? top[0][0]} (${top[0][1].toFixed(0)}) and ${FACTOR_NAMES[top[1][0]] ?? top[1][0]} (${top[1][1].toFixed(0)}) were the standout signals.`);
+    } else if (top.length === 1) {
+      parts.push(`${FACTOR_NAMES[top[0][0]] ?? top[0][0]} (${top[0][1].toFixed(0)}) was the standout signal.`);
+    }
+
+    if (tx.regime_at_entry) {
+      parts.push(`Entered in a ${tx.regime_at_entry.toLowerCase()} market.`);
+    }
+
+    return parts.join(" ") || "Entry based on multi-factor scan.";
   }
+
   const map: Record<string, string> = {
     STOP_LOSS: "Stop loss triggered — position closed to limit downside.",
     TAKE_PROFIT: "Take profit target reached — gain locked in.",
@@ -70,11 +90,6 @@ function reasonText(tx: Transaction): string {
 }
 
 function ExpandedDetail({ tx }: { tx: Transaction }) {
-  const factors = parseFactorScores(tx.factor_scores);
-  const topFactors = Object.entries(factors)
-    .sort(([, a], [, b]) => (b as number) - (a as number))
-    .slice(0, 5);
-
   return (
     <div
       className="px-3 py-2 text-xs"
@@ -84,37 +99,9 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
         borderLeft: "2px solid var(--accent)",
       }}
     >
-      <p style={{ color: "var(--text-2)", marginBottom: topFactors.length > 0 ? "6px" : 0 }}>
+      <p style={{ color: "var(--text-2)", lineHeight: "1.6" }}>
         {reasonText(tx)}
       </p>
-      {topFactors.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-1">
-          {topFactors.map(([key, val]) => (
-            <div key={key} className="flex items-center gap-1">
-              <span style={{ color: "var(--text-0)", minWidth: "24px" }}>
-                {FACTOR_LABELS[key] ?? key}
-              </span>
-              <div
-                className="rounded-full"
-                style={{
-                  width: `${Math.round((val as number) / 2)}px`,
-                  height: "4px",
-                  background: (val as number) >= 70
-                    ? "var(--green)"
-                    : (val as number) >= 50
-                    ? "var(--accent)"
-                    : "var(--text-0)",
-                  minWidth: "4px",
-                  maxWidth: "50px",
-                }}
-              />
-              <span style={{ color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
-                {(val as number).toFixed(0)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -689,7 +689,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "reason": "SIGNAL" if action.action_type == "BUY" else (
                 "STOP_LOSS" if "STOP LOSS" in action.reason else
                 "TAKE_PROFIT" if "TAKE PROFIT" in action.reason else
-                "STOP_LOSS" if "QUALITY DEGRADATION" in action.reason else "MANUAL"
+                "STOP_LOSS" if "QUALITY DEGRADATION" in action.reason else
+                "MANUAL" if "MANUAL" in action.reason else "INTELLIGENCE"
             ),
             "regime_at_entry": action.regime if action.action_type == "BUY" else "",
             "composite_score": action.quant_score if action.action_type == "BUY" else "",
