@@ -412,9 +412,12 @@ class OpportunityLayer:
         remaining_cash = state.cash
         max_position_pct = self.config.get("max_position_pct", 15.0)
 
-        # Detect initial deployment: no positions held yet
-        is_initial_deployment = state.num_positions == 0
+        # Detect initial deployment: portfolio is below its deployment target.
+        # This handles new portfolios that bought a few positions then ran ANALYZE
+        # again — num_positions > 0 but most capital is still idle.
         initial_target_pct = self.config.get("initial_deployment_target_pct", 90.0)
+        deployed_pct = (state.positions_value / state.total_equity * 100.0) if state.total_equity > 0 else 0.0
+        is_initial_deployment = deployed_pct < (initial_target_pct * 0.5)  # below 50% of target = still filling up
         # Stop when remaining cash falls below the reserve threshold
         cash_reserve = state.cash * (1.0 - initial_target_pct / 100.0) if is_initial_deployment else 100.0
 
