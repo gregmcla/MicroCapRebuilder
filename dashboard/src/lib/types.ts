@@ -84,6 +84,7 @@ export interface CreatePortfolioRequest {
   universe: string;
   starting_capital: number;
   sectors?: string[];
+  sector_weights?: Record<string, number>;
   trading_style?: string;
   ai_config?: AiConfig;
 }
@@ -433,6 +434,7 @@ export interface AnalysisResult {
 
 export interface AiConfig {
   sectors?: string[];
+  sector_weights?: Record<string, number>;
   trading_style?: string;
   scoring_weights?: Record<string, number>;
   stop_loss_pct?: number;
@@ -453,6 +455,7 @@ export interface GenerateStrategyRequest {
 
 export interface GeneratedStrategy {
   sectors: string[];
+  sector_weights?: Record<string, number>;
   trading_style: string | null;
   scoring_weights: Record<string, number>;
   stop_loss_pct: number;

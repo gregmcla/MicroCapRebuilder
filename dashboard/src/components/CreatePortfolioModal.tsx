@@ -1,6 +1,6 @@
 /** Multi-step portfolio creation modal with Strategy Wizard and AI Strategy modes. */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { usePortfolioStore } from "../lib/store";
@@ -64,7 +64,7 @@ function slugify(text: string): string {
 
 type Mode = "wizard" | "ai";
 
-const WIZARD_STEPS = ["Name & Capital", "Cap Size", "Sectors", "Trading Style", "Review"];
+const WIZARD_STEPS = ["Name & Capital", "Cap Size", "Sectors", "Sector Weights", "Trading Style", "Review"];
 const AI_STEPS = ["Name & Capital", "Cap Size", "Describe Strategy", "Review"];
 
 // Shared input style helper
@@ -92,7 +92,23 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
 
   // Wizard state
   const [sectors, setSectors] = useState<string[]>([...ALL_SECTORS]);
+  const [sectorWeights, setSectorWeights] = useState<Record<string, number>>({});
   const [tradingStyle, setTradingStyle] = useState("balanced");
+
+  // Sync weights when sectors change: equal weight for all selected sectors
+  useEffect(() => {
+    if (sectors.length === 0 || sectors.length === ALL_SECTORS.length) {
+      setSectorWeights({});
+      return;
+    }
+    const equal = Math.round(100 / sectors.length);
+    const weights: Record<string, number> = {};
+    sectors.forEach((s, i) => {
+      // Assign remainder to first sector so sum == 100
+      weights[s] = i === 0 ? 100 - equal * (sectors.length - 1) : equal;
+    });
+    setSectorWeights(weights);
+  }, [sectors]);
 
   // AI state
   const [aiPrompt, setAiPrompt] = useState("");
@@ -201,6 +217,9 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
         universe,
         starting_capital: parseFloat(capital),
         sectors: sectors.length === ALL_SECTORS.length ? undefined : sectors,
+        sector_weights: (sectors.length === ALL_SECTORS.length || Object.keys(sectorWeights).length === 0)
+          ? undefined
+          : sectorWeights,
         trading_style: tradingStyle,
       });
     } else {
@@ -214,6 +233,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
           ...generatedStrategy,
           trading_style: generatedStrategy.trading_style ?? undefined,
           prompt: aiPrompt,
+          sector_weights: generatedStrategy?.sector_weights,
         },
       });
     }
@@ -404,6 +424,58 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     );
   }
 
+  function renderSectorWeightsStep() {
+    const total = Object.values(sectorWeights).reduce((a, b) => a + b, 0);
+    const isAllSectors = sectors.length === ALL_SECTORS.length;
+
+    if (isAllSectors) {
+      return (
+        <div className="text-center text-zinc-400 py-8">
+          <p className="text-sm">No sector filter — using global score sort.</p>
+          <p className="text-xs mt-1 text-zinc-500">Sector weights only apply when specific sectors are selected.</p>
+        </div>
+      );
+    }
+
+    function updateWeight(sector: string, value: string) {
+      const num = Math.max(1, Math.min(999, parseInt(value) || 1));
+      setSectorWeights((prev) => ({ ...prev, [sector]: num }));
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-xs text-zinc-400 mb-4">
+          Set relative weight for each sector. Higher = more watchlist slots. Values are proportional — they don't need to sum to 100.
+        </p>
+        {sectors.map((sector) => {
+          const weight = sectorWeights[sector] ?? 10;
+          const pct = total > 0 ? Math.round((weight / total) * 100) : 0;
+          return (
+            <div key={sector} className="flex items-center gap-3">
+              <span className="text-sm text-zinc-300 w-44 shrink-0">{sector}</span>
+              <input
+                type="number"
+                min={1}
+                max={999}
+                value={weight}
+                onChange={(e) => updateWeight(sector, e.target.value)}
+                className="w-20 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-white text-right"
+              />
+              <span className="text-xs text-zinc-500 w-12">{pct}%</span>
+              <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+                <div
+                  className="bg-blue-500 h-1.5 rounded-full transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+        <p className="text-xs text-zinc-600 mt-2">Total relative weight: {total}</p>
+      </div>
+    );
+  }
+
   function renderTradingStyleStep() {
     return (
       <div>
@@ -551,8 +623,9 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     if (step === 2) return renderUniverseStep();
     if (mode === "wizard") {
       if (step === 3) return renderSectorStep();
-      if (step === 4) return renderTradingStyleStep();
-      if (step === 5) return renderWizardReview();
+      if (step === 4) return renderSectorWeightsStep();  // NEW
+      if (step === 5) return renderTradingStyleStep();
+      if (step === 6) return renderWizardReview();
     } else {
       if (step === 3) return renderAiPromptStep();
       if (step === 4) return renderAiReview();
