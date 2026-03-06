@@ -279,10 +279,17 @@ export default function MatrixGrid({
         {/* CONTROLS */}
         <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ display: "flex", gap: 1, alignItems: "center" }}>
-            {/* Logo */}
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#e8ffe8", letterSpacing: "0.08em", textShadow: "0 0 20px rgba(74,222,128,0.1)", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
-              THE MATRIX
-            </span>
+            {/* Portfolio name */}
+            {(filterP ? portfolios.find(p => p.id === filterP) : portfolios.length === 1 ? portfolios[0] : null) && (
+              <span style={{
+                fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", marginRight: 16, paddingRight: 16,
+                borderRight: "1px solid rgba(255,255,255,0.04)",
+                color: (filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.color ?? "#e8ffe8",
+                textShadow: `0 0 20px ${(filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.color ?? "#4ade80"}22`,
+              }}>
+                {(filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.name}
+              </span>
+            )}
             {/* Stats inline with sort */}
             <div style={{ display: "flex", gap: 12, alignItems: "baseline", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
               {[
