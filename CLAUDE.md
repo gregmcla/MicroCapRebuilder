@@ -330,6 +330,24 @@ date, cash, positions_value, total_equity, day_pnl, day_pnl_pct, benchmark_value
 
 ---
 
+## Creative & Brainstorming
+
+When brainstorming or generating creative ideas, start bold and unconventional. Do NOT play it safe on first rounds. The user consistently rejects "too safe", "too clever", or "too elevated" suggestions and wants raw, novel, ambitious ideas.
+
+---
+
+## Debugging Guidelines
+
+When debugging visual/CSS issues, investigate root causes (overlays, z-index, inherited styles) BEFORE making incremental value adjustments. Small tweaks to color values waste rounds when the real problem is structural.
+
+---
+
+## Project State Tracking
+
+A `PROJECT_STATE.md` file lives at the repo root and tracks current phase, completed tasks, open bugs, architecture decisions, and key constraints. **Read it at the start of every session before doing anything else. Update it at the end of every session.**
+
+---
+
 ## Files That Are Gitignored
 - `data/portfolios/{id}/*.csv`, `*.jsonl` (except config.json — that IS tracked)
 - `data/yf_cache/`, `data/yfinance_cache.sqlite`
