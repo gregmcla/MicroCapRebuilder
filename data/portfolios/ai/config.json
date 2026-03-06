@@ -246,7 +246,18 @@
       "max_sector_pct": 25,
       "remove_poor_performers": true,
       "min_trades_for_removal": 3,
-      "max_loss_rate_for_removal": 0.75
+      "max_loss_rate_for_removal": 0.75,
+      "total_watchlist_slots": 150,
+      "sector_weights": {
+        "Technology": 35,
+        "Communication Services": 20,
+        "Real Estate": 12,
+        "Healthcare": 10,
+        "Industrials": 10,
+        "Financial Services": 7,
+        "Energy": 4,
+        "Consumer Cyclical": 2
+      }
     },
     "sector_filter": [
       "Technology",
