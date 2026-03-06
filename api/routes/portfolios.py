@@ -137,7 +137,7 @@ def _trigger_scan(portfolio_id: str):
             sys.path.insert(0, str(scripts_dir))
         from watchlist_manager import WatchlistManager
         state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
-        mgr = WatchlistManager(state.config, portfolio_id=portfolio_id)
+        mgr = WatchlistManager(portfolio_id=portfolio_id)
         mgr.update_watchlist(run_discovery=True)
     except Exception as e:
         print(f"[config rescan] {portfolio_id}: {e}")

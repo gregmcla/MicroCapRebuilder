@@ -475,6 +475,9 @@ def create_portfolio(
     )
     if sector_weights:
         config["discovery"]["watchlist"]["sector_weights"] = dict(sector_weights)
+        # Ensure sector_filter is set from sector_weights keys when sectors param not provided
+        if not sectors:
+            config["discovery"]["sector_filter"] = list(sector_weights.keys())
     else:
         config["discovery"]["watchlist"].pop("sector_weights", None)
 
@@ -503,6 +506,9 @@ def create_portfolio(
             if "watchlist" not in config["discovery"]:
                 config["discovery"]["watchlist"] = {}
             config["discovery"]["watchlist"]["sector_weights"] = ai_config["sector_weights"]
+            # Ensure sector_filter is set from sector_weights keys when not already set via sectors
+            if "sector_filter" not in config["discovery"]:
+                config["discovery"]["sector_filter"] = list(ai_config["sector_weights"].keys())
         if "etf_sources" in ai_config:
             existing = config["universe"]["sources"]["etf_holdings"]["etfs"]
             for etf in ai_config["etf_sources"]:
