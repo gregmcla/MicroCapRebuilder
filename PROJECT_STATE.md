@@ -7,7 +7,7 @@
 
 ## Current Phase
 
-**Social Sentiment Risk Overlay** (Tasks 1–6, ~80% complete as of 2026-03-06)
+**MatrixGrid Dashboard** (Complete as of 2026-03-06)
 
 ---
 

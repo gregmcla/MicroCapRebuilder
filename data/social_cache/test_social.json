@@ -1,0 +1,13 @@
+{
+  "TSLA": {
+    "ticker": "TSLA",
+    "ape_rank": 5,
+    "ape_mentions": 500,
+    "ape_upvotes": 200,
+    "st_bullish_pct": null,
+    "st_message_count": 0,
+    "heat": "HOT",
+    "fetched_at": 1772829321.4015439,
+    "error": null
+  }
+}

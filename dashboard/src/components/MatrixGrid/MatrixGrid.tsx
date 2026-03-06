@@ -38,12 +38,10 @@ export default function MatrixGrid({
   const [glitchIdx, setGlitchIdx] = useState(-1);
   const [anomalies, setAnomalies] = useState(new Set<number>());
   const [selectedPos, setSelectedPos] = useState<MatrixPosition | null>(null);
-  const [breathPhase, setBreathPhase] = useState(0);
   const [bootLines, setBootLines] = useState<string[]>([]);
   const mouseXRef = useRef(-1000);
   const mouseYRef = useRef(-1000);
   const gridRef = useRef<HTMLDivElement>(null);
-  const breathFrameRef = useRef<number>(0);
 
   // Boot sequence
   useEffect(() => {
@@ -97,16 +95,6 @@ export default function MatrixGrid({
     }, 5000);
     return () => clearInterval(i);
   }, [positions.length]);
-
-  // Breathing wave
-  useEffect(() => {
-    const tick = () => {
-      setBreathPhase((prev) => prev + 0.02);
-      breathFrameRef.current = requestAnimationFrame(tick);
-    };
-    breathFrameRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(breathFrameRef.current);
-  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -202,7 +190,9 @@ export default function MatrixGrid({
         }
         @keyframes matrixTermLine { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:translateX(0)} }
         @keyframes matrixBlink { 0%,100%{opacity:1} 50%{opacity:0} }
-        .matrix-cell:hover { background: rgba(74,222,128,0.035) !important; }
+        @keyframes matrixBreathe { 0%,100%{opacity:0.72} 50%{opacity:0.92} }
+        .matrix-cell { animation: matrixBreathe var(--breath-dur,4s) ease-in-out infinite; }
+        .matrix-cell:hover { background: rgba(74,222,128,0.035) !important; animation: none !important; opacity: 1 !important; }
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
         .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
@@ -373,7 +363,6 @@ export default function MatrixGrid({
               gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))",
               gap: 2, alignContent: "start",
               transition: "transform 0.1s ease-out",
-              transformStyle: "preserve-3d",
             }}
           >
             {sorted.map((pos, i) => {
@@ -381,7 +370,7 @@ export default function MatrixGrid({
               const isGlitch = glitchIdx === i;
               const isAnomaly = anomalies.has(positions.indexOf(pos));
               const barW = (pos.value / maxVal) * 100;
-              const breath = Math.sin(breathPhase + i * 0.08) * 0.3;
+              const breathDur = 3.5 + (i % 7) * 0.4;
 
               return (
                 <div
@@ -399,16 +388,18 @@ export default function MatrixGrid({
                     cursor: "crosshair",
                     position: "relative",
                     overflow: "hidden",
-                    opacity: mounted ? 0.85 + breath * 0.15 : 0,
-                    transform: mounted ? `translateZ(${breath * 2}px)` : "translateY(6px)",
-                    transition: "opacity 0.3s, transform 0.4s, background 0.15s",
-                    transitionDelay: mounted ? `${Math.min(i * 10, 800)}ms` : "0ms",
+                    opacity: mounted ? undefined : 0,
+                    transform: mounted ? undefined : "translateY(6px)",
+                    transition: mounted ? "border-color 0.15s, background 0.15s" : "opacity 0.3s, transform 0.4s",
+                    transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
                     borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "99" : "10"}`,
+                    ["--breath-dur" as string]: `${breathDur}s`,
+                    animationDelay: `${-(i * 0.3) % breathDur}s`,
                     animation: isGlitch
                       ? "matrixGlitch 0.1s ease"
                       : isAnomaly
                       ? "matrixAnomalyPulse 0.8s ease infinite"
-                      : "none",
+                      : undefined,
                   }}
                 >
                   {/* Chromatic aberration on hover */}
@@ -502,6 +493,7 @@ export default function MatrixGrid({
           display: "flex", gap: 24, alignItems: "center",
           zIndex: 200, animation: "matrixSlideUp 0.12s ease",
           backdropFilter: "blur(12px)",
+          pointerEvents: "none",
         }}>
           <div style={{ position: "relative", padding: "3px 10px" }}>
             <Reticle color={hovered.portfolioColor} s={7} />

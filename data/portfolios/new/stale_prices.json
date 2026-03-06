@@ -1,12 +1,7 @@
 {
-  "NTRS": 1,
-  "SJM": 1,
-  "CE": 1,
-  "APA": 1,
-  "MPC": 1,
-  "MTDR": 1,
-  "EQIX": 1,
-  "AEP": 1,
-  "DTE": 1,
-  "ATO": 1
+  "CE": 4,
+  "DTE": 4,
+  "MPC": 3,
+  "MTDR": 2,
+  "CRGY": 1
 }

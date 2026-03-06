@@ -1,14 +1,16 @@
 {
-  "CRGY": 1,
+  "ES": 2,
+  "ETR": 2,
+  "CMS": 2,
+  "EQIX": 2,
+  "LNTH": 2,
+  "FE": 2,
+  "EOG": 2,
+  "LMT": 2,
+  "DLR": 2,
+  "DRDB": 2,
+  "CMU": 2,
   "SJM": 1,
-  "ETR": 1,
-  "CMS": 1,
-  "MTZ": 1,
-  "LNTH": 1,
-  "FE": 1,
-  "EOG": 1,
-  "LMT": 1,
-  "DLR": 1,
-  "DRDB": 1,
-  "HAFN": 1
+  "EXC": 1,
+  "MTDR": 1
 }

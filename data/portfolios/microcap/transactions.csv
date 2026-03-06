@@ -325,3 +325,8 @@ e305bb93,2026-03-05,AWR,BUY,13,75.46,980.98,69.42,90.55,SIGNAL,SIDEWAYS,75.1,"{"
 9fdf2981,2026-03-06,SM,SELL,25,26.13,653.25,,,MANUAL,,,,
 4b772997,2026-03-06,PINE,SELL,272,19.55,5316.24,,,MANUAL,,,,
 5dd736ba,2026-03-06,PNW,BUY,12,101.36,1216.32,93.25,121.63,SIGNAL,SIDEWAYS,78.5,"{""momentum"": 78.3, ""volatility"": 79.1, ""volume"": 44.5, ""relative_strength"": 84.4, ""mean_reversion"": 86.9, ""rsi"": 90.0, ""composite"": 78.5}",
+21122c03,2026-03-06,CCI,BUY,15,90.36,1355.4,83.13,108.43,SIGNAL,SIDEWAYS,73.2,"{""momentum"": 71.1, ""volatility"": 58.6, ""volume"": 37.4, ""relative_strength"": 92.7, ""mean_reversion"": 85.5, ""rsi"": 90.0, ""composite"": 73.2}",
+daac82d3,2026-03-06,KTB,BUY,34,76.18,2590.03,70.08,91.41,SIGNAL,SIDEWAYS,71.1,"{""momentum"": 100, ""volatility"": 28.2, ""volume"": 76.0, ""relative_strength"": 98.0, ""mean_reversion"": 48.4, ""rsi"": 75.0, ""composite"": 71.1}",
+SELL_CRGY_2026-03-06,2026-03-06,CRGY,SELL,28,11.76,329.28,0.0,0.0,MANUAL,,,{},
+SELL_CW_2026-03-06,2026-03-06,CW,SELL,1,681.69,681.69,0.0,0.0,MANUAL,,,{},
+SELL_AWR_2026-03-06,2026-03-06,AWR,SELL,13,75.29,978.77,0.0,0.0,MANUAL,,,{},

@@ -20,10 +20,10 @@
     "mixed": {
       "id": "mixed",
       "name": "Mixed",
-      "universe": "custom",
-      "created": "2026-02-16T13:50:23",
-      "starting_capital": 1000000.0,
-      "active": false
+      "universe": "allcap",
+      "created": "2026-03-06T17:39:29",
+      "starting_capital": 100000.0,
+      "active": true
     },
     "largecap": {
       "id": "largecap",
@@ -159,7 +159,7 @@
       "universe": "allcap",
       "created": "2026-02-27T08:29:42",
       "starting_capital": 200000.0,
-      "active": true
+      "active": false
     },
     "abc": {
       "id": "abc",
@@ -195,11 +195,11 @@
     },
     "sph": {
       "id": "sph",
-      "name": "SPH",
-      "universe": "smallcap",
-      "created": "2026-03-02T18:41:16",
-      "starting_capital": 350000.0,
-      "active": false
+      "name": "sph",
+      "universe": "allcap",
+      "created": "2026-03-06T10:50:39",
+      "starting_capital": 500000.0,
+      "active": true
     },
     "allcap": {
       "id": "allcap",
@@ -207,7 +207,7 @@
       "universe": "allcap",
       "created": "2026-03-03T12:20:08",
       "starting_capital": 1000000.0,
-      "active": true
+      "active": false
     },
     "energy": {
       "id": "energy",
@@ -223,6 +223,14 @@
       "universe": "allcap",
       "created": "2026-03-04T14:13:12",
       "starting_capital": 10000.0,
+      "active": true
+    },
+    "ai-strategy-sin-stocks": {
+      "id": "ai-strategy-sin-stocks",
+      "name": "AI Strategy - Sin Stocks",
+      "universe": "allcap",
+      "created": "2026-03-06T17:41:01",
+      "starting_capital": 100000.0,
       "active": true
     }
   }

@@ -1,13 +1,20 @@
 {
+  "INTU": 2,
+  "MOS": 2,
+  "CATY": 2,
+  "PCAR": 2,
+  "MMM": 2,
+  "NUE": 2,
+  "EXEL": 2,
+  "HAYW": 2,
+  "BA": 2,
   "NTNX": 1,
-  "INTU": 1,
-  "MOS": 1,
-  "CATY": 1,
-  "BMRN": 1,
+  "NET": 1,
+  "CE": 1,
   "MAR": 1,
-  "PCAR": 1,
   "DAWN": 1,
-  "MMM": 1,
   "DOV": 1,
-  "TMO": 1
+  "TMO": 1,
+  "SJM": 1,
+  "EXPD": 1
 }
