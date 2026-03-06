@@ -45,6 +45,8 @@ def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
     Returns True if the yfinance sector contains any filter string or vice versa.
     Mirrors the same helper in stock_discovery.py to avoid circular imports.
     """
+    if not yf_sector:
+        return False
     yf_lower = yf_sector.lower()
     return any(
         f.lower() in yf_lower or yf_lower in f.lower()

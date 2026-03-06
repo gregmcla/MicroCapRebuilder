@@ -103,6 +103,8 @@ def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
     Fuzzy sector match: handles mismatches like "Communication" vs "Communication Services".
     Returns True if the yfinance sector string contains any filter string, or vice versa.
     """
+    if not yf_sector:
+        return False
     yf_lower = yf_sector.lower()
     return any(
         f.lower() in yf_lower or yf_lower in f.lower()
