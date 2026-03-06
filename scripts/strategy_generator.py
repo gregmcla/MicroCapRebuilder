@@ -12,6 +12,7 @@ from typing import Optional
 @dataclass
 class GeneratedStrategy:
     sectors: list[str]
+    sector_weights: dict[str, int]   # maps sector → relative weight
     trading_style: Optional[str]
     scoring_weights: dict[str, float]
     stop_loss_pct: float
@@ -36,6 +37,7 @@ You MUST return ONLY valid JSON with these exact fields:
 {
   "strategy_name": "Short descriptive name for this strategy",
   "sectors": ["list of GICS sectors to focus on"],
+  "sector_weights": {"SectorName": integer_weight, ...},
   "trading_style": "aggressive_momentum" | "balanced" | "conservative_value" | "mean_reversion" | null,
   "scoring_weights": {
     "momentum": 0.0-1.0,
@@ -64,6 +66,7 @@ Rules:
 - If user wants broad market exposure, return all sectors
 - If user mentions specific themes (AI, semiconductors, etc.), map to appropriate sectors
 - Match risk parameters to the aggressiveness implied by the description
+- sector_weights must include every sector listed in "sectors". Use proportional integers (e.g., Technology: 40, Healthcare: 25). Higher = more watchlist slots. If the strategy emphasizes one sector, weight it higher.
 - Return ONLY the JSON object, no markdown, no explanation outside the JSON"""
 
 
@@ -102,6 +105,21 @@ def _validate_weights(weights: dict) -> dict:
         first_key = next(iter(weights))
         weights[first_key] = round(weights[first_key] + diff, 2)
     return weights
+
+
+def _normalize_sector_weights(raw: dict, sectors: list[str]) -> dict[str, int]:
+    """Ensure every sector has a weight; equal weight for any missing sector.
+
+    Returns integer weights (not normalized to 100 — proportional is fine).
+    """
+    result = {s: int(raw.get(s, 0)) for s in sectors}
+    # Fill zeros with the average of non-zero weights, or 10 as fallback
+    non_zero = [v for v in result.values() if v > 0]
+    default = int(sum(non_zero) / len(non_zero)) if non_zero else 10
+    for s in sectors:
+        if result[s] == 0:
+            result[s] = default
+    return result
 
 
 def generate_strategy(prompt: str, universe: str, starting_capital: float) -> GeneratedStrategy:
@@ -156,6 +174,10 @@ User's strategy description:
     if not sectors:
         sectors = list(VALID_SECTORS)
 
+    # Extract and normalize sector weights
+    raw_weights = data.get("sector_weights", {})
+    sector_weights = _normalize_sector_weights(raw_weights, sectors)
+
     # Validate and normalize weights
     weights = data.get("scoring_weights", {})
     required_factors = ["momentum", "volatility", "volume", "relative_strength", "mean_reversion", "rsi"]
@@ -166,6 +188,7 @@ User's strategy description:
 
     return GeneratedStrategy(
         sectors=sectors,
+        sector_weights=sector_weights,
         trading_style=data.get("trading_style"),
         scoring_weights=weights,
         stop_loss_pct=max(3.0, min(10.0, data.get("stop_loss_pct", 7.0))),
