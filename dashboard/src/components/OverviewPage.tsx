@@ -9,8 +9,9 @@ import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
-import PerformanceChart from "./PerformanceChart";
-import ConstellationMap from "./ConstellationMap";
+import MatrixGrid from "./MatrixGrid";
+import { buildPortfolioMap, crossMoverToMatrix } from "./MatrixGrid/constants";
+import type { MatrixPortfolio } from "./MatrixGrid/types";
 
 // ---------------------------------------------------------------------------
 // Scan-all types
@@ -107,54 +108,6 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
         opacity="0.9"
       />
     </svg>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// All Positions Panel — weighted map + performance chart toggle
-// ---------------------------------------------------------------------------
-
-type ViewMode = "map" | "chart";
-
-// ── All Positions Panel (container with toggle) ───────────────────────────────
-
-function AllPositionsPanel({ positions, portfolios }: {
-  positions: CrossPortfolioMover[];
-  portfolios: PortfolioSummary[];
-}) {
-  const [view, setView] = useState<ViewMode>("map");
-
-  if (positions.length === 0) return null;
-
-  return (
-    <div style={{ marginTop: "16px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "7px" }}>
-        <p style={{ fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
-          All Positions — {positions.length}
-        </p>
-        <div style={{ display: "flex", gap: "2px", background: "var(--surface-1)", border: "1px solid var(--border-0)", borderRadius: "5px", padding: "2px" }}>
-          {(["map", "chart"] as ViewMode[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              style={{
-                fontSize: "9px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase",
-                padding: "3px 10px", borderRadius: "3px", border: "none", cursor: "pointer",
-                background: view === v ? "var(--accent)" : "transparent",
-                color: view === v ? "white" : "var(--text-0)",
-                transition: "background 0.15s, color 0.15s",
-              }}
-            >
-              {v === "map" ? "MAP" : "CHART"}
-            </button>
-          ))}
-        </div>
-      </div>
-      {view === "map"
-        ? <ConstellationMap positions={positions} portfolios={portfolios} />
-        : <PerformanceChart portfolios={portfolios} />
-      }
-    </div>
   );
 }
 
@@ -572,6 +525,7 @@ export default function OverviewPage() {
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
+  const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
 
   const [scanAll, setScanAll] = useState<ScanAllState>({
     running: false,
@@ -720,6 +674,21 @@ export default function OverviewPage() {
     return null;
   }, [scanAll, names]);
 
+  const portfolios = portfolioList?.portfolios ?? [];
+
+  const matrixPortfolios = useMemo<MatrixPortfolio[]>(() => {
+    if (!portfolios?.length) return [];
+    const ids = portfolios.map((p: any) => ({ id: p.id, name: p.name }));
+    const map = buildPortfolioMap(ids);
+    return ids.map((p: { id: string; name: string }) => map.get(p.id)!).filter(Boolean);
+  }, [portfolios]);
+
+  const matrixPositions = useMemo(() => {
+    if (!overview?.all_positions?.length || !matrixPortfolios.length) return [];
+    const map = buildPortfolioMap(matrixPortfolios.map((p) => ({ id: p.id, name: p.name })));
+    return overview.all_positions.map((m) => crossMoverToMatrix(m, map));
+  }, [overview?.all_positions, matrixPortfolios]);
+
   if (isLoading) {
     return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-0)" }}>
@@ -734,7 +703,6 @@ export default function OverviewPage() {
   const totalEquity = overview?.total_equity ?? 0;
   const topMovers = overview?.top_movers ?? [];
   const bottomMovers = overview?.bottom_movers ?? [];
-  const allPositions = overview?.all_positions ?? [];
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--surface-0)" }}>
@@ -777,7 +745,15 @@ export default function OverviewPage() {
                 ))}
               </div>
 
-              <AllPositionsPanel positions={allPositions} portfolios={enriched} />
+              {matrixPositions.length > 0 && (
+                <div style={{ flex: 1, minHeight: 400, marginTop: 16 }}>
+                  <MatrixGrid
+                    positions={matrixPositions}
+                    portfolios={matrixPortfolios}
+                    onPositionClick={(pos) => setPortfolio(pos.portfolioId)}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

@@ -1,17 +1,17 @@
 /** 3-column layout: positions list | center chart | right analytics. */
 
-import { Component, type ReactNode } from "react";
+import { Component, useMemo, type ReactNode } from "react";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
 import TopBar from "./components/TopBar";
-import PositionsPanel from "./components/PositionsPanel";
-import FocusPane from "./components/FocusPane";
-import CenterPane from "./components/CenterPane";
 import ActivityFeed from "./components/ActivityFeed";
-import GScottCoPilot, { GScottStrip } from "./components/GScottCoPilot";
 import OverviewPage from "./components/OverviewPage";
 import PortfolioSummary from "./components/PortfolioSummary";
+import MatrixGrid from "./components/MatrixGrid";
+import { buildPortfolioMap, positionToMatrix } from "./components/MatrixGrid/constants";
+import type { MatrixPortfolio } from "./components/MatrixGrid/types";
+import { useOverview } from "./hooks/usePortfolios";
 
 // ---------------------------------------------------------------------------
 // Error boundary — catches render crashes and shows a recovery UI instead of
@@ -60,10 +60,26 @@ export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
   const { data: state, isLoading } = usePortfolioState();
-  const gscottExpanded = useUIStore((s) => s.gscottExpanded);
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
   useKeyboardShortcuts();
+
+  const { data: overview } = useOverview();
+
+  const activeMatrixPortfolio = useMemo<MatrixPortfolio | null>(() => {
+    if (isOverview || !portfolioId) return null;
+    const summaries = overview?.portfolios ?? [];
+    const ids = summaries.length > 0
+      ? summaries.map((s) => ({ id: s.id, name: s.name }))
+      : [{ id: portfolioId, name: portfolioId }];
+    const map = buildPortfolioMap(ids);
+    return map.get(portfolioId) ?? null;
+  }, [isOverview, portfolioId, overview]);
+
+  const matrixPositions = useMemo(() => {
+    if (!activeMatrixPortfolio || !state?.positions) return [];
+    return state.positions.map((pos) => positionToMatrix(pos, activeMatrixPortfolio));
+  }, [state?.positions, activeMatrixPortfolio]);
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
@@ -78,39 +94,16 @@ export default function App() {
           </main>
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Portfolio summary — full width above three columns */}
+            {/* Portfolio summary — full width above MatrixGrid */}
             <PortfolioSummary />
 
-            {/* Three columns */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left: positions list — 320px */}
-              <aside
-                className="flex-shrink-0 flex flex-col overflow-hidden border-r bg-bg-surface"
-                style={{ width: "320px", borderColor: "var(--border-0)" }}
-              >
-                <PositionsPanel
-                  positions={state?.positions ?? []}
-                  isLoading={isLoading}
-                />
-              </aside>
-
-              {/* Center: chart panel — flex-1 */}
-              <main className="flex-1 flex flex-col overflow-hidden min-w-0 bg-bg-surface">
-                <CenterPane />
-              </main>
-
-              {/* Right: analytics panel — 300px */}
-              <aside
-                className="flex-shrink-0 flex flex-col overflow-hidden border-l bg-bg-surface"
-                style={{ width: "300px", borderColor: "var(--border-0)" }}
-              >
-                {gscottExpanded ? (
-                  <GScottCoPilot />
-                ) : (
-                  <FocusPane className="flex-1" />
-                )}
-                <GScottStrip />
-              </aside>
+            {/* Three columns → replaced by MatrixGrid */}
+            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <MatrixGrid
+                positions={matrixPositions}
+                portfolios={activeMatrixPortfolio ? [activeMatrixPortfolio] : []}
+                initialFilter={portfolioId ?? undefined}
+              />
             </div>
           </div>
         )}
