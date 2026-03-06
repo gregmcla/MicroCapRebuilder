@@ -31,13 +31,20 @@ const reasonBadge: Record<string, { label: string; bg: string; color: string }> 
   INTELLIGENCE: { label: "AI", bg: "rgba(139,92,246,0.12)", color: "var(--accent)" },
 };
 
-const FACTOR_NAMES: Record<string, string> = {
-  momentum: "momentum",
-  relative_strength: "relative strength",
-  mean_reversion: "mean reversion",
-  volume: "volume",
-  volatility: "volatility",
-  rsi: "RSI",
+// Plain-English descriptions of what each factor signal means in context of a buy
+const FACTOR_PLAIN: Record<string, string> = {
+  momentum:          "the stock had been climbing steadily",
+  relative_strength: "it was beating the broader market",
+  mean_reversion:    "it had pulled back to an attractive entry point",
+  volume:            "trading volume spiked, confirming interest",
+  volatility:        "it was moving calmly relative to its history",
+  rsi:               "its momentum readings were favorable",
+};
+
+const REGIME_PLAIN: Record<string, string> = {
+  BULL:     "markets were in a strong uptrend",
+  BEAR:     "markets were under pressure",
+  SIDEWAYS: "markets were flat and rangebound",
 };
 
 function parseFactorScores(raw: string | null | undefined): Record<string, number> {
@@ -52,41 +59,55 @@ function parseFactorScores(raw: string | null | undefined): Record<string, numbe
   }
 }
 
+function convictionLabel(score: number): string {
+  if (score >= 85) return "Top-tier pick";
+  if (score >= 75) return "Strong pick";
+  if (score >= 65) return "Solid pick";
+  return "Speculative pick";
+}
+
 function reasonText(tx: Transaction): string {
   if (tx.action === "BUY") {
     const factors = parseFactorScores(tx.factor_scores);
     const top = Object.entries(factors).sort(([, a], [, b]) => b - a).slice(0, 2);
     const parts: string[] = [];
 
-    if (tx.signal_rank && tx.composite_score) {
-      parts.push(`Ranked #${Math.round(tx.signal_rank)} in the scan with a composite score of ${tx.composite_score.toFixed(0)}/100.`);
+    // Opening line: conviction + rank
+    const label = tx.composite_score ? convictionLabel(tx.composite_score) : null;
+    const rankStr = tx.signal_rank ? `, ranking #${Math.round(tx.signal_rank)} in the scan` : "";
+    if (label && tx.composite_score) {
+      parts.push(`${label}${rankStr} (${tx.composite_score.toFixed(0)}/100).`);
     } else if (tx.signal_rank) {
       parts.push(`Ranked #${Math.round(tx.signal_rank)} in the scan.`);
-    } else if (tx.composite_score) {
-      parts.push(`Composite score of ${tx.composite_score.toFixed(0)}/100.`);
     }
 
-    if (top.length >= 2) {
-      parts.push(`${FACTOR_NAMES[top[0][0]] ?? top[0][0]} (${top[0][1].toFixed(0)}) and ${FACTOR_NAMES[top[1][0]] ?? top[1][0]} (${top[1][1].toFixed(0)}) were the standout signals.`);
-    } else if (top.length === 1) {
-      parts.push(`${FACTOR_NAMES[top[0][0]] ?? top[0][0]} (${top[0][1].toFixed(0)}) was the standout signal.`);
+    // Why: plain-English factor reasons
+    const why = top
+      .filter(([k]) => FACTOR_PLAIN[k])
+      .map(([k]) => FACTOR_PLAIN[k]);
+    if (why.length === 2) {
+      parts.push(`The system bought it because ${why[0]} and ${why[1]}.`);
+    } else if (why.length === 1) {
+      parts.push(`The system bought it because ${why[0]}.`);
     }
 
-    if (tx.regime_at_entry) {
-      parts.push(`Entered in a ${tx.regime_at_entry.toLowerCase()} market.`);
+    // Market context
+    const regimePlain = tx.regime_at_entry ? REGIME_PLAIN[tx.regime_at_entry] : null;
+    if (regimePlain) {
+      parts.push(`At entry, ${regimePlain}.`);
     }
 
-    return parts.join(" ") || "Entry based on multi-factor scan.";
+    return parts.join(" ") || "Bought based on multi-factor scan.";
   }
 
   const map: Record<string, string> = {
-    STOP_LOSS: "Stop loss triggered — position closed to limit downside.",
-    TAKE_PROFIT: "Take profit target reached — gain locked in.",
-    MANUAL: "Manually closed.",
-    INTELLIGENCE: "AI-reviewed exit — closed based on analysis.",
-    SIGNAL: "Signal-based exit.",
+    STOP_LOSS:   "Stop loss hit — the stock fell to the downside limit and was closed to protect capital.",
+    TAKE_PROFIT: "Target price reached — the gain was locked in.",
+    MANUAL:      "Manually closed.",
+    INTELLIGENCE: "AI flagged this for exit after reviewing current conditions.",
+    SIGNAL:      "Exited based on a signal from the scoring model.",
   };
-  return map[tx.reason] ?? tx.reason ?? "Exit.";
+  return map[tx.reason] ?? tx.reason ?? "Position closed.";
 }
 
 function ExpandedDetail({ tx }: { tx: Transaction }) {
