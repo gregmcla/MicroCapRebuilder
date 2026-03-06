@@ -101,6 +101,7 @@ class BuyProposal:
     conviction_score: ConvictionScore
     position_size_pct: float  # % of portfolio
     rationale: str  # Human-readable explanation
+    social_signal: Optional["SocialSignal"] = None  # populated by unified_analysis
 
 
 @dataclass

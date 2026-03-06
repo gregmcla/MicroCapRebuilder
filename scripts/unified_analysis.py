@@ -164,7 +164,22 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     if config.get("enhanced_trading", {}).get("enable_layers", False):
         print("\nRunning Layer 2: Opportunity Management...")
         layer2 = OpportunityLayer(config)
-        layer2_output = layer2.process(state, layer1_output)
+
+        # Fetch social signals for watchlist candidates
+        social_signals = {}
+        try:
+            from social_sentiment import SocialSentimentProvider
+            from watchlist_manager import WatchlistManager
+            wm = WatchlistManager(portfolio_id=portfolio_id)
+            watchlist_entries = wm._load_watchlist()
+            watchlist_tickers = [e.ticker for e in watchlist_entries if e.status == "ACTIVE"]
+            if watchlist_tickers:
+                provider = SocialSentimentProvider(portfolio_id=portfolio_id)
+                social_signals = provider.get_signals(watchlist_tickers)
+        except Exception as e:
+            print(f"[analysis] Social sentiment fetch failed (non-fatal): {e}")
+
+        layer2_output = layer2.process(state, layer1_output, social_signals=social_signals)
 
         # Convert BuyProposal to ProposedAction for AI review
         stop_loss_pct = config.get("default_stop_loss_pct", 8.0)

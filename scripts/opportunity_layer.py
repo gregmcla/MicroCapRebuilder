@@ -116,7 +116,7 @@ class OpportunityLayer:
                 74 * acceptable_mult,
             )
 
-    def process(self, state: PortfolioState, risk_layer_output: dict) -> dict:
+    def process(self, state: PortfolioState, risk_layer_output: dict, social_signals=None) -> dict:
         """
         Main entry point for Layer 2 processing.
 
@@ -202,7 +202,8 @@ class OpportunityLayer:
                 conviction_scores[conviction.ticker] = conviction
 
         # Generate buy proposals from high-conviction candidates
-        buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map)
+        buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map,
+                                                     social_signals=social_signals)
 
         # ── Bug #6 fix: Rotation trigger ─────────────────────────────────────
         # Trigger rotation when:
@@ -393,7 +394,8 @@ class OpportunityLayer:
         self,
         conviction_scores: Dict[str, ConvictionScore],
         state: PortfolioState,
-        price_map: Dict[str, float] = None
+        price_map: Dict[str, float] = None,
+        social_signals=None
     ) -> List[BuyProposal]:
         """
         Generate BuyProposal objects from conviction scores.
@@ -498,7 +500,8 @@ class OpportunityLayer:
                 total_value=total_value,
                 conviction_score=conviction,
                 position_size_pct=round(position_size_pct, 2),
-                rationale=rationale
+                rationale=rationale,
+                social_signal=social_signals.get(conviction.ticker) if social_signals else None,
             )
 
             proposals.append(proposal)
@@ -675,6 +678,7 @@ class OpportunityLayer:
                 conviction_score=best_candidate,
                 position_size_pct=round(base_size_pct, 2),
                 rationale=buy_rationale,
+                social_signal=social_signals.get(buy_ticker) if social_signals else None,
             )
 
             rotation_sells.append(sell_proposal)
