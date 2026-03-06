@@ -44,16 +44,29 @@ def _serialize_state(state):
         total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
         all_time_pnl = state.total_equity - starting_capital
 
-    # Realized P&L = cash + cost of open positions - starting capital
-    # Excludes unrealized gains: only reflects locked-in gains from closed trades
-    positions_df = state.positions
-    if not positions_df.empty and "avg_cost_basis" in positions_df.columns:
-        cost_deployed = float(
-            (positions_df["avg_cost_basis"] * positions_df["shares"]).sum()
-        )
-    else:
-        cost_deployed = 0.0
-    realized_pnl = round(state.cash + cost_deployed - starting_capital, 2)
+    # Realized P&L: replay buy→sell pairs from transaction history.
+    # Only counts trades where we have a complete BUY record — excludes
+    # manual close-all remnants from before transaction tracking began.
+    realized_pnl = 0.0
+    txns = state.transactions
+    if not txns.empty and "action" in txns.columns:
+        _holdings: dict = {}  # ticker -> (shares, total_cost)
+        for _, tx in txns.sort_values("date").iterrows():
+            _ticker = str(tx.get("ticker", ""))
+            _action = str(tx.get("action", ""))
+            _shares = float(tx.get("shares", 0) or 0)
+            _total = float(tx.get("total_value", 0) or 0)
+            if _action == "BUY" and _shares > 0:
+                _ps, _pc = _holdings.get(_ticker, (0.0, 0.0))
+                _holdings[_ticker] = (_ps + _shares, _pc + _total)
+            elif _action == "SELL" and _shares > 0:
+                if _ticker in _holdings and _holdings[_ticker][0] > 0:
+                    _hs, _hc = _holdings[_ticker]
+                    _avg = _hc / _hs
+                    _cost = _avg * _shares
+                    realized_pnl += _total - _cost
+                    _holdings[_ticker] = (max(0.0, _hs - _shares), max(0.0, _hc - _cost))
+    realized_pnl = round(realized_pnl, 2)
 
     # Zero out stale day_change values in positions when markets are closed.
     # The CSV retains the last computed day_change (from the last trading session)
