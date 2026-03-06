@@ -260,6 +260,9 @@
       "etf_holdings": {
         "enabled": true,
         "etfs": []
+      },
+      "exchange_listings": {
+        "enabled": true
       }
     },
     "tiers": {
@@ -268,7 +271,7 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 1000,
+        "max_tickers": 3000,
         "scan_frequency": "daily"
       }
     },

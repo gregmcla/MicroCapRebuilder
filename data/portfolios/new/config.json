@@ -9,7 +9,7 @@
   "starting_capital": 200000.0,
   "initial_deployment_target_pct": 90.0,
   "risk_per_trade_pct": 7,
-  "max_position_pct": 15,
+  "max_position_pct": 20,
   "max_positions": 999,
   "default_stop_loss_pct": 6,
   "default_take_profit_pct": 20,
@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 35,
-      "SIDEWAYS": 45,
-      "BEAR": 55
+      "BULL": 55,
+      "SIDEWAYS": 65,
+      "BEAR": 70
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -210,10 +210,10 @@
     },
     "rotation": {
       "enabled": true,
-      "min_upgrade_score_gap": 10,
-      "max_rotations_per_cycle": 3,
-      "min_held_days_before_rotation": 3,
-      "max_unrealized_loss_pct_for_rotation": -15
+      "min_upgrade_score_gap": 8,
+      "max_rotations_per_cycle": 5,
+      "min_held_days_before_rotation": 2,
+      "max_unrealized_loss_pct_for_rotation": -10
     }
   },
   "data_provider": {
@@ -261,6 +261,9 @@
       "etf_holdings": {
         "enabled": true,
         "etfs": []
+      },
+      "exchange_listings": {
+        "enabled": true
       }
     },
     "tiers": {
@@ -269,7 +272,7 @@
         "scan_frequency": "rotating_3day"
       },
       "extended": {
-        "max_tickers": 1000,
+        "max_tickers": 3000,
         "scan_frequency": "rotating_3day"
       }
     },

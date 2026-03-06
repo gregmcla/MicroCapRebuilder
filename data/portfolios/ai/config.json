@@ -290,6 +290,9 @@
           "KOMP",
           "SKYY"
         ]
+      },
+      "exchange_listings": {
+        "enabled": true
       }
     },
     "tiers": {
@@ -298,7 +301,7 @@
         "scan_frequency": "rotating_3day"
       },
       "extended": {
-        "max_tickers": 1000,
+        "max_tickers": 3000,
         "scan_frequency": "rotating_3day"
       }
     },
