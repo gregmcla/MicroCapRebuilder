@@ -558,6 +558,18 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     modified = [r for r in reviewed_actions if r.decision == ReviewDecision.MODIFY]
     vetoed = [r for r in reviewed_actions if r.decision == ReviewDecision.VETO]
 
+    # Drop any modified BUY proposals where the AI set shares so low the
+    # position would be below the minimum notional floor (e.g. 1 share @ $12)
+    def _above_min_notional(r: ReviewedAction) -> bool:
+        if r.original.action_type != "BUY":
+            return True
+        shares = r.modified_shares or r.original.shares
+        price = r.original.price
+        min_notional = max(price * 5, 250.0)
+        return shares * price >= min_notional
+
+    modified = [r for r in modified if _above_min_notional(r)]
+
     result = {
         "proposed_actions": proposed_actions,
         "reviewed_actions": reviewed_actions,
@@ -646,6 +658,11 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         if action.action_type == "SELL":
             available_cash += shares * action.price
         else:
+            # BUY: reject micro-positions (AI may modify shares to tiny numbers)
+            min_notional = max(action.price * 5, 250.0)  # at least 5 shares or $250
+            if shares * action.price < min_notional:
+                print(f"  ⏭️  Skipping BUY {action.ticker}: position too small ({shares} shares = ${shares * action.price:.0f} < ${min_notional:.0f} minimum)")
+                continue
             # BUY: cap to what cash can afford
             if action.price > 0:
                 max_affordable = int(available_cash / action.price)

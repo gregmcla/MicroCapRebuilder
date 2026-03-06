@@ -355,7 +355,7 @@ FALLBACK_HOLDINGS = {
     # --- Small-cap / Micro-cap ETFs ---
     "IWM": [
         "SMCI", "MSTR", "CORT", "INSM", "FTAI", "CRDO", "SPR", "LNTH", "GKOS", "NBIX",
-        "ANF", "JANX", "FN", "BOOT", "MARA", "CIVI", "EXAS", "EME", "CVLT", "STEP",
+        "ANF", "JANX", "FN", "BOOT", "MARA", "EXAS", "EME", "CVLT", "STEP",
         "RIOT", "SIGI", "PIPR", "PRIM", "SFM", "VNT", "WULF", "RUN", "ABG", "MOD",
         "TMDX", "RDNT", "CNX", "ITCI", "ONTO", "SHAK", "ACLX", "VERA", "OSCR", "VIRT"
     ],
@@ -367,7 +367,7 @@ FALLBACK_HOLDINGS = {
     ],
     "VB": [
         "SMCI", "MSTR", "FTAI", "CORT", "INSM", "CRDO", "SPR", "LNTH", "GKOS", "NBIX",
-        "ANF", "BOOT", "JANX", "FN", "EME", "MARA", "CIVI", "STEP", "EXAS", "CVLT",
+        "ANF", "BOOT", "JANX", "FN", "EME", "MARA", "STEP", "EXAS", "CVLT",
         "RIOT", "SIGI", "SFM", "PIPR", "PRIM", "VNT", "ABG", "WULF", "MOD", "RUN",
         "RDNT", "CNX", "TMDX", "ONTO", "SHAK", "ITCI", "ACLX", "VIRT", "VERA", "OSCR"
     ],
