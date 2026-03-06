@@ -43,7 +43,7 @@ class ExchangeUniverseProvider:
     def get_tickers(self) -> List[str]:
         """Return all US common stock tickers, using cache when fresh."""
         cache = self._load_cache()
-        if cache and self._is_fresh(cache):
+        if cache and self._is_fresh(cache) and "tickers" in cache:
             return cache["tickers"]
 
         try:
@@ -52,9 +52,10 @@ class ExchangeUniverseProvider:
             print(f"  [ExchangeUniverse] Downloaded {len(tickers):,} tickers from exchange listings")
             return tickers
         except Exception as e:
-            print(f"  [ExchangeUniverse] Download failed ({e}), using cached data")
-            if cache:
+            if cache and "tickers" in cache:
+                print(f"  [ExchangeUniverse] Download failed ({e}), using {len(cache['tickers']):,} cached tickers")
                 return cache["tickers"]
+            print(f"  [ExchangeUniverse] Download failed ({e}) and no cache available, returning empty list")
             return []
 
     # ── Internal ────────────────────────────────────────────────────────────
@@ -138,11 +139,17 @@ class ExchangeUniverseProvider:
             return {}
 
     def _save_cache(self, tickers: List[str]):
-        """Save tickers to cache with timestamp."""
+        """Save tickers to cache atomically with timestamp."""
         self._cache_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._cache_file, "w") as f:
-            json.dump({
-                "timestamp": datetime.now().isoformat(),
-                "count": len(tickers),
-                "tickers": tickers,
-            }, f)
+        tmp = self._cache_file.with_suffix(".tmp")
+        try:
+            with open(tmp, "w") as f:
+                json.dump({
+                    "timestamp": datetime.now().isoformat(),
+                    "count": len(tickers),  # convenience field for human inspection
+                    "tickers": tickers,
+                }, f)
+            tmp.replace(self._cache_file)
+        except Exception:
+            tmp.unlink(missing_ok=True)
+            raise
