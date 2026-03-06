@@ -101,6 +101,7 @@ class UniverseProvider:
         sources_config = self.universe_config.get("sources", {})
         self.curated_enabled = sources_config.get("curated", {}).get("enabled", True)
         self.etf_enabled = sources_config.get("etf_holdings", {}).get("enabled", True)
+        self.exchange_listings_enabled = sources_config.get("exchange_listings", {}).get("enabled", False)
 
         # Build the universe
         self._universe: Dict[str, UniverseTicker] = {}
@@ -119,10 +120,14 @@ class UniverseProvider:
         if self.etf_enabled:
             self._load_etf_holdings()
 
-        # 3. Deduplicate and assign final tiers
+        # 3. Load exchange listings (full NASDAQ/NYSE file)
+        if self.exchange_listings_enabled:
+            self._load_exchange_listings()
+
+        # 4. Deduplicate and assign final tiers
         self._finalize_tiers()
 
-        # 4. Save cache
+        # 5. Save cache
         self._save_cache()
 
     def _load_curated(self):
@@ -179,6 +184,20 @@ class UniverseProvider:
             print(f"Warning: Could not load ETF holdings: {e}")
         except Exception as e:
             print(f"Warning: Error loading ETF holdings: {e}")
+
+    def _load_exchange_listings(self):
+        """Load tickers from the full NASDAQ/NYSE exchange listing files."""
+        try:
+            from exchange_universe_provider import ExchangeUniverseProvider
+            provider = ExchangeUniverseProvider()
+            tickers = provider.get_tickers()
+            for ticker in tickers:
+                # Exchange listings go to extended tier
+                self._add_ticker(ticker, UniverseTier.EXTENDED, "EXCHANGE_LISTING", "")
+        except ImportError as e:
+            print(f"Warning: Could not load exchange listings: {e}")
+        except Exception as e:
+            print(f"Warning: Error loading exchange listings: {e}")
 
     def _add_ticker(self, ticker: str, tier: UniverseTier, source: str, sector: str):
         """Add a ticker to the universe."""
