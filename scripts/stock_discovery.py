@@ -738,8 +738,12 @@ class StockDiscovery:
 
     def _prewarm_info_cache(self, tickers: List[str], max_workers: int = 8) -> None:
         """Fetch stock info for tickers in parallel, with per-ticker timeout."""
-        # Cap to avoid drowning in .info calls — only pre-warm what we actually need
-        tickers = tickers[:200]
+        # Cap to avoid drowning in .info calls — shuffle first so we don't bias toward
+        # alphabetically early tickers (A-B) when the universe is sorted A-Z
+        import random as _random
+        shuffled = list(tickers)
+        _random.shuffle(shuffled)
+        tickers = shuffled[:500]
         uncached = [t for t in tickers if t not in self._info_cache]
         if not uncached:
             return
@@ -812,9 +816,12 @@ class StockDiscovery:
             print("  WARNING: 0 survivors after price/volume filter — data fetch may have failed")
             return []
 
-        # Phase 3: Pre-warm .info for survivors only (not the full universe)
-        # Warm up to 500 — sector leaders scan only uses pre-cached info, so more = better coverage
-        self._prewarm_info_cache(price_vol_survivors[:500])
+        # Phase 3: Pre-warm .info for survivors only (not the full universe).
+        # Shuffle before slicing so we don't bias toward alphabetically early tickers.
+        import random as _random
+        shuffled_survivors = list(price_vol_survivors)
+        _random.shuffle(shuffled_survivors)
+        self._prewarm_info_cache(shuffled_survivors)
 
         # Phase 4: Run scans
         if scan_types.get("momentum_breakouts", True):

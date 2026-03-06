@@ -1,20 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { MatrixPosition } from "./types";
+import type { TickerInfo } from "../../lib/types";
+import { api } from "../../lib/api";
 import Sparkline from "./Sparkline";
 import Reticle from "./Reticle";
-import { pc } from "./constants";
+import { pc, MATRIX_FONT } from "./constants";
 
 interface DetailCardProps {
   pos: MatrixPosition | null;
   onClose: () => void;
+  portfolioId?: string;
 }
 
-export default function DetailCard({ pos, onClose }: DetailCardProps) {
+export default function DetailCard({ pos, onClose, portfolioId }: DetailCardProps) {
+  const [info, setInfo] = useState<TickerInfo | null>(null);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!pos) { setInfo(null); return; }
+    const pid = portfolioId ?? pos.portfolioId;
+    api.getTickerInfo(pid, pos.ticker)
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, [pos?.ticker, pos?.portfolioId, portfolioId]);
 
   if (!pos) return null;
   const col = pos.portfolioColor;
@@ -86,6 +99,72 @@ export default function DetailCard({ pos, onClose }: DetailCardProps) {
           }}>
             <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={424} h={60} />
           </div>
+
+          {/* Company info */}
+          {info && (
+            <div style={{ marginBottom: 12 }}>
+              {info.name && (
+                <div style={{ fontSize: 9, color: "#aaa", fontWeight: 600, marginBottom: 4, letterSpacing: "0.04em" }}>
+                  {info.name}
+                  {info.industry && <span style={{ color: "#555", fontWeight: 400 }}> · {info.industry}</span>}
+                  {info.website && (
+                    <a href={info.website} target="_blank" rel="noreferrer"
+                      style={{ color: col, marginLeft: 8, fontSize: 8, textDecoration: "none", opacity: 0.7 }}>
+                      ↗
+                    </a>
+                  )}
+                </div>
+              )}
+              {info.description && (
+                <div style={{
+                  fontSize: 8, color: "#666", lineHeight: 1.6,
+                  maxHeight: 80, overflow: "hidden",
+                  display: "-webkit-box", WebkitLineClamp: 4,
+                  WebkitBoxOrient: "vertical" as const,
+                  fontFamily: MATRIX_FONT,
+                }}>
+                  {info.description}
+                </div>
+              )}
+              {/* Extra info row */}
+              <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" as const }}>
+                {info.market_cap != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>
+                      {info.market_cap >= 1e9 ? `$${(info.market_cap / 1e9).toFixed(1)}B` : `$${(info.market_cap / 1e6).toFixed(0)}M`}
+                    </div>
+                  </div>
+                )}
+                {info.trailing_pe != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>P/E</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>{info.trailing_pe.toFixed(1)}</div>
+                  </div>
+                )}
+                {info.week_52_high != null && info.week_52_low != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>52W</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
+                  </div>
+                )}
+                {info.analyst_rating && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>ANALYST</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>{info.analyst_rating}
+                      {info.analyst_count != null && <span style={{ color: "#555" }}> ({info.analyst_count})</span>}
+                    </div>
+                  </div>
+                )}
+                {info.dividend_yield != null && info.dividend_yield > 0 && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DIV YIELD</div>
+                    <div style={{ fontSize: 9, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Primary stats grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>

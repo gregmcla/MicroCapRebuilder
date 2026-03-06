@@ -116,6 +116,7 @@ export default function App() {
             {/* Three columns → replaced by MatrixGrid */}
             <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
               <MatrixGrid
+                key={portfolioId}
                 positions={matrixPositions}
                 portfolios={activeMatrixPortfolio ? [activeMatrixPortfolio] : []}
                 initialFilter={portfolioId ?? undefined}

@@ -526,12 +526,31 @@ export default function MatrixGrid({
 
         {/* WATCHLIST PANEL */}
         {viewTab === "watchlist" && (
-          <WatchlistPanel candidates={watchlistCandidates} />
+          <WatchlistPanel candidates={watchlistCandidates} onTickerClick={(ticker) => {
+            const existing = positions.find(p => p.ticker === ticker);
+            if (existing) { setSelectedPos(existing); return; }
+            // Build a minimal stub so the detail card can fetch company info
+            setSelectedPos({
+              ticker, portfolioId: portfolios[0]?.id ?? "", portfolioName: portfolios[0]?.name ?? "",
+              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#4ade80",
+              portfolioHex: portfolios[0]?.hex ?? [74,222,128], value: 0, perf: 0, day: 0,
+              sparkline: [], sector: "", vol: null, beta: null, mktCap: "",
+            });
+          }} />
         )}
 
         {/* ACTIVITY PANEL */}
         {viewTab === "activity" && (
-          <ActivityPanel transactions={transactions} />
+          <ActivityPanel transactions={transactions} onTickerClick={(ticker) => {
+            const existing = positions.find(p => p.ticker === ticker);
+            if (existing) { setSelectedPos(existing); return; }
+            setSelectedPos({
+              ticker, portfolioId: portfolios[0]?.id ?? "", portfolioName: portfolios[0]?.name ?? "",
+              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#4ade80",
+              portfolioHex: portfolios[0]?.hex ?? [74,222,128], value: 0, perf: 0, day: 0,
+              sparkline: [], sector: "", vol: null, beta: null, mktCap: "",
+            });
+          }} />
         )}
 
         {/* LOGS PANEL */}
@@ -601,7 +620,7 @@ export default function MatrixGrid({
       )}
 
       {/* DETAIL CARD OVERLAY */}
-      <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} />
+      <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} />
     </div>
   );
 }
@@ -615,7 +634,7 @@ const HEAT_COLOR: Record<string, string> = {
   COLD: "#555",
 };
 
-function WatchlistPanel({ candidates }: { candidates: WatchlistCandidate[] }) {
+function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCandidate[]; onTickerClick: (ticker: string) => void }) {
   const sorted = [...candidates].sort((a, b) => b.score - a.score);
   if (sorted.length === 0) {
     return (
@@ -651,7 +670,7 @@ function WatchlistPanel({ candidates }: { candidates: WatchlistCandidate[] }) {
           fontSize: 9, fontFamily: MATRIX_FONT,
           alignItems: "center",
         }}>
-          <span style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.05em" }}>{c.ticker}</span>
+          <span onClick={() => onTickerClick(c.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.05em", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{c.ticker}</span>
           <span style={{ color: "#777", fontSize: 8, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
           <span style={{ color: c.score >= 70 ? "#4ade80" : c.score >= 50 ? "#facc15" : "#888", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
           <span style={{ color: "#666", fontSize: 8 }}>{c.sector || "—"}</span>
@@ -668,7 +687,7 @@ function WatchlistPanel({ candidates }: { candidates: WatchlistCandidate[] }) {
 
 // ─── Activity Panel ───────────────────────────────────────────────────────────
 
-function ActivityPanel({ transactions }: { transactions: Transaction[] }) {
+function ActivityPanel({ transactions, onTickerClick }: { transactions: Transaction[]; onTickerClick: (ticker: string) => void }) {
   const sorted = [...transactions].reverse().slice(0, 100);
   if (sorted.length === 0) {
     return (
@@ -708,7 +727,7 @@ function ActivityPanel({ transactions }: { transactions: Transaction[] }) {
           }}>
             <span style={{ color: "#555", fontSize: 8 }}>{tx.date.slice(0, 10)}</span>
             <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
-            <span style={{ color: "#e8ffe8", fontWeight: 700 }}>{tx.ticker}</span>
+            <span onClick={() => onTickerClick(tx.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{tx.ticker}</span>
             <span style={{ color: "#888" }}>{tx.shares}</span>
             <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
             <span style={{ color: "#aaa", fontWeight: 600 }}>${tx.total_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
