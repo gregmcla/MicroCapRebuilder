@@ -4,7 +4,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.routes.portfolios import CreatePortfolioRequest
-import inspect
 
 
 def test_create_portfolio_request_has_sector_weights():
