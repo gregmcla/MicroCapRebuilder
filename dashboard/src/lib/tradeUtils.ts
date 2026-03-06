@@ -67,12 +67,44 @@ export function tradeExplanation(tx: Transaction): string {
     return parts.join(" ") || "Bought based on multi-factor scan.";
   }
 
-  const map: Record<string, string> = {
-    STOP_LOSS:    "Stop loss hit — the stock fell to the downside limit and was closed to protect capital.",
-    TAKE_PROFIT:  "Target price reached — the gain was locked in.",
-    MANUAL:       "Manually closed.",
-    INTELLIGENCE: "AI flagged this for exit after reviewing current conditions.",
-    SIGNAL:       "Exited based on a signal from the scoring model.",
-  };
-  return map[tx.reason] ?? tx.reason ?? "Position closed.";
+  if (tx.reason === "STOP_LOSS") {
+    const stopStr = tx.stop_loss ? ` at $${tx.stop_loss.toFixed(2)}` : "";
+    return `Stop loss hit — the stock fell to the downside limit${stopStr} and was closed to protect capital.`;
+  }
+
+  if (tx.reason === "TAKE_PROFIT") {
+    const targetStr = tx.take_profit ? ` at $${tx.take_profit.toFixed(2)}` : "";
+    return `Target price reached${targetStr} — the gain was locked in.`;
+  }
+
+  if (tx.reason === "INTELLIGENCE") {
+    return "AI reviewed current conditions and flagged this position for exit — either the thesis weakened or a better opportunity needed the capital.";
+  }
+
+  if (tx.reason === "SIGNAL") {
+    return "The scoring model signaled an exit — the position's factor scores deteriorated or a risk threshold was crossed.";
+  }
+
+  if (tx.reason === "MANUAL") {
+    const price = tx.price;
+    const stop = tx.stop_loss;
+    const target = tx.take_profit;
+
+    // Infer context from where price landed relative to stop/target
+    if (stop && price <= stop * 1.05) {
+      return `Manually closed at $${price.toFixed(2)} — the position was at or near the stop loss level ($${stop.toFixed(2)}). Exited to protect capital.`;
+    }
+    if (target && price >= target * 0.95) {
+      return `Manually closed at $${price.toFixed(2)} — the position was at or near the target price ($${target.toFixed(2)}). Gains locked in.`;
+    }
+    if (stop && target) {
+      return `Manually closed at $${price.toFixed(2)}. The stop loss was $${stop.toFixed(2)} and the target was $${target.toFixed(2)}.`;
+    }
+    if (stop) {
+      return `Manually closed at $${price.toFixed(2)}. The stop loss was set at $${stop.toFixed(2)}.`;
+    }
+    return `Manually closed at $${price.toFixed(2)}.`;
+  }
+
+  return tx.reason ?? "Position closed.";
 }
