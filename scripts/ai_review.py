@@ -133,12 +133,12 @@ Action {i}:
   Quant Reason: {reason}
 """
 
-        # Social heat injection
-        if social_signals and ticker:
+        # Social heat injection — only for BUY actions
+        if action_type == "BUY" and social_signals and ticker:
             sig = social_signals.get(ticker)
             if sig:
-                rank_str = f"WSB rank #{sig.ape_rank}" if sig.ape_rank else "trending"
-                pct_str = f"{sig.st_bullish_pct:.0f}% bullish" if sig.st_bullish_pct else "high bullish"
+                rank_str = f"WSB rank #{sig.ape_rank}" if sig.ape_rank is not None else "trending"
+                pct_str = f"{sig.st_bullish_pct:.0f}% bullish" if sig.st_bullish_pct is not None else "high bullish"
                 heat_messages = {
                     "COLD":    "  Social Heat: COLD — factor signal appears independent of retail sentiment.",
                     "WARM":    "  Social Heat: WARM — some retail interest present, watch entry timing.",
