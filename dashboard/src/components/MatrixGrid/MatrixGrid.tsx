@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import type { MatrixGridProps, MatrixPosition } from "./types";
+import type { MatrixGridProps, MatrixPosition, Transaction, WatchlistCandidate, ScanJobStatus } from "./types";
 import { pc, pbg, fv, MATRIX_FONT } from "./constants";
 import Sparkline from "./Sparkline";
 import Waveform from "./Waveform";
@@ -28,7 +28,12 @@ export default function MatrixGrid({
   initialFilter,
   showEKG = true,
   showTickerTape = true,
+  transactions = [],
+  watchlistCandidates = [],
+  scanStatus,
+  showSecondaryTabs = true,
 }: MatrixGridProps) {
+  const [viewTab, setViewTab] = useState<"grid" | "watchlist" | "activity" | "logs">("grid");
   const [hovIdx, setHovIdx] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"value" | "perf" | "alpha" | "portfolio">("value");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
@@ -354,8 +359,48 @@ export default function MatrixGrid({
           </div>
         </div>
 
+        {/* TAB BAR */}
+        <div style={{
+          padding: "0 20px",
+          borderBottom: "1px solid rgba(74,222,128,0.06)",
+          display: "flex", alignItems: "flex-end", gap: 0, flexShrink: 0,
+        }}>
+          {(showSecondaryTabs
+            ? ["grid", "watchlist", "activity", "logs"] as const
+            : ["grid"] as const
+          ).map((tab) => {
+            const labels: Record<string, string> = {
+              grid: `GRID [${sorted.length}]`,
+              watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
+              activity: `ACTIVITY [${transactions.length}]`,
+              logs: "LOGS",
+            };
+            const active = viewTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setViewTab(tab)}
+                style={{
+                  padding: "4px 12px 5px",
+                  fontSize: 8, letterSpacing: "0.1em",
+                  fontFamily: MATRIX_FONT,
+                  background: "transparent",
+                  color: active ? "#4ade80" : "#555",
+                  border: "none",
+                  borderBottom: active ? "2px solid #4ade80" : "2px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.12s",
+                  marginBottom: -1,
+                }}
+              >
+                {labels[tab]}
+              </button>
+            );
+          })}
+        </div>
+
         {/* GRID (with 3D parallax) */}
-        <div style={{ flex: 1, padding: "4px 14px", overflow: "auto", minHeight: 0 }}>
+        <div style={{ flex: 1, padding: "4px 14px", overflow: "auto", minHeight: 0, display: viewTab === "grid" ? undefined : "none" }}>
           <div
             ref={gridRef}
             style={{
@@ -461,6 +506,21 @@ export default function MatrixGrid({
           </div>
         </div>
 
+        {/* WATCHLIST PANEL */}
+        {viewTab === "watchlist" && (
+          <WatchlistPanel candidates={watchlistCandidates} />
+        )}
+
+        {/* ACTIVITY PANEL */}
+        {viewTab === "activity" && (
+          <ActivityPanel transactions={transactions} />
+        )}
+
+        {/* LOGS PANEL */}
+        {viewTab === "logs" && (
+          <LogsPanel scanStatus={scanStatus} />
+        )}
+
         {/* STATUS BAR */}
         <div style={{
           padding: "4px 20px",
@@ -524,6 +584,212 @@ export default function MatrixGrid({
 
       {/* DETAIL CARD OVERLAY */}
       <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} />
+    </div>
+  );
+}
+
+// ─── Watchlist Panel ──────────────────────────────────────────────────────────
+
+const HEAT_COLOR: Record<string, string> = {
+  SPIKING: "#f87171",
+  HOT: "#fb923c",
+  WARM: "#facc15",
+  COLD: "#555",
+};
+
+function WatchlistPanel({ candidates }: { candidates: WatchlistCandidate[] }) {
+  const sorted = [...candidates].sort((a, b) => b.score - a.score);
+  if (sorted.length === 0) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
+        NO WATCHLIST DATA — RUN SCAN TO POPULATE
+      </div>
+    );
+  }
+  return (
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+      {/* Header row */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "80px 1fr 60px 60px 120px 80px",
+        padding: "4px 20px",
+        fontSize: 7, color: "#555", letterSpacing: "0.12em",
+        borderBottom: "1px solid rgba(74,222,128,0.04)",
+        position: "sticky", top: 0, background: "#040608", zIndex: 2,
+      }}>
+        <span>TICKER</span>
+        <span>NOTES</span>
+        <span>SCORE</span>
+        <span>SECTOR</span>
+        <span>SOURCE</span>
+        <span>HEAT</span>
+      </div>
+      {sorted.map((c, i) => (
+        <div key={`${c.ticker}-${i}`} style={{
+          display: "grid",
+          gridTemplateColumns: "80px 1fr 60px 60px 120px 80px",
+          padding: "5px 20px",
+          borderBottom: "1px solid rgba(255,255,255,0.02)",
+          fontSize: 9, fontFamily: MATRIX_FONT,
+          alignItems: "center",
+        }}>
+          <span style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.05em" }}>{c.ticker}</span>
+          <span style={{ color: "#777", fontSize: 8, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
+          <span style={{ color: c.score >= 70 ? "#4ade80" : c.score >= 50 ? "#facc15" : "#888", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
+          <span style={{ color: "#666", fontSize: 8 }}>{c.sector || "—"}</span>
+          <span style={{ color: "#555", fontSize: 8 }}>{c.source || "—"}</span>
+          <span style={{
+            fontSize: 7, fontWeight: 700, letterSpacing: "0.1em",
+            color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "#555") : "#444",
+          }}>{c.social_heat ?? "—"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Activity Panel ───────────────────────────────────────────────────────────
+
+function ActivityPanel({ transactions }: { transactions: Transaction[] }) {
+  const sorted = [...transactions].reverse().slice(0, 100);
+  if (sorted.length === 0) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
+        NO TRADE HISTORY
+      </div>
+    );
+  }
+  return (
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "90px 50px 90px 80px 80px 80px 1fr",
+        padding: "4px 20px",
+        fontSize: 7, color: "#555", letterSpacing: "0.12em",
+        borderBottom: "1px solid rgba(74,222,128,0.04)",
+        position: "sticky", top: 0, background: "#040608", zIndex: 2,
+      }}>
+        <span>DATE</span>
+        <span>ACT</span>
+        <span>TICKER</span>
+        <span>SHARES</span>
+        <span>PRICE</span>
+        <span>TOTAL</span>
+        <span>REASON</span>
+      </div>
+      {sorted.map((tx) => {
+        const isBuy = tx.action === "BUY";
+        const ac = isBuy ? "#4ade80" : "#f87171";
+        return (
+          <div key={tx.transaction_id} style={{
+            display: "grid",
+            gridTemplateColumns: "90px 50px 90px 80px 80px 80px 1fr",
+            padding: "5px 20px",
+            borderBottom: "1px solid rgba(255,255,255,0.02)",
+            fontSize: 9, fontFamily: MATRIX_FONT, alignItems: "center",
+          }}>
+            <span style={{ color: "#555", fontSize: 8 }}>{tx.date.slice(0, 10)}</span>
+            <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
+            <span style={{ color: "#e8ffe8", fontWeight: 700 }}>{tx.ticker}</span>
+            <span style={{ color: "#888" }}>{tx.shares}</span>
+            <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
+            <span style={{ color: "#aaa", fontWeight: 600 }}>${tx.total_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span style={{ color: "#555", fontSize: 8 }}>{tx.reason}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Logs Panel ───────────────────────────────────────────────────────────────
+
+function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
+  const statusColor: Record<string, string> = { idle: "#555", running: "#facc15", complete: "#4ade80", error: "#f87171" };
+  const sc = scanStatus?.status ?? "idle";
+  return (
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0, padding: "16px 20px", fontFamily: MATRIX_FONT }}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 6 }}>SCAN STATUS</div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <span style={{
+            fontSize: 9, fontWeight: 700, color: statusColor[sc] ?? "#555",
+            letterSpacing: "0.1em",
+            textShadow: sc === "running" ? "0 0 8px rgba(250,204,21,0.4)" : sc === "complete" ? "0 0 8px rgba(74,222,128,0.3)" : "none",
+          }}>
+            {sc === "running" ? "● SCANNING" : sc === "complete" ? "✓ COMPLETE" : sc === "error" ? "✗ ERROR" : "○ IDLE"}
+          </span>
+          {scanStatus?.started_at && (
+            <span style={{ fontSize: 8, color: "#555" }}>started {scanStatus.started_at.slice(0, 19).replace("T", " ")}</span>
+          )}
+          {scanStatus?.finished_at && (
+            <span style={{ fontSize: 8, color: "#555" }}>finished {scanStatus.finished_at.slice(0, 19).replace("T", " ")}</span>
+          )}
+        </div>
+        {scanStatus?.error && (
+          <div style={{ marginTop: 8, fontSize: 8, color: "#f87171", background: "rgba(248,113,113,0.06)", padding: "6px 10px", border: "1px solid rgba(248,113,113,0.12)" }}>
+            {scanStatus.error}
+          </div>
+        )}
+        {scanStatus?.message && (
+          <div style={{ marginTop: 8, fontSize: 8, color: "#888" }}>{scanStatus.message}</div>
+        )}
+      </div>
+
+      {scanStatus?.result && (
+        <>
+          <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 16 }}>
+            {[
+              { l: "DISCOVERED", v: scanStatus.result.discovered },
+              { l: "ADDED", v: scanStatus.result.added },
+              { l: "MARKED STALE", v: scanStatus.result.marked_stale },
+              { l: "REMOVED", v: scanStatus.result.removed },
+              { l: "POOR REMOVED", v: scanStatus.result.poor_performers_removed },
+              { l: "TOTAL ACTIVE", v: scanStatus.result.total_active },
+              ...(scanStatus.result.elapsed_seconds != null
+                ? [{ l: "ELAPSED", v: `${scanStatus.result.elapsed_seconds.toFixed(1)}s` }]
+                : []),
+            ].map((s) => (
+              <div key={s.l} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(74,222,128,0.06)", padding: "8px 10px" }}>
+                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.l}</div>
+                <div style={{ fontSize: 14, color: "#e8ffe8", fontWeight: 700 }}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+          {Object.keys(scanStatus.result.sector_balanced).length > 0 && (
+            <>
+              <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 8 }}>SECTOR DISTRIBUTION</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {Object.entries(scanStatus.result.sector_balanced)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([sector, count]) => {
+                    const maxCount = Math.max(...Object.values(scanStatus.result!.sector_balanced));
+                    return (
+                      <div key={sector} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 7, color: "#666", width: 160, flexShrink: 0 }}>{sector}</span>
+                        <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.04)", position: "relative" }}>
+                          <div style={{
+                            position: "absolute", left: 0, top: 0, bottom: 0,
+                            width: `${(count / maxCount) * 100}%`,
+                            background: "rgba(74,222,128,0.3)",
+                          }} />
+                        </div>
+                        <span style={{ fontSize: 7, color: "#888", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {!scanStatus && (
+        <div style={{ color: "#555", fontSize: 10, letterSpacing: "0.1em", marginTop: 24 }}>
+          NO SCAN DATA — TRIGGER SCAN FROM TOPBAR
+        </div>
+      )}
     </div>
   );
 }

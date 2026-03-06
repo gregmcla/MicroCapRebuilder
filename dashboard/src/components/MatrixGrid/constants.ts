@@ -100,6 +100,14 @@ export function positionToMatrix(pos: Position, port: MatrixPortfolio): MatrixPo
     vol: null,
     beta: null,
     mktCap: "N/A",
+    shares: pos.shares,
+    avgCost: pos.avg_cost_basis,
+    currentPrice: pos.current_price,
+    unrealizedPnl: pos.unrealized_pnl,
+    stopLoss: pos.stop_loss,
+    takeProfit: pos.take_profit,
+    entryDate: pos.entry_date,
+    dayChangeDollar: pos.day_change,
   };
 }
 

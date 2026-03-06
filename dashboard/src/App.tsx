@@ -1,9 +1,11 @@
 /** 3-column layout: positions list | center chart | right analytics. */
 
 import { Component, useMemo, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { usePortfolioStore, useUIStore } from "./lib/store";
+import { api } from "./lib/api";
 import TopBar from "./components/TopBar";
 import ActivityFeed from "./components/ActivityFeed";
 import OverviewPage from "./components/OverviewPage";
@@ -81,6 +83,20 @@ export default function App() {
     return state.positions.map((pos) => positionToMatrix(pos, activeMatrixPortfolio));
   }, [state?.positions, activeMatrixPortfolio]);
 
+  const { data: watchlistData } = useQuery({
+    queryKey: ["watchlist", portfolioId],
+    queryFn: () => api.getWatchlist(portfolioId!),
+    enabled: !isOverview && !!portfolioId,
+    staleTime: 60_000,
+  });
+
+  const { data: scanStatus } = useQuery({
+    queryKey: ["scanStatus", portfolioId],
+    queryFn: () => api.scanStatus(portfolioId!),
+    enabled: !isOverview && !!portfolioId,
+    refetchInterval: 5000,
+  });
+
   return (
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
       <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
@@ -103,6 +119,9 @@ export default function App() {
                 positions={matrixPositions}
                 portfolios={activeMatrixPortfolio ? [activeMatrixPortfolio] : []}
                 initialFilter={portfolioId ?? undefined}
+                transactions={state?.transactions ?? []}
+                watchlistCandidates={watchlistData?.candidates ?? []}
+                scanStatus={scanStatus}
               />
             </div>
           </div>

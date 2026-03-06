@@ -751,6 +751,7 @@ export default function OverviewPage() {
                     positions={matrixPositions}
                     portfolios={matrixPortfolios}
                     onPositionClick={(pos) => setPortfolio(pos.portfolioId)}
+                    showSecondaryTabs={false}
                   />
                 </div>
               )}

@@ -1,4 +1,4 @@
-import type { CrossPortfolioMover, Position } from "../../lib/types";
+import type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus } from "../../lib/types";
 
 export interface MatrixPortfolio {
   id: string;
@@ -23,6 +23,15 @@ export interface MatrixPosition {
   vol: number | null;
   beta: number | null;
   mktCap: string;
+  // Portfolio-view extras (undefined in overview mode)
+  shares?: number;
+  avgCost?: number;
+  currentPrice?: number;
+  unrealizedPnl?: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  entryDate?: string;
+  dayChangeDollar?: number;
 }
 
 export interface MatrixGridProps {
@@ -33,7 +42,11 @@ export interface MatrixGridProps {
   initialFilter?: string;
   showEKG?: boolean;
   showTickerTape?: boolean;
+  transactions?: Transaction[];
+  watchlistCandidates?: WatchlistCandidate[];
+  scanStatus?: ScanJobStatus;
+  showSecondaryTabs?: boolean; // show WATCHLIST/ACTIVITY/LOGS tabs (default true, false for overview)
 }
 
 // Re-export for convenience in mapping functions
-export type { CrossPortfolioMover, Position };
+export type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus };
