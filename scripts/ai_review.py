@@ -80,31 +80,74 @@ def get_ai_client():
     return (None, None)
 
 
-def build_review_prompt(
+def _get_action_attr(action, attr, default=None):
+    """Get an attribute from either a dict or a ProposedAction object."""
+    if isinstance(action, dict):
+        return action.get(attr, default)
+    return getattr(action, attr, default)
+
+
+def _build_review_prompt(
     proposed_actions: list,
     portfolio_context: dict,
+    social_signals: Optional[dict] = None,
 ) -> str:
-    """Build the prompt for AI review."""
+    """Build the prompt for AI review. Accepts both dicts and ProposedAction objects.
 
+    Args:
+        proposed_actions: List of ProposedAction objects or dicts with action fields.
+        portfolio_context: Dict with portfolio-level context (equity, cash, regime, etc.).
+        social_signals: Optional dict mapping ticker -> SocialSignal for heat injection.
+    """
     sector_map = portfolio_context.get("sector_map", {})
 
     actions_text = ""
     for i, action in enumerate(proposed_actions, 1):
-        sector = sector_map.get(action.ticker, "Unknown")
+        ticker = _get_action_attr(action, "ticker", "")
+        action_type = _get_action_attr(action, "action_type", "")
+        shares = _get_action_attr(action, "shares", 0)
+        price = _get_action_attr(action, "price", 0.0)
+        stop_loss = _get_action_attr(action, "stop_loss", 0.0)
+        take_profit = _get_action_attr(action, "take_profit", 0.0)
+        quant_score = _get_action_attr(action, "quant_score", 0.0)
+        factor_scores = _get_action_attr(action, "factor_scores", {})
+        regime = _get_action_attr(action, "regime", "")
+        reason = _get_action_attr(action, "reason", "")
+
+        sector = sector_map.get(ticker, "Unknown")
+        price_risk = ((price - stop_loss) / price * 100) if price else 0.0
+        price_upside = ((take_profit - price) / price * 100) if price else 0.0
+
         actions_text += f"""
 Action {i}:
-  Type: {action.action_type}
-  Ticker: {action.ticker}
+  Type: {action_type}
+  Ticker: {ticker}
   Sector: {sector}
-  Shares: {action.shares}
-  Price: ${action.price:.2f}
-  Stop Loss: ${action.stop_loss:.2f} ({((action.price - action.stop_loss) / action.price * 100):.1f}% risk)
-  Take Profit: ${action.take_profit:.2f} ({((action.take_profit - action.price) / action.price * 100):.1f}% upside)
-  Quant Score: {action.quant_score:.1f}/100
-  Factor Scores: {json.dumps(action.factor_scores)}
-  Market Regime: {action.regime}
-  Quant Reason: {action.reason}
+  Shares: {shares}
+  Price: ${price:.2f}
+  Stop Loss: ${stop_loss:.2f} ({price_risk:.1f}% risk)
+  Take Profit: ${take_profit:.2f} ({price_upside:.1f}% upside)
+  Quant Score: {quant_score:.1f}/100
+  Factor Scores: {json.dumps(factor_scores)}
+  Market Regime: {regime}
+  Quant Reason: {reason}
 """
+
+        # Social heat injection
+        if social_signals and ticker:
+            sig = social_signals.get(ticker)
+            if sig:
+                rank_str = f"WSB rank #{sig.ape_rank}" if sig.ape_rank else "trending"
+                pct_str = f"{sig.st_bullish_pct:.0f}% bullish" if sig.st_bullish_pct else "high bullish"
+                heat_messages = {
+                    "COLD":    "  Social Heat: COLD — factor signal appears independent of retail sentiment.",
+                    "WARM":    "  Social Heat: WARM — some retail interest present, watch entry timing.",
+                    "HOT":     "  Social Heat: HOT — high retail attention, verify this is not a crowded trade.",
+                    "SPIKING": f"  Social Heat: SPIKING ({rank_str}, {pct_str} on Stocktwits) — elevated pump risk, apply extra scrutiny before approving.",
+                }
+                heat_line = heat_messages.get(sig.heat, "")
+                if heat_line:
+                    actions_text += heat_line + "\n"
 
     projected_sectors = portfolio_context.get("projected_sector_allocation", {})
     if projected_sectors:
@@ -164,10 +207,21 @@ Respond ONLY with the JSON, no other text."""
     return prompt
 
 
+def build_review_prompt(
+    proposed_actions: list,
+    portfolio_context: dict,
+    social_signals: Optional[dict] = None,
+) -> str:
+    """Public wrapper around _build_review_prompt. Accepts ProposedAction objects or dicts."""
+    return _build_review_prompt(proposed_actions, portfolio_context,
+                                social_signals=social_signals)
+
+
 def review_proposed_actions(
     proposed_actions: list,
     portfolio_context: dict,
     batch_size: int = 10,
+    social_signals: Optional[dict] = None,
 ) -> list:
     """
     Review proposed actions using AI.
@@ -196,17 +250,21 @@ def review_proposed_actions(
         all_reviewed = []
         for i in range(0, len(proposed_actions), batch_size):
             batch = proposed_actions[i:i + batch_size]
-            batch_reviewed = _review_batch(client_type, client, batch, portfolio_context)
+            batch_reviewed = _review_batch(client_type, client, batch, portfolio_context,
+                                           social_signals=social_signals)
             all_reviewed.extend(batch_reviewed)
         return all_reviewed
 
-    return _review_batch(client_type, client, proposed_actions, portfolio_context)
+    return _review_batch(client_type, client, proposed_actions, portfolio_context,
+                         social_signals=social_signals)
 
 
-def _review_batch(client_type, client, proposed_actions: list, portfolio_context: dict) -> list:
+def _review_batch(client_type, client, proposed_actions: list, portfolio_context: dict,
+                  social_signals: Optional[dict] = None) -> list:
     """Review a batch of proposed actions."""
 
-    prompt = build_review_prompt(proposed_actions, portfolio_context)
+    prompt = build_review_prompt(proposed_actions, portfolio_context,
+                                 social_signals=social_signals)
 
     try:
         if client_type == "anthropic":
