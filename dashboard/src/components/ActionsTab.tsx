@@ -168,6 +168,35 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
+const HEAT_STYLE: Record<string, { color: string; bg: string; pulse?: boolean }> = {
+  WARM:    { color: "#fbbf24",   bg: "rgba(251,191,36,0.12)" },
+  HOT:     { color: "#f97316",   bg: "rgba(249,115,22,0.12)" },
+  SPIKING: { color: "#f87171",   bg: "rgba(248,113,113,0.15)", pulse: true },
+};
+
+function SocialHeatBadge({ heat }: { heat?: string }) {
+  if (!heat || heat === "COLD" || heat === "") return null;
+  const style = HEAT_STYLE[heat];
+  if (!style) return null;
+  return (
+    <span
+      className={style.pulse ? "animate-pulse" : ""}
+      style={{
+        fontSize: "9px",
+        fontWeight: 600,
+        padding: "1px 5px",
+        borderRadius: "3px",
+        letterSpacing: "0.06em",
+        color: style.color,
+        background: style.bg,
+        marginLeft: "4px",
+      }}
+    >
+      {heat}
+    </span>
+  );
+}
+
 function CandidateRow({ c }: { c: WatchlistCandidate }) {
   const scoreColor = c.score >= 80 ? "var(--green)" : c.score >= 60 ? "var(--amber)" : "var(--text-1)";
   return (
@@ -182,6 +211,7 @@ function CandidateRow({ c }: { c: WatchlistCandidate }) {
         {c.score}
       </span>
       <SourceBadge source={c.source} />
+      <SocialHeatBadge heat={c.social_heat} />
       <span style={{ flex: 1, fontSize: "9.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {c.sector}
       </span>

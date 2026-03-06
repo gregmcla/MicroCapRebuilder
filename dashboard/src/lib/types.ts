@@ -366,6 +366,9 @@ export interface WatchlistCandidate {
   source: string;
   notes: string;
   added_date: string;
+  social_heat?: string        // "COLD" | "WARM" | "HOT" | "SPIKING"
+  social_rank?: number | null
+  social_bullish_pct?: number | null
 }
 
 export interface WatchlistData {
