@@ -555,6 +555,76 @@ FALLBACK_HOLDINGS = {
         "AMBA", "CEVA", "EMKR", "SLAB", "LYTS", "PCYG", "SMTC", "PDFS", "RMBS", "SITM",
         "OSIS", "PLXS", "SANM", "CTS", "TTEC", "PCVX", "DIOD", "KLIC", "AEIS", "NTGR",
     ],
+    # --- Tech / AI / Robotics ETFs ---
+    "VGT": [
+        "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "ACN",
+        "IBM", "INTU", "TXN", "QCOM", "AMAT", "NOW", "PANW", "ADI", "LRCX", "KLAC",
+        "SNPS", "CDNS", "CRWD", "FTNT", "MCHP", "MU", "MSI", "APH", "NXPI", "TEL",
+    ],
+    "SMH": [
+        "NVDA", "AVGO", "TSM", "ASML", "AMD", "QCOM", "TXN", "AMAT", "LRCX", "KLAC",
+        "ADI", "MCHP", "MU", "NXPI", "MRVL", "ON", "MPWR", "INTC", "GFS", "SWKS",
+        "ENTG", "QRVO", "COHR", "ONTO", "ACLS", "UCTT", "ICHR", "MKSI", "FORM", "CEVA",
+    ],
+    "IGV": [
+        "MSFT", "ORCL", "CRM", "ADBE", "NOW", "INTU", "PANW", "SNPS", "CDNS", "CRWD",
+        "FTNT", "WDAY", "TEAM", "DDOG", "ZS", "OKTA", "NET", "SNOW", "MDB", "HUBS",
+        "BILL", "GTLB", "DOCN", "ESTC", "CFLT", "BRZE", "DOMO", "APPN", "ALTR", "TENB",
+    ],
+    "BOTZ": [
+        "NVDA", "ABB", "ISRG", "KEYB", "FANUY", "IRBT", "AIXI", "OMCL", "KRNT", "ZBRA",
+        "BRKS", "AZTA", "ONTO", "FORM", "ACLS", "NOVT", "LSCC", "AMBA", "TRMB", "CGNX",
+        "MKSI", "COHU", "ICHR", "SMCI", "ACMR", "ENVX", "IRIAF", "IIVI", "ITRN", "KUKA",
+    ],
+    "ROBO": [
+        "ISRG", "ABB", "CGNX", "TRMB", "IRBT", "ZBRA", "NOVT", "BRKS", "AZTA", "OMCL",
+        "SMCI", "ONTO", "ACLS", "MKSI", "COHU", "ICHR", "FORM", "KRNT", "LSCC", "AMBA",
+        "AIXI", "ENVX", "ACMR", "PTC", "ANSS", "CDNS", "SNPS", "ROP", "IDEX", "NDSN",
+    ],
+    "ARKQ": [
+        "TSLA", "PLTR", "KTOS", "PATH", "ACHR", "JOBY", "RKLB", "ARCHER", "LILM", "EVTL",
+        "TER", "TRMB", "ISRG", "DE", "AXON", "NVDA", "GOOGL", "AMZN", "MSFT", "AAPL",
+        "AVAV", "SPCE", "ASTR", "RDW", "LUNR", "MNTS", "UAVS", "ACHR", "LAAX", "BLDE",
+    ],
+    # --- Cloud / SaaS / Internet ETFs ---
+    "ARKW": [
+        "TSLA", "COIN", "MSTR", "NVDA", "META", "GOOGL", "SHOP", "SNAP", "TWTR", "ROKU",
+        "SQ", "HOOD", "OPEN", "UNITY", "U", "RBLX", "SPOT", "PINS", "DDOG", "SNOW",
+        "NET", "CRWD", "ZS", "OKTA", "BILL", "MDB", "HUBS", "DOCN", "BRZE", "CFLT",
+    ],
+    "WCLD": [
+        "NOW", "CRM", "WDAY", "DDOG", "SNOW", "MDB", "HUBS", "BILL", "ZS", "NET",
+        "OKTA", "CRWD", "TEAM", "GTLB", "DOCN", "ESTC", "CFLT", "BRZE", "APPN", "TENB",
+        "MNDY", "FRSH", "SMAR", "BOX", "ALTR", "DOMO", "VMWARE", "PCTY", "PAYC", "NCNO",
+    ],
+    "SKYY": [
+        "MSFT", "GOOGL", "AMZN", "NOW", "CRM", "ADBE", "ORCL", "IBM", "CSCO", "ANET",
+        "WDAY", "DDOG", "SNOW", "MDB", "HUBS", "NET", "ZS", "OKTA", "TEAM", "CFLT",
+        "DOCN", "ESTC", "BRZE", "GTLB", "MNDY", "FRSH", "SMAR", "BOX", "APPN", "ALTR",
+    ],
+    # --- AI & Innovation ETFs ---
+    "AIQ": [
+        "NVDA", "MSFT", "GOOGL", "META", "AMZN", "TSLA", "AVGO", "AMD", "ORCL", "CRM",
+        "PLTR", "PATH", "AI", "BBAI", "SOUN", "GFAI", "SYNTX", "DTST", "AIOT", "MIND",
+        "NOW", "ADBE", "INTU", "SNPS", "CDNS", "CRWD", "PANW", "FTNT", "NET", "DDOG",
+    ],
+    "KOMP": [
+        "TSLA", "NVDA", "PLTR", "MSTR", "COIN", "RBLX", "U", "SHOP", "SQ", "HOOD",
+        "PATH", "AI", "BBAI", "SOUN", "KTOS", "AXON", "ACHR", "JOBY", "RKLB", "AVAV",
+        "CRSP", "EDIT", "NTLA", "BEAM", "ARKG", "MRNA", "BNTX", "NVAX", "PACB", "ILMN",
+    ],
+    # --- ARK Genomics ---
+    "ARKG": [
+        "CRSP", "EDIT", "NTLA", "BEAM", "PACB", "ILMN", "RXRX", "SEER", "NUVB", "VERV",
+        "FATE", "KYMR", "ARQT", "RCUS", "TWST", "CDNA", "GKOS", "EXAS", "OLINK", "PRNT",
+        "IOVA", "TMDX", "ACCD", "MASS", "PGEN", "AGEN", "CLLS", "NKTR", "BLUE", "PTGX",
+    ],
+    # --- FinTech ETF ---
+    "FINX": [
+        "V", "MA", "PYPL", "SQ", "AFRM", "SOFI", "UPST", "LC", "OPEN", "HOOD",
+        "COIN", "MSTR", "NU", "FLYW", "BILL", "PCTY", "PAYC", "NCNO", "LPRO", "DAVE",
+        "TREE", "CURO", "OPORTUN", "MGNI", "EVBG", "WRLD", "EZCORP", "QFIN", "LMND", "ROOT",
+    ],
 }
 
 
