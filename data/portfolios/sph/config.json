@@ -290,7 +290,7 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 3000,
+        "max_tickers": 300,
         "scan_frequency": "daily"
       }
     },
