@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import type { MatrixGridProps, MatrixPosition } from "./types";
 import { pc, pbg, fv, MATRIX_FONT } from "./constants";
 import Sparkline from "./Sparkline";
-import AllocRing from "./AllocRing";
 import Waveform from "./Waveform";
 import Reticle from "./Reticle";
 import TickerTape from "./TickerTape";
@@ -256,65 +255,10 @@ export default function MatrixGrid({
       }}>
 
         {/* HEADER */}
-        <div style={{ padding: "10px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 20 }}>
-            <div>
-              <div style={{ fontSize: 7, color: "#4ade8044", letterSpacing: "0.2em", marginBottom: 3 }}>
-                SYS::MATRIX_v3.0
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: 18, fontWeight: 700, color: "#e8ffe8", letterSpacing: "0.08em", textShadow: "0 0 25px rgba(74,222,128,0.12)" }}>
-                  THE MATRIX
-                </span>
-                <span style={{ fontSize: 8, color: "#f87171", letterSpacing: "0.06em", border: "1px solid #f8717133", padding: "1px 5px", background: "rgba(248,113,113,0.05)" }}>
-                  LIVE
-                </span>
-              </div>
-            </div>
-            <AllocRing positions={positions} portfolios={portfolios} />
-            <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 2 }}>
-              {(["FEED", "SYNC", "SCAN", "EKG", "THREAT"] as const).map((s, i) => (
-                <div key={s} style={{
-                  display: "flex", alignItems: "center", gap: 3, fontSize: 7,
-                  color: i === 4 ? (anomalies.size > 0 ? "#f87171" : "#222") : "#333",
-                  letterSpacing: "0.1em", transition: "color 0.3s",
-                }}>
-                  <span style={{
-                    display: "inline-block", width: 4, height: 4, borderRadius: "50%",
-                    background: i === 4 ? (anomalies.size > 0 ? "#f87171" : "#222") : "#4ade80",
-                    boxShadow: i === 4 && anomalies.size > 0 ? "0 0 6px #f8717166" : i < 4 ? "0 0 4px #4ade8044" : "none",
-                    transition: "all 0.3s",
-                  }} />
-                  {s}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-end" }}>
-            {[
-              { l: "POS", v: String(sorted.length), c: "#e8ffe8" },
-              { l: "EQUITY", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
-              { l: "AVG P&L", v: `${avgP}%`, c: pc(parseFloat(avgP)) },
-            ].map((s) => (
-              <div key={s.l} style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 7, color: "#222", letterSpacing: "0.14em" }}>{s.l}</div>
-                <div style={{ fontSize: 13, color: s.c, fontWeight: 600 }}>{s.v}</div>
-              </div>
-            ))}
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 7, color: "#222", letterSpacing: "0.14em" }}>W/L</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>
-                <span style={{ color: "#4ade80" }}>{wins}</span>
-                <span style={{ color: "#151515" }}>/</span>
-                <span style={{ color: "#f87171" }}>{positions.length - wins}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 7, color: "#222", letterSpacing: "0.14em" }}>SYS.CLK</div>
-              <div style={{ fontSize: 10, color: "#4ade8044" }}>{clock}</div>
-            </div>
-          </div>
+        <div style={{ padding: "10px 20px 4px", flexShrink: 0 }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: "#e8ffe8", letterSpacing: "0.08em", textShadow: "0 0 25px rgba(74,222,128,0.12)" }}>
+            THE MATRIX
+          </span>
         </div>
 
         {/* EKG VITALS */}
@@ -342,6 +286,27 @@ export default function MatrixGrid({
         {/* CONTROLS */}
         <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {/* Stats inline with sort */}
+            <div style={{ display: "flex", gap: 12, alignItems: "baseline", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
+              {[
+                { l: "POS", v: String(sorted.length), c: "#e8ffe8" },
+                { l: "EQUITY", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
+                { l: "AVG P&L", v: `${avgP}%`, c: pc(parseFloat(avgP)) },
+              ].map((s) => (
+                <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 6, color: "#333", letterSpacing: "0.12em" }}>{s.l}</span>
+                  <span style={{ fontSize: 11, color: s.c, fontWeight: 600 }}>{s.v}</span>
+                </div>
+              ))}
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ fontSize: 6, color: "#333", letterSpacing: "0.12em" }}>W/L</span>
+                <span style={{ fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ color: "#4ade80" }}>{wins}</span>
+                  <span style={{ color: "#252525" }}>/</span>
+                  <span style={{ color: "#f87171" }}>{positions.length - wins}</span>
+                </span>
+              </div>
+            </div>
             <span style={{ fontSize: 7, color: "#1a1a1a", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
             {(["value", "perf", "alpha", "portfolio"] as const).map((k, n) => (
               <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
@@ -518,6 +483,7 @@ export default function MatrixGrid({
             <Waveform width={100} height={12} />
             <span>MATRIX::v3.0</span>
             <span style={{ color: "#4ade8044", animation: "matrixBlink 2s step-end infinite" }}>&#9632; LIVE</span>
+            <span style={{ color: "#4ade8055", letterSpacing: "0.05em" }}>{clock}</span>
           </div>
         </div>
       </div>
