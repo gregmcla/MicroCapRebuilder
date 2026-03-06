@@ -254,13 +254,6 @@ export default function MatrixGrid({
         opacity: boot >= 3 ? 1 : 0, transition: "opacity 0.6s",
       }}>
 
-        {/* HEADER */}
-        <div style={{ padding: "10px 20px 4px", flexShrink: 0 }}>
-          <span style={{ fontSize: 18, fontWeight: 700, color: "#e8ffe8", letterSpacing: "0.08em", textShadow: "0 0 25px rgba(74,222,128,0.12)" }}>
-            THE MATRIX
-          </span>
-        </div>
-
         {/* EKG VITALS */}
         {showEKG && (
           <div style={{
@@ -286,6 +279,10 @@ export default function MatrixGrid({
         {/* CONTROLS */}
         <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {/* Logo */}
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#e8ffe8", letterSpacing: "0.08em", textShadow: "0 0 20px rgba(74,222,128,0.1)", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
+              THE MATRIX
+            </span>
             {/* Stats inline with sort */}
             <div style={{ display: "flex", gap: 12, alignItems: "baseline", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
               {[
