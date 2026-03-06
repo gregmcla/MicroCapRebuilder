@@ -410,6 +410,59 @@ class StockDiscovery:
             notes=", ".join(notes_parts) if notes_parts else "Standard candidate",
         )
 
+    # ─── Bucketed Selection ───────────────────────────────────────────────────────
+
+    def _select_by_buckets(
+        self,
+        candidates: List[DiscoveredStock],
+        sector_weights: Dict[str, int],
+        total_slots: int,
+    ) -> List[DiscoveredStock]:
+        """Select top-scoring candidates per sector bucket based on weight ratios.
+
+        Candidates compete within their sector bucket, not globally.
+        Uses fuzzy sector matching (via _sector_matches) to handle yfinance naming
+        mismatches (e.g., 'Communication Services' matches 'Communication').
+
+        Args:
+            candidates: All passing candidates (already deduplicated, sorted by score).
+            sector_weights: Maps sector name → relative integer weight.
+            total_slots: Total watchlist slots to fill.
+
+        Returns:
+            Selected candidates, at most total_slots total. Empty buckets stay empty.
+        """
+        # Compute per-bucket slot counts (proportional to weights)
+        total_weight = sum(sector_weights.values()) or 1
+        sorted_sectors = sorted(sector_weights.items(), key=lambda x: x[1], reverse=True)
+        bucket_sizes: Dict[str, int] = {}
+        allocated = 0
+        for sector, weight in sorted_sectors:
+            size = round(total_slots * weight / total_weight)
+            bucket_sizes[sector] = size
+            allocated += size
+        # Fix rounding: remainder goes to highest-weight sector
+        diff = total_slots - allocated
+        if diff != 0 and sorted_sectors:
+            bucket_sizes[sorted_sectors[0][0]] += diff
+
+        # Group candidates into buckets using fuzzy sector matching
+        by_bucket: Dict[str, List[DiscoveredStock]] = {s: [] for s in sector_weights}
+        for candidate in candidates:
+            for bucket_key in sector_weights:
+                if _sector_matches(candidate.sector, [bucket_key]):
+                    by_bucket[bucket_key].append(candidate)
+                    break  # assign to first matching bucket only
+
+        # Fill each bucket: top N by discovery_score (candidates already sorted)
+        selected: List[DiscoveredStock] = []
+        for bucket_key, limit in bucket_sizes.items():
+            bucket = by_bucket[bucket_key]
+            # No need to re-sort: candidates were pre-sorted by score in run_all_scans
+            selected.extend(bucket[:limit])
+
+        return selected
+
     # ─── Scan Types ──────────────────────────────────────────────────────────────
 
     def scan_momentum_breakouts(self, universe: List[str] = None) -> List[DiscoveredStock]:
@@ -789,9 +842,21 @@ class StockDiscovery:
             if existing is None or candidate.discovery_score > existing.discovery_score:
                 ticker_map[candidate.ticker] = candidate
 
-        # Sort by discovery score
+        # Sort by discovery score (global sort — used as-is in global mode,
+        # or as pre-sort before bucket selection in bucketed mode)
         result = list(ticker_map.values())
         result.sort(key=lambda x: x.discovery_score, reverse=True)
+
+        # Bucketed mode: select top-N per sector bucket when sector_weights configured
+        watchlist_cfg = self.discovery_config.get("watchlist", {})
+        sector_weights = watchlist_cfg.get("sector_weights", {})
+        if sector_weights:
+            total_slots = watchlist_cfg.get(
+                "total_watchlist_slots",
+                watchlist_cfg.get("max_tickers", 150),
+            )
+            result = self._select_by_buckets(result, sector_weights, total_slots)
+            print(f"  Bucketed selection: {len(result)} candidates across {len(sector_weights)} sectors")
 
         total_elapsed = time.time() - scan_start
         print(f"\nTotal unique candidates: {len(result)} (scan completed in {total_elapsed:.1f}s)")
