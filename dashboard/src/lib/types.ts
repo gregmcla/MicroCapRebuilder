@@ -117,6 +117,10 @@ export interface Transaction {
   stop_loss: number | null;
   take_profit: number | null;
   reason: string;
+  factor_scores?: string | null;
+  composite_score?: number | null;
+  regime_at_entry?: string | null;
+  signal_rank?: number | null;
 }
 
 export interface Snapshot {
@@ -155,6 +159,7 @@ export interface PortfolioState {
   day_pnl_pct: number;
   total_return_pct: number;
   all_time_pnl: number;
+  realized_pnl: number;
   starting_capital: number;
   timestamp: string;
 }

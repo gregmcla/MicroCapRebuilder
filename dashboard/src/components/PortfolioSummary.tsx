@@ -421,6 +421,8 @@ export default function PortfolioSummary() {
   const allTimeColor = allTimePnl >= 0 ? "text-profit" : "text-loss";
   const dayColor = (state?.day_pnl ?? 0) >= 0 ? "text-profit" : "text-loss";
   const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
+  const realizedPnl = state?.realized_pnl ?? 0;
+  const realizedColor = realizedPnl >= 0 ? "text-profit" : "text-loss";
 
   const animatedEquity = useCountUp(state?.total_equity ?? 0, 1200, 2);
 
@@ -463,6 +465,13 @@ export default function PortfolioSummary() {
                 {allTimePnl >= 0 ? "+" : ""}${allTimePnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
               <div style={labelStyle}>All-Time P&L</div>
+            </div>
+            {/* Realized P&L */}
+            <div>
+              <div className={`font-mono text-sm tabular-nums font-semibold ${realizedColor}`}>
+                {realizedPnl >= 0 ? "+" : ""}${realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </div>
+              <div style={labelStyle}>Realized</div>
             </div>
             {/* Open P&L */}
             <div>
