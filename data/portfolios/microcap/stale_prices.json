@@ -1,3 +1,14 @@
 {
-  "ALE": 46
+  "ALE": 46,
+  "CRC": 1,
+  "ADC": 1,
+  "TDW": 1,
+  "NOG": 1,
+  "CRGY": 1,
+  "CW": 1,
+  "AROC": 1,
+  "ETR": 1,
+  "TRGP": 1,
+  "NJR": 1,
+  "PNW": 1
 }

@@ -183,6 +183,46 @@
       "universe": "allcap",
       "created": "2026-03-01T17:10:28",
       "starting_capital": 500000.0,
+      "active": false
+    },
+    "midcap": {
+      "id": "midcap",
+      "name": "midcap",
+      "universe": "midcap",
+      "created": "2026-03-02T12:32:34",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "sph": {
+      "id": "sph",
+      "name": "SPH",
+      "universe": "smallcap",
+      "created": "2026-03-02T18:41:16",
+      "starting_capital": 350000.0,
+      "active": false
+    },
+    "allcap": {
+      "id": "allcap",
+      "name": "AllCap",
+      "universe": "allcap",
+      "created": "2026-03-03T12:20:08",
+      "starting_capital": 1000000.0,
+      "active": true
+    },
+    "energy": {
+      "id": "energy",
+      "name": "Energy",
+      "universe": "allcap",
+      "created": "2026-03-04T13:08:03",
+      "starting_capital": 200000.0,
+      "active": false
+    },
+    "10k": {
+      "id": "10k",
+      "name": "10k",
+      "universe": "allcap",
+      "created": "2026-03-04T14:13:12",
+      "starting_capital": 10000.0,
       "active": true
     }
   }

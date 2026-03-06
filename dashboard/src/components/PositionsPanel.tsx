@@ -41,6 +41,9 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
   const dayTotalStr = pos.day_change != null
     ? pos.day_change >= 0 ? `+$${pos.day_change.toFixed(2)}` : `-$${Math.abs(pos.day_change).toFixed(2)}`
     : "--";
+  const dayPctStr = pos.day_change_pct != null
+    ? `${pos.day_change_pct >= 0 ? "+" : ""}${pos.day_change_pct.toFixed(2)}%`
+    : "";
 
   const overallPnlStr = pos.unrealized_pnl >= 0
     ? `+$${Math.round(pos.unrealized_pnl).toLocaleString("en-US")}`
@@ -77,10 +80,11 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
         ${pos.current_price.toFixed(2)}
       </span>
 
-      {/* Day P&L — w-[60px] single line */}
-      <span className={`w-[60px] font-mono text-[12px] tabular-nums text-right shrink-0 ${dayColor}`}>
-        {dayTotalStr}
-      </span>
+      {/* Day P&L — w-[68px] two lines */}
+      <div className={`w-[68px] flex flex-col items-end justify-center shrink-0 ${dayColor}`}>
+        <span className="font-mono text-[12px] font-semibold tabular-nums leading-tight">{dayTotalStr}</span>
+        {dayPctStr && <span className="font-mono text-[10px] tabular-nums leading-tight opacity-80">{dayPctStr}</span>}
+      </div>
 
       {/* Overall P&L — w-[68px] two lines */}
       <div className={`w-[68px] flex flex-col items-end justify-center shrink-0 ${pnlColor}`}>
