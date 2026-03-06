@@ -110,6 +110,11 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     setSectorWeights(weights);
   }, [sectors]);
 
+  function updateSectorWeight(sector: string, value: string) {
+    const num = Math.max(1, Math.min(999, parseInt(value) || 1));
+    setSectorWeights((prev) => ({ ...prev, [sector]: num }));
+  }
+
   // AI state
   const [aiPrompt, setAiPrompt] = useState("");
   const [generatedStrategy, setGeneratedStrategy] = useState<GeneratedStrategy | null>(null);
@@ -430,21 +435,16 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
 
     if (isAllSectors) {
       return (
-        <div className="text-center text-zinc-400 py-8">
+        <div className="text-center py-8" style={{ color: "var(--text-2)" }}>
           <p className="text-sm">No sector filter — using global score sort.</p>
-          <p className="text-xs mt-1 text-zinc-500">Sector weights only apply when specific sectors are selected.</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-3)" }}>Sector weights only apply when specific sectors are selected.</p>
         </div>
       );
     }
 
-    function updateWeight(sector: string, value: string) {
-      const num = Math.max(1, Math.min(999, parseInt(value) || 1));
-      setSectorWeights((prev) => ({ ...prev, [sector]: num }));
-    }
-
     return (
       <div className="space-y-3">
-        <p className="text-xs text-zinc-400 mb-4">
+        <p className="text-xs mb-4" style={{ color: "var(--text-2)" }}>
           Set relative weight for each sector. Higher = more watchlist slots. Values are proportional — they don't need to sum to 100.
         </p>
         {sectors.map((sector) => {
@@ -452,26 +452,27 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
           const pct = total > 0 ? Math.round((weight / total) * 100) : 0;
           return (
             <div key={sector} className="flex items-center gap-3">
-              <span className="text-sm text-zinc-300 w-44 shrink-0">{sector}</span>
+              <span className="text-sm w-44 shrink-0" style={{ color: "var(--text-1)" }}>{sector}</span>
               <input
                 type="number"
                 min={1}
                 max={999}
                 value={weight}
-                onChange={(e) => updateWeight(sector, e.target.value)}
-                className="w-20 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-white text-right"
+                onChange={(e) => updateSectorWeight(sector, e.target.value)}
+                className="w-20 rounded px-2 py-1 text-sm text-right"
+                style={{ background: "var(--surface-2)", border: "1px solid var(--border-1)", color: "var(--text-1)" }}
               />
-              <span className="text-xs text-zinc-500 w-12">{pct}%</span>
-              <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
+              <span className="text-xs w-12" style={{ color: "var(--text-2)" }}>{pct}%</span>
+              <div className="flex-1 rounded-full h-1.5" style={{ background: "var(--surface-2)" }}>
                 <div
-                  className="bg-blue-500 h-1.5 rounded-full transition-all"
-                  style={{ width: `${pct}%` }}
+                  className="h-1.5 rounded-full transition-all"
+                  style={{ width: `${pct}%`, background: "var(--accent)" }}
                 />
               </div>
             </div>
           );
         })}
-        <p className="text-xs text-zinc-600 mt-2">Total relative weight: {total}</p>
+        <p className="text-xs mt-2" style={{ color: "var(--text-3)" }}>Total relative weight: {total}</p>
       </div>
     );
   }
