@@ -3,7 +3,6 @@ import { useRef, useEffect, useState, useCallback } from "react";
 interface InteractiveSparklineProps {
   data: number[];        // raw price / equity values
   color: string;
-  w?: number;
   h?: number;
   timestamps?: number[]; // unix seconds — one per data point, for tooltip dates
 }
@@ -13,20 +12,35 @@ const PAD_B = 8;
 const PAD_L = 4;
 const PAD_R = 4;
 
-export default function InteractiveSparkline({ data, color, w = 340, h = 72, timestamps }: InteractiveSparklineProps) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
+export default function InteractiveSparkline({ data, color, h = 80, timestamps }: InteractiveSparklineProps) {
+  const wrapRef   = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [w,        setW]        = useState(360);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  // Track container width
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const width = entries[0].contentRect.width;
+      if (width > 0) setW(Math.floor(width));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const cw = w - PAD_L - PAD_R;
   const ch = h - PAD_T - PAD_B;
 
-  const px = useCallback((i: number) => PAD_L + (i / Math.max(data.length - 1, 1)) * cw, [data.length, cw]);
-  const py = useCallback((v: number, mn: number, rg: number) => PAD_T + ((Math.max(...data) - v) / rg) * ch, [data, ch]);
+  const toX = useCallback((i: number) =>
+    PAD_L + (i / Math.max(data.length - 1, 1)) * cw,
+  [data.length, cw]);
 
-  // Single effect: resize + draw whenever any dep changes (including hoverIdx)
+  // Draw: runs whenever w, h, data, color, hoverIdx changes
   useEffect(() => {
     const c = canvasRef.current;
-    if (!c || data.length < 2) return;
+    if (!c || data.length < 2 || w === 0) return;
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     c.width  = w * dpr;
@@ -38,7 +52,6 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
     const mx  = Math.max(...data);
     const rg  = mx - mn || 1;
     const toY = (v: number) => PAD_T + ((mx - v) / rg) * ch;
-    const toX = (i: number) => px(i);
 
     // ── Area fill ────────────────────────────────────────────────────────────
     ctx.beginPath();
@@ -123,7 +136,7 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
       ctx.filter = "none";
       ctx.restore();
 
-      // Dot core (portfolio color ring + white centre)
+      // Dot core
       ctx.save();
       ctx.beginPath();
       ctx.arc(dotX, dotY, 4.5, 0, Math.PI * 2);
@@ -136,10 +149,10 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
       ctx.restore();
 
       // Tooltip
-      const valStr  = `$${val.toFixed(2)}`;
-      const pctStr  = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+      const valStr   = `$${val.toFixed(2)}`;
+      const pctStr   = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
       const pctColor = pct >= 0 ? "#4ade80" : "#f87171";
-      const dateStr = timestamps?.[idx]
+      const dateStr  = timestamps?.[idx]
         ? new Date(timestamps[idx] * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : null;
 
@@ -153,13 +166,11 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
       const boxW  = dateW + valW + pctW + 16;
       const boxH  = 20;
 
-      // Position: prefer right of cursor, flip left near edge
       let tx = dotX + 10;
       if (tx + boxW > w - PAD_R) tx = dotX - boxW - 10;
       tx = Math.max(PAD_L, tx);
       const ty = Math.max(PAD_T + 2, Math.min(dotY - boxH / 2, PAD_T + ch - boxH));
 
-      // Card background
       ctx.fillStyle   = "rgba(4,6,10,0.92)";
       ctx.strokeStyle = "rgba(255,255,255,0.08)";
       ctx.lineWidth   = 1;
@@ -168,8 +179,6 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
       ctx.fill();
       ctx.stroke();
 
-      // Values
-      ctx.textAlign = "left";
       let cx = tx + 8;
       if (dateStr) {
         ctx.fillStyle = "rgba(255,255,255,0.35)";
@@ -182,26 +191,26 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72, tim
       ctx.fillText(pctStr, cx + valW + 6, ty + boxH / 2);
       ctx.restore();
     }
-  }, [data, color, w, h, hoverIdx, px, ch, timestamps]);
+  }, [data, color, w, h, hoverIdx, toX, ch, timestamps]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
     const relX = e.clientX - rect.left;
-    // Convert CSS pixel → data index
     const frac = (relX - PAD_L) / (rect.width - PAD_L - PAD_R);
-    const idx  = Math.round(frac * (data.length - 1));
-    setHoverIdx(Math.max(0, Math.min(data.length - 1, idx)));
+    setHoverIdx(Math.max(0, Math.min(data.length - 1, Math.round(frac * (data.length - 1)))));
   }, [data.length]);
 
   const handleMouseLeave = useCallback(() => setHoverIdx(null), []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ width: w, height: h, display: "block", cursor: "crosshair" }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    />
+    <div ref={wrapRef} style={{ width: "100%", height: h }}>
+      <canvas
+        ref={canvasRef}
+        style={{ width: "100%", height: h, display: "block", cursor: "crosshair" }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      />
+    </div>
   );
 }

@@ -178,9 +178,9 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               <div style={{
                 padding: "10px 12px",
                 background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
-                flex: 1, display: "flex", alignItems: "center",
+                flex: 1, display: "flex", alignItems: "center", width: "100%",
               }}>
-                <InteractiveSparkline data={prices} color={pos.portfolioColor} w={360} h={80} timestamps={timestamps} />
+                <InteractiveSparkline data={prices} color={pos.portfolioColor} h={80} timestamps={timestamps} />
               </div>
             );
           })()}
