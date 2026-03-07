@@ -6,6 +6,7 @@ import Waveform from "./Waveform";
 import Reticle from "./Reticle";
 import TickerTape from "./TickerTape";
 import DetailCard from "./DetailCard";
+import BottomPanel from "./BottomPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
 import EKGStrip from "./EKGStrip";
 import ActionsTab from "../ActionsTab";
@@ -417,7 +418,7 @@ export default function MatrixGrid({
         </div>
 
         {/* GRID (with 3D parallax) */}
-        <div style={{ flex: 1, padding: "4px 14px", overflow: "auto", minHeight: 0, display: viewTab === "grid" ? undefined : "none" }}>
+        <div style={{ flex: 1, padding: "4px 14px", overflow: "auto", minHeight: 0, display: viewTab === "grid" ? undefined : "none", paddingBottom: selectedPos && showSecondaryTabs ? 296 : undefined }}>
           <div
             ref={gridRef}
             style={{
@@ -640,8 +641,11 @@ export default function MatrixGrid({
         </div>
       )}
 
-      {/* DETAIL CARD OVERLAY */}
-      <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+      {/* DETAIL: bottom panel in portfolio view, modal in overview */}
+      {showSecondaryTabs
+        ? <BottomPanel pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+        : <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+      }
     </div>
   );
 }
