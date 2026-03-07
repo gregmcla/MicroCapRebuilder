@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { MatrixPosition, WatchlistCandidate } from "./types";
 import type { TickerInfo } from "../../lib/types";
 import { api } from "../../lib/api";
-import Sparkline from "./Sparkline";
+import InteractiveSparkline from "./InteractiveSparkline";
 import Reticle from "./Reticle";
 import { pc, MATRIX_FONT } from "./constants";
 
@@ -78,7 +78,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
 
       {/* 3-column body */}
       <div style={{
-        flex: 1, display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr",
+        flex: 1, display: "grid", gridTemplateColumns: "1fr 1.6fr 0.85fr",
         gap: 0, overflow: "hidden", position: "relative", zIndex: 2,
       }}>
 
@@ -160,33 +160,111 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           </div>
         </div>
 
-        {/* ── MIDDLE: company info ──────────────────────────────────────────── */}
+        {/* ── MIDDLE: sparkline + position stats ───────────────────────────── */}
         <div style={{
           padding: "14px 18px", borderRight: `1px solid ${col}18`,
           display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
         }}>
+          {/* Sparkline — interactive, full width, tall */}
+          {pos.sparkline.length > 0 && (
+            <div style={{
+              padding: "10px 12px",
+              background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
+              flex: 1, display: "flex", alignItems: "center",
+            }}>
+              <InteractiveSparkline data={pos.sparkline} color={pos.portfolioColor} w={360} h={80} />
+            </div>
+          )}
+
+          {/* Position stats 2×2 */}
+          {(() => {
+            const items = [
+              pos.value > 0 ? { label: "VALUE", val: `$${pos.value.toLocaleString()}` } : null,
+              pos.currentPrice != null ? { label: "PRICE", val: `$${pos.currentPrice.toFixed(2)}` } : null,
+              pos.shares != null ? { label: "SHARES", val: String(pos.shares) } : null,
+              pos.avgCost != null ? { label: "AVG COST", val: `$${pos.avgCost.toFixed(2)}` } : null,
+            ].filter(Boolean) as { label: string; val: string }[];
+            if (items.length === 0) return null;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                {items.map((s) => (
+                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "6px 8px", border: "1px solid rgba(255,255,255,0.03)" }}>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 3 }}>{s.label}</div>
+                    <div style={{ fontSize: 11, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Stop / take-profit inline with signal bars */}
+          <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
+            {pos.stopLoss != null && (
+              <div style={{ background: "rgba(248,113,113,0.04)", padding: "6px 8px", border: "1px solid rgba(248,113,113,0.14)", minWidth: 80 }}>
+                <div style={{ fontSize: 6, color: "#f87171", letterSpacing: "0.14em", marginBottom: 3 }}>STOP</div>
+                <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
+                {pos.currentPrice != null && (
+                  <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
+                    {((pos.stopLoss - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
+                  </div>
+                )}
+              </div>
+            )}
+            {pos.takeProfit != null && (
+              <div style={{ background: "rgba(74,222,128,0.04)", padding: "6px 8px", border: "1px solid rgba(74,222,128,0.14)", minWidth: 80 }}>
+                <div style={{ fontSize: 6, color: "#4ade80", letterSpacing: "0.14em", marginBottom: 3 }}>TARGET</div>
+                <div style={{ fontSize: 11, color: "#4ade80", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
+                {pos.currentPrice != null && (
+                  <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
+                    {((pos.takeProfit - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
+                  </div>
+                )}
+              </div>
+            )}
+            {/* Signal bars fill remaining space */}
+            <div style={{ flex: 1, display: "flex", gap: 1, alignItems: "flex-end", height: 28 }}>
+              {Array.from({ length: 60 }, (_, i) => {
+                const h = 2 + Math.abs(Math.sin(i * 0.3 + pos.perf) * Math.cos(i * 0.17)) * 26;
+                return (
+                  <div key={i} style={{
+                    flex: 1, height: h,
+                    background: pos.perf >= 0
+                      ? `rgba(74,222,128,${0.10 + (h / 28) * 0.38})`
+                      : `rgba(248,113,113,${0.10 + (h / 28) * 0.38})`,
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── RIGHT: company info ───────────────────────────────────────────── */}
+        <div style={{
+          padding: "14px 16px",
+          display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
+        }}>
           {/* Company name + link */}
           {info?.name ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
               <span style={{ fontSize: 10, color: "#bbb", fontWeight: 700, letterSpacing: "0.03em" }}>{info.name}</span>
-              {info.industry && <span style={{ fontSize: 8, color: "#555" }}>{info.industry}</span>}
               {info.website && (
                 <a href={info.website} target="_blank" rel="noreferrer"
                   style={{ color: col, fontSize: 9, textDecoration: "none", opacity: 0.7, marginLeft: "auto" }}>
-                  ↗ site
+                  ↗
                 </a>
               )}
             </div>
           ) : (
             <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.06em" }}>LOADING INFO...</div>
           )}
+          {info?.industry && <div style={{ fontSize: 8, color: "#555" }}>{info.industry}</div>}
 
           {/* Description */}
           {info?.description && (
             <div style={{
               fontSize: 8, color: "#666", lineHeight: 1.65,
               overflow: "hidden",
-              display: "-webkit-box", WebkitLineClamp: 5,
+              display: "-webkit-box", WebkitLineClamp: 4,
               WebkitBoxOrient: "vertical" as const,
             }}>
               {info.description}
@@ -195,7 +273,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
 
           {/* Extra metrics */}
           {info && (
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {info.market_cap != null && (
                 <div>
                   <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
@@ -237,13 +315,13 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           {/* Social heat */}
           {social?.social_heat && (
             <div style={{
-              display: "flex", alignItems: "center", gap: 12,
+              display: "flex", alignItems: "center", gap: 10,
               padding: "5px 8px", marginTop: "auto",
               background: `${HEAT_COLOR[social.social_heat] ?? "#555"}0e`,
               border: `1px solid ${HEAT_COLOR[social.social_heat] ?? "#555"}22`,
             }}>
               <div>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL HEAT</div>
+                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL</div>
                 <div style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                   color: HEAT_COLOR[social.social_heat] ?? "#555",
@@ -255,7 +333,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               {social.social_bullish_pct != null && (
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 4 }}>
-                    BULLISH — {social.social_bullish_pct.toFixed(0)}%
+                    BULL {social.social_bullish_pct.toFixed(0)}%
                   </div>
                   <div style={{ height: 3, background: "rgba(255,255,255,0.06)", position: "relative" }}>
                     <div style={{
@@ -268,86 +346,6 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               )}
             </div>
           )}
-        </div>
-
-        {/* ── RIGHT: sparkline + position stats ────────────────────────────── */}
-        <div style={{
-          padding: "14px 18px",
-          display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
-        }}>
-          {/* Sparkline */}
-          {pos.sparkline.length > 0 && (
-            <div style={{
-              padding: "8px 10px",
-              background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
-            }}>
-              <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={220} h={48} />
-            </div>
-          )}
-
-          {/* Position stats */}
-          {(() => {
-            const items = [
-              pos.value > 0 ? { label: "VALUE", val: `$${pos.value.toLocaleString()}` } : null,
-              pos.currentPrice != null ? { label: "PRICE", val: `$${pos.currentPrice.toFixed(2)}` } : null,
-              pos.shares != null ? { label: "SHARES", val: String(pos.shares) } : null,
-              pos.avgCost != null ? { label: "AVG COST", val: `$${pos.avgCost.toFixed(2)}` } : null,
-            ].filter(Boolean) as { label: string; val: string }[];
-            if (items.length === 0) return null;
-            return (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                {items.map((s) => (
-                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "6px 8px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 3 }}>{s.label}</div>
-                    <div style={{ fontSize: 11, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* Stop / take-profit */}
-          {(pos.stopLoss != null || pos.takeProfit != null) && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {pos.stopLoss != null && (
-                <div style={{ background: "rgba(248,113,113,0.04)", padding: "6px 8px", border: "1px solid rgba(248,113,113,0.14)" }}>
-                  <div style={{ fontSize: 6, color: "#f87171", letterSpacing: "0.14em", marginBottom: 3 }}>STOP</div>
-                  <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
-                  {pos.currentPrice != null && (
-                    <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
-                      {((pos.stopLoss - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
-                    </div>
-                  )}
-                </div>
-              )}
-              {pos.takeProfit != null && (
-                <div style={{ background: "rgba(74,222,128,0.04)", padding: "6px 8px", border: "1px solid rgba(74,222,128,0.14)" }}>
-                  <div style={{ fontSize: 6, color: "#4ade80", letterSpacing: "0.14em", marginBottom: 3 }}>TARGET</div>
-                  <div style={{ fontSize: 11, color: "#4ade80", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
-                  {pos.currentPrice != null && (
-                    <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
-                      {((pos.takeProfit - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Signal bars */}
-          <div style={{ display: "flex", gap: 1, alignItems: "flex-end", height: 16, marginTop: "auto" }}>
-            {Array.from({ length: 50 }, (_, i) => {
-              const h = 2 + Math.abs(Math.sin(i * 0.3 + pos.perf) * Math.cos(i * 0.17)) * 14;
-              return (
-                <div key={i} style={{
-                  flex: 1, height: h,
-                  background: pos.perf >= 0
-                    ? `rgba(74,222,128,${0.12 + (h / 16) * 0.4})`
-                    : `rgba(248,113,113,${0.12 + (h / 16) * 0.4})`,
-                }} />
-              );
-            })}
-          </div>
         </div>
       </div>
 
