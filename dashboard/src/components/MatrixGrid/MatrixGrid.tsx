@@ -168,6 +168,12 @@ export default function MatrixGrid({
   const top = positions.length > 0 ? [...positions].sort((a, b) => b.perf - a.perf)[0] : null;
   const bot = positions.length > 0 ? [...positions].sort((a, b) => a.perf - b.perf)[0] : null;
   const tickers = useMemo(() => [...new Set(positions.map((p) => p.ticker))], [positions]);
+  const socialMap = useMemo(() => {
+    const m = new Map<string, string>();
+    watchlistCandidates.forEach(c => { if (c.social_heat) m.set(c.ticker, c.social_heat); });
+    return m;
+  }, [watchlistCandidates]);
+  const CELL_HEAT: Record<string, string> = { SPIKING: "#f87171", HOT: "#fb923c", WARM: "#facc15" };
 
   return (
     <div
@@ -478,6 +484,21 @@ export default function MatrixGrid({
                     <div style={{ position: "absolute", top: 2, right: 3, fontSize: 6, color: "#f87171", textShadow: "0 0 4px rgba(248,113,113,0.5)" }}>&#9888;</div>
                   )}
 
+                  {/* Social heat dot */}
+                  {(() => {
+                    const heat = socialMap.get(pos.ticker);
+                    const hc = heat ? (CELL_HEAT[heat] ?? null) : null;
+                    if (!hc) return null;
+                    return (
+                      <div style={{
+                        position: "absolute", top: 3, left: 6,
+                        width: 4, height: 4, borderRadius: "50%",
+                        background: hc,
+                        boxShadow: `0 0 5px ${hc}99`,
+                      }} />
+                    );
+                  })()}
+
                   {/* Value bar */}
                   <div style={{
                     position: "absolute", bottom: 0, left: 0,
@@ -620,7 +641,7 @@ export default function MatrixGrid({
       )}
 
       {/* DETAIL CARD OVERLAY */}
-      <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} />
+      <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
     </div>
   );
 }

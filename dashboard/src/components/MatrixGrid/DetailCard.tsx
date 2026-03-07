@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
-import type { MatrixPosition } from "./types";
+import type { MatrixPosition, WatchlistCandidate } from "./types";
 import type { TickerInfo } from "../../lib/types";
 import { api } from "../../lib/api";
 import Sparkline from "./Sparkline";
 import Reticle from "./Reticle";
 import { pc, MATRIX_FONT } from "./constants";
 
+const HEAT_COLOR: Record<string, string> = {
+  SPIKING: "#f87171", HOT: "#fb923c", WARM: "#facc15", COLD: "#555",
+};
+
 interface DetailCardProps {
   pos: MatrixPosition | null;
   onClose: () => void;
   portfolioId?: string;
+  watchlistCandidates?: WatchlistCandidate[];
 }
 
-export default function DetailCard({ pos, onClose, portfolioId }: DetailCardProps) {
+export default function DetailCard({ pos, onClose, portfolioId, watchlistCandidates = [] }: DetailCardProps) {
   const [info, setInfo] = useState<TickerInfo | null>(null);
 
   useEffect(() => {
@@ -31,6 +36,7 @@ export default function DetailCard({ pos, onClose, portfolioId }: DetailCardProp
 
   if (!pos) return null;
   const col = pos.portfolioColor;
+  const social = watchlistCandidates.find(c => c.ticker === pos.ticker);
 
   return (
     <div
@@ -92,13 +98,57 @@ export default function DetailCard({ pos, onClose, portfolioId }: DetailCardProp
             </div>
           </div>
 
-          {/* Sparkline */}
-          <div style={{
-            margin: "16px 0 14px", padding: "12px",
-            background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
-          }}>
-            <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={424} h={60} />
-          </div>
+          {/* Social sentiment — shown when ticker is on watchlist */}
+          {social?.social_heat && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, margin: "12px 0 4px",
+              padding: "6px 10px",
+              background: `${HEAT_COLOR[social.social_heat] ?? "#555"}0f`,
+              border: `1px solid ${HEAT_COLOR[social.social_heat] ?? "#555"}22`,
+            }}>
+              <div>
+                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL HEAT</div>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+                  color: HEAT_COLOR[social.social_heat] ?? "#555",
+                  textShadow: `0 0 8px ${HEAT_COLOR[social.social_heat] ?? "#555"}55`,
+                }}>
+                  {social.social_heat}
+                </div>
+              </div>
+              {social.social_rank != null && (
+                <div>
+                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>RANK</div>
+                  <div style={{ fontSize: 10, color: "#aaa" }}>#{social.social_rank}</div>
+                </div>
+              )}
+              {social.social_bullish_pct != null && (
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 4 }}>
+                    BULLISH SENTIMENT — {social.social_bullish_pct.toFixed(0)}%
+                  </div>
+                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", position: "relative" }}>
+                    <div style={{
+                      position: "absolute", left: 0, top: 0, bottom: 0,
+                      width: `${social.social_bullish_pct}%`,
+                      background: social.social_bullish_pct >= 60 ? "#4ade80" : social.social_bullish_pct >= 40 ? "#facc15" : "#f87171",
+                      transition: "width 0.4s",
+                    }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Sparkline — only when we have real data */}
+          {pos.sparkline.length > 0 && (
+            <div style={{
+              margin: "16px 0 14px", padding: "12px",
+              background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
+            }}>
+              <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={424} h={60} />
+            </div>
+          )}
 
           {/* Company info */}
           {info && (
@@ -166,35 +216,50 @@ export default function DetailCard({ pos, onClose, portfolioId }: DetailCardProp
             </div>
           )}
 
-          {/* Primary stats grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-            {[
-              { label: "MARKET VALUE", val: `$${pos.value.toLocaleString()}` },
-              { label: "CURRENT PRICE", val: pos.currentPrice != null ? `$${pos.currentPrice.toFixed(2)}` : "N/A" },
-              { label: "SHARES", val: pos.shares != null ? pos.shares.toString() : "N/A" },
-              { label: "AVG COST", val: pos.avgCost != null ? `$${pos.avgCost.toFixed(2)}` : "N/A" },
-            ].map((s) => (
-              <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: 13, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
+          {/* Primary stats grid — only render boxes where data exists */}
+          {(() => {
+            const items = [
+              pos.value > 0 ? { label: "MARKET VALUE", val: `$${pos.value.toLocaleString()}` } : null,
+              pos.currentPrice != null ? { label: "CURRENT PRICE", val: `$${pos.currentPrice.toFixed(2)}` } : null,
+              pos.shares != null ? { label: "SHARES", val: pos.shares.toString() } : null,
+              pos.avgCost != null ? { label: "AVG COST", val: `$${pos.avgCost.toFixed(2)}` } : null,
+            ].filter(Boolean) as { label: string; val: string }[];
+            if (items.length === 0) return null;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 10, marginBottom: 12 }}>
+                {items.map((s) => (
+                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 13, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
-          {/* Secondary stats grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-            {[
-              { label: "DAY %", val: `${pos.day > 0 ? "+" : ""}${pos.day.toFixed(2)}%`, color: pc(pos.day) },
-              { label: "DAY $", val: pos.dayChangeDollar != null ? `${pos.dayChangeDollar >= 0 ? "+" : ""}$${Math.abs(pos.dayChangeDollar).toFixed(0)}` : "N/A", color: pos.dayChangeDollar != null ? pc(pos.dayChangeDollar) : undefined },
-              { label: "VOLATILITY", val: pos.vol != null ? `${pos.vol}%` : "N/A" },
-              { label: "BETA", val: pos.beta != null ? String(pos.beta) : "N/A" },
-            ].map((s) => (
-              <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
-                <div style={{ fontSize: 13, color: (s as { color?: string }).color ?? "#ccc", fontWeight: 500 }}>{s.val}</div>
+          {/* Secondary stats grid — skip N/A entries */}
+          {(() => {
+            const items = [
+              pos.day !== 0 ? { label: "DAY %", val: `${pos.day > 0 ? "+" : ""}${pos.day.toFixed(2)}%`, color: pc(pos.day) } : null,
+              pos.dayChangeDollar != null ? { label: "DAY $", val: `${pos.dayChangeDollar >= 0 ? "+" : ""}$${Math.abs(pos.dayChangeDollar).toFixed(0)}`, color: pc(pos.dayChangeDollar) } : null,
+              pos.vol != null ? { label: "VOLATILITY", val: `${pos.vol}%` } : null,
+              pos.beta != null ? { label: "BETA", val: String(pos.beta) } : null,
+              pos.perf !== 0 ? { label: "ALL-TIME %", val: `${pos.perf > 0 ? "+" : ""}${pos.perf.toFixed(1)}%`, color: pc(pos.perf) } : null,
+              pos.unrealizedPnl != null && pos.unrealizedPnl !== 0 ? { label: "UNREALIZED $", val: `${pos.unrealizedPnl >= 0 ? "+" : ""}$${Math.abs(pos.unrealizedPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: pc(pos.unrealizedPnl) } : null,
+            ].filter(Boolean) as { label: string; val: string; color?: string }[];
+            if (items.length === 0) return null;
+            const cols = Math.min(items.length, 4);
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10, marginBottom: 12 }}>
+                {items.map((s) => (
+                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 13, color: s.color ?? "#ccc", fontWeight: 500 }}>{s.val}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {/* Stop/Target row */}
           {(pos.stopLoss != null || pos.takeProfit != null) && (
