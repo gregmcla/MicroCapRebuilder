@@ -74,7 +74,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
                 }}>{pos.ticker}</span>
               </div>
               <div style={{ fontSize: 10, color: col, letterSpacing: "0.08em", marginTop: 6, marginLeft: 8 }}>
-                ● {pos.portfolioName} · {pos.sector} · {pos.mktCap}
+                ● {pos.portfolioName}
+                {pos.sector && pos.sector !== "N/A" && pos.sector !== "" && ` · ${pos.sector}`}
+                {pos.mktCap && pos.mktCap !== "N/A" && pos.mktCap !== "" && ` · ${pos.mktCap}`}
               </div>
               {pos.entryDate && (
                 <div style={{ fontSize: 8, color: "#555", marginTop: 3, marginLeft: 8, letterSpacing: "0.08em" }}>

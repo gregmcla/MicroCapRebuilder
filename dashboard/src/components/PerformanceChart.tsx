@@ -4,20 +4,20 @@ import type { PortfolioSummary } from "../lib/types";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CHART_PALETTE = [
-  "#7dd3c8", // muted teal
-  "#8b9cf4", // soft indigo
-  "#e8b87a", // warm amber
-  "#a3b8d4", // steel blue
-  "#b8a8d4", // soft lavender
-  "#8bbfa8", // sage green
-  "#d4b8a8", // dusty rose
-  "#9ab4c4", // slate
+  "#00ffcc", // electric cyan-green
+  "#bf7fff", // vivid violet
+  "#ffb340", // hot amber
+  "#00cfff", // neon sky blue
+  "#ff5fa0", // hot pink
+  "#40ff80", // acid green
+  "#ff6060", // plasma red
+  "#ffe040", // electric yellow
 ];
 
 const ECHO_DEFS = [
-  { offset: 0.06, opacity: 0.40, blur: "2px", width: 3.5 },
-  { offset: 0.12, opacity: 0.25, blur: "3px", width: 5.0 },
-  { offset: 0.20, opacity: 0.12, blur: "5px", width: 8.0 },
+  { offset: 0.06, opacity: 0.60, blur: "2px",  width: 4.5  },
+  { offset: 0.12, opacity: 0.38, blur: "4px",  width: 7.0  },
+  { offset: 0.22, opacity: 0.20, blur: "7px",  width: 12.0 },
 ] as const;
 
 const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
@@ -424,15 +424,17 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Green zone above zero
         const greenGrad = ctx.createLinearGradient(0, PAD_TOP, 0, zeroY);
-        greenGrad.addColorStop(0, "rgba(80,200,120,0.12)");
-        greenGrad.addColorStop(1, "rgba(80,200,120,0)");
+        greenGrad.addColorStop(0, "rgba(0,255,140,0.22)");
+        greenGrad.addColorStop(0.5, "rgba(0,255,140,0.08)");
+        greenGrad.addColorStop(1, "rgba(0,255,140,0)");
         ctx.fillStyle = greenGrad;
         ctx.fillRect(PAD_LEFT, PAD_TOP, chartW, zeroY - PAD_TOP);
 
         // Red zone below zero
         const redGrad = ctx.createLinearGradient(0, zeroY, 0, PAD_TOP + chartH);
-        redGrad.addColorStop(0, "rgba(200,60,60,0)");
-        redGrad.addColorStop(1, "rgba(200,60,60,0.15)");
+        redGrad.addColorStop(0, "rgba(255,50,80,0)");
+        redGrad.addColorStop(0.5, "rgba(255,50,80,0.10)");
+        redGrad.addColorStop(1, "rgba(255,50,80,0.26)");
         ctx.fillStyle = redGrad;
         ctx.fillRect(PAD_LEFT, zeroY, chartW, PAD_TOP + chartH - zeroY);
       }
@@ -780,7 +782,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         // ── Area fill (draw first, source-over, below the glowing lines) ─────
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = glowAlpha * 0.14;
+        ctx.globalAlpha = glowAlpha * 0.26;
         const grad = ctx.createLinearGradient(0, toPixelY(zoneYMax), 0, toPixelY(zoneYMin));
         grad.addColorStop(0, s.color);
         grad.addColorStop(1, "transparent");
@@ -802,10 +804,10 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Pass 1: wide blurred halo
         ctx.save();
-        ctx.filter = "blur(7px)";
-        ctx.globalAlpha = glowAlpha * 0.30;
+        ctx.filter = "blur(10px)";
+        ctx.globalAlpha = glowAlpha * 0.55;
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 14;
+        ctx.lineWidth = 22;
         ctx.lineJoin = "round";
         ctx.lineCap  = "round";
         ctx.beginPath();
@@ -815,14 +817,16 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         // Pass 2: inner glow
         ctx.save();
-        ctx.globalAlpha = glowAlpha * 0.65;
+        ctx.filter = "blur(2px)";
+        ctx.globalAlpha = glowAlpha * 0.85;
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3.5;
         ctx.lineJoin = "round";
         ctx.lineCap  = "round";
         ctx.beginPath();
         catmullRomPath(ctx, pts);
         ctx.stroke();
+        ctx.filter = "none";
         ctx.restore();
 
         // Pass 3: crisp core
@@ -830,7 +834,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = glowAlpha * 1.0;
         ctx.strokeStyle = s.color;
-        ctx.lineWidth   = coreLineWidth;
+        ctx.lineWidth   = coreLineWidth + 0.5;
         ctx.lineJoin = "round";
         ctx.lineCap  = "round";
         ctx.beginPath();
