@@ -1,10 +1,11 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 
 interface InteractiveSparklineProps {
-  data: number[];   // raw price / equity values
+  data: number[];        // raw price / equity values
   color: string;
   w?: number;
   h?: number;
+  timestamps?: number[]; // unix seconds — one per data point, for tooltip dates
 }
 
 const PAD_T = 8;
@@ -12,7 +13,7 @@ const PAD_B = 8;
 const PAD_L = 4;
 const PAD_R = 4;
 
-export default function InteractiveSparkline({ data, color, w = 340, h = 72 }: InteractiveSparklineProps) {
+export default function InteractiveSparkline({ data, color, w = 340, h = 72, timestamps }: InteractiveSparklineProps) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
@@ -135,11 +136,12 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72 }: I
       ctx.restore();
 
       // Tooltip
-      const valStr = val >= 1000
-        ? `$${(val / 1000).toFixed(1)}k`
-        : `$${val.toFixed(2)}`;
+      const valStr  = `$${val.toFixed(2)}`;
       const pctStr  = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
       const pctColor = pct >= 0 ? "#4ade80" : "#f87171";
+      const dateStr = timestamps?.[idx]
+        ? new Date(timestamps[idx] * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        : null;
 
       ctx.save();
       ctx.font         = "700 9px/1 monospace";
@@ -147,7 +149,8 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72 }: I
 
       const valW  = ctx.measureText(valStr).width;
       const pctW  = ctx.measureText("  " + pctStr).width;
-      const boxW  = valW + pctW + 16;
+      const dateW = dateStr ? ctx.measureText(dateStr + "  ").width : 0;
+      const boxW  = dateW + valW + pctW + 16;
       const boxH  = 20;
 
       // Position: prefer right of cursor, flip left near edge
@@ -167,13 +170,19 @@ export default function InteractiveSparkline({ data, color, w = 340, h = 72 }: I
 
       // Values
       ctx.textAlign = "left";
+      let cx = tx + 8;
+      if (dateStr) {
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.fillText(dateStr, cx, ty + boxH / 2);
+        cx += dateW;
+      }
       ctx.fillStyle = "rgba(255,255,255,0.85)";
-      ctx.fillText(valStr, tx + 8, ty + boxH / 2);
+      ctx.fillText(valStr, cx, ty + boxH / 2);
       ctx.fillStyle = pctColor;
-      ctx.fillText(pctStr, tx + 8 + valW + 6, ty + boxH / 2);
+      ctx.fillText(pctStr, cx + valW + 6, ty + boxH / 2);
       ctx.restore();
     }
-  }, [data, color, w, h, hoverIdx, px, ch]);
+  }, [data, color, w, h, hoverIdx, px, ch, timestamps]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();

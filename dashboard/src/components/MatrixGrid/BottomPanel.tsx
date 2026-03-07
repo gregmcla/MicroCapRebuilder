@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MatrixPosition, WatchlistCandidate } from "./types";
-import type { TickerInfo } from "../../lib/types";
+import type { TickerInfo, ChartDataPoint } from "../../lib/types";
 import { api } from "../../lib/api";
 import InteractiveSparkline from "./InteractiveSparkline";
 import Reticle from "./Reticle";
@@ -18,7 +18,8 @@ interface BottomPanelProps {
 }
 
 export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [] }: BottomPanelProps) {
-  const [info, setInfo] = useState<TickerInfo | null>(null);
+  const [info,      setInfo]      = useState<TickerInfo | null>(null);
+  const [chartPts,  setChartPts]  = useState<ChartDataPoint[]>([]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -27,11 +28,14 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
   }, [onClose]);
 
   useEffect(() => {
-    if (!pos) { setInfo(null); return; }
+    if (!pos) { setInfo(null); setChartPts([]); return; }
     const pid = portfolioId ?? pos.portfolioId;
     api.getTickerInfo(pid, pos.ticker)
       .then(setInfo)
       .catch(() => setInfo(null));
+    api.getChartData(pos.ticker, "3M")
+      .then(d => setChartPts(d.data ?? []))
+      .catch(() => setChartPts([]));
   }, [pos?.ticker, pos?.portfolioId, portfolioId]);
 
   if (!pos) return null;
@@ -165,16 +169,21 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           padding: "14px 18px", borderRight: `1px solid ${col}18`,
           display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
         }}>
-          {/* Sparkline — interactive, full width, tall */}
-          {pos.sparkline.length > 0 && (
-            <div style={{
-              padding: "10px 12px",
-              background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
-              flex: 1, display: "flex", alignItems: "center",
-            }}>
-              <InteractiveSparkline data={pos.sparkline} color={pos.portfolioColor} w={360} h={80} />
-            </div>
-          )}
+          {/* Sparkline — interactive with real price data */}
+          {(() => {
+            const prices     = chartPts.length > 1 ? chartPts.map(d => d.close) : pos.sparkline;
+            const timestamps = chartPts.length > 1 ? chartPts.map(d => d.time)  : undefined;
+            if (prices.length < 2) return null;
+            return (
+              <div style={{
+                padding: "10px 12px",
+                background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
+                flex: 1, display: "flex", alignItems: "center",
+              }}>
+                <InteractiveSparkline data={prices} color={pos.portfolioColor} w={360} h={80} timestamps={timestamps} />
+              </div>
+            );
+          })()}
 
           {/* Position stats 2×2 */}
           {(() => {
