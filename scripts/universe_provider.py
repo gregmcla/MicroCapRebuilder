@@ -15,6 +15,7 @@ Usage:
 """
 
 import json
+import random
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, date
 from enum import Enum
@@ -249,12 +250,20 @@ class UniverseProvider:
             # Move overflow to extended
             self._extended_tickers = overflow + self._extended_tickers
 
+        # Shuffle extended tickers before truncating so we get alphabet-diverse
+        # coverage rather than only A-C stocks (which come first alphabetically
+        # from exchange listings).  Stable weekly seed means the same 1000
+        # tickers are used all week, rotating fresh every 7 days.
+        week_seed = int(datetime.now().strftime("%Y%W"))
+        rng = random.Random(week_seed)
+        rng.shuffle(self._extended_tickers)
+
         if len(self._extended_tickers) > self.extended_max:
             self._extended_tickers = self._extended_tickers[:self.extended_max]
 
-        # Sort for consistency
+        # Core stays sorted (small curated list); extended keeps shuffled order
+        # so rotating_3day batches contain a mix of all letters.
         self._core_tickers.sort()
-        self._extended_tickers.sort()
 
     def _save_cache(self):
         """Save universe to cache file."""

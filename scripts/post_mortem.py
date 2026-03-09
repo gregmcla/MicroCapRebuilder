@@ -392,11 +392,12 @@ if __name__ == "__main__":
         "composite_score": 72.5,
         "signal_rank": 1,
         "factor_scores": json.dumps({
-            "momentum": 78,
-            "volatility": 65,
-            "volume": 55,
-            "relative_strength": 82,
-            "mean_reversion": 45
+            "price_momentum": 78,
+            "earnings_growth": 65,
+            "quality": 72,
+            "value_timing": 55,
+            "volume": 60,
+            "volatility": 65
         })
     }
 

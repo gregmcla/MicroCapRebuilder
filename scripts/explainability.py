@@ -65,10 +65,26 @@ class RationaleGenerator:
 
     # Factor narratives based on score ranges
     FACTOR_NARRATIVES = {
-        "momentum": {
+        # New factor names (current)
+        "price_momentum": {
             "high": "Strong upward price momentum",
             "medium": "Moderate price momentum",
-            "low": "Weak or negative momentum",
+            "low": "Weak or negative price momentum",
+        },
+        "earnings_growth": {
+            "high": "Strong earnings and revenue growth",
+            "medium": "Moderate earnings growth",
+            "low": "Weak or declining earnings",
+        },
+        "quality": {
+            "high": "High-quality business (strong margins, low debt)",
+            "medium": "Average business quality",
+            "low": "Lower quality (thin margins or high debt)",
+        },
+        "value_timing": {
+            "high": "Favorable value entry with oversold RSI",
+            "medium": "Near fair value with neutral RSI",
+            "low": "Stretched valuation or overbought RSI",
         },
         "volatility": {
             "high": "Low volatility (stable price action)",
@@ -79,6 +95,12 @@ class RationaleGenerator:
             "high": "Strong trading volume (high liquidity)",
             "medium": "Average trading volume",
             "low": "Low trading volume (liquidity concerns)",
+        },
+        # Legacy factor names for backward compatibility with old transactions
+        "momentum": {
+            "high": "Strong upward price momentum",
+            "medium": "Moderate price momentum",
+            "low": "Weak or negative momentum",
         },
         "relative_strength": {
             "high": "Outperforming benchmark significantly",
@@ -317,19 +339,21 @@ if __name__ == "__main__":
     generator = RationaleGenerator()
 
     sample_factors = {
-        "momentum": 78.5,
+        "price_momentum": 78.5,
+        "earnings_growth": 65.0,
+        "quality": 72.0,
+        "value_timing": 55.0,
+        "volume": 60.0,
         "volatility": 65.2,
-        "volume": 55.0,
-        "relative_strength": 82.1,
-        "mean_reversion": 45.0,
     }
 
     sample_weights = {
-        "momentum": 0.35,
-        "volatility": 0.15,
-        "volume": 0.15,
-        "relative_strength": 0.25,
-        "mean_reversion": 0.10,
+        "price_momentum": 0.30,
+        "earnings_growth": 0.15,
+        "quality": 0.15,
+        "value_timing": 0.20,
+        "volume": 0.08,
+        "volatility": 0.12,
     }
 
     rationale = generator.generate_buy_rationale(

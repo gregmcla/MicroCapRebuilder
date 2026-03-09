@@ -345,12 +345,12 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                             "composite_score": s.composite_score,
                             "current_price": s.current_price,
                             "factor_scores": {
-                                "momentum": s.momentum_score,
-                                "volatility": s.volatility_score,
+                                "price_momentum": s.price_momentum_score,
+                                "earnings_growth": s.earnings_growth_score,
+                                "quality": s.quality_score,
+                                "value_timing": s.value_timing_score,
                                 "volume": s.volume_score,
-                                "relative_strength": s.relative_strength_score,
-                                "mean_reversion": s.mean_reversion_score,
-                                "rsi": s.rsi_score,
+                                "volatility": s.volatility_score,
                             }
                         })
 

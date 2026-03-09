@@ -34,10 +34,10 @@ const TRADING_STYLE_OPTIONS = [
 ];
 
 const STYLE_WEIGHTS: Record<string, Record<string, number>> = {
-  aggressive_momentum: { momentum: 0.35, volatility: 0.05, volume: 0.15, relative_strength: 0.25, mean_reversion: 0.05, rsi: 0.15 },
-  balanced: { momentum: 0.20, volatility: 0.15, volume: 0.15, relative_strength: 0.20, mean_reversion: 0.15, rsi: 0.15 },
-  conservative_value: { momentum: 0.10, volatility: 0.25, volume: 0.10, relative_strength: 0.15, mean_reversion: 0.20, rsi: 0.20 },
-  mean_reversion: { momentum: 0.10, volatility: 0.15, volume: 0.15, relative_strength: 0.10, mean_reversion: 0.35, rsi: 0.15 },
+  aggressive_momentum: { price_momentum: 0.40, earnings_growth: 0.10, quality: 0.10, value_timing: 0.10, volume: 0.18, volatility: 0.12 },
+  balanced:            { price_momentum: 0.25, earnings_growth: 0.15, quality: 0.15, value_timing: 0.20, volume: 0.12, volatility: 0.13 },
+  conservative_value:  { price_momentum: 0.15, earnings_growth: 0.20, quality: 0.25, value_timing: 0.20, volume: 0.08, volatility: 0.12 },
+  mean_reversion:      { price_momentum: 0.15, earnings_growth: 0.15, quality: 0.15, value_timing: 0.30, volume: 0.12, volatility: 0.13 },
 };
 
 const STYLE_RISK: Record<string, { stopLoss: number; riskPerTrade: number; maxPosition: number }> = {

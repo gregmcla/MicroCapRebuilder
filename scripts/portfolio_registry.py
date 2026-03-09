@@ -484,7 +484,8 @@ def create_portfolio(
     # --- Layer 4: AI-generated overrides ---
     if ai_config:
         if "scoring_weights" in ai_config:
-            config["scoring"]["default_weights"] = ai_config["scoring_weights"]
+            from stock_scorer import StockScorer
+            config["scoring"]["default_weights"] = StockScorer._migrate_weight_keys(ai_config["scoring_weights"])
         if "stop_loss_pct" in ai_config:
             config["default_stop_loss_pct"] = ai_config["stop_loss_pct"]
         if "risk_per_trade_pct" in ai_config:

@@ -40,12 +40,12 @@ You MUST return ONLY valid JSON with these exact fields:
   "sector_weights": {"SectorName": integer_weight, ...},
   "trading_style": "aggressive_momentum" | "balanced" | "conservative_value" | "mean_reversion" | null,
   "scoring_weights": {
-    "momentum": 0.0-1.0,
-    "volatility": 0.0-1.0,
+    "price_momentum": 0.0-1.0,
+    "earnings_growth": 0.0-1.0,
+    "quality": 0.0-1.0,
+    "value_timing": 0.0-1.0,
     "volume": 0.0-1.0,
-    "relative_strength": 0.0-1.0,
-    "mean_reversion": 0.0-1.0,
-    "rsi": 0.0-1.0
+    "volatility": 0.0-1.0
   },
   "stop_loss_pct": 3.0-10.0,
   "risk_per_trade_pct": 1.0-8.0,
@@ -180,7 +180,10 @@ User's strategy description:
 
     # Validate and normalize weights
     weights = data.get("scoring_weights", {})
-    required_factors = ["momentum", "volatility", "volume", "relative_strength", "mean_reversion", "rsi"]
+    # Migrate any old factor key names to new names
+    from stock_scorer import StockScorer
+    weights = StockScorer._migrate_weight_keys(weights)
+    required_factors = ["price_momentum", "earnings_growth", "quality", "value_timing", "volume", "volatility"]
     for f in required_factors:
         if f not in weights:
             weights[f] = 1.0 / len(required_factors)

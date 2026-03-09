@@ -25,10 +25,10 @@ const TRADING_STYLES = [
 ];
 
 const STYLE_WEIGHTS: Record<string, Record<string, number>> = {
-  aggressive_momentum: { momentum: 0.35, volatility: 0.05, volume: 0.20, relative_strength: 0.25, mean_reversion: 0.05, rsi: 0.10 },
-  balanced:            { momentum: 0.20, volatility: 0.15, volume: 0.15, relative_strength: 0.20, mean_reversion: 0.15, rsi: 0.15 },
-  conservative_value:  { momentum: 0.10, volatility: 0.20, volume: 0.10, relative_strength: 0.15, mean_reversion: 0.30, rsi: 0.15 },
-  mean_reversion:      { momentum: 0.10, volatility: 0.15, volume: 0.15, relative_strength: 0.10, mean_reversion: 0.35, rsi: 0.15 },
+  aggressive_momentum: { price_momentum: 0.40, earnings_growth: 0.10, quality: 0.10, value_timing: 0.10, volume: 0.18, volatility: 0.12 },
+  balanced:            { price_momentum: 0.25, earnings_growth: 0.15, quality: 0.15, value_timing: 0.20, volume: 0.12, volatility: 0.13 },
+  conservative_value:  { price_momentum: 0.15, earnings_growth: 0.20, quality: 0.25, value_timing: 0.20, volume: 0.08, volatility: 0.12 },
+  mean_reversion:      { price_momentum: 0.15, earnings_growth: 0.15, quality: 0.15, value_timing: 0.30, volume: 0.12, volatility: 0.13 },
 };
 
 const UNIVERSES = [
@@ -203,9 +203,9 @@ function StrategyTab({ draft, onChange }: { draft: ConfigDraft; onChange: (path:
           {(total * 100).toFixed(0)}% {valid ? "✓" : "≠ 100%"}
         </span>
       </SectionTitle>
-      {(["momentum", "volatility", "volume", "relative_strength", "mean_reversion", "rsi"] as const).map(factor => (
-        <SettingRow key={factor} label={factor.replace(/_/g, " ")} value={`${Math.round(weights[factor] * 100)}%`}>
-          <Slider min={0} max={60} step={1} value={Math.round(weights[factor] * 100)} onChange={v => onChange(["weights", factor], v / 100)} />
+      {(["price_momentum", "earnings_growth", "quality", "value_timing", "volume", "volatility"] as const).map(factor => (
+        <SettingRow key={factor} label={factor.replace(/_/g, " ")} value={`${Math.round((weights[factor] ?? 0) * 100)}%`}>
+          <Slider min={0} max={60} step={1} value={Math.round((weights[factor] ?? 0) * 100)} onChange={v => onChange(["weights", factor], v / 100)} />
         </SettingRow>
       ))}
     </div>
@@ -370,7 +370,7 @@ function extractDraft(cfg: any): ConfigDraft {
       risk_score_threshold:   cfg.risk_management?.capital_preservation?.triggers?.risk_score_threshold   ?? 40,
     },
     weights: cfg.scoring?.default_weights ?? {
-      momentum: 0.2, volatility: 0.15, volume: 0.15, relative_strength: 0.2, mean_reversion: 0.15, rsi: 0.15,
+      price_momentum: 0.25, earnings_growth: 0.15, quality: 0.15, value_timing: 0.20, volume: 0.12, volatility: 0.13,
     },
     trading_style: cfg.strategy?.trading_style ?? "balanced",
     universe:      cfg.strategy?.universe      ?? "allcap",

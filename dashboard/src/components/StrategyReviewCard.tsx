@@ -1,9 +1,14 @@
 /** Strategy review card — shows assembled config before portfolio creation. */
 
 const WEIGHT_LABELS: Record<string, string> = {
-  momentum: "Momentum",
-  volatility: "Volatility",
+  price_momentum: "Price Mom",
+  earnings_growth: "Earnings",
+  quality: "Quality",
+  value_timing: "Value/RSI",
   volume: "Volume",
+  volatility: "Volatility",
+  // legacy keys for display compatibility
+  momentum: "Momentum",
   relative_strength: "Rel Strength",
   mean_reversion: "Mean Rev",
   rsi: "RSI",

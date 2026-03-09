@@ -449,7 +449,7 @@ if __name__ == "__main__":
             stop_loss=110.86,
             take_profit=144.60,
             quant_score=78.5,
-            factor_scores={"momentum": 82, "volatility": 71, "volume": 65, "relative_strength": 85},
+            factor_scores={"price_momentum": 82, "volatility": 71, "volume": 65, "earnings_growth": 72, "quality": 68, "value_timing": 55},
             regime="BULL",
             reason="Strong momentum with relative strength above benchmark"
         ),
