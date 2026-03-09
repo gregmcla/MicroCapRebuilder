@@ -67,7 +67,7 @@ UNIVERSE_PRESETS = {
         },
         "etf_sources": ["IWM", "IJR", "VB"],
         "exchange_listings_enabled": True,
-        "extended_max": 3000,
+        "extended_max": 6000,
         "total_watchlist_slots": 150,
     },
     "midcap": {
@@ -94,7 +94,7 @@ UNIVERSE_PRESETS = {
         },
         "etf_sources": ["IJH", "VO", "MDY"],
         "exchange_listings_enabled": True,
-        "extended_max": 3000,
+        "extended_max": 6000,
         "total_watchlist_slots": 180,
     },
     "largecap": {
@@ -121,7 +121,7 @@ UNIVERSE_PRESETS = {
         },
         "etf_sources": ["SPY", "IVV", "VOO"],
         "exchange_listings_enabled": True,
-        "extended_max": 3000,
+        "extended_max": 6000,
         "total_watchlist_slots": 200,
     },
     "allcap": {
@@ -148,7 +148,7 @@ UNIVERSE_PRESETS = {
         },
         "etf_sources": [],  # Uses all DEFAULT_ETFS — no restriction
         "exchange_listings_enabled": True,
-        "extended_max": 3000,
+        "extended_max": 6000,
         "total_watchlist_slots": 250,
     },
     "custom": {
