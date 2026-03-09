@@ -87,6 +87,8 @@ export interface CreatePortfolioRequest {
   sector_weights?: Record<string, number>;
   trading_style?: string;
   ai_config?: AiConfig;
+  ai_driven?: boolean;
+  strategy_dna?: string;
 }
 
 // --- Existing types ---
@@ -121,6 +123,8 @@ export interface Transaction {
   composite_score?: number | null;
   regime_at_entry?: string | null;
   signal_rank?: number | null;
+  realized_pnl?: number | null;
+  realized_pnl_pct?: number | null;
 }
 
 export interface Snapshot {

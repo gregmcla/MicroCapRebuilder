@@ -362,6 +362,8 @@ def create_portfolio(
     trading_style: str = None,
     ai_config: dict = None,
     sector_weights: dict = None,
+    ai_driven: bool = False,
+    strategy_dna: str = None,
 ) -> PortfolioMeta:
     """Create a new portfolio: directory, config, and registry entry.
 
@@ -517,15 +519,22 @@ def create_portfolio(
                     existing.append(etf)
 
     # Store strategy metadata
+    created_via = "ai_driven" if ai_driven else ("ai" if ai_config else "wizard")
     config["strategy"] = {
         "name": (TRADING_STYLES[trading_style]["label"] if trading_style and trading_style in TRADING_STYLES
                  else ai_config.get("strategy_name", "Custom") if ai_config else "Default"),
         "sectors": sectors or [],
         "trading_style": trading_style or (ai_config.get("trading_style") if ai_config else None),
-        "created_via": "ai" if ai_config else "wizard",
+        "created_via": created_via,
         "ai_prompt": ai_config.get("prompt") if ai_config else None,
         "ai_rationale": ai_config.get("rationale") if ai_config else None,
     }
+
+    # AI-driven mode: store flag and strategy DNA in config
+    if ai_driven:
+        config["ai_driven"] = True
+        if strategy_dna:
+            config["strategy_dna"] = strategy_dna
 
     # Write config
     config_path = portfolio_dir / "config.json"

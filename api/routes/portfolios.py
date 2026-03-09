@@ -47,6 +47,8 @@ class CreatePortfolioRequest(BaseModel):
     trading_style: str | None = None
     ai_config: dict | None = None
     sector_weights: dict[str, int] | None = None
+    ai_driven: bool = False
+    strategy_dna: str | None = None
 
 
 @router.get("")
@@ -68,6 +70,8 @@ def create_new_portfolio(req: CreatePortfolioRequest):
             sectors=req.sectors, trading_style=req.trading_style,
             ai_config=req.ai_config,
             sector_weights=req.sector_weights,
+            ai_driven=req.ai_driven,
+            strategy_dna=req.strategy_dna,
         )
         return {"portfolio": asdict(meta), "message": f"Created portfolio '{req.name}'"}
     except ValueError as e:

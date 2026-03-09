@@ -53,6 +53,150 @@ from stock_discovery import prewarm_info_for_tickers
 from execution_sequencer import ExecutionSequencer
 from data_files import get_watchlist_file
 from trade_analyzer import TradeAnalyzer
+from ai_allocator import run_ai_allocation
+
+
+# ─── AI-Driven Analysis Helper ────────────────────────────────────────────────
+
+def _run_ai_driven_analysis(
+    state,
+    layer1_output: dict,
+    regime,
+    warning_severity: str,
+    stale_positions: dict,
+    layer1_sell_actions: list,
+) -> dict:
+    """
+    AI-driven path: Layer 1 mechanicals + Claude as full portfolio manager.
+
+    Replaces Layers 2-4 and AI review. Returns result dict in the same shape
+    as the mechanical path so execute_approved_actions() works unchanged.
+    """
+    config = state.config
+    strategy_dna = config.get("strategy_dna") or config.get("strategy", {}).get("strategy_dna", "")
+
+    # Load watchlist and filter already-held tickers
+    try:
+        from watchlist_manager import WatchlistManager
+        wm = WatchlistManager(portfolio_id=state.portfolio_id)
+        wl_entries = wm._load_watchlist()
+        wl_tickers = [e.ticker for e in wl_entries if e.status == "ACTIVE"]
+    except Exception as e:
+        print(f"  [AI-Driven] Watchlist load failed: {e}")
+        wl_tickers = []
+
+    current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+    candidates = [t for t in wl_tickers if t not in current_tickers]
+
+    # Pre-warm info cache for fundamentals
+    info_cache = {}
+    if candidates:
+        try:
+            info_cache = prewarm_info_for_tickers(candidates)
+        except Exception as e:
+            print(f"  [AI-Driven] Info pre-warm failed (non-fatal): {e}")
+
+    # Score candidates (quant data as advisory input for Claude)
+    scored_candidates = []
+    if candidates:
+        print(f"  Scoring {len(candidates)} watchlist candidate(s) for AI input...")
+        scorer = StockScorer()
+        scored_results = scorer.score_watchlist(candidates)
+        for s in scored_results:
+            if s:
+                scored_candidates.append({
+                    "ticker": s.ticker,
+                    "composite_score": s.composite_score,
+                    "current_price": s.current_price,
+                    "factor_scores": {
+                        "price_momentum": s.price_momentum_score,
+                        "earnings_growth": s.earnings_growth_score,
+                        "quality": s.quality_score,
+                        "value_timing": s.value_timing_score,
+                        "volume": s.volume_score,
+                        "volatility": s.volatility_score,
+                    },
+                })
+        scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
+        print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
+
+    # Build sector map from positions + watchlist
+    sector_map = {}
+    if not state.positions.empty and "sector" in state.positions.columns:
+        for _, pos in state.positions.iterrows():
+            s = str(pos.get("sector", "")).strip()
+            if s and s not in ("", "nan", "Unknown"):
+                sector_map[pos["ticker"]] = s
+    try:
+        watchlist_file = get_watchlist_file(state.portfolio_id)
+        if watchlist_file.exists():
+            with open(watchlist_file) as _wf:
+                for _line in _wf:
+                    if _line.strip():
+                        _entry = json.loads(_line)
+                        if _entry.get("sector") and _entry["ticker"] not in sector_map:
+                            sector_map[_entry["ticker"]] = _entry["sector"]
+    except Exception:
+        pass
+
+    # Run AI allocation
+    print("\n  🤖 AI-DRIVEN MODE — Claude is the portfolio manager")
+    reviewed_actions = run_ai_allocation(
+        state=state,
+        layer1_sells=layer1_sell_actions,
+        scored_candidates=scored_candidates,
+        sector_map=sector_map,
+        regime=regime,
+        warning_severity=warning_severity,
+        strategy_dna=strategy_dna,
+        info_cache=info_cache,
+    )
+
+    # Split by decision (all will be APPROVE in AI-driven mode)
+    approved = [r for r in reviewed_actions if r.decision == ReviewDecision.APPROVE]
+    proposed_actions = [r.original for r in reviewed_actions]
+
+    # Portfolio context (required by execute_approved_actions for sector tagging)
+    portfolio_context = {
+        "total_equity": state.total_equity,
+        "cash": state.cash,
+        "num_positions": state.num_positions,
+        "regime": regime.value,
+        "win_rate": 0.5,
+        "positions": [
+            {
+                "ticker": pos["ticker"],
+                "sector": sector_map.get(pos["ticker"], "Unknown"),
+                "shares": pos["shares"],
+                "pnl_pct": pos.get("unrealized_pnl_pct", 0),
+                "weight": (pos["market_value"] / state.total_equity * 100) if state.total_equity > 0 else 0,
+            }
+            for _, pos in state.positions.iterrows()
+        ] if not state.positions.empty else [],
+        "sector_map": sector_map,
+        "stale_positions_note": "",
+        "system_warning_level": warning_severity,
+        "system_warning_note": "",
+    }
+
+    return {
+        "proposed_actions": proposed_actions,
+        "reviewed_actions": reviewed_actions,
+        "approved": approved,
+        "modified": [],
+        "vetoed": [],
+        "summary": {
+            "total_proposed": len(proposed_actions),
+            "approved": len(approved),
+            "modified": 0,
+            "vetoed": 0,
+            "can_execute": len(approved) > 0,
+        },
+        "portfolio_context": portfolio_context,
+        "regime": regime.value,
+        "timestamp": datetime.now().isoformat(),
+        "stale_positions": stale_positions,
+    }
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -161,6 +305,22 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     num_sells = len([a for a in proposed_actions if a.action_type == "SELL"])
     print(f"\n  Found {num_sells} sell trigger(s)")
     print()
+
+    # ─── AI-Driven Mode Branch ────────────────────────────────────────────────
+    # For AI-driven portfolios, Layers 2-4 and AI review are replaced by a
+    # single Claude allocation call. Layer 1 always runs as mechanical safety.
+    if config.get("ai_driven"):
+        print("=" * 60)
+        print("AI-DRIVEN MODE — Claude replaces Layers 2-4")
+        print("=" * 60)
+        return _run_ai_driven_analysis(
+            state=state,
+            layer1_output=layer1_output,
+            regime=regime,
+            warning_severity=warning_severity,
+            stale_positions=state.stale_alerts,
+            layer1_sell_actions=proposed_actions,  # contains Layer 1 sells only at this point
+        )
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
     # Use Layer 2 (Opportunity Management) if enabled, otherwise fallback to basic scoring
@@ -465,6 +625,34 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         proposed_actions = kept_actions
         if reduced_count:
             print(f"  ⚠️  Warning severity {warning_severity}: reduced shares by {label} on {reduced_count} buy proposal(s)")
+
+    # ─── Price refresh: fetch live prices for all proposed BUY tickers ────────
+    # Scoring uses a 4hr disk cache, so proposed prices can be stale. Refresh
+    # just the handful of proposed tickers so the Actions tab and AI review
+    # both see current market prices. Uses the same rescaling logic as execute time.
+    buy_tickers = [a.ticker for a in proposed_actions if a.action_type == "BUY"]
+    if buy_tickers:
+        try:
+            live_prices, _, _ = fetch_prices_batch(buy_tickers)
+            for action in proposed_actions:
+                if action.action_type != "BUY":
+                    continue
+                fresh = live_prices.get(action.ticker)
+                if not fresh or fresh <= 0:
+                    continue
+                old_price = action.price
+                if abs(fresh - old_price) / max(old_price, 0.01) < 0.001:
+                    continue
+                stop_pct = (old_price - action.stop_loss) / old_price if old_price > 0 else 0.08
+                target_pct = (action.take_profit - old_price) / old_price if old_price > 0 else 0.20
+                old_dollar_value = action.shares * old_price
+                action.price = round(fresh, 4)
+                action.shares = max(1, int(old_dollar_value / fresh))
+                action.stop_loss = round(fresh * (1 - stop_pct), 2)
+                action.take_profit = round(fresh * (1 + target_pct), 2)
+                print(f"  🔄 {action.ticker}: refreshed price ${old_price:.2f} → ${fresh:.2f}")
+        except Exception as e:
+            print(f"  ⚠️  Price refresh failed (using scorer prices): {e}")
 
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")

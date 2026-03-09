@@ -62,10 +62,11 @@ function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-type Mode = "wizard" | "ai";
+type Mode = "wizard" | "ai" | "ai_driven";
 
 const WIZARD_STEPS = ["Name & Capital", "Cap Size", "Sectors", "Sector Weights", "Trading Style", "Review"];
 const AI_STEPS = ["Name & Capital", "Cap Size", "Describe Strategy", "Review"];
+const AI_DRIVEN_STEPS = ["Name & Capital", "Cap Size", "Strategy DNA", "Review"];
 
 // Shared input style helper
 const inputStyle = {
@@ -120,6 +121,9 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   const [generatedStrategy, setGeneratedStrategy] = useState<GeneratedStrategy | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  // AI-Driven state
+  const [strategyDna, setStrategyDna] = useState("");
+
   const queryClient = useQueryClient();
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
 
@@ -134,7 +138,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     onError: (e: Error) => setError(e.message),
   });
 
-  const steps = mode === "wizard" ? WIZARD_STEPS : AI_STEPS;
+  const steps = mode === "wizard" ? WIZARD_STEPS : mode === "ai_driven" ? AI_DRIVEN_STEPS : AI_STEPS;
   const maxStep = steps.length;
 
   // ---- Handlers ----
@@ -195,6 +199,9 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     if (mode === "wizard" && step === 3) {
       if (sectors.length === 0) { setError("Select at least one sector"); return false; }
     }
+    if (mode === "ai_driven" && step === 3) {
+      if (!strategyDna.trim()) { setError("Strategy DNA is required"); return false; }
+    }
     return true;
   }
 
@@ -207,6 +214,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     }
     setStep((s) => Math.min(s + 1, maxStep));
   }
+
 
   function handleBack() {
     setError(null);
@@ -226,6 +234,15 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
           ? undefined
           : sectorWeights,
         trading_style: tradingStyle,
+      });
+    } else if (mode === "ai_driven") {
+      mutation.mutate({
+        id,
+        name: name.trim(),
+        universe,
+        starting_capital: parseFloat(capital),
+        ai_driven: true,
+        strategy_dna: strategyDna.trim(),
       });
     } else {
       if (!generatedStrategy) return;
@@ -556,6 +573,100 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     );
   }
 
+  function renderStrategyDnaStep() {
+    return (
+      <div>
+        <label
+          className="block uppercase tracking-wider mb-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          Strategy DNA
+        </label>
+        <textarea
+          value={strategyDna}
+          onChange={(e) => setStrategyDna(e.target.value)}
+          placeholder={"Focus on defense and energy stocks with strong free cash flow. Prefer companies with pricing power during inflationary periods. Hold concentrated positions with wide stop losses. Sell when the macro thesis breaks, not on short-term price action."}
+          rows={7}
+          className="w-full px-3 py-2 text-sm focus:outline-none resize-none transition-colors"
+          style={inputStyle}
+          onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
+          onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-1)")}
+          autoFocus
+        />
+        <p
+          className="mt-1.5"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          This is your portfolio's mandate. Claude will act as portfolio manager and reference this DNA on every analysis cycle — stock selection, position sizing, sell decisions. Be specific about sectors, risk tolerance, holding style, and what conditions trigger exits.
+        </p>
+      </div>
+    );
+  }
+
+  function renderAiDrivenReview() {
+    return (
+      <div className="space-y-3">
+        <label
+          className="block uppercase tracking-wider mb-2"
+          style={{ fontSize: "10px", color: "var(--text-1)" }}
+        >
+          AI-Driven Portfolio Summary
+        </label>
+        <div
+          className="rounded-lg p-4 space-y-3"
+          style={{
+            background: "var(--surface-1)",
+            border: "1px solid var(--border-1)",
+          }}
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <span style={{ fontSize: "18px" }}>🤖</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
+              AI-Driven Mode
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs" style={{ color: "var(--text-2)" }}>
+            <div>
+              <span style={{ color: "var(--text-1)" }}>Name</span>
+              <div className="mt-0.5 font-medium" style={{ color: "var(--text-4)" }}>{name || "—"}</div>
+            </div>
+            <div>
+              <span style={{ color: "var(--text-1)" }}>Starting Capital</span>
+              <div className="mt-0.5 font-medium" style={{ color: "var(--text-4)" }}>
+                ${parseFloat(capital || "0").toLocaleString()}
+              </div>
+            </div>
+            <div>
+              <span style={{ color: "var(--text-1)" }}>Universe</span>
+              <div className="mt-0.5 font-medium capitalize" style={{ color: "var(--text-4)" }}>{universe}</div>
+            </div>
+            <div>
+              <span style={{ color: "var(--text-1)" }}>Portfolio ID</span>
+              <div className="mt-0.5 font-mono text-xs" style={{ color: "var(--text-3)" }}>{id || "—"}</div>
+            </div>
+          </div>
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--border-0)" }}>
+            <div className="text-xs mb-1" style={{ color: "var(--text-1)" }}>Strategy DNA</div>
+            <div
+              className="text-xs rounded p-2 leading-relaxed"
+              style={{
+                color: "var(--text-2)",
+                background: "var(--surface-2)",
+                border: "1px solid var(--border-0)",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {strategyDna || "—"}
+            </div>
+          </div>
+          <p className="text-xs mt-2" style={{ color: "var(--text-1)" }}>
+            Claude will use this DNA as its mandate on every ANALYZE cycle. Quant scores become advisory inputs — Claude decides what to buy, how much, and when to sell.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   function renderAiPromptStep() {
     return (
       <div>
@@ -624,9 +735,12 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
     if (step === 2) return renderUniverseStep();
     if (mode === "wizard") {
       if (step === 3) return renderSectorStep();
-      if (step === 4) return renderSectorWeightsStep();  // NEW
+      if (step === 4) return renderSectorWeightsStep();
       if (step === 5) return renderTradingStyleStep();
       if (step === 6) return renderWizardReview();
+    } else if (mode === "ai_driven") {
+      if (step === 3) return renderStrategyDnaStep();
+      if (step === 4) return renderAiDrivenReview();
     } else {
       if (step === 3) return renderAiPromptStep();
       if (step === 4) return renderAiReview();
@@ -698,6 +812,18 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
               }
             >
               AI Strategy
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("ai_driven")}
+              className="flex-1 px-3 py-1.5 text-xs font-semibold transition-colors"
+              style={
+                mode === "ai_driven"
+                  ? { background: "var(--accent)", color: "#ffffff" }
+                  : { background: "var(--surface-2)", color: "var(--text-1)" }
+              }
+            >
+              AI-Driven
             </button>
           </div>
 
