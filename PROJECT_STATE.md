@@ -7,27 +7,29 @@
 
 ## Current Phase
 
-**MatrixGrid Dashboard** (Complete as of 2026-03-06)
+**Idle — all features complete as of 2026-03-09**
 
 ---
 
-## Recently Completed (this session, 2026-03-06)
+## Recently Completed (2026-03-09)
 
-### Fixes (pre-social-sentiment)
-- `opportunity_layer.py`: `is_initial_deployment` now uses `deployed_pct < target * 0.5` (was `num_positions == 0`) — fixes tiny position sizing on subsequent ANALYZE runs
-- `etf_holdings_provider.py`: Added FALLBACK_HOLDINGS for ITA, PPA, HACK, CIBR, BUG, FENY, OIH, PSCT, VGT, SMH, IGV, BOTZ, ROBO, ARKQ, ARKW, WCLD, SKYY, AIQ, KOMP, ARKG, FINX → all portfolios now have sufficient coverage
-- `sph/config.json`: Reduced `extended_max` 3000 → 300, added PPA/BUG/OIH/PSCT ETFs
-- `ai/config.json`: Removed PLD (Prologis — not an ETF), reduced `extended_max` to 300
-- `klop/config.json`, `10k/config.json`: reduced `extended_max` to 300
-- `dashboard/src/lib/tradeUtils.ts`: Richer sell explainer narratives (near-stop, near-target, in-between context)
+### Fundamental Scoring Overhaul (commits: `a0f2791`, `66d06ea`)
+- New 6-factor model: `price_momentum`, `earnings_growth`, `quality`, `volume`, `volatility`, `value_timing`
+- Fundamental data from yfinance `.info` feeds `earnings_growth` and `quality` scores
+- Missing data defaults to 50 (neutral) — never penalizes
+- `prewarm_info_for_tickers()` pre-fetches info in parallel before scoring
+- Fundamental pre-screen in `_passes_filters()`: negative margins / SPAC / >15% rev decline → reject
+- `_migrate_weight_keys()` auto-converts old portfolio configs
+- AI review prompt includes fundamental data block for BUY proposals
+- All active portfolio configs updated; backward compat in factor_learning for old transactions
 
-### Social Sentiment Feature (in progress)
-- **Task 1 ✅** (`scripts/social_sentiment.py` + `tests/test_social_sentiment.py`): `SocialSentimentProvider`, `SocialSignal`, `classify_heat()`. ApeWisdom + Stocktwits, 2hr disk cache, 10 tests. Commits: `9892f3f`, `9e7eb50`
-- **Task 2 ✅** (`scripts/watchlist_manager.py` + `tests/test_watchlist_social.py`): `WatchlistEntry` gets `social_heat`, `social_rank`, `social_bullish_pct`. Enrichment after scan. Commit: `5675b51`
-- **Task 3 ✅** (`scripts/enhanced_structures.py`, `opportunity_layer.py`, `unified_analysis.py`): `BuyProposal.social_signal` field, signals flow from unified_analysis → OpportunityLayer → proposals. Commits: `c0a61d0`, `fcbad67`
-- **Task 4 ✅** (`scripts/ai_review.py` + `tests/test_ai_review_social.py`): Social heat lines injected into AI review prompt per BUY action. SPIKING gets explicit pump warning. Commits: `e4ae532`, `910bb87`
-- **Task 5 🔲** — Dashboard: `social_heat?` fields on `WatchlistCandidate` type + `SocialHeatBadge` component
-- **Task 6 🔲** — Full test suite run + smoke test + MEMORY.md update + push
+### Social Sentiment Feature (commits: `9892f3f` through `910bb87`)
+- **Task 1 ✅** `scripts/social_sentiment.py`: ApeWisdom + Stocktwits, 2hr cache, `classify_heat()`
+- **Task 2 ✅** `scripts/watchlist_manager.py`: `WatchlistEntry` gets `social_heat/rank/bullish_pct`
+- **Task 3 ✅** `scripts/enhanced_structures.py`, `opportunity_layer.py`, `unified_analysis.py`: social signals flow to proposals
+- **Task 4 ✅** `scripts/ai_review.py`: SPIKING = pump warning in prompt
+- **Task 5 ✅** `dashboard/src/components/ActionsTab.tsx`: `SocialHeatBadge` + `WatchlistCandidate` social fields
+- **Task 6 ✅** 40/40 tests passing
 
 ---
 
