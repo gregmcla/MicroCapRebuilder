@@ -855,8 +855,10 @@ class StockDiscovery:
         import random as _rand
         _rand.shuffle(self.scan_universe)
 
-        # Cap universe to avoid runaway scan times
-        MAX_UNIVERSE = 1000
+        # Cap universe to avoid exceeding the API timeout (~480s).
+        # At ~150s per 1000 tickers, 3000 is safe; upstream extended_max already
+        # limits allcap portfolios to 3000 so this is mainly a safety ceiling.
+        MAX_UNIVERSE = 3000
         if len(self.scan_universe) > MAX_UNIVERSE:
             print(f"  Universe capped at {MAX_UNIVERSE} (was {len(self.scan_universe)})")
             self.scan_universe = self.scan_universe[:MAX_UNIVERSE]
