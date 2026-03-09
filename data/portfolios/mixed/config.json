@@ -263,7 +263,7 @@
         "etfs": []
       },
       "exchange_listings": {
-        "enabled": false
+        "enabled": true
       }
     },
     "tiers": {

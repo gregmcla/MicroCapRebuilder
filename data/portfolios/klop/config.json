@@ -279,6 +279,9 @@
           "XLE",
           "XOP"
         ]
+      },
+      "exchange_listings": {
+        "enabled": true
       }
     },
     "tiers": {

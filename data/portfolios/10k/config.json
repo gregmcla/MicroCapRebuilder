@@ -273,6 +273,9 @@
       "etf_holdings": {
         "enabled": true,
         "etfs": []
+      },
+      "exchange_listings": {
+        "enabled": true
       }
     },
     "tiers": {
