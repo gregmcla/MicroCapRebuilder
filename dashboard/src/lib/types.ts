@@ -388,12 +388,12 @@ export interface ScanJobStatus {
 // --- Analysis types ---
 
 export interface FactorScores {
-  momentum: number;
-  volatility: number;
+  price_momentum: number;
+  earnings_growth: number;
+  quality: number;
   volume: number;
-  relative_strength: number;
-  mean_reversion: number;
-  rsi: number;
+  volatility: number;
+  value_timing: number;
 }
 
 export interface ProposedAction {

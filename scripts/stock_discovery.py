@@ -112,6 +112,55 @@ def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
     )
 
 
+def prewarm_info_for_tickers(
+    tickers: List[str],
+    max_workers: int = 8,
+    timeout: float = 5.0,
+) -> Dict[str, dict]:
+    """
+    Fetch yfinance .info for a list of tickers in parallel.
+    Returns a dict mapping ticker -> info dict.
+    Caps at 500 tickers; shuffles first to avoid alphabetical bias.
+    Used by unified_analysis.py to pre-warm info before scoring.
+    """
+    import random as _random
+
+    shuffled = list(tickers)
+    _random.shuffle(shuffled)
+    to_fetch = shuffled[:500]
+
+    info_cache: Dict[str, dict] = {}
+
+    def _fetch_one(ticker: str) -> tuple:
+        result: list = [{}]
+
+        def _do_fetch() -> None:
+            try:
+                result[0] = yf.Ticker(ticker).info
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_do_fetch, daemon=True)
+        t.start()
+        t.join(timeout=timeout)
+        return ticker, result[0]
+
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(_fetch_one, t): t for t in to_fetch}
+        for future in as_completed(futures):
+            try:
+                ticker, info = future.result(timeout=8)
+                info_cache[ticker] = info
+            except Exception:
+                ticker = futures[future]
+                info_cache[ticker] = {}
+
+    elapsed = time.time() - t0
+    print(f"  prewarm_info_for_tickers: {len(info_cache)} tickers in {elapsed:.1f}s")
+    return info_cache
+
+
 class StockDiscovery:
     """
     Discovers new stock candidates through multiple scanning strategies.
@@ -280,6 +329,23 @@ class StockDiscovery:
             stock_sector = info.get("sector", "")
             if not _sector_matches(stock_sector, sector_filter):
                 return False
+
+        # Fundamental pre-screen: reject stocks with clearly broken fundamentals
+        # None values skip the check (permissive — data gaps are not a red flag)
+        gross_margins = info.get("grossMargins")
+        if gross_margins is not None and gross_margins < 0:
+            return False  # Negative gross margins = structurally broken business
+
+        rev_growth = info.get("revenueGrowth")
+        if rev_growth is not None and rev_growth < -0.15:
+            return False  # >15% revenue decline — avoid unless mean reversion strategy
+
+        # Reject SPACs and blank check companies
+        long_name = (info.get("longName") or "").lower()
+        short_name = (info.get("shortName") or "").lower()
+        company_name = long_name or short_name
+        if any(kw in company_name for kw in ("acquisition", "spac", "blank check")):
+            return False
 
         return True
 

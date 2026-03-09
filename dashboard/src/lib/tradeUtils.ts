@@ -3,12 +3,17 @@
 import type { Transaction } from "./types";
 
 export const FACTOR_PLAIN: Record<string, string> = {
-  momentum:          "the stock had been climbing steadily",
-  relative_strength: "it was beating the broader market",
-  mean_reversion:    "it had pulled back to an attractive entry point",
-  volume:            "trading volume spiked, confirming interest",
-  volatility:        "it was moving calmly relative to its history",
-  rsi:               "its momentum readings were favorable",
+  price_momentum:   "the stock had strong momentum and was outperforming the market",
+  earnings_growth:  "earnings and revenue were growing",
+  quality:          "the business had strong margins and low debt",
+  volume:           "trading volume spiked, confirming interest",
+  volatility:       "it was moving calmly relative to its history",
+  value_timing:     "it was near a value entry point with favorable RSI",
+  // legacy keys for old transaction records
+  momentum:         "the stock had been climbing steadily",
+  relative_strength:"it was beating the broader market",
+  mean_reversion:   "it had pulled back to an attractive entry point",
+  rsi:              "its momentum readings were favorable",
 };
 
 export const REGIME_PLAIN: Record<string, string> = {

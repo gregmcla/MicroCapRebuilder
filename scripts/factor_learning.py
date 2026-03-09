@@ -80,7 +80,7 @@ class ConfidenceScore:
 class FactorLearner:
     """Learns from factor performance to improve scoring."""
 
-    FACTOR_NAMES = ["momentum", "volatility", "volume", "relative_strength", "mean_reversion"]
+    FACTOR_NAMES = ["price_momentum", "earnings_growth", "quality", "volume", "volatility", "value_timing"]
 
     def __init__(self, portfolio_id: str = None):
         self.portfolio_id = portfolio_id
@@ -167,8 +167,22 @@ class FactorLearner:
             }
 
             for trade in trades_with_outcomes:
-                factor_score = trade["factor_scores"].get(factor, 0)
-                if factor_score == 0:
+                factor_score = trade["factor_scores"].get(factor, None)
+                # Backward compat: migrate old factor key names
+                if factor_score is None:
+                    if factor == "price_momentum":
+                        m = trade["factor_scores"].get("momentum", 0)
+                        rs = trade["factor_scores"].get("relative_strength", 0)
+                        factor_score = (m * 0.6 + rs * 0.4) if (m and rs) else (m or rs or 0)
+                    elif factor == "value_timing":
+                        mr = trade["factor_scores"].get("mean_reversion", 0)
+                        rsi = trade["factor_scores"].get("rsi", 0)
+                        factor_score = ((mr + rsi) / 2) if (mr and rsi) else (mr or rsi or 0)
+                    elif factor in ("earnings_growth", "quality"):
+                        factor_score = 50  # Neutral default for new factors not in old transactions
+                    else:
+                        factor_score = 0
+                if not factor_score:
                     continue
 
                 # Calculate factor's contribution to this trade

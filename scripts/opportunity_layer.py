@@ -29,7 +29,7 @@ import json
 import logging
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -116,7 +116,7 @@ class OpportunityLayer:
                 74 * acceptable_mult,
             )
 
-    def process(self, state: PortfolioState, risk_layer_output: dict, social_signals=None) -> dict:
+    def process(self, state: PortfolioState, risk_layer_output: dict, social_signals=None, info_cache: Optional[Dict] = None) -> dict:
         """
         Main entry point for Layer 2 processing.
 
@@ -188,7 +188,7 @@ class OpportunityLayer:
 
         # Use StockScorer to get base composite scores
         scorer = StockScorer(regime=state.regime)
-        stock_scores = scorer.score_watchlist(candidates)
+        stock_scores = scorer.score_watchlist(candidates, info_cache=info_cache)
 
         # Calculate conviction scores with multipliers
         conviction_scores = {}
@@ -289,12 +289,12 @@ class OpportunityLayer:
 
         # Build factor dict for transparency
         factors = {
-            "momentum": stock_score.momentum_score,
-            "volatility": stock_score.volatility_score,
+            "price_momentum": stock_score.price_momentum_score,
+            "earnings_growth": stock_score.earnings_growth_score,
+            "quality": stock_score.quality_score,
             "volume": stock_score.volume_score,
-            "relative_strength": stock_score.relative_strength_score,
-            "mean_reversion": stock_score.mean_reversion_score,
-            "rsi": stock_score.rsi_score,
+            "volatility": stock_score.volatility_score,
+            "value_timing": stock_score.value_timing_score,
             "composite": composite,
         }
 
@@ -320,9 +320,9 @@ class OpportunityLayer:
             True if all three factors are strong (>75)
         """
         return (
-            stock_score.momentum_score > 75 and
+            stock_score.price_momentum_score > 75 and
             stock_score.volume_score > 75 and
-            stock_score.relative_strength_score > 75
+            stock_score.earnings_growth_score > 60
         )
 
     def _detect_entry_patterns(self, stock_score: StockScore) -> List[PatternSignal]:
@@ -380,13 +380,13 @@ class OpportunityLayer:
         """
         if regime == MarketRegime.BULL:
             # In bull market: prefer strong momentum
-            return stock_score.momentum_score > 70
+            return stock_score.price_momentum_score > 70
         elif regime == MarketRegime.SIDEWAYS:
-            # In sideways: prefer low volatility + mean reversion
-            return stock_score.volatility_score > 70 and stock_score.mean_reversion_score > 60
+            # In sideways: prefer low volatility + value timing
+            return stock_score.volatility_score > 70 and stock_score.value_timing_score > 60
         elif regime == MarketRegime.BEAR:
-            # In bear market: prefer defensive (high volatility score = low volatility)
-            return stock_score.volatility_score > 80
+            # In bear market: prefer defensive (quality + low volatility)
+            return stock_score.volatility_score > 80 and stock_score.quality_score > 60
         else:
             # Unknown regime: neutral check
             return stock_score.composite_score > 60

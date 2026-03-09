@@ -188,12 +188,12 @@ def main(portfolio_id: str = None):
 
         # Get factor scores for position sizing confidence
         factor_scores = {
-            "momentum": score.momentum_score,
-            "volatility": score.volatility_score,
+            "price_momentum": score.price_momentum_score,
+            "earnings_growth": score.earnings_growth_score,
+            "quality": score.quality_score,
             "volume": score.volume_score,
-            "relative_strength": score.relative_strength_score,
-            "mean_reversion": score.mean_reversion_score,
-            "rsi": score.rsi_score,
+            "volatility": score.volatility_score,
+            "value_timing": score.value_timing_score,
         }
 
         # Calculate position size with confidence multiplier

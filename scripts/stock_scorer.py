@@ -6,12 +6,12 @@ Multi-factor scoring system for ranking watchlist candidates.
 Weights are configurable per market regime (BULL/SIDEWAYS/BEAR).
 
 Factors:
-- Momentum: Multi-timeframe momentum (5/20/60-day with alignment bonus)
-- Volatility: Lower volatility = higher score
+- Price Momentum: Multi-TF momentum + RS vs benchmark (combined)
+- Earnings Growth: earningsQuarterlyGrowth + revenueGrowth + P/E comparison
+- Quality: Gross margins + ROE + debt-to-equity
 - Volume: Recent volume vs average (liquidity)
-- Relative Strength: Performance vs benchmark
-- Mean Reversion: Distance from 20-day SMA
-- RSI: Relative Strength Index for overbought/oversold awareness
+- Volatility: Lower volatility = higher score
+- Value Timing: SMA distance + RSI sweet-spot (combined)
 
 Usage:
     from stock_scorer import StockScorer
@@ -53,21 +53,30 @@ CONFIG_FILE = DATA_DIR / "config.json"
 class StockScore:
     """Holds scoring data for a single stock."""
     ticker: str
-    momentum_score: float
-    volatility_score: float
+    price_momentum_score: float   # replaces momentum + relative_strength
+    earnings_growth_score: float  # NEW: fundamental factor
+    quality_score: float          # NEW: fundamental factor
     volume_score: float
-    relative_strength_score: float
-    mean_reversion_score: float
-    rsi_score: float  # RSI-based score
+    volatility_score: float
+    value_timing_score: float     # replaces mean_reversion + rsi
     composite_score: float
     current_price: float
     atr_pct: float  # Average True Range as % of price (for position sizing)
     # Metadata for explainability
-    rsi_value: float = 0.0  # Raw RSI(14) value
-    momentum_5d: float = 0.0  # 5-day momentum %
-    momentum_20d: float = 0.0  # 20-day momentum %
-    momentum_60d: float = 0.0  # 60-day momentum %
-    momentum_alignment: str = ""  # ALIGNED, MIXED, DIVERGENT
+    rsi_value: float = 0.0
+    momentum_5d: float = 0.0
+    momentum_20d: float = 0.0
+    momentum_60d: float = 0.0
+    momentum_alignment: str = ""
+    # Fundamental metadata (populated when .info dict is passed)
+    revenue_growth: Optional[float] = None
+    earnings_growth_pct: Optional[float] = None
+    gross_margins: Optional[float] = None
+    roe: Optional[float] = None
+    debt_to_equity: Optional[float] = None
+    forward_pe: Optional[float] = None
+    trailing_pe: Optional[float] = None
+    company_description: str = ""
 
 
 def load_config() -> dict:
@@ -86,14 +95,13 @@ class StockScorer:
     """Multi-factor stock scoring system with regime-aware weights."""
 
     # Default weights (used if config doesn't specify)
-    # Now includes RSI as 6th factor
     DEFAULT_WEIGHTS = {
-        "momentum": 0.25,
-        "volatility": 0.18,
-        "volume": 0.12,
-        "relative_strength": 0.20,
-        "mean_reversion": 0.10,
-        "rsi": 0.15,
+        "price_momentum": 0.25,
+        "earnings_growth": 0.15,
+        "quality": 0.15,
+        "volume": 0.10,
+        "volatility": 0.15,
+        "value_timing": 0.20,
     }
 
     def __init__(self, regime: Optional[MarketRegime] = None, lookback_days: int = 20):
@@ -127,16 +135,18 @@ class StockScorer:
         scoring_config = self.config.get("scoring", {})
 
         # Resolve the best available default weights (learned > config > hardcoded)
-        default_weights = scoring_config.get("default_weights") or dict(self.DEFAULT_WEIGHTS)
+        raw_defaults = scoring_config.get("default_weights") or dict(self.DEFAULT_WEIGHTS)
+        default_weights = self._migrate_weight_keys(raw_defaults)
 
         # If no regime or no regime weights exist, just use defaults
         if self.regime is None:
             return default_weights
 
         regime_key = self.regime.value.upper()
-        regime_weights = scoring_config.get("regime_weights", {}).get(regime_key)
-        if not regime_weights:
+        raw_regime = scoring_config.get("regime_weights", {}).get(regime_key)
+        if not raw_regime:
             return default_weights
+        regime_weights = self._migrate_weight_keys(raw_regime)
 
         # Blend regime weights with defaults so learned adjustments still have influence
         blend = float(scoring_config.get("regime_weight_blend", 0.7))
@@ -160,6 +170,61 @@ class StockScorer:
                 blended[largest] = round(blended[largest] + diff, 4)
 
         return blended
+
+    @staticmethod
+    def _migrate_weight_keys(weights: Dict[str, float]) -> Dict[str, float]:
+        """
+        Convert old weight keys to new keys for backward compatibility.
+
+        Old: momentum, relative_strength, mean_reversion, rsi, volume, volatility
+        New: price_momentum, earnings_growth, quality, volume, volatility, value_timing
+        """
+        if not weights:
+            return weights
+
+        old_keys = {"momentum", "relative_strength", "mean_reversion", "rsi"}
+        if not any(k in weights for k in old_keys):
+            return weights  # Already using new keys
+
+        # Merge correlated factors
+        momentum = weights.get("momentum", 0.0)
+        rel_strength = weights.get("relative_strength", 0.0)
+        mean_rev = weights.get("mean_reversion", 0.0)
+        rsi_w = weights.get("rsi", 0.0)
+
+        combined_pm = momentum + rel_strength   # → price_momentum
+        combined_vt = mean_rev + rsi_w          # → value_timing
+        vol = weights.get("volume", 0.0)
+        volatility = weights.get("volatility", 0.0)
+
+        # Scale existing factors to 0.70 to make room for 2 new fundamentals (0.30)
+        existing_total = combined_pm + combined_vt + vol + volatility
+        if existing_total > 0:
+            scale = 0.70 / existing_total
+            combined_pm *= scale
+            combined_vt *= scale
+            vol *= scale
+            volatility *= scale
+
+        migrated: Dict[str, float] = {
+            "price_momentum": combined_pm,
+            "value_timing": combined_vt,
+            "volume": vol,
+            "volatility": volatility,
+            "earnings_growth": 0.15,
+            "quality": 0.15,
+        }
+
+        # Normalize to sum exactly 1.0
+        total = sum(migrated.values())
+        if total > 0:
+            migrated = {k: round(v / total, 4) for k, v in migrated.items()}
+            diff = round(1.0 - sum(migrated.values()), 4)
+            if diff != 0:
+                largest = max(migrated, key=migrated.get)
+                migrated[largest] = round(migrated[largest] + diff, 4)
+
+        return migrated
 
     def get_active_weights(self) -> Dict[str, float]:
         """Return the currently active weights for transparency."""
@@ -539,6 +604,134 @@ class StockScorer:
         score = 100 - abs(distance_pct) * 5
         return max(0, min(100, score))
 
+    def score_price_momentum(self, df: pd.DataFrame) -> Tuple[float, Dict]:
+        """
+        Combined price momentum score: 60% multi-TF momentum + 40% relative strength.
+        Alignment bonus is already embedded in the momentum component.
+        """
+        if df is None or len(df) < 5:
+            return 50.0, {"mom_5d": 0, "mom_20d": 0, "mom_60d": 0, "alignment": "UNKNOWN"}
+
+        mom_score, mom_metadata = self.score_momentum(df)
+        rs_score = self.score_relative_strength(df)
+
+        combined = mom_score * 0.60 + rs_score * 0.40
+        return max(0.0, min(100.0, round(combined, 1))), mom_metadata
+
+    def score_earnings_growth(self, info: dict) -> float:
+        """
+        Score based on earnings and revenue growth from yfinance .info dict.
+        Returns 50 (neutral) when data is unavailable — never penalizes missing data.
+        """
+        if not info:
+            return 50.0
+
+        scores = []
+
+        # Earnings quarterly growth
+        eq_growth = info.get("earningsQuarterlyGrowth")
+        if eq_growth is not None:
+            if eq_growth > 0.20:
+                scores.append(85.0)
+            elif eq_growth > 0.05:
+                scores.append(70.0)
+            elif eq_growth > -0.05:
+                scores.append(50.0)
+            else:
+                scores.append(30.0)
+
+        # Revenue growth
+        rev_growth = info.get("revenueGrowth")
+        if rev_growth is not None:
+            if rev_growth > 0.15:
+                scores.append(80.0)
+            elif rev_growth > 0.05:
+                scores.append(65.0)
+            elif rev_growth > -0.05:
+                scores.append(50.0)
+            else:
+                scores.append(30.0)
+
+        # Forward vs trailing P/E (lower forward PE = earnings expected to grow)
+        trailing_pe = info.get("trailingPE")
+        forward_pe = info.get("forwardPE")
+        if trailing_pe and forward_pe and trailing_pe > 0 and forward_pe > 0:
+            if forward_pe < trailing_pe * 0.85:
+                scores.append(75.0)
+            elif forward_pe < trailing_pe:
+                scores.append(62.0)
+            else:
+                scores.append(45.0)
+
+        if not scores:
+            return 50.0
+        return round(sum(scores) / len(scores), 1)
+
+    def score_quality(self, info: dict) -> float:
+        """
+        Score based on business quality metrics from yfinance .info dict.
+        Returns 50 (neutral) when data is unavailable — never penalizes missing data.
+        Note: yfinance debtToEquity is often in ×100 form (50 = 0.5 ratio).
+        """
+        if not info:
+            return 50.0
+
+        scores = []
+
+        # Gross margins
+        gross_margins = info.get("grossMargins")
+        if gross_margins is not None:
+            if gross_margins > 0.40:
+                scores.append(85.0)
+            elif gross_margins > 0.20:
+                scores.append(65.0)
+            elif gross_margins > 0.00:
+                scores.append(50.0)
+            else:
+                scores.append(20.0)
+
+        # Return on equity
+        roe = info.get("returnOnEquity")
+        if roe is not None:
+            if roe > 0.15:
+                scores.append(80.0)
+            elif roe > 0.05:
+                scores.append(60.0)
+            elif roe > 0.00:
+                scores.append(50.0)
+            else:
+                scores.append(20.0)
+
+        # Debt to equity (lower = better; yfinance uses ×100 form: 50 = 0.5 ratio)
+        d2e = info.get("debtToEquity")
+        if d2e is not None and d2e >= 0:
+            if d2e < 50:     # < 0.5 ratio
+                scores.append(80.0)
+            elif d2e < 100:  # < 1.0 ratio
+                scores.append(65.0)
+            elif d2e < 200:  # < 2.0 ratio
+                scores.append(50.0)
+            else:
+                scores.append(30.0)
+
+        if not scores:
+            return 50.0
+        return round(sum(scores) / len(scores), 1)
+
+    def score_value_timing(self, df: pd.DataFrame) -> float:
+        """
+        Combined value/timing score: 50% SMA distance + 50% RSI sweet-spot.
+        Replaces separate mean_reversion and rsi factors.
+        """
+        if df is None or len(df) < 14:
+            return 50.0
+
+        mean_rev = self.score_mean_reversion(df)
+        rsi_score, _ = self.score_rsi(df)
+
+        combined = mean_rev * 0.50 + rsi_score * 0.50
+        return max(0.0, min(100.0, round(combined, 1)))
+
     def calculate_atr_percent(self, df: pd.DataFrame) -> float:
         """
         Calculate Average True Range as percentage of price.
@@ -566,33 +759,48 @@ class StockScorer:
         atr_pct = (atr / current_price) * 100
         return round(atr_pct, 2)
 
-    def score_stock(self, ticker: str) -> Optional[StockScore]:
+    def score_stock(self, ticker: str, info: Optional[dict] = None) -> Optional["StockScore"]:
         """
         Calculate composite score for a single stock.
-        Returns StockScore object or None if data unavailable.
+
+        Args:
+            ticker: Stock ticker symbol
+            info: Optional yfinance .info dict for fundamental scoring.
+                  If None, fundamental scores default to 50 (neutral).
+
+        Returns:
+            StockScore object or None if price data unavailable.
         """
         # Fetch extended data for multi-timeframe analysis
         df = self._fetch_price_data(ticker, period="3mo")
         if df is None or df.empty:
             return None
 
-        # Score all factors
-        momentum, mom_metadata = self.score_momentum(df)
-        volatility = self.score_volatility(df)
+        info_dict = info or {}
+
+        # Price/volume factors
+        price_momentum, mom_metadata = self.score_price_momentum(df)
         volume = self.score_volume(df)
-        rel_strength = self.score_relative_strength(df)
-        mean_rev = self.score_mean_reversion(df)
-        rsi_score, rsi_value = self.score_rsi(df)
+        volatility = self.score_volatility(df)
+        value_timing = self.score_value_timing(df)
+
+        # Fundamental factors (default 50 if no info)
+        earnings_growth = self.score_earnings_growth(info_dict)
+        quality = self.score_quality(info_dict)
+
+        # RSI value for metadata
+        rsi_series = self._calculate_rsi(df)
+        rsi_value = float(rsi_series.iloc[-1])
 
         # Weighted composite score using regime-aware weights
         w = self._weights
         composite = (
-            momentum * w.get("momentum", 0.25)
-            + volatility * w.get("volatility", 0.18)
-            + volume * w.get("volume", 0.12)
-            + rel_strength * w.get("relative_strength", 0.20)
-            + mean_rev * w.get("mean_reversion", 0.10)
-            + rsi_score * w.get("rsi", 0.15)
+            price_momentum * w.get("price_momentum", 0.25)
+            + earnings_growth * w.get("earnings_growth", 0.15)
+            + quality * w.get("quality", 0.15)
+            + volume * w.get("volume", 0.10)
+            + volatility * w.get("volatility", 0.15)
+            + value_timing * w.get("value_timing", 0.20)
         )
 
         current_price = float(df["Close"].iloc[-1])
@@ -605,12 +813,12 @@ class StockScorer:
 
         return StockScore(
             ticker=ticker,
-            momentum_score=round(momentum, 1),
-            volatility_score=round(volatility, 1),
+            price_momentum_score=round(price_momentum, 1),
+            earnings_growth_score=round(earnings_growth, 1),
+            quality_score=round(quality, 1),
             volume_score=round(volume, 1),
-            relative_strength_score=round(rel_strength, 1),
-            mean_reversion_score=round(mean_rev, 1),
-            rsi_score=round(rsi_score, 1),
+            volatility_score=round(volatility, 1),
+            value_timing_score=round(value_timing, 1),
             composite_score=round(composite, 1),
             current_price=round(current_price, 2),
             atr_pct=atr_pct,
@@ -619,14 +827,24 @@ class StockScorer:
             momentum_20d=mom_metadata.get("mom_20d", 0.0),
             momentum_60d=mom_metadata.get("mom_60d", 0.0),
             momentum_alignment=mom_metadata.get("alignment", ""),
+            revenue_growth=info_dict.get("revenueGrowth"),
+            earnings_growth_pct=info_dict.get("earningsQuarterlyGrowth"),
+            gross_margins=info_dict.get("grossMargins"),
+            roe=info_dict.get("returnOnEquity"),
+            debt_to_equity=info_dict.get("debtToEquity"),
+            forward_pe=info_dict.get("forwardPE"),
+            trailing_pe=info_dict.get("trailingPE"),
+            company_description=(info_dict.get("longBusinessSummary") or "")[:200],
         )
 
-    def score_watchlist(self, tickers: List[str]) -> List[StockScore]:
+    def score_watchlist(self, tickers: List[str], info_cache: Optional[Dict[str, dict]] = None) -> List[StockScore]:
         """
         Score all tickers in watchlist and return sorted by composite score.
 
         Args:
             tickers: List of ticker symbols
+            info_cache: Optional dict mapping ticker -> yfinance .info dict.
+                        When provided, enables fundamental scoring.
 
         Returns:
             List of StockScore objects, sorted by composite score (highest first)
@@ -634,7 +852,8 @@ class StockScorer:
         scores = []
 
         for ticker in tickers:
-            score = self.score_stock(ticker)
+            info = (info_cache or {}).get(ticker)
+            score = self.score_stock(ticker, info=info)
             if score is not None:
                 scores.append(score)
 

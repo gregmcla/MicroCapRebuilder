@@ -91,6 +91,7 @@ def _build_review_prompt(
     proposed_actions: list,
     portfolio_context: dict,
     social_signals: Optional[dict] = None,
+    info_cache: Optional[dict] = None,
 ) -> str:
     """Build the prompt for AI review. Accepts both dicts and ProposedAction objects.
 
@@ -98,6 +99,7 @@ def _build_review_prompt(
         proposed_actions: List of ProposedAction objects or dicts with action fields.
         portfolio_context: Dict with portfolio-level context (equity, cash, regime, etc.).
         social_signals: Optional dict mapping ticker -> SocialSignal for heat injection.
+        info_cache: Optional dict mapping ticker -> yfinance .info dict for fundamental data.
     """
     sector_map = portfolio_context.get("sector_map", {})
 
@@ -149,6 +151,33 @@ Action {i}:
                 if heat_line:
                     actions_text += heat_line + "\n"
 
+        # Fundamental data injection — only for BUY actions
+        if action_type == "BUY" and info_cache:
+            info = info_cache.get(ticker, {}) if info_cache else {}
+            if info:
+                def _pct(v: Optional[float]) -> str:
+                    return f"{v * 100:+.1f}%" if v is not None else "N/A"
+                def _num(v: Optional[float], fmt: str = ".1f") -> str:
+                    return f"{v:{fmt}}" if v is not None else "N/A"
+
+                rev_growth = info.get("revenueGrowth")
+                eq_growth = info.get("earningsQuarterlyGrowth")
+                gross_margins = info.get("grossMargins")
+                t_pe = info.get("trailingPE")
+                f_pe = info.get("forwardPE")
+                d2e = info.get("debtToEquity")
+                roe = info.get("returnOnEquity")
+                description = (info.get("longBusinessSummary") or "")[:200]
+                actions_text += f"""  === Fundamental Data ===
+  Revenue Growth: {_pct(rev_growth)}
+  Earnings Growth (Q): {_pct(eq_growth)}
+  Gross Margin: {_pct(gross_margins)}
+  P/E (Trailing/Forward): {_num(t_pe)} / {_num(f_pe)}
+  Debt/Equity: {_num(d2e)}
+  ROE: {_pct(roe)}
+  Description: {description if description else "N/A"}
+"""
+
     projected_sectors = portfolio_context.get("projected_sector_allocation", {})
     if projected_sectors:
         sorted_sectors = sorted(projected_sectors.items(), key=lambda x: x[1], reverse=True)
@@ -199,6 +228,8 @@ DECISION GUIDELINES:
 - Use your judgment on sector concentration — there are no hard rules, but use common sense: if 60%+ of proposed capital is going into one sector, critically evaluate whether each pick genuinely earns its spot or if some are just riding the sector wave
 
 - ROTATION SELLS: Sells labeled "ROTATION: Upgrading to {{ticker}}" sell a modestly-performing position to fund a higher-scoring candidate. A 20+ point score gap generally justifies the switch.
+- FUNDAMENTALS: Strong quality metrics (positive gross margins, ROE > 5%, low debt) can justify approving a moderate quant score
+- N/A for fundamental data means the data was unavailable from yfinance — it is NOT a red flag
 
 Be protective but not overly cautious. A 70+ score with good regime usually deserves APPROVE.
 
@@ -211,10 +242,12 @@ def build_review_prompt(
     proposed_actions: list,
     portfolio_context: dict,
     social_signals: Optional[dict] = None,
+    info_cache: Optional[dict] = None,
 ) -> str:
     """Public wrapper around _build_review_prompt. Accepts ProposedAction objects or dicts."""
     return _build_review_prompt(proposed_actions, portfolio_context,
-                                social_signals=social_signals)
+                                social_signals=social_signals,
+                                info_cache=info_cache)
 
 
 def review_proposed_actions(
@@ -222,6 +255,7 @@ def review_proposed_actions(
     portfolio_context: dict,
     batch_size: int = 10,
     social_signals: Optional[dict] = None,
+    info_cache: Optional[dict] = None,
 ) -> list:
     """
     Review proposed actions using AI.
@@ -251,20 +285,24 @@ def review_proposed_actions(
         for i in range(0, len(proposed_actions), batch_size):
             batch = proposed_actions[i:i + batch_size]
             batch_reviewed = _review_batch(client_type, client, batch, portfolio_context,
-                                           social_signals=social_signals)
+                                           social_signals=social_signals,
+                                           info_cache=info_cache)
             all_reviewed.extend(batch_reviewed)
         return all_reviewed
 
     return _review_batch(client_type, client, proposed_actions, portfolio_context,
-                         social_signals=social_signals)
+                         social_signals=social_signals,
+                         info_cache=info_cache)
 
 
 def _review_batch(client_type, client, proposed_actions: list, portfolio_context: dict,
-                  social_signals: Optional[dict] = None) -> list:
+                  social_signals: Optional[dict] = None,
+                  info_cache: Optional[dict] = None) -> list:
     """Review a batch of proposed actions."""
 
     prompt = build_review_prompt(proposed_actions, portfolio_context,
-                                 social_signals=social_signals)
+                                 social_signals=social_signals,
+                                 info_cache=info_cache)
 
     try:
         if client_type == "anthropic":
