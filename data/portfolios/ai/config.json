@@ -240,14 +240,14 @@
       "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 150,
+      "max_tickers": 300,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
       "remove_poor_performers": true,
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75,
-      "total_watchlist_slots": 150,
+      "total_watchlist_slots": 300,
       "sector_weights": {
         "Technology": 35,
         "Communication Services": 20,

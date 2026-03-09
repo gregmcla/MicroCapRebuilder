@@ -97,7 +97,7 @@ def get_watchlist(portfolio_id: str):
                 continue
 
     candidates.sort(key=lambda x: x["score"], reverse=True)
-    return {"candidates": candidates[:20], "total": len(candidates)}
+    return {"candidates": candidates, "total": len(candidates)}
 
 
 @router.get("/scan/status")
