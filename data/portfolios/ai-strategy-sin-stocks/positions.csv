@@ -1,1 +1,6 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+AM,391,22.97,22.84,8932.39,-48.88,-0.54,21.13,27.56,2026-03-06,Energy,22.97,-48.88,-0.54
+AMPY,1474,6.1,6.26,9227.24,235.84,2.62,5.61,7.32,2026-03-06,Energy,6.32,235.84,2.62
+AVIR,1527,5.89,6.16,9398.69,404.66,4.5,5.42,7.07,2026-03-06,Healthcare,6.16,404.66,4.5
+ANNA,1465,4.09,3.7,5420.5,-571.35,-9.54,3.76,4.91,2026-03-06,Energy,4.09,-571.35,-9.54
+APA,180,32.68,32.91,5923.8,41.4,0.7,30.07,39.22,2026-03-06,Energy,33.46,41.4,0.7

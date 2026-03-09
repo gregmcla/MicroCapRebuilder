@@ -35,6 +35,7 @@ export default function MatrixGrid({
   watchlistCandidates = [],
   scanStatus,
   showSecondaryTabs = true,
+  filterOverride,
 }: MatrixGridProps) {
   const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
@@ -148,16 +149,19 @@ export default function MatrixGrid({
     }
   }, []);
 
+  // When filterOverride is defined externally, use it; otherwise use internal filterP
+  const effectiveFilter = filterOverride !== undefined ? filterOverride : filterP;
+
   // Sorted / filtered positions
   const sorted = useMemo(() => {
     let arr = [...positions];
-    if (filterP) arr = arr.filter((p) => p.portfolioId === filterP);
+    if (effectiveFilter) arr = arr.filter((p) => p.portfolioId === effectiveFilter);
     if (sortBy === "value") arr.sort((a, b) => b.value - a.value);
     else if (sortBy === "perf") arr.sort((a, b) => b.perf - a.perf);
     else if (sortBy === "alpha") arr.sort((a, b) => a.ticker.localeCompare(b.ticker));
     else if (sortBy === "portfolio") arr.sort((a, b) => a.portfolioId.localeCompare(b.portfolioId) || b.value - a.value);
     return arr;
-  }, [positions, sortBy, filterP]);
+  }, [positions, sortBy, effectiveFilter]);
 
   const maxVal = useMemo(() => Math.max(...positions.map((p) => p.value), 1), [positions]);
   const hovered = hovIdx !== null ? sorted[hovIdx] : null;
@@ -291,21 +295,21 @@ export default function MatrixGrid({
         <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ display: "flex", gap: 1, alignItems: "center" }}>
             {/* Portfolio name */}
-            {(filterP ? portfolios.find(p => p.id === filterP) : portfolios.length === 1 ? portfolios[0] : null) && (
+            {(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios.length === 1 ? portfolios[0] : null) && (
               <span style={{
                 fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", marginRight: 16, paddingRight: 16,
                 borderRight: "1px solid rgba(255,255,255,0.04)",
-                color: (filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.color ?? "#e8ffe8",
-                textShadow: `0 0 20px ${(filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.color ?? "#4ade80"}22`,
+                color: (effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#e8ffe8",
+                textShadow: `0 0 20px ${(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#4ade80"}22`,
               }}>
-                {(filterP ? portfolios.find(p => p.id === filterP) : portfolios[0])?.name}
+                {(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.name}
               </span>
             )}
             {/* Stats inline with sort */}
             <div style={{ display: "flex", gap: 12, alignItems: "baseline", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
               {[
                 { l: "POS", v: String(sorted.length), c: "#e8ffe8" },
-                { l: "EQUITY", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
+                { l: "INVESTED", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
                 { l: "AVG P&L", v: `${avgP}%`, c: pc(parseFloat(avgP)) },
               ].map((s) => (
                 <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
@@ -347,31 +351,35 @@ export default function MatrixGrid({
                 cursor: "pointer", letterSpacing: "0.08em", marginRight: 8,
               }}>&larr; BACK</button>
             )}
-            <button className="matrix-fb" onClick={() => setFilterP(null)} style={{
-              padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
-              background: !filterP ? "rgba(74,222,128,0.05)" : "transparent",
-              color: !filterP ? "#4ade80" : "#1a1a1a",
-              border: !filterP ? "1px solid rgba(74,222,128,0.1)" : "1px solid rgba(255,255,255,0.02)",
-              cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
-            }}>ALL</button>
-            {portfolios.map((p) => (
-              <button key={p.id} className="matrix-fb" onClick={() => setFilterP(filterP === p.id ? null : p.id)} style={{
-                padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
-                background: filterP === p.id ? `${p.color}12` : "transparent",
-                color: filterP === p.id ? p.color : "#1a1a1a",
-                border: `1px solid ${filterP === p.id ? p.color + "33" : "rgba(255,255,255,0.02)"}`,
-                cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
-                display: "flex", alignItems: "center", gap: 3,
-              }}>
-                <span style={{
-                  width: 3, height: 3, borderRadius: "50%", background: p.color,
-                  opacity: filterP === p.id ? 1 : 0.15,
-                  boxShadow: filterP === p.id ? `0 0 5px ${p.color}66` : "none",
-                  transition: "all 0.2s", flexShrink: 0,
-                }} />
-                {p.abbr}
-              </button>
-            ))}
+            {filterOverride === undefined && (
+              <>
+                <button className="matrix-fb" onClick={() => setFilterP(null)} style={{
+                  padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
+                  background: !filterP ? "rgba(74,222,128,0.05)" : "transparent",
+                  color: !filterP ? "#4ade80" : "#1a1a1a",
+                  border: !filterP ? "1px solid rgba(74,222,128,0.1)" : "1px solid rgba(255,255,255,0.02)",
+                  cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
+                }}>ALL</button>
+                {portfolios.map((p) => (
+                  <button key={p.id} className="matrix-fb" onClick={() => setFilterP(filterP === p.id ? null : p.id)} style={{
+                    padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
+                    background: filterP === p.id ? `${p.color}12` : "transparent",
+                    color: filterP === p.id ? p.color : "#1a1a1a",
+                    border: `1px solid ${filterP === p.id ? p.color + "33" : "rgba(255,255,255,0.02)"}`,
+                    cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
+                    display: "flex", alignItems: "center", gap: 3,
+                  }}>
+                    <span style={{
+                      width: 3, height: 3, borderRadius: "50%", background: p.color,
+                      opacity: filterP === p.id ? 1 : 0.15,
+                      boxShadow: filterP === p.id ? `0 0 5px ${p.color}66` : "none",
+                      transition: "all 0.2s", flexShrink: 0,
+                    }} />
+                    {p.abbr}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
 

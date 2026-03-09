@@ -10,6 +10,7 @@ import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import MatrixGrid from "./MatrixGrid";
+import PortfolioStrip from "./MatrixGrid/PortfolioStrip";
 import { buildPortfolioMap, crossMoverToMatrix } from "./MatrixGrid/constants";
 import type { MatrixPortfolio } from "./MatrixGrid/types";
 
@@ -522,6 +523,7 @@ export default function OverviewPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
@@ -705,7 +707,8 @@ export default function OverviewPage() {
   const bottomMovers = overview?.bottom_movers ?? [];
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--surface-0)" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
+      {/* Aggregate stats bar */}
       <AggregateBar
         totalEquity={totalEquity}
         totalCash={overview?.total_cash ?? 0}
@@ -723,76 +726,45 @@ export default function OverviewPage() {
         scanAllLabel={scanAllLabel}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left: portfolio grid + heatmap */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-          {enriched.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "64px 0", color: "var(--text-1)" }}>
-              <p style={{ fontSize: "18px", marginBottom: "8px" }}>No portfolios yet</p>
-              <p style={{ fontSize: "13px" }}>Create your first portfolio to get started.</p>
-            </div>
-          ) : (
-            <>
-              <div style={{ display: "grid", gap: "12px", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
-                {enriched.map((s, i) => (
-                  <div key={s.id} className={`anim d${Math.min(i + 1, 5)}`}>
-                    <PortfolioCard
-                      summary={s}
-                      totalEquity={totalEquity}
-                      scanResult={scanAll.results[s.id]}
-                    />
-                  </div>
-                ))}
-              </div>
+      {/* Portfolio strip — proportional tiles, acts as filter control */}
+      {enriched.length > 0 && (
+        <PortfolioStrip
+          summaries={enriched}
+          matrixPortfolios={matrixPortfolios}
+          totalEquity={totalEquity}
+          activeFilter={activeFilter}
+          onFilter={setActiveFilter}
+          onNavigate={(id) => setPortfolio(id)}
+          scanResults={scanAll.results}
+          onUpdateAll={handleUpdateAll}
+          updatingAll={updatingAll}
+          updateResult={updateResult}
+          onScanAll={handleScanAll}
+          scanAllRunning={scanAll.running}
+          scanAllLabel={scanAllLabel}
+          onNewPortfolio={() => setShowCreate(true)}
+        />
+      )}
 
-              {matrixPositions.length > 0 && (
-                <div style={{ flex: 1, minHeight: 400, marginTop: 16 }}>
-                  <MatrixGrid
-                    positions={matrixPositions}
-                    portfolios={matrixPortfolios}
-                    onPositionClick={(pos) => setPortfolio(pos.portfolioId)}
-                    showSecondaryTabs={false}
-                  />
-                </div>
-              )}
-            </>
-          )}
+      {/* Matrix grid fills all remaining space */}
+      {enriched.length === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontSize: "18px", marginBottom: "8px" }}>No portfolios yet</p>
+            <p style={{ fontSize: "13px" }}>Create your first portfolio to get started.</p>
+          </div>
         </div>
-
-        {/* Right panel */}
-        <aside style={{ width: "260px", flexShrink: 0, overflowY: "auto", borderLeft: "1px solid var(--border-0)", padding: "16px", background: "var(--surface-1)" }}>
-          {validSummaries.length > 0 && (
-            <div style={{ marginBottom: "20px" }}>
-              <p style={sectionLabel}>Capital Allocation</p>
-              {validSummaries.map((s) => (
-                <AllocationBar key={s.id} name={s.name} equity={s.equity} totalEquity={totalEquity} />
-              ))}
-            </div>
-          )}
-
-          {topMovers.length > 0 && (
-            <div style={{ marginBottom: "20px" }}>
-              <p style={{ ...sectionLabel, color: "var(--green)" }}>Top Movers</p>
-              {topMovers.map((m) => (
-                <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} />
-              ))}
-            </div>
-          )}
-
-          {bottomMovers.length > 0 && (
-            <div>
-              <p style={{ ...sectionLabel, color: "var(--red)" }}>Bottom Movers</p>
-              {bottomMovers.map((m) => (
-                <MoverRow key={`${m.portfolio_id}-${m.ticker}`} mover={m} />
-              ))}
-            </div>
-          )}
-
-          {topMovers.length === 0 && bottomMovers.length === 0 && validSummaries.length > 0 && (
-            <p style={{ fontSize: "11px", color: "var(--text-0)" }}>No open positions to show movers for.</p>
-          )}
-        </aside>
-      </div>
+      ) : (
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <MatrixGrid
+            positions={matrixPositions}
+            portfolios={matrixPortfolios}
+            onPositionClick={(pos) => setPortfolio(pos.portfolioId)}
+            showSecondaryTabs={false}
+            filterOverride={activeFilter}
+          />
+        </div>
+      )}
 
       {showCreate && <CreatePortfolioModal onClose={() => setShowCreate(false)} />}
     </div>

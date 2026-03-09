@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import pickle
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -254,10 +255,55 @@ class StockDiscovery:
         except Exception:
             return None
 
+    # Disk cache for .info data — persists across scan instances (4hr TTL)
+    _INFO_DISK_CACHE_DIR = DATA_DIR / "yf_cache"
+    _INFO_DISK_CACHE_FILE = _INFO_DISK_CACHE_DIR / "stock_info_cache.pkl"
+    _INFO_DISK_CACHE_TTL = 4 * 3600  # 4 hours
+    _disk_info_cache: Dict[str, tuple] = {}  # ticker -> (info_dict, timestamp)
+    _disk_cache_loaded = False
+    _disk_cache_lock = threading.Lock()
+
+    @classmethod
+    def _load_disk_info_cache(cls) -> None:
+        """Load the disk info cache into class-level dict (once per process)."""
+        if cls._disk_cache_loaded:
+            return
+        with cls._disk_cache_lock:
+            if cls._disk_cache_loaded:
+                return
+            try:
+                cls._INFO_DISK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                if cls._INFO_DISK_CACHE_FILE.exists():
+                    with open(cls._INFO_DISK_CACHE_FILE, "rb") as f:
+                        cls._disk_info_cache = pickle.load(f)
+            except Exception:
+                cls._disk_info_cache = {}
+            cls._disk_cache_loaded = True
+
+    @classmethod
+    def _save_disk_info_cache(cls) -> None:
+        """Persist the disk info cache to disk."""
+        try:
+            cls._INFO_DISK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            with open(cls._INFO_DISK_CACHE_FILE, "wb") as f:
+                pickle.dump(cls._disk_info_cache, f)
+        except Exception:
+            pass
+
     def _get_stock_info(self, ticker: str, timeout: float = 5.0) -> dict:
         """Fetch and cache stock info with a hard per-ticker timeout."""
+        # 1. In-memory cache (per scan instance)
         if ticker in self._info_cache:
             return self._info_cache[ticker]
+
+        # 2. Disk cache (persists across scan instances, 4hr TTL)
+        self._load_disk_info_cache()
+        cached = self._disk_info_cache.get(ticker)
+        if cached:
+            info_dict, ts = cached
+            if time.time() - ts < self._INFO_DISK_CACHE_TTL:
+                self._info_cache[ticker] = info_dict
+                return info_dict
 
         result: list = [{}]
 
@@ -273,6 +319,9 @@ class StockDiscovery:
         # If thread is still alive after timeout, it's hung — skip the ticker
         info = result[0]
         self._info_cache[ticker] = info
+        # Only persist to disk if we got real data (non-empty)
+        if info:
+            self._disk_info_cache[ticker] = (info, time.time())
         return info
 
     def _passes_price_volume_filter(self, ticker: str, df: pd.DataFrame) -> bool:
@@ -832,6 +881,8 @@ class StockDiscovery:
                     self._info_cache[ticker] = {}
 
         print(f"  Info pre-warm done in {time.time() - t0:.1f}s")
+        # Persist newly fetched info to disk so next scan reuses it
+        self._save_disk_info_cache()
 
     def run_all_scans(self) -> List[DiscoveredStock]:
         """

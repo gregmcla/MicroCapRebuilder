@@ -14,3 +14,7 @@ c12cf5fb,2026-02-28,LYV,BUY,375,160.55,60206.25,147.71,192.66,SIGNAL,BULL,73.7,"
 59528350,2026-03-01,CMCSA,BUY,5,30.96,154.8,28.48,37.15,SIGNAL,BULL,65.8,"{""momentum"": 69.0, ""volatility"": 67.7, ""volume"": 44.2, ""relative_strength"": 58.4, ""mean_reversion"": 96.7, ""rsi"": 70.0, ""composite"": 65.8}",
 d5ba3a94,2026-03-01,CHTR,BUY,15,234.63,3519.45,215.86,281.56,SIGNAL,BULL,76.2,"{""momentum"": 87.9, ""volatility"": 51.7, ""volume"": 31.9, ""relative_strength"": 82.8, ""mean_reversion"": 90.2, ""rsi"": 90.0, ""composite"": 76.2}",
 3644b98f,2026-03-03,TER,SELL,180,302.0,54360.0,,,STOP_LOSS,,,,
+4d3bcb00,2026-03-06,DE,SELL,12,589.77,7077.24,,,INTELLIGENCE,,,,
+7d5ef3dd,2026-03-06,HAFN,BUY,4424,7.46,33003.04,6.86,8.95,SIGNAL,SIDEWAYS,80.0,"{""momentum"": 89.3, ""volatility"": 60.9, ""volume"": 89.8, ""relative_strength"": 100, ""mean_reversion"": 64.7, ""rsi"": 75.0, ""composite"": 80.0}",
+d6e659ee,2026-03-09,PLD,SELL,250,132.5,33125.0,,,STOP_LOSS,,,,
+d99195e7,2026-03-09,CHTR,SELL,7,226.76,1587.35,,,INTELLIGENCE,,,,

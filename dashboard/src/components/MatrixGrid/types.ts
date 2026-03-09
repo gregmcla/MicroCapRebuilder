@@ -46,6 +46,7 @@ export interface MatrixGridProps {
   watchlistCandidates?: WatchlistCandidate[];
   scanStatus?: ScanJobStatus;
   showSecondaryTabs?: boolean; // show WATCHLIST/ACTIVITY/LOGS tabs (default true, false for overview)
+  filterOverride?: string | null; // when defined, overrides internal filter state and hides filter chips
 }
 
 // Re-export for convenience in mapping functions

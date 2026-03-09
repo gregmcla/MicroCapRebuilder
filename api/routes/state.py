@@ -164,9 +164,12 @@ def get_ticker_info(portfolio_id: str, ticker: str):
 
     t = threading.Thread(target=fetch, daemon=True)
     t.start()
-    t.join(timeout=5)
+    t.join(timeout=15)
 
-    _ticker_info_cache[ticker] = (result, now)
+    # Only cache if we got real data — don't poison cache with empty defaults
+    # (empty result happens when yfinance is rate-limited during concurrent scans)
+    if result.get("name") != ticker or result.get("sector") is not None:
+        _ticker_info_cache[ticker] = (result, now)
     return result
 
 

@@ -653,8 +653,12 @@ class StockScorer:
                 scores.append(30.0)
 
         # Forward vs trailing P/E (lower forward PE = earnings expected to grow)
-        trailing_pe = info.get("trailingPE")
-        forward_pe = info.get("forwardPE")
+        try:
+            trailing_pe = float(info.get("trailingPE") or 0) or None
+            forward_pe = float(info.get("forwardPE") or 0) or None
+        except (ValueError, TypeError):
+            trailing_pe = None
+            forward_pe = None
         if trailing_pe and forward_pe and trailing_pe > 0 and forward_pe > 0:
             if forward_pe < trailing_pe * 0.85:
                 scores.append(75.0)

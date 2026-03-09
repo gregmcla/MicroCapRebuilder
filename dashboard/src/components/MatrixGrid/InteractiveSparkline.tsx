@@ -4,7 +4,7 @@ interface InteractiveSparklineProps {
   data: number[];        // raw price / equity values
   color: string;
   h?: number;
-  timestamps?: number[]; // unix seconds — one per data point, for tooltip dates
+  timestamps?: number[]; // unix milliseconds — one per data point, for tooltip dates
 }
 
 const PAD_T = 8;
@@ -153,7 +153,7 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
       const pctStr   = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
       const pctColor = pct >= 0 ? "#4ade80" : "#f87171";
       const dateStr  = timestamps?.[idx]
-        ? new Date(timestamps[idx] * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        ? new Date(timestamps[idx]).toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : null;
 
       ctx.save();

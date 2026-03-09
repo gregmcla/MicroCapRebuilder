@@ -639,31 +639,34 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
     transactions = []
 
-    # Fetch live prices for all buy tickers so we record the real fill price,
-    # not the stale cache price from analyze time.
-    buy_tickers = [r.original.ticker for r in actions_to_execute if r.original.action_type == "BUY"]
-    if buy_tickers:
-        live_prices, _, _ = fetch_prices_batch(buy_tickers)
+    # Fetch live prices for ALL tickers (buys and sells) so we record the real
+    # fill price, not the stale cache price from analyze time.
+    all_tickers = [r.original.ticker for r in actions_to_execute]
+    if all_tickers:
+        live_prices, _, _ = fetch_prices_batch(all_tickers)
         for reviewed in actions_to_execute:
             action = reviewed.original
-            if action.action_type != "BUY":
-                continue
             fresh = live_prices.get(action.ticker)
             if not fresh or fresh <= 0:
                 continue
             old_price = action.price
             if abs(fresh - old_price) / old_price < 0.001:
                 continue  # price hasn't moved meaningfully, skip
-            # Preserve stop/target as % distances from the old price, then rescale
-            stop_pct = (old_price - action.stop_loss) / old_price if old_price > 0 else 0.08
-            target_pct = (action.take_profit - old_price) / old_price if old_price > 0 else 0.20
-            old_dollar_value = action.shares * old_price
-            action.price = round(fresh, 4)
-            action.shares = max(1, int(old_dollar_value / fresh))
-            action.stop_loss = round(fresh * (1 - stop_pct), 2)
-            action.take_profit = round(fresh * (1 + target_pct), 2)
-            print(f"  🔄 {action.ticker}: refreshed price ${old_price:.2f} → ${fresh:.2f} "
-                  f"({action.shares} shares, stop ${action.stop_loss:.2f}, target ${action.take_profit:.2f})")
+            if action.action_type == "BUY":
+                # Preserve stop/target as % distances from the old price, then rescale
+                stop_pct = (old_price - action.stop_loss) / old_price if old_price > 0 else 0.08
+                target_pct = (action.take_profit - old_price) / old_price if old_price > 0 else 0.20
+                old_dollar_value = action.shares * old_price
+                action.price = round(fresh, 4)
+                action.shares = max(1, int(old_dollar_value / fresh))
+                action.stop_loss = round(fresh * (1 - stop_pct), 2)
+                action.take_profit = round(fresh * (1 + target_pct), 2)
+                print(f"  🔄 {action.ticker}: refreshed BUY price ${old_price:.2f} → ${fresh:.2f} "
+                      f"({action.shares} shares, stop ${action.stop_loss:.2f}, target ${action.take_profit:.2f})")
+            else:
+                # For sells, just update the price — no stop/target to rescale
+                action.price = round(fresh, 4)
+                print(f"  🔄 {action.ticker}: refreshed SELL price ${old_price:.2f} → ${fresh:.2f}")
 
     print(f"\n{'='*60}")
     print("EXECUTING APPROVED ACTIONS")

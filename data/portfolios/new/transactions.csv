@@ -19,7 +19,7 @@ dbac3e77,2026-03-01,CRGY,BUY,800,11.66,9328.0,10.96,13.99,SIGNAL,BULL,73.6,"{""m
 2c888e31,2026-03-02,MPC,BUY,70,208.95,14626.5,196.41,250.74,SIGNAL,BULL,79.0,"{""momentum"": 90.0, ""volatility"": 55.9, ""volume"": 52.0, ""relative_strength"": 97.6, ""mean_reversion"": 71.3, ""rsi"": 75.0, ""composite"": 79.0}",
 ac4b61d0,2026-03-02,NOG,BUY,225,27.93,6284.25,26.25,33.52,SIGNAL,BULL,78.2,"{""momentum"": 91.8, ""volatility"": 41.2, ""volume"": 62.3, ""relative_strength"": 84.3, ""mean_reversion"": 67.6, ""rsi"": 90.0, ""composite"": 78.2}",
 4e72bc9e,2026-03-03,NUVB,SELL,1200,4.3,5160.0,,,STOP_LOSS,,,,
-6038677d,2026-03-03,RCL,SELL,24,289.18,6940.44,,,STOP_LOSS,,,,
+6038677d,2026-03-03,RCL,SELL,24,299.7133,7193.12,,,STOP_LOSS,,,,
 464730da,2026-03-03,SM,BUY,9,24.35,219.15,22.89,29.22,SIGNAL,BULL,78.5,"{""momentum"": 98.9, ""volatility"": 38.9, ""volume"": 58.8, ""relative_strength"": 100, ""mean_reversion"": 41.7, ""rsi"": 75.0, ""composite"": 78.5}",
 cdfbb9f6,2026-03-03,MTZ,BUY,7,293.75,2056.25,276.12,352.5,SIGNAL,BULL,82.4,"{""momentum"": 93.7, ""volatility"": 50.5, ""volume"": 58.4, ""relative_strength"": 100, ""mean_reversion"": 60.2, ""rsi"": 90.0, ""composite"": 82.4}",
 8aaff55c,2026-03-03,MTDR,BUY,160,54.12,8659.2,50.87,64.94,SIGNAL,BULL,77.4,"{""momentum"": 99.0, ""volatility"": 48.4, ""volume"": 68.8, ""relative_strength"": 100, ""mean_reversion"": 40.6, ""rsi"": 55.0, ""composite"": 77.4}",

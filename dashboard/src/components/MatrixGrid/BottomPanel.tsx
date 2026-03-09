@@ -272,9 +272,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           {info?.description && (
             <div style={{
               fontSize: 8, color: "#666", lineHeight: 1.65,
-              overflow: "hidden",
-              display: "-webkit-box", WebkitLineClamp: 4,
-              WebkitBoxOrient: "vertical" as const,
+              overflowY: "auto", maxHeight: 72,
             }}>
               {info.description}
             </div>

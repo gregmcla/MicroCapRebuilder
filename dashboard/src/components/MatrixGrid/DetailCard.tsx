@@ -170,9 +170,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               {info.description && (
                 <div style={{
                   fontSize: 8, color: "#666", lineHeight: 1.6,
-                  maxHeight: 80, overflow: "hidden",
-                  display: "-webkit-box", WebkitLineClamp: 4,
-                  WebkitBoxOrient: "vertical" as const,
+                  overflow: "visible",
                   fontFamily: MATRIX_FONT,
                 }}>
                   {info.description}

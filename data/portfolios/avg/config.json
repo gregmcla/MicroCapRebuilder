@@ -248,7 +248,9 @@
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75,
       "total_watchlist_slots": 300
-    }
+    },
+    "max_tickers": 300,
+    "total_watchlist_slots": 300
   },
   "universe": {
     "enabled": true,
@@ -272,8 +274,8 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 6000,
-        "scan_frequency": "daily"
+        "max_tickers": 3000,
+        "scan_frequency": "rotating_3day"
       }
     },
     "filters": {

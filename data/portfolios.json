@@ -232,6 +232,14 @@
       "created": "2026-03-06T17:41:01",
       "starting_capital": 100000.0,
       "active": true
+    },
+    "avg": {
+      "id": "avg",
+      "name": "AVG",
+      "universe": "allcap",
+      "created": "2026-03-09T13:16:49",
+      "starting_capital": 500000.0,
+      "active": true
     }
   }
 }
