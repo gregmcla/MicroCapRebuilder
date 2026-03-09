@@ -339,7 +339,14 @@ class UniverseProvider:
         core_set = set(core)
         extended_filtered = [t for t in extended_batch if t not in core_set]
 
-        return core + extended_filtered
+        # Shuffle the combined list so that the MAX_UNIVERSE cap in stock_discovery
+        # doesn't always take alphabetically-early (A/B/C) tickers first.
+        # Use a daily seed so the order rotates each day.
+        combined = core + extended_filtered
+        day_seed = int(datetime.now().strftime("%Y%j"))
+        rng = random.Random(day_seed)
+        rng.shuffle(combined)
+        return combined
 
     def _get_legacy_universe(self) -> List[str]:
         """Get the legacy hardcoded universe as fallback."""

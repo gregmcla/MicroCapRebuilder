@@ -850,6 +850,11 @@ class StockDiscovery:
         all_candidates = []
         scan_start = time.time()
 
+        # Shuffle before capping so the MAX_UNIVERSE slice is letter-diverse,
+        # not alphabetically biased toward A/B/C tickers.
+        import random as _rand
+        _rand.shuffle(self.scan_universe)
+
         # Cap universe to avoid runaway scan times
         MAX_UNIVERSE = 1000
         if len(self.scan_universe) > MAX_UNIVERSE:
