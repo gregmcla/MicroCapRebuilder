@@ -27,7 +27,7 @@ MicroCapRebuilder (aka **GScott**) is an intelligent, adaptive portfolio trading
 
 **Core capabilities:**
 - Multi-portfolio management with isolated data per portfolio
-- Multi-factor stock scoring (momentum, volatility, volume, relative strength, RSI, mean reversion)
+- Multi-factor stock scoring (price_momentum, earnings_growth, quality, volume, volatility, value_timing)
 - Market regime detection (bull/bear/sideways)
 - Automated risk management (stop losses, take profits, position sizing)
 - Unified analysis pipeline with AI review (APPROVE/MODIFY/VETO)
@@ -233,18 +233,26 @@ SCAN → watchlist_manager.update_watchlist(run_discovery=True)
 
 ## Scoring Model
 
-6 factors with regime-weighted scoring:
-- **Momentum**: multi-timeframe (5/20/60 day), alignment + acceleration bonuses
-- **Relative Strength**: vs benchmark (^GSPC or ^RUT)
-- **Volatility**: lower = higher score
-- **Volume**: recent vs average (liquidity signal)
-- **Mean Reversion**: distance from 20-day SMA (primary signal for mean reversion style)
-- **RSI**: overbought filter, hard filter above 85
+6 factors with regime-weighted scoring (as of 2026-03-09 overhaul):
+- **price_momentum** (0.25): multi-timeframe (5/20/60d) momentum (60%) + RS vs benchmark (40%) + alignment bonus
+- **earnings_growth** (0.15): yfinance `.info` — earningsQuarterlyGrowth, revenueGrowth, forward/trailing P/E comparison. Defaults to 50 when data unavailable.
+- **quality** (0.15): yfinance `.info` — grossMargins, returnOnEquity, debtToEquity. Defaults to 50 when data unavailable.
+- **volume** (0.10): recent vs average volume (liquidity signal)
+- **volatility** (0.15): lower volatility = higher score
+- **value_timing** (0.20): SMA distance (50%) + RSI sweet-spot (50%), hard filter above RSI 85
 
-Regime weights: BULL favors momentum/RS, BEAR favors volatility/mean reversion.
+Regime weights: BULL favors price_momentum, BEAR favors quality+volatility, SIDEWAYS balanced.
 Min score threshold: BULL=40, SIDEWAYS=50, BEAR=60.
 
-**StockScore is a dataclass** — access `.momentum_score`, `.volatility_score`, etc. (not dict keys).
+**StockScore is a dataclass** — access `.price_momentum_score`, `.earnings_growth_score`, `.quality_score`, `.volume_score`, `.volatility_score`, `.value_timing_score` (not dict keys).
+
+**Weight migration**: `StockScorer._migrate_weight_keys(weights)` auto-converts old key names to new ones — safe to call on any config dict.
+
+**Fundamental pre-screen** (in `_passes_filters()`): rejects negative gross margins, >15% revenue decline, SPACs/blank check companies. Missing data = permissive (skip check).
+
+**AI review**: BUY proposals include a fundamental data block (margins, earnings growth, P/E, D/E, ROE, description snippet) so Claude can evaluate business quality.
+
+**Social sentiment** (scripts/social_sentiment.py): ApeWisdom + Stocktwits → `classify_heat()` returns COLD/WARM/HOT/SPIKING. Watchlist entries enriched after scan. SPIKING triggers pump warning in AI review prompt. Dashboard shows colored heat badges in watchlist candidates list.
 
 ---
 
