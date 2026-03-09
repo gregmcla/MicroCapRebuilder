@@ -22,34 +22,34 @@
       "price_momentum": 0.25,
       "earnings_growth": 0.15,
       "quality": 0.15,
-      "volume": 0.10,
+      "volume": 0.1,
       "volatility": 0.15,
-      "value_timing": 0.20
+      "value_timing": 0.2
     },
     "regime_weights": {
       "BULL": {
-        "price_momentum": 0.30,
+        "price_momentum": 0.3,
         "earnings_growth": 0.15,
-        "quality": 0.10,
-        "volume": 0.10,
-        "volatility": 0.10,
+        "quality": 0.1,
+        "volume": 0.1,
+        "volatility": 0.1,
         "value_timing": 0.25
       },
       "SIDEWAYS": {
         "price_momentum": 0.15,
         "earnings_growth": 0.15,
-        "quality": 0.20,
-        "volume": 0.10,
-        "volatility": 0.20,
-        "value_timing": 0.20
+        "quality": 0.2,
+        "volume": 0.1,
+        "volatility": 0.2,
+        "value_timing": 0.2
       },
       "BEAR": {
-        "price_momentum": 0.10,
-        "earnings_growth": 0.10,
+        "price_momentum": 0.1,
+        "earnings_growth": 0.1,
         "quality": 0.25,
-        "volume": 0.10,
+        "volume": 0.1,
         "volatility": 0.25,
-        "value_timing": 0.20
+        "value_timing": 0.2
       }
     },
     "min_score_threshold": {
@@ -294,7 +294,7 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 3000,
+        "max_tickers": 6000,
         "scan_frequency": "daily"
       }
     },
