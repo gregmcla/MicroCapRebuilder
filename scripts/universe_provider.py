@@ -297,23 +297,18 @@ class UniverseProvider:
 
     def get_todays_extended_batch(self) -> List[str]:
         """
-        Get today's batch of extended tickers (1/3 of extended tier).
+        Get a batch of extended tickers (~1/3 of extended tier).
 
-        Uses day-of-year to rotate through extended tickers in 3-day cycle.
+        Uses a truly random shuffle each call so back-to-back scans cover
+        different tickers.  Three scans give ~95% universe coverage.
         """
         if not self._extended_tickers:
             return []
 
-        # Determine which third to scan today
-        day_of_year = datetime.now().timetuple().tm_yday
-        batch_index = day_of_year % 3  # 0, 1, or 2
-
-        # Split extended into 3 batches
-        batch_size = len(self._extended_tickers) // 3 + 1
-        start_idx = batch_index * batch_size
-        end_idx = min(start_idx + batch_size, len(self._extended_tickers))
-
-        return self._extended_tickers[start_idx:end_idx]
+        shuffled = list(self._extended_tickers)
+        random.shuffle(shuffled)
+        batch_size = len(shuffled) // 3 + 1
+        return shuffled[:batch_size]
 
     def get_todays_scan_universe(self) -> List[str]:
         """
@@ -339,13 +334,10 @@ class UniverseProvider:
         core_set = set(core)
         extended_filtered = [t for t in extended_batch if t not in core_set]
 
-        # Shuffle the combined list so that the MAX_UNIVERSE cap in stock_discovery
-        # doesn't always take alphabetically-early (A/B/C) tickers first.
-        # Use a daily seed so the order rotates each day.
+        # Shuffle so the MAX_UNIVERSE cap in stock_discovery doesn't bias
+        # toward alphabetically-early tickers.
         combined = core + extended_filtered
-        day_seed = int(datetime.now().strftime("%Y%j"))
-        rng = random.Random(day_seed)
-        rng.shuffle(combined)
+        random.shuffle(combined)
         return combined
 
     def _get_legacy_universe(self) -> List[str]:
