@@ -107,19 +107,22 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
     else:
         sma_200 = float(close_col.mean())  # Use all available data
 
-    above_50 = current_price > sma_50
-    above_200 = current_price > sma_200
+    # Require 3 consecutive closes on the same side of each MA to avoid
+    # whipsawing when price oscillates around the moving average.
+    recent_3 = close_col.iloc[-3:] if len(close_col) >= 3 else close_col
+    above_50 = bool((recent_3 > sma_50).all())
+    above_200 = bool((recent_3 > sma_200).all())
+    below_50 = bool((recent_3 < sma_50).all())
+    below_200 = bool((recent_3 < sma_200).all())
 
     # Determine regime
     if above_50 and above_200:
         regime = MarketRegime.BULL
-        # Strong bull if price is >5% above both SMAs
         distance_50 = (current_price - sma_50) / sma_50
         distance_200 = (current_price - sma_200) / sma_200
         strength = "strong" if distance_50 > 0.05 and distance_200 > 0.05 else "weak"
-    elif not above_50 and not above_200:
+    elif below_50 and below_200:
         regime = MarketRegime.BEAR
-        # Strong bear if price is >5% below both SMAs
         distance_50 = (sma_50 - current_price) / sma_50
         distance_200 = (sma_200 - current_price) / sma_200
         strength = "strong" if distance_50 > 0.05 and distance_200 > 0.05 else "weak"
@@ -139,28 +142,42 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
     )
 
 
-def get_market_regime() -> MarketRegime:
+def get_market_regime(
+    benchmark_symbol: str = None,
+    fallback_benchmark: str = None,
+) -> MarketRegime:
     """
     Get current market regime.
 
     Returns:
         MarketRegime enum value
     """
-    analysis = get_regime_analysis()
+    analysis = get_regime_analysis(benchmark_symbol=benchmark_symbol,
+                                   fallback_benchmark=fallback_benchmark)
     return analysis.regime
 
 
-def get_regime_analysis() -> RegimeAnalysis:
+def get_regime_analysis(
+    benchmark_symbol: str = None,
+    fallback_benchmark: str = None,
+) -> RegimeAnalysis:
     """
     Get detailed market regime analysis.
+
+    Args:
+        benchmark_symbol: Override benchmark (e.g. "^GSPC" for allcap portfolios).
+                          Defaults to the global config value.
+        fallback_benchmark: Override fallback ETF. Defaults to global config value.
 
     Returns:
         RegimeAnalysis with full breakdown
     """
     config = load_config()
+    primary = benchmark_symbol or config["benchmark_symbol"]
+    fallback = fallback_benchmark or config.get("fallback_benchmark", "IWM")
 
     # Try primary benchmark first
-    for symbol in [config["benchmark_symbol"], config.get("fallback_benchmark", "IWM")]:
+    for symbol in [primary, fallback]:
         df = fetch_benchmark_data(symbol, period="1y")
         if df is not None and not df.empty:
             return analyze_regime(df, symbol)
@@ -191,7 +208,7 @@ def get_position_size_multiplier(regime: MarketRegime) -> float:
     multipliers = {
         MarketRegime.BULL: 1.0,      # Full size in bull market
         MarketRegime.SIDEWAYS: 0.75, # Moderate size in sideways market
-        MarketRegime.BEAR: 0.25,     # Quarter size — buy oversold setups, but small
+        MarketRegime.BEAR: 0.50,     # Half size — cautious buying, not a full stop
         MarketRegime.UNKNOWN: 0.75,  # Moderate size — new portfolio, assume neutral
     }
     return multipliers.get(regime, 0.5)

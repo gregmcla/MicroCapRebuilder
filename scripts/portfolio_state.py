@@ -48,30 +48,32 @@ from market_regime import (
 
 
 # ─── Regime Cache ────────────────────────────────────────────────────────────
+# Keyed by benchmark symbol so different portfolios get the right regime.
 
-_regime_cache: Optional[RegimeAnalysis] = None
-_regime_cache_time: float = 0
+_regime_cache: dict = {}  # benchmark_symbol -> (RegimeAnalysis, fetch_time)
 _REGIME_CACHE_TTL = 3600  # 1 hour
 
 
-def _get_cached_regime_analysis() -> RegimeAnalysis:
-    """Get regime analysis with TTL-based caching to avoid duplicate yfinance calls."""
-    global _regime_cache, _regime_cache_time
+def _get_cached_regime_analysis(config: dict = None) -> RegimeAnalysis:
+    """Get regime analysis with TTL-based per-benchmark caching."""
+    cfg = config or {}
+    benchmark = cfg.get("benchmark_symbol", "^RUT")
+    fallback = cfg.get("fallback_benchmark", "IWM")
 
     now = time.time()
-    if _regime_cache is not None and (now - _regime_cache_time) < _REGIME_CACHE_TTL:
-        return _regime_cache
+    cached = _regime_cache.get(benchmark)
+    if cached is not None and (now - cached[1]) < _REGIME_CACHE_TTL:
+        return cached[0]
 
-    _regime_cache = _fetch_regime_analysis()
-    _regime_cache_time = now
-    return _regime_cache
+    analysis = _fetch_regime_analysis(benchmark_symbol=benchmark,
+                                      fallback_benchmark=fallback)
+    _regime_cache[benchmark] = (analysis, now)
+    return analysis
 
 
 def invalidate_regime_cache() -> None:
-    """Force regime to be re-fetched on next load."""
-    global _regime_cache, _regime_cache_time
-    _regime_cache = None
-    _regime_cache_time = 0
+    """Force regime to be re-fetched on next load (all benchmarks)."""
+    _regime_cache.clear()
 
 
 # ─── Portfolio State ─────────────────────────────────────────────────────────
@@ -138,8 +140,8 @@ def load_portfolio_state(fetch_prices: bool = True, portfolio_id: str | None = N
     # Calculate cash from transactions
     cash = calculate_cash(transactions, config["starting_capital"])
 
-    # Get market regime (cached)
-    regime_analysis = _get_cached_regime_analysis()
+    # Get market regime (cached, using portfolio-specific benchmark)
+    regime_analysis = _get_cached_regime_analysis(config)
     regime = regime_analysis.regime
 
     # Fetch prices and update positions if requested
