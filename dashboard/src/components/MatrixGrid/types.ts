@@ -6,6 +6,7 @@ export interface MatrixPortfolio {
   abbr: string;
   color: string;
   hex: [number, number, number];
+  equityCurve?: number[];
 }
 
 export interface MatrixPosition {
