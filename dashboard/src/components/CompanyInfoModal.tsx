@@ -41,9 +41,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 export default function CompanyInfoModal({
   ticker,
   onClose,
+  holdingValue,
 }: {
   ticker: string;
   onClose: () => void;
+  holdingValue?: number;
 }) {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
@@ -157,6 +159,9 @@ export default function CompanyInfoModal({
 
             {/* Stats grid */}
             <div className="grid grid-cols-3 gap-2 mb-3">
+              {holdingValue != null && (
+                <Stat label="Holding Value" value={`$${holdingValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+              )}
               <Stat label="Market Cap" value={fmt_cap(info?.market_cap ?? null)} />
               <Stat
                 label="P/E (TTM)"

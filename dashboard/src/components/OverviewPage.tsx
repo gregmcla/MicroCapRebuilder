@@ -529,6 +529,14 @@ export default function OverviewPage() {
   const { data: portfolioList } = usePortfolios();
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deletePortfolio(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+    },
+  });
+
   const [scanAll, setScanAll] = useState<ScanAllState>({
     running: false,
     currentId: null,
@@ -743,6 +751,7 @@ export default function OverviewPage() {
           scanAllRunning={scanAll.running}
           scanAllLabel={scanAllLabel}
           onNewPortfolio={() => setShowCreate(true)}
+          onDelete={(id) => deleteMutation.mutate(id)}
         />
       )}
 

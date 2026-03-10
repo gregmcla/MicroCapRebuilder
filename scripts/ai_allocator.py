@@ -91,7 +91,7 @@ def run_ai_allocation(
     try:
         if client_type == "anthropic":
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-6",
                 max_tokens=6000,
                 messages=[{"role": "user", "content": prompt}]
             )
@@ -268,19 +268,6 @@ def _build_allocation_prompt(
 
     candidates_block = header + "".join(cand_lines)
 
-    # Warning note
-    warning_note = ""
-    if warning_severity == "DANGER":
-        warning_note = (
-            "\nSYSTEM WARNING: DANGER level conditions active. "
-            "Limit total new capital deployment. Prefer quality over quantity."
-        )
-    elif warning_severity == "CAUTION":
-        warning_note = (
-            "\nSYSTEM WARNING: CAUTION level conditions active. "
-            "Apply extra scrutiny. Prefer smaller position sizes."
-        )
-
     prompt = f"""You are the portfolio manager for this trading portfolio. You have FULL AUTHORITY over stock selection and position sizing.
 
 YOUR MANDATE — STRATEGY DNA:
@@ -291,8 +278,6 @@ PORTFOLIO STATE:
 - Current Cash: ${state.cash:,.0f}
 - Cash After Layer 1 Sells: ${state.cash + freed_cash:,.0f} (available for new buys)
 - Current Positions: {state.num_positions}
-- Market Regime: {regime.value}
-{warning_note}
 
 {positions_block}
 

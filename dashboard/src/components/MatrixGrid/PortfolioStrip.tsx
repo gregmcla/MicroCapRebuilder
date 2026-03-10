@@ -3,6 +3,7 @@
  * Tiles are sized proportionally to equity. Click a tile to filter the Matrix.
  */
 
+import { useState } from "react";
 import type { PortfolioSummary } from "../../lib/types";
 import type { MatrixPortfolio } from "./types";
 
@@ -28,6 +29,7 @@ interface PortfolioStripProps {
   scanAllRunning: boolean;
   scanAllLabel: string | null;
   onNewPortfolio: () => void;
+  onDelete?: (id: string) => void;
 }
 
 function fmtCompact(v: number) {
@@ -55,7 +57,9 @@ export default function PortfolioStrip({
   scanAllRunning,
   scanAllLabel,
   onNewPortfolio,
+  onDelete,
 }: PortfolioStripProps) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const colorMap = new Map(matrixPortfolios.map((p) => [p.id, p.color]));
   const valid = summaries.filter((s) => !s.error);
 
@@ -139,6 +143,38 @@ export default function PortfolioStrip({
                 if (!active) (e.currentTarget as HTMLDivElement).style.background = "transparent";
               }}
             >
+              {/* Delete button */}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirmId === s.id) {
+                      onDelete(s.id);
+                      setConfirmId(null);
+                    } else {
+                      setConfirmId(s.id);
+                    }
+                  }}
+                  onBlur={() => setConfirmId(null)}
+                  style={{
+                    position: "absolute", top: 4, right: 4, zIndex: 10,
+                    background: "none", border: "none", padding: "1px 4px",
+                    fontSize: 9, cursor: "pointer", lineHeight: 1,
+                    color: confirmId === s.id ? "#f87171" : "transparent",
+                    fontWeight: confirmId === s.id ? 700 : 400,
+                    transition: "color 0.1s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (confirmId !== s.id) e.currentTarget.style.color = "rgba(248,113,113,0.5)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (confirmId !== s.id) e.currentTarget.style.color = "transparent";
+                  }}
+                >
+                  {confirmId === s.id ? "del?" : "×"}
+                </button>
+              )}
+
               {/* Left accent bar */}
               <div style={{
                 position: "absolute",

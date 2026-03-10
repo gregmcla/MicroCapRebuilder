@@ -66,7 +66,7 @@ def get_ai_client():
     if anthropic_key:
         try:
             import anthropic
-            return ("anthropic", anthropic.Anthropic(api_key=anthropic_key))
+            return ("anthropic", anthropic.Anthropic(api_key=anthropic_key, timeout=120.0))
         except ImportError:
             pass
 
@@ -307,7 +307,7 @@ def _review_batch(client_type, client, proposed_actions: list, portfolio_context
     try:
         if client_type == "anthropic":
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-6",
                 max_tokens=4000,
                 messages=[{"role": "user", "content": prompt}]
             )

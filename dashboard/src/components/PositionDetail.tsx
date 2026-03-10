@@ -356,7 +356,7 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
       </div>
 
       {showCompanyModal && (
-        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} />
+        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} holdingValue={pos.market_value} />
       )}
     </div>
   );
@@ -420,7 +420,7 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
       </div>
 
       {showCompanyModal && (
-        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} />
+        <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} holdingValue={pos.market_value} />
       )}
     </div>
   );

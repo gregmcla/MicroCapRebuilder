@@ -431,8 +431,8 @@ export default function MatrixGrid({
             ref={gridRef}
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(112px, 1fr))",
-              gap: 2, alignContent: "start",
+              gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+              gap: 3, alignContent: "start",
               transition: "transform 0.1s ease-out",
             }}
           >
@@ -455,7 +455,7 @@ export default function MatrixGrid({
                   }}
                   style={{
                     background: pbg(pos.perf),
-                    padding: "6px 6px 4px",
+                    padding: "9px 9px 6px",
                     cursor: "crosshair",
                     position: "relative",
                     overflow: "hidden",
@@ -518,22 +518,22 @@ export default function MatrixGrid({
 
                   {/* Ticker + all-time perf */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span className="matrix-tk" style={{ fontSize: 10, fontWeight: 600, color: "#555", letterSpacing: "0.04em", transition: "all 0.12s" }}>
+                    <span className="matrix-tk" style={{ fontSize: 13, fontWeight: 600, color: "#555", letterSpacing: "0.04em", transition: "all 0.12s" }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: 8, fontWeight: 500, color: pc(pos.perf) }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: pc(pos.perf) }}>
                       {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
                     </span>
                   </div>
 
                   {/* Value + sparkline */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                    <span style={{ fontSize: 7, color: "#888" }}>{fv(pos.value)}</span>
-                    <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={40} h={12} />
+                    <span style={{ fontSize: 10, color: "#888" }}>{fv(pos.value)}</span>
+                    <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={56} h={18} />
                   </div>
 
                   {/* Day change micro bar */}
-                  <div style={{ marginTop: 3, height: 2 }}>
+                  <div style={{ marginTop: 4, height: 2 }}>
                     <div style={{
                       width: `${Math.min(100, Math.abs(pos.day) * 25)}%`,
                       height: "100%",

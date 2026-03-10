@@ -122,6 +122,45 @@ def _normalize_sector_weights(raw: dict, sectors: list[str]) -> dict[str, int]:
     return result
 
 
+def suggest_etfs_for_dna(strategy_dna: str) -> list[str]:
+    """Use Haiku to suggest 4-6 ETF tickers that match an AI-driven portfolio's strategy DNA.
+
+    Returns a list of ETF tickers (e.g. ["XLI", "PAVE", "COPX", "SMH"]).
+    Returns empty list on any failure — caller should fall back to preset ETFs.
+    """
+    api_key = get_api_key()
+    if not api_key:
+        return []
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=256,
+            system=(
+                "You are an ETF selection assistant. Given a portfolio strategy description, "
+                "return a JSON array of 4-6 ETF ticker symbols whose holdings best represent "
+                "the strategy's target universe. Prefer sector/thematic ETFs over broad market ETFs. "
+                "Return ONLY a JSON array of strings, e.g. [\"XLI\", \"PAVE\", \"COPX\"]. No explanation."
+            ),
+            messages=[{"role": "user", "content": f"Strategy:\n{strategy_dna}"}],
+        )
+        raw = response.content[0].text.strip()
+        # Strip markdown if present
+        raw = re.sub(r"```json\s*", "", raw)
+        raw = re.sub(r"```\s*", "", raw).strip()
+        start = raw.find("[")
+        end = raw.rfind("]") + 1
+        if start >= 0 and end > start:
+            tickers = json.loads(raw[start:end])
+            if isinstance(tickers, list) and all(isinstance(t, str) for t in tickers):
+                return [t.upper().strip() for t in tickers if t.strip()]
+    except Exception:
+        pass
+    return []
+
+
 def generate_strategy(prompt: str, universe: str, starting_capital: float) -> GeneratedStrategy:
     """Use AI to generate a portfolio strategy config from a text description.
 

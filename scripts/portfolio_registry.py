@@ -535,6 +535,14 @@ def create_portfolio(
         config["ai_driven"] = True
         if strategy_dna:
             config["strategy_dna"] = strategy_dna
+            # Auto-suggest ETFs that match the strategy DNA
+            try:
+                from strategy_generator import suggest_etfs_for_dna
+                suggested_etfs = suggest_etfs_for_dna(strategy_dna)
+                if suggested_etfs:
+                    config["universe"]["sources"]["etf_holdings"]["etfs"] = suggested_etfs
+            except Exception:
+                pass  # Fall back to preset ETFs already in config
         # Larger watchlist gives Claude more candidates to reason across
         if "watchlist" not in config.get("discovery", {}):
             config.setdefault("discovery", {})["watchlist"] = {}
