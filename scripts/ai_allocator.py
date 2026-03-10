@@ -186,8 +186,9 @@ def _build_allocation_prompt(
     else:
         l1_block = "LAYER 1 MECHANICAL SELLS: None\n"
 
-    # Top 30 candidates block
-    top30 = scored_candidates[:30]
+    # Top candidates — more candidates = better sector coverage for AI
+    top_n = 50
+    top30 = scored_candidates[:top_n]
 
     def _pct(v) -> str:
         return f"{v * 100:+.1f}%" if v is not None else "N/A"
@@ -221,7 +222,7 @@ def _build_allocation_prompt(
                 )
 
     candidates_block = (
-        f"WATCHLIST CANDIDATES (top {len(top30)} by quant score — advisory data for your reasoning):"
+        f"WATCHLIST CANDIDATES (top {len(top30)} by quant score — advisory data for your reasoning, sorted highest to lowest):"
         + "".join(cand_lines)
     )
 

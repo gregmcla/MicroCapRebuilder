@@ -530,11 +530,15 @@ def create_portfolio(
         "ai_rationale": ai_config.get("rationale") if ai_config else None,
     }
 
-    # AI-driven mode: store flag and strategy DNA in config
+    # AI-driven mode: store flag, strategy DNA, and extend watchlist cap
     if ai_driven:
         config["ai_driven"] = True
         if strategy_dna:
             config["strategy_dna"] = strategy_dna
+        # Larger watchlist gives Claude more candidates to reason across
+        if "watchlist" not in config.get("discovery", {}):
+            config.setdefault("discovery", {})["watchlist"] = {}
+        config["discovery"]["watchlist"]["total_watchlist_slots"] = 500
 
     # Write config
     config_path = portfolio_dir / "config.json"
