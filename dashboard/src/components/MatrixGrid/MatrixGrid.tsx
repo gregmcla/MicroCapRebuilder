@@ -217,7 +217,7 @@ export default function MatrixGrid({
         @keyframes matrixBlink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes matrixBreathe { 0%,100%{opacity:0.72} 50%{opacity:0.92} }
         .matrix-cell { animation: matrixBreathe var(--breath-dur,4s) ease-in-out infinite; }
-        .matrix-cell:hover { background: rgba(74,222,128,0.09) !important; animation: none !important; opacity: 1 !important; }
+        .matrix-cell:hover { background: rgba(74,222,128,0.18) !important; animation: none !important; opacity: 1 !important; }
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
         .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
@@ -454,7 +454,7 @@ export default function MatrixGrid({
                     onPositionClick?.(pos);
                   }}
                   style={{
-                    background: `linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.018) 100%), ${pbg(pos.perf)}`,
+                    background: `linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%), ${pbg(pos.perf)}`,
                     padding: "9px 9px 6px",
                     cursor: "crosshair",
                     position: "relative",
