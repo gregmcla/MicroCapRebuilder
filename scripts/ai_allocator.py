@@ -68,6 +68,8 @@ def run_ai_allocation(
     freed_cash = sum(s.shares * s.price for s in layer1_sells)
     available_cash = state.cash + freed_cash
 
+    full_watchlist = bool(state.config.get("full_watchlist_prompt", False))
+
     prompt = _build_allocation_prompt(
         state=state,
         layer1_sells=layer1_sells,
@@ -78,6 +80,7 @@ def run_ai_allocation(
         strategy_dna=strategy_dna,
         available_cash=available_cash,
         info_cache=info_cache,
+        full_watchlist=full_watchlist,
     )
 
     try:
@@ -134,6 +137,7 @@ def _build_allocation_prompt(
     strategy_dna: str,
     available_cash: float,
     info_cache: Optional[dict] = None,
+    full_watchlist: bool = False,
 ) -> str:
     """Build the full allocation prompt for Claude."""
 
@@ -186,10 +190,6 @@ def _build_allocation_prompt(
     else:
         l1_block = "LAYER 1 MECHANICAL SELLS: None\n"
 
-    # Top candidates — more candidates = better sector coverage for AI
-    top_n = 50
-    top30 = scored_candidates[:top_n]
-
     def _pct(v) -> str:
         return f"{v * 100:+.1f}%" if v is not None else "N/A"
 
@@ -197,34 +197,70 @@ def _build_allocation_prompt(
         return f"{v:.1f}" if v is not None else "N/A"
 
     cand_lines = []
-    for c in top30:
-        ticker = c["ticker"]
-        score = c.get("composite_score", 0)
-        price = c.get("current_price", 0)
-        sector = sector_map.get(ticker, c.get("sector", "Unknown"))
-        factors = c.get("factor_scores", {})
-        factor_str = ", ".join(f"{k}={v:.0f}" for k, v in factors.items())
-        cand_lines.append(f"\n  {ticker}: score={score:.0f}/100, ${price:.2f}, sector={sector}")
-        cand_lines.append(f"    factors: [{factor_str}]")
 
-        if info_cache:
-            info = info_cache.get(ticker, {})
-            if info:
-                rev_growth = info.get("revenueGrowth")
-                gross_margin = info.get("grossMargins")
-                t_pe = info.get("trailingPE")
-                roe = info.get("returnOnEquity")
-                d2e = info.get("debtToEquity")
-                cand_lines.append(
-                    f"    fundamentals: rev_growth={_pct(rev_growth)}, "
-                    f"gross_margin={_pct(gross_margin)}, P/E={_num(t_pe)}, "
-                    f"ROE={_pct(roe)}, D/E={_num(d2e)}"
-                )
+    if full_watchlist:
+        # Compact mode: 1 line per stock, all candidates visible
+        # Drop earnings_growth/quality factor scores (always 50 in AI-driven — useless noise)
+        # Format: TICKER | score | price | sector | pm=X vt=X vol=X vlty=X | revG=X gm=X P/E=X
+        candidates_to_show = scored_candidates  # ALL of them
+        for c in candidates_to_show:
+            ticker = c["ticker"]
+            score = c.get("composite_score", 0)
+            price = c.get("current_price", 0)
+            sector = sector_map.get(ticker, c.get("sector", "Unknown"))
+            factors = c.get("factor_scores", {})
+            pm = factors.get("price_momentum", 50)
+            vt = factors.get("value_timing", 50)
+            vol = factors.get("volume", 50)
+            vlty = factors.get("volatility", 50)
+            factor_part = f"pm={pm:.0f} vt={vt:.0f} vol={vol:.0f} vlty={vlty:.0f}"
 
-    candidates_block = (
-        f"WATCHLIST CANDIDATES (top {len(top30)} by quant score — advisory data for your reasoning, sorted highest to lowest):"
-        + "".join(cand_lines)
-    )
+            fund_part = ""
+            if info_cache:
+                info = info_cache.get(ticker, {})
+                if info:
+                    rg = _pct(info.get("revenueGrowth"))
+                    gm = _pct(info.get("grossMargins"))
+                    pe = _num(info.get("trailingPE"))
+                    fund_part = f" | revG={rg} gm={gm} P/E={pe}"
+
+            cand_lines.append(
+                f"\n  {ticker} | {score:.0f} | ${price:.2f} | {sector} | {factor_part}{fund_part}"
+            )
+
+        header = f"ALL {len(candidates_to_show)} WATCHLIST CANDIDATES (sorted highest to lowest quant score — advisory data; you may pick any):"
+
+    else:
+        # Detailed mode: top 50, multi-line per stock (original behavior)
+        top_n = 50
+        candidates_to_show = scored_candidates[:top_n]
+        for c in candidates_to_show:
+            ticker = c["ticker"]
+            score = c.get("composite_score", 0)
+            price = c.get("current_price", 0)
+            sector = sector_map.get(ticker, c.get("sector", "Unknown"))
+            factors = c.get("factor_scores", {})
+            factor_str = ", ".join(f"{k}={v:.0f}" for k, v in factors.items())
+            cand_lines.append(f"\n  {ticker}: score={score:.0f}/100, ${price:.2f}, sector={sector}")
+            cand_lines.append(f"    factors: [{factor_str}]")
+
+            if info_cache:
+                info = info_cache.get(ticker, {})
+                if info:
+                    rev_growth = info.get("revenueGrowth")
+                    gross_margin = info.get("grossMargins")
+                    t_pe = info.get("trailingPE")
+                    roe = info.get("returnOnEquity")
+                    d2e = info.get("debtToEquity")
+                    cand_lines.append(
+                        f"    fundamentals: rev_growth={_pct(rev_growth)}, "
+                        f"gross_margin={_pct(gross_margin)}, P/E={_num(t_pe)}, "
+                        f"ROE={_pct(roe)}, D/E={_num(d2e)}"
+                    )
+
+        header = f"WATCHLIST CANDIDATES (top {len(candidates_to_show)} by quant score — advisory data for your reasoning, sorted highest to lowest):"
+
+    candidates_block = header + "".join(cand_lines)
 
     # Warning note
     warning_note = ""
