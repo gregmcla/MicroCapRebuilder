@@ -1,0 +1,6 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+TEN,6044,37.97,37.83,228674.73,-815.95,-0.36,31.77,47.65,2026-03-10,Energy,37.97,-815.95,-0.36
+HLIO,2505,68.17,67.3,168586.51,-2179.34,-1.28,57.87,84.81,2026-03-10,Industrials,68.17,-2179.34,-1.28
+SCZM,8047,10.915,10.87,87470.89,-362.12,-0.41,9.44,13.92,2026-03-10,Basic Materials,10.91,-362.12,-0.41
+PANL,8028,8.52,8.46,67916.88,-481.68,-0.7,7.17,10.96,2026-03-10,Industrials,8.52,-481.68,-0.7
+MRTN,6500,12.71,12.61,81997.5,-617.5,-0.75,10.8,16.0,2026-03-10,Industrials,12.71,-617.5,-0.75

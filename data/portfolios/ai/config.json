@@ -8,23 +8,23 @@
   },
   "starting_capital": 500000.0,
   "initial_deployment_target_pct": 90.0,
-  "risk_per_trade_pct": 6,
-  "max_position_pct": 12,
+  "risk_per_trade_pct": 10,
+  "max_position_pct": 20,
   "max_positions": 999,
   "default_stop_loss_pct": 8,
-  "default_take_profit_pct": 20.0,
+  "default_take_profit_pct": 20,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^GSPC",
   "fallback_benchmark": "SPY",
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.25,
-      "earnings_growth": 0.15,
-      "quality": 0.15,
-      "volume": 0.1,
+      "price_momentum": 0.47,
+      "earnings_growth": 0.03,
+      "quality": 0.03,
+      "volume": 0.03,
       "volatility": 0.15,
-      "value_timing": 0.2
+      "value_timing": 0.48
     },
     "regime_weights": {
       "BULL": {
@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 40.0,
-      "SIDEWAYS": 50.0,
-      "BEAR": 60.0
+      "BULL": 70,
+      "SIDEWAYS": 75,
+      "BEAR": 85
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -84,14 +84,14 @@
         "overbought": 70,
         "extreme_overbought": 80
       },
-      "hard_filter_above": 85
+      "hard_filter_above": 99
     }
   },
   "risk_management": {
     "capital_preservation": {
       "enabled": true,
       "triggers": {
-        "drawdown_threshold_pct": 10.0,
+        "drawdown_threshold_pct": 10,
         "risk_score_threshold": 40,
         "regime_bear_auto_enable": true
       },
@@ -210,8 +210,8 @@
     },
     "rotation": {
       "enabled": true,
-      "min_upgrade_score_gap": 15,
-      "max_rotations_per_cycle": 3,
+      "min_upgrade_score_gap": 12,
+      "max_rotations_per_cycle": 5,
       "min_held_days_before_rotation": 3,
       "max_unrealized_loss_pct_for_rotation": -15
     }
@@ -267,7 +267,10 @@
       "Industrials",
       "Financial Services",
       "Consumer Cyclical",
-      "Energy"
+      "Energy",
+      "Consumer Defensive",
+      "Basic Materials",
+      "Utilities"
     ]
   },
   "universe": {
@@ -329,6 +332,7 @@
     "trading_style": "aggressive_momentum",
     "created_via": "ai",
     "ai_prompt": "aggressive buy strategy. focus is AI and data centers",
-    "ai_rationale": "This aggressive configuration targets AI and data center infrastructure through Technology, Communication, and Real Estate sectors with high momentum weighting and generous position sizing. The strategy prioritizes breakout patterns and sector leadership to capitalize on the rapid growth in AI-related investments."
+    "ai_rationale": "This aggressive configuration targets AI and data center infrastructure through Technology, Communication, and Real Estate sectors with high momentum weighting and generous position sizing. The strategy prioritizes breakout patterns and sector leadership to capitalize on the rapid growth in AI-related investments.",
+    "universe": "allcap"
   }
 }

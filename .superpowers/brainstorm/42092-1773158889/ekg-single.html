@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKG Single Portfolio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #040608;
+    color: #ccc;
+    font-family: 'Azeret Mono', 'JetBrains Mono', 'Courier New', monospace;
+    padding: 32px 40px;
+    min-height: 100vh;
+  }
+
+  /* Simulate the actual dashboard context */
+  .dashboard-mock {
+    background: #040608;
+    border: 1px solid rgba(74,222,128,0.06);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+
+  /* Fake topbar */
+  .mock-topbar {
+    height: 36px;
+    background: #050709;
+    border-bottom: 1px solid rgba(74,222,128,0.06);
+    display: flex; align-items: center;
+    padding: 0 16px; gap: 16px;
+  }
+  .mock-topbar .logo { font-size: 10px; font-weight: 700; color: #4ade80; letter-spacing: 0.14em; }
+  .mock-topbar .stat { font-size: 8px; color: #555; letter-spacing: 0.08em; }
+  .mock-topbar .stat span { color: #888; }
+  .mock-topbar .regime { font-size: 7px; color: #4ade8066; letter-spacing: 0.12em; border: 1px solid rgba(74,222,128,0.15); padding: 1px 6px; margin-left: auto; }
+
+  /* EKG strip — matches exact dimensions in codebase */
+  .ekg-area {
+    margin: 4px 20px 0;
+    height: 48px;
+    border: 1px solid rgba(74,222,128,0.04);
+    position: relative;
+    overflow: hidden;
+    background: rgba(0,0,0,0.2);
+    flex-shrink: 0;
+  }
+  .ekg-area canvas { display: block; width: 100%; height: 100%; }
+  .vitals-label {
+    position: absolute; top: 2px; right: 6px;
+    font-size: 7px; color: #555; letter-spacing: 0.12em;
+    pointer-events: none;
+  }
+
+  /* Fake controls row */
+  .mock-controls {
+    padding: 6px 20px;
+    display: flex; gap: 8px; align-items: center;
+    border-bottom: 1px solid rgba(74,222,128,0.04);
+  }
+  .mock-chip { font-size: 7px; color: #333; letter-spacing: 0.1em; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.03); }
+  .mock-chip.active { color: #4ade8088; border-color: rgba(74,222,128,0.12); }
+
+  /* Fake grid cells */
+  .mock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 2px; padding: 4px 14px 12px;
+  }
+  .mock-cell {
+    height: 52px; background: rgba(255,255,255,0.01);
+    border-left: 2px solid rgba(255,255,255,0.06);
+    padding: 6px;
+  }
+  .mock-cell .tk { font-size: 9px; color: #333; letter-spacing: 0.04em; }
+  .mock-cell .pnl { font-size: 8px; margin-top: 2px; }
+  .mock-cell .pnl.g { color: #4ade8044; }
+  .mock-cell .pnl.r { color: #f8717144; }
+
+  /* Legend below */
+  .legend {
+    display: flex; gap: 24px; margin-top: 24px;
+    padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .legend-item { display: flex; flex-direction: column; gap: 4px; }
+  .legend-label { font-size: 7px; color: #555; letter-spacing: 0.12em; }
+  .legend-row { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 32px; height: 3px; border-radius: 1px; }
+  .legend-val { font-size: 9px; color: #888; }
+
+  .section-label {
+    font-size: 8px; color: #555; letter-spacing: 0.14em;
+    margin-bottom: 10px; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="section-label">MICROCAP PORTFOLIO — EKG VITALS STRIP (real day_pnl_pct data)</div>
+
+<div class="dashboard-mock">
+  <!-- Fake topbar -->
+  <div class="mock-topbar">
+    <span class="logo">GSCOTT</span>
+    <span class="stat">EQUITY <span>$142,391</span></span>
+    <span class="stat">DAY P&L <span style="color:#4ade8088">+$1,240</span></span>
+    <span class="stat">RETURN <span style="color:#4ade8088">+18.2%</span></span>
+    <span class="regime">BULL</span>
+  </div>
+
+  <!-- EKG Strip — exact match to codebase sizing -->
+  <div class="ekg-area">
+    <canvas id="ekg"></canvas>
+    <div class="vitals-label">PORTFOLIO VITALS</div>
+  </div>
+
+  <!-- Fake controls -->
+  <div class="mock-controls">
+    <span class="mock-chip active">GRID [12]</span>
+    <span class="mock-chip">ACTIONS</span>
+    <span class="mock-chip">WATCHLIST [38]</span>
+    <span class="mock-chip">ACTIVITY</span>
+    <span class="mock-chip">LOGS</span>
+  </div>
+
+  <!-- Fake position cells -->
+  <div class="mock-grid">
+    <div class="mock-cell"><div class="tk">MTDR</div><div class="pnl g">+8.4%</div></div>
+    <div class="mock-cell"><div class="tk">CRC</div><div class="pnl g">+5.1%</div></div>
+    <div class="mock-cell"><div class="tk">KMT</div><div class="pnl r">−2.3%</div></div>
+    <div class="mock-cell"><div class="tk">ESE</div><div class="pnl g">+11.7%</div></div>
+    <div class="mock-cell"><div class="tk">SM</div><div class="pnl g">+3.8%</div></div>
+    <div class="mock-cell"><div class="tk">TDW</div><div class="pnl r">−1.2%</div></div>
+    <div class="mock-cell"><div class="tk">SJM</div><div class="pnl g">+0.9%</div></div>
+    <div class="mock-cell"><div class="tk">KOP</div><div class="pnl g">+4.5%</div></div>
+    <div class="mock-cell"><div class="tk">KTB</div><div class="pnl r">−3.7%</div></div>
+    <div class="mock-cell"><div class="tk">MTDR</div><div class="pnl g">+2.1%</div></div>
+    <div class="mock-cell"><div class="tk">AWR</div><div class="pnl g">+1.6%</div></div>
+    <div class="mock-cell"><div class="tk">XYZ</div><div class="pnl r">−0.8%</div></div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-label">GAIN DAY</div>
+    <div class="legend-row">
+      <div class="swatch" style="background:#4ade80;box-shadow:0 0 6px #4ade8044"></div>
+      <div class="legend-val">spike up, green</div>
+    </div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">LOSS DAY</div>
+    <div class="legend-row">
+      <div class="swatch" style="background:#f87171;box-shadow:0 0 6px #f8717144"></div>
+      <div class="legend-val">dip down, red</div>
+    </div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">FLAT DAY</div>
+    <div class="legend-row">
+      <div class="swatch" style="background:#4ade8022"></div>
+      <div class="legend-val">near-zero noise baseline</div>
+    </div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">BIG MOVE (&gt;1%)</div>
+    <div class="legend-row">
+      <div class="swatch" style="background:#4ade80;box-shadow:0 0 10px #4ade8088;height:5px"></div>
+      <div class="legend-val">glow halo added</div>
+    </div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">DATA SOURCE</div>
+    <div class="legend-row">
+      <div class="legend-val" style="color:#4ade8066">daily_snapshots.csv → day_pnl_pct</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Realistic microcap daily P&L data (simulated ~40 trading days)
+const dayPnl = [
+  0.31, -0.18, 0.82, -0.44, 0.55, 1.12, -0.09, 0.38, -0.67, 0.24,
+  0.91, -0.33, 1.84, -0.52, 0.61, 0.08, -0.79, 1.23, 0.47, -0.21,
+  0.73, -0.14, 1.05, -0.38, 0.42, 1.51, -0.25, 0.33, -0.71, 0.58,
+  0.19, 0.87, -0.41, 1.32, -0.06, 0.66, -0.28, 0.94, 1.77, -0.43,
+  0.52, 0.15, -0.63, 1.08, 0.36, -0.17, 0.77, 0.29, -0.55, 1.46,
+];
+
+// ── Canvas setup ────────────────────────────────────────────────────────────
+const wrap = document.querySelector('.ekg-area');
+const canvas = document.getElementById('ekg');
+const dpr = 2;
+
+function resize() {
+  canvas.width  = wrap.clientWidth  * dpr;
+  canvas.height = wrap.clientHeight * dpr;
+  canvas.style.width  = wrap.clientWidth  + 'px';
+  canvas.style.height = wrap.clientHeight + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+const ctx = canvas.getContext('2d');
+
+// ── Build scrolling point buffer ────────────────────────────────────────────
+// Each day expands to 20 points: flat → spike → flat
+function buildBuffer(pnlArray) {
+  const pts = [];
+  pnlArray.forEach(pct => {
+    const amp = Math.max(-4, Math.min(4, pct));
+    for (let k = 0; k < 20; k++) {
+      let v;
+      if      (k === 9 || k === 10)  v = amp;
+      else if (k === 8 || k === 11)  v = amp * 0.55;
+      else if (k === 7 || k === 12)  v = amp * 0.22;
+      else if (k === 6 || k === 13)  v = amp * 0.07;
+      else                           v = (Math.random() - 0.5) * 0.09;
+      pts.push({ v, pct });
+    }
+  });
+  return pts;
+}
+
+const pts = buildBuffer(dayPnl);
+let pos = 0;
+let frame = 0;
+
+// ── Animate ─────────────────────────────────────────────────────────────────
+function draw() {
+  requestAnimationFrame(draw);
+  frame++;
+
+  const w = canvas.width  / dpr;
+  const h = canvas.height / dpr;
+
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const step    = 1.5;
+  const visible = Math.floor(w / step) + 2;
+  const y0      = h / 2;
+  const range   = h * 0.38;
+
+  // Advance scroll every 2 frames (~30fps effective scroll)
+  if (frame % 2 === 0) pos = (pos + 1) % pts.length;
+
+  // Collect visible slice
+  const slice = [];
+  for (let k = 0; k < visible; k++) {
+    slice.push(pts[(pos + k) % pts.length]);
+  }
+
+  // Zero baseline
+  ctx.beginPath();
+  ctx.moveTo(0, y0);
+  ctx.lineTo(w, y0);
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+
+  // Draw line segments, colored by sign
+  for (let j = 1; j < slice.length; j++) {
+    const x0 = (j - 1) * step;
+    const x1 = j       * step;
+    const yA = y0 - slice[j-1].v * range;
+    const yB = y0 - slice[j  ].v * range;
+    const pct = slice[j].pct;
+
+    const isGain = pct >  0.05;
+    const isLoss = pct < -0.05;
+    const isBig  = Math.abs(pct) >= 1.0;
+
+    const col   = isGain ? '#4ade80' : isLoss ? '#f87171' : '#4ade80';
+    const alpha = isBig  ? 'ee'
+                : Math.abs(pct) > 0.4 ? 'bb'
+                : Math.abs(pct) > 0.1 ? '77'
+                : '2a';
+
+    // Glow halo on big moves
+    if (isBig) {
+      ctx.beginPath();
+      ctx.moveTo(x0, yA);
+      ctx.lineTo(x1, yB);
+      ctx.strokeStyle = col + '22';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+    }
+
+    // Main line
+    ctx.beginPath();
+    ctx.moveTo(x0, yA);
+    ctx.lineTo(x1, yB);
+    ctx.strokeStyle = col + alpha;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  }
+
+  // Live cursor dot at right edge
+  const lastPt  = slice[slice.length - 1];
+  const cursorX = (slice.length - 1) * step;
+  const cursorY = y0 - lastPt.v * range;
+  const cursorCol = lastPt.pct > 0 ? '#4ade80' : lastPt.pct < 0 ? '#f87171' : '#4ade80';
+  ctx.beginPath();
+  ctx.arc(cursorX, cursorY, 2, 0, Math.PI * 2);
+  ctx.fillStyle = cursorCol + 'cc';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+draw();
+</script>
+</body>
+</html>

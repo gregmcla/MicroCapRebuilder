@@ -138,6 +138,7 @@ export function ScanButton() {
           stop(); setScanning(false);
           refetchStatus();
           queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
+          queryClient.invalidateQueries({ queryKey: ["watchlist"] });
         } else if (s.status === "error") {
           stop(); setScanning(false);
           refetchStatus();

@@ -307,13 +307,6 @@ export interface LearningData {
   weight_suggestions: WeightSuggestion[];
 }
 
-export interface GScottInsight {
-  insight: string;
-  category: "alert" | "warning" | "performance" | "idle";
-  warnings_count: number;
-  critical_count: number;
-}
-
 export interface MarketIndex {
   value: number;
   change_pct: number;

@@ -58,11 +58,14 @@ def _serialize_state(state):
     # Realized P&L: replay buy→sell pairs from transaction history.
     # Only counts trades where we have a complete BUY record — excludes
     # manual close-all remnants from before transaction tracking began.
+    # Also builds per-trade P&L map for display in the activity feed.
     realized_pnl = 0.0
+    trade_pnl: dict[str, tuple[float, float]] = {}  # transaction_id -> (pnl_dollar, pnl_pct)
     txns = state.transactions
     if not txns.empty and "action" in txns.columns:
         _holdings: dict = {}  # ticker -> (shares, total_cost)
         for _, tx in txns.sort_values("date").iterrows():
+            _tid = str(tx.get("transaction_id", ""))
             _ticker = str(tx.get("ticker", ""))
             _action = str(tx.get("action", ""))
             _shares = float(tx.get("shares", 0) or 0)
@@ -75,9 +78,23 @@ def _serialize_state(state):
                     _hs, _hc = _holdings[_ticker]
                     _avg = _hc / _hs
                     _cost = _avg * _shares
-                    realized_pnl += _total - _cost
+                    _pnl = _total - _cost
+                    _pnl_pct = (_pnl / _cost) * 100 if _cost > 0 else 0.0
+                    realized_pnl += _pnl
                     _holdings[_ticker] = (max(0.0, _hs - _shares), max(0.0, _hc - _cost))
+                    if _tid:
+                        trade_pnl[_tid] = (round(_pnl, 2), round(_pnl_pct, 2))
     realized_pnl = round(realized_pnl, 2)
+
+    # Annotate transactions with per-trade P&L before serializing
+    transactions_out = transactions.tail(50).copy()
+    if trade_pnl and "transaction_id" in transactions_out.columns:
+        transactions_out["realized_pnl"] = transactions_out["transaction_id"].apply(
+            lambda tid: trade_pnl.get(str(tid), (None, None))[0]
+        )
+        transactions_out["realized_pnl_pct"] = transactions_out["transaction_id"].apply(
+            lambda tid: trade_pnl.get(str(tid), (None, None))[1]
+        )
 
     # Zero out stale day_change values in positions when markets are closed.
     # The CSV retains the last computed day_change (from the last trading session)
@@ -90,7 +107,7 @@ def _serialize_state(state):
     return {
         "cash": state.cash,
         "positions": serialize(positions.tail(50)),
-        "transactions": serialize(transactions.tail(50)),
+        "transactions": serialize(transactions_out),
         "snapshots": serialize(snapshots.tail(30)),
         "regime": serialize(state.regime),
         "regime_analysis": serialize(state.regime_analysis),

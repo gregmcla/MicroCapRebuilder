@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>EKG Strip — Real Performance Data</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #040608;
+    color: #ccc;
+    font-family: 'Azeret Mono', 'JetBrains Mono', 'Courier New', monospace;
+    padding: 32px 40px;
+    min-height: 100vh;
+  }
+  h2 { font-size: 13px; letter-spacing: 0.18em; color: #4ade80; margin-bottom: 6px; }
+  .subtitle { font-size: 10px; color: #555; letter-spacing: 0.1em; margin-bottom: 32px; }
+
+  .compare { display: flex; flex-direction: column; gap: 28px; }
+
+  .strip-block { display: flex; flex-direction: column; gap: 8px; }
+  .strip-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 8px; letter-spacing: 0.14em; color: #555;
+  }
+  .strip-label .tag {
+    padding: 2px 8px; border: 1px solid currentColor; font-size: 7px; letter-spacing: 0.12em;
+  }
+  .strip-label .tag.before { color: #333; }
+  .strip-label .tag.after { color: #4ade8066; }
+
+  .strip-wrap {
+    position: relative; height: 64px;
+    border: 1px solid rgba(74,222,128,0.06);
+    background: rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .strip-wrap canvas { display: block; width: 100%; height: 100%; }
+  .strip-vitals {
+    position: absolute; top: 4px; right: 8px;
+    font-size: 7px; color: #555; letter-spacing: 0.12em;
+  }
+
+  .annotation {
+    font-size: 8px; color: #666; letter-spacing: 0.06em; line-height: 1.7;
+    padding-left: 2px;
+  }
+  .annotation span { color: #4ade8088; }
+
+  .divider {
+    height: 1px; background: rgba(74,222,128,0.04); margin: 4px 0;
+  }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 1px 7px; border-radius: 2px; font-size: 7px; letter-spacing: 0.1em;
+    border: 1px solid rgba(74,222,128,0.15); color: #4ade8099;
+    margin-bottom: 20px;
+  }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; animation: blink 1.8s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .legend {
+    display: flex; gap: 24px; margin-top: 24px;
+    padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .legend-item { display: flex; flex-direction: column; gap: 3px; }
+  .legend-label { font-size: 7px; color: #555; letter-spacing: 0.12em; }
+  .legend-val { font-size: 10px; color: #e8ffe8; font-weight: 600; }
+  .legend-val.green { color: #4ade80; }
+  .legend-val.red { color: #f87171; }
+</style>
+</head>
+<body>
+
+<div class="pill"><div class="dot"></div> PORTFOLIO VITALS — FEATURE DESIGN</div>
+
+<h2>EKG STRIP: REAL PERFORMANCE DATA</h2>
+<p class="subtitle">Replacing synthetic heartbeat animation with actual daily P&amp;L from portfolio snapshots</p>
+
+<div class="compare">
+
+  <!-- BEFORE -->
+  <div class="strip-block">
+    <div class="strip-label">
+      <span class="tag before">CURRENT — SYNTHETIC</span>
+      <span>Pure math: sin waves + random noise. Looks alive but means nothing.</span>
+    </div>
+    <div class="strip-wrap">
+      <canvas id="before" width="1200" height="128"></canvas>
+      <div class="strip-vitals">PORTFOLIO VITALS</div>
+    </div>
+    <div class="annotation">Each lane generates a heartbeat using <span>sin(phase × 3.7) + random()</span> — same shape for every portfolio, every day.</div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="strip-block">
+    <div class="strip-label">
+      <span class="tag after">PROPOSED — REAL DATA</span>
+      <span>day_pnl_pct from daily_snapshots.csv drives spike amplitude per lane.</span>
+    </div>
+    <div class="strip-wrap">
+      <canvas id="after" width="1200" height="128"></canvas>
+      <div class="strip-vitals">PORTFOLIO VITALS</div>
+    </div>
+    <div class="annotation">
+      Each day's <span>day_pnl_pct</span> becomes the spike height. Positive day → spike up. Loss day → dip down. Flat day → flatline.
+      History scrolls left; new points append on the right in real time.
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-label">DATA SOURCE</div>
+    <div class="legend-val">daily_snapshots.csv → day_pnl_pct</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">FALLBACK</div>
+    <div class="legend-val">synthetic heartbeat if &lt; 3 days of data</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">GREEN SPIKE</div>
+    <div class="legend-val green">+% day → up</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">RED DIP</div>
+    <div class="legend-val red">−% day → down</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-label">THREADING</div>
+    <div class="legend-val">snapshots passed via MatrixPortfolio.equityCurve</div>
+  </div>
+</div>
+
+<script>
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function setupCanvas(id) {
+  const c = document.getElementById(id);
+  const dpr = 2;
+  c.width = c.parentElement.clientWidth * dpr;
+  c.height = c.parentElement.clientHeight * dpr;
+  c.style.width = c.parentElement.clientWidth + 'px';
+  c.style.height = c.parentElement.clientHeight + 'px';
+  return c;
+}
+
+// ── PORTFOLIO DATA (simulated realistic daily P&L history) ─────────────────
+const portfolios = [
+  { name: 'MIC', color: '#60a5fa', pnl: [0.4,-0.2,1.1,-0.5,0.3,0.8,-0.1,1.4,-0.6,0.2,0.9,-0.3,1.8,-0.4,0.6,0.1,-0.8,1.2,0.5,-0.2,0.7,-0.1,1.0,-0.3,0.4,1.5,-0.2,0.3,-0.7,0.6] },
+  { name: 'AI',  color: '#a78bfa', pnl: [0.8,0.5,-0.3,1.2,0.4,-0.1,0.7,1.6,-0.2,0.9,0.3,-0.5,1.1,0.2,0.6,-0.3,0.8,1.3,-0.1,0.5,0.4,-0.2,1.0,0.7,-0.4,0.3,1.8,-0.1,0.6,0.2] },
+  { name: 'SPH', color: '#34d399', pnl: [-0.1,0.3,0.7,-0.2,0.5,1.0,-0.3,0.4,0.8,-0.1,0.6,0.2,-0.4,0.9,0.3,-0.6,1.1,0.1,0.5,-0.2,0.4,0.7,-0.1,0.3,0.8,-0.2,0.5,1.2,-0.3,0.4] },
+  { name: 'NEW', color: '#fbbf24', pnl: [1.2,-0.4,0.3,0.8,-0.2,1.4,0.1,-0.3,0.9,0.5,0.2,-0.1,1.1,-0.5,0.7,0.3,-0.2,0.8,1.6,-0.1,0.4,0.2,-0.3,1.0,0.6,-0.4,0.3,0.7,-0.1,0.5] },
+];
+
+// ── BEFORE: synthetic heartbeat ────────────────────────────────────────────
+(function animateBefore() {
+  const c = setupCanvas('before');
+  const ctx = c.getContext('2d');
+  const dpr = 2;
+  const w = c.width / dpr;
+  const h = c.height / dpr;
+  const lanes = portfolios.map(() => ({ pts: [], phase: Math.random() * 100 }));
+
+  function draw() {
+    requestAnimationFrame(draw);
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const laneH = h / portfolios.length;
+    portfolios.forEach((port, i) => {
+      const lane = lanes[i];
+      const y0 = i * laneH + laneH / 2;
+
+      lane.phase += 0.06;
+      const v = Math.sin(lane.phase) * 0.3
+        + (Math.sin(lane.phase * 3.7) > 0.85 ? Math.sin(lane.phase * 3.7) * 3 : 0)
+        + (Math.random() - 0.5) * 0.15;
+      lane.pts.push(v);
+      if (lane.pts.length > w / 1.5) lane.pts.shift();
+
+      const step = 1.5;
+      ctx.beginPath();
+      lane.pts.forEach((pt, j) => {
+        const x = w - (lane.pts.length - j) * step;
+        const y = y0 + pt * (laneH * 0.35);
+        j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = port.color + '55';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.strokeStyle = port.color + '18';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.font = '7px monospace';
+      ctx.fillStyle = port.color + '44';
+      ctx.fillText(port.name, 4, y0 + 3);
+
+      if (i < portfolios.length - 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, (i + 1) * laneH);
+        ctx.lineTo(w, (i + 1) * laneH);
+        ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+  draw();
+})();
+
+// ── AFTER: real P&L data ───────────────────────────────────────────────────
+(function animateAfter() {
+  const c = setupCanvas('after');
+  const ctx = c.getContext('2d');
+  const dpr = 2;
+  const w = c.width / dpr;
+  const h = c.height / dpr;
+
+  // Convert historical pnl to scrolling buffer
+  const lanes = portfolios.map(port => {
+    // Expand each pnl day into ~20 points (so it scrolls across visually)
+    const pts = [];
+    port.pnl.forEach(pct => {
+      const amp = Math.max(-3, Math.min(3, pct)); // clamp to ±3%
+      // Each daily reading: flat lead-in → spike → flat return
+      for (let k = 0; k < 18; k++) {
+        let v = 0;
+        if (k === 8 || k === 9) v = amp;
+        else if (k === 7 || k === 10) v = amp * 0.5;
+        else if (k === 6 || k === 11) v = amp * 0.2;
+        else v = (Math.random() - 0.5) * 0.08; // tiny noise on baseline
+        pts.push({ v, pct });
+      }
+    });
+    return { pts, pos: 0, phase: 0 };
+  });
+
+  let frame = 0;
+  function draw() {
+    requestAnimationFrame(draw);
+    frame++;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const laneH = h / portfolios.length;
+    const step = 1.5;
+    const visible = Math.floor(w / step);
+
+    // Advance scroll
+    if (frame % 2 === 0) {
+      lanes.forEach(lane => { lane.pos = (lane.pos + 1) % lane.pts.length; });
+    }
+
+    portfolios.forEach((port, i) => {
+      const lane = lanes[i];
+      const y0 = i * laneH + laneH / 2;
+      const range = laneH * 0.38;
+
+      // Collect visible slice
+      const slice = [];
+      for (let k = 0; k < visible; k++) {
+        const idx = (lane.pos + k) % lane.pts.length;
+        slice.push(lane.pts[idx]);
+      }
+
+      // Draw glow fill
+      ctx.beginPath();
+      slice.forEach((pt, j) => {
+        const x = j * step;
+        const y = y0 - pt.v * range;
+        j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = port.color + '00';
+      ctx.lineWidth = 0;
+      ctx.stroke();
+
+      // Color segments by sign
+      for (let j = 1; j < slice.length; j++) {
+        const x0 = (j - 1) * step;
+        const x1 = j * step;
+        const y0v = y0 - slice[j-1].v * range;
+        const y1v = y0 - slice[j].v * range;
+        const pct = slice[j].pct;
+        const col = pct > 0.05 ? '#4ade80' : pct < -0.05 ? '#f87171' : port.color;
+        const alpha = Math.abs(pct) > 0.5 ? 'cc' : Math.abs(pct) > 0.1 ? '88' : '44';
+
+        ctx.beginPath();
+        ctx.moveTo(x0, y0v);
+        ctx.lineTo(x1, y1v);
+        ctx.strokeStyle = col + alpha;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Glow on big moves
+        if (Math.abs(pct) > 0.5) {
+          ctx.beginPath();
+          ctx.moveTo(x0, y0v);
+          ctx.lineTo(x1, y1v);
+          ctx.strokeStyle = col + '22';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+        }
+      }
+
+      // Baseline (zero line)
+      ctx.beginPath();
+      ctx.moveTo(0, y0);
+      ctx.lineTo(w, y0);
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+
+      // Portfolio abbr
+      ctx.font = '7px monospace';
+      ctx.fillStyle = port.color + '55';
+      ctx.fillText(port.name, 4, y0 + 3);
+
+      // Lane divider
+      if (i < portfolios.length - 1) {
+        ctx.beginPath();
+        ctx.moveTo(0, (i + 1) * laneH);
+        ctx.lineTo(w, (i + 1) * laneH);
+        ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    });
+
+    ctx.restore();
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

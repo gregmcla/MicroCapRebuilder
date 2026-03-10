@@ -80,6 +80,9 @@ function ActionCard({ action }: { action: ReviewedAction }) {
         <span className="font-mono text-xs" style={{ color: "var(--text-1)" }}>
           {action.modified_shares ?? original.shares} shares @
           ${original.price.toFixed(2)}
+          <span style={{ color: "var(--text-0)", marginLeft: "6px" }}>
+            ${((action.modified_shares ?? original.shares) * original.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+          </span>
         </span>
         <div className="flex-1" />
         <ConfidenceDot confidence={confidence} />

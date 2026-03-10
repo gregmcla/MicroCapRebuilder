@@ -1,0 +1,6 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+32c55c14,2026-03-10,TEN,BUY,6044,37.97,229490.68,31.77,47.65,SIGNAL,SIDEWAYS,0,{},
+9a30f837,2026-03-10,HLIO,BUY,2505,68.17,170765.85,57.87,84.81,SIGNAL,SIDEWAYS,0,{},
+3d50c82a,2026-03-10,SCZM,BUY,8047,10.91,87833.0,9.44,13.92,SIGNAL,SIDEWAYS,0,{},
+fb491a1e,2026-03-10,PANL,BUY,8028,8.52,68398.56,7.17,10.96,SIGNAL,SIDEWAYS,0,{},
+ebfc8dce,2026-03-10,MRTN,BUY,6500,12.71,82615.0,10.8,16.0,SIGNAL,SIDEWAYS,0,{},

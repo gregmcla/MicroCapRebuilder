@@ -1,1 +1,8 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+ARLP,181,27.24,27.24,4930.44,-0.0,-0.0,25.88,32.69,2026-03-09,Energy,27.24,-0.0,-0.0
+ATO,25,185.24,185.24,4631.0,0.0,0.0,175.98,222.29,2026-03-09,Utilities,185.24,0.0,0.0
+FE,96,50.96,50.62,4859.04,-33.12,-0.68,48.41,61.15,2026-03-09,Utilities,50.96,-33.12,-0.68
+VMD,533,9.29,9.29,4951.57,-0.0,-0.0,8.83,11.15,2026-03-09,Healthcare,9.29,-0.0,-0.0
+MRVL,52,92.65,92.65,4817.8,0.0,0.0,88.02,111.18,2026-03-09,Technology,92.65,0.0,0.0
+EXC,60,49.14,49.14,2948.4,-0.0,-0.0,46.68,58.97,2026-03-09,Utilities,49.14,-0.0,-0.0
+AWK,20,137.73,137.73,2754.6,-0.0,-0.0,130.84,165.28,2026-03-09,Utilities,137.73,-0.0,-0.0

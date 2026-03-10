@@ -50,6 +50,13 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
   );
 }
 
+function formatPnl(pnl: number, pct: number): string {
+  const sign = pnl >= 0 ? "+" : "";
+  const abs = Math.abs(pnl);
+  const dolStr = abs >= 1000 ? `${sign}$${(pnl / 1000).toFixed(1)}k` : `${sign}$${pnl.toFixed(0)}`;
+  return `${dolStr} (${sign}${pct.toFixed(1)}%)`;
+}
+
 function FeedItem({
   tx,
   expanded,
@@ -63,6 +70,8 @@ function FeedItem({
   const actionColor = isBuy ? "var(--accent)" : "var(--amber)";
   const icon = isBuy ? "▲" : "▼";
   const badge = reasonBadge[tx.reason];
+  const hasPnl = !isBuy && tx.realized_pnl != null && tx.realized_pnl_pct != null;
+  const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "var(--green)" : "var(--red)") : undefined;
 
   return (
     <>
@@ -86,15 +95,24 @@ function FeedItem({
         <span className="font-mono" style={{ color: "var(--text-2)" }}>
           {tx.shares}@${tx.price.toFixed(2)}
         </span>
-        <span
-          className="font-mono"
-          style={{ fontSize: "10px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}
-        >
-          ${tx.total_value.toLocaleString(undefined, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          })}
-        </span>
+        {hasPnl ? (
+          <span
+            className="font-mono font-semibold"
+            style={{ fontSize: "10px", color: pnlColor, fontFamily: "var(--font-mono)" }}
+          >
+            {formatPnl(tx.realized_pnl!, tx.realized_pnl_pct!)}
+          </span>
+        ) : (
+          <span
+            className="font-mono"
+            style={{ fontSize: "10px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}
+          >
+            ${tx.total_value.toLocaleString(undefined, {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            })}
+          </span>
+        )}
         {badge && (
           <span
             className="ml-auto font-semibold px-1 py-0.5 rounded tracking-wider"

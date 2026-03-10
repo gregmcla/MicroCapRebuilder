@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS — Design Direction</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #070711;
+    --bg-panel: #0c0c1a;
+    --bg-card: #10101e;
+    --bg-hover: #151526;
+    --border: rgba(255,255,255,0.06);
+    --border-bright: rgba(255,255,255,0.12);
+    --cyan: #00D4FF;
+    --cyan-dim: rgba(0,212,255,0.15);
+    --cyan-glow: rgba(0,212,255,0.4);
+    --amber: #FFB020;
+    --amber-dim: rgba(255,176,32,0.15);
+    --green: #00FF94;
+    --green-dim: rgba(0,255,148,0.12);
+    --red: #FF4060;
+    --red-dim: rgba(255,64,96,0.12);
+    --text-0: #FFFFFF;
+    --text-1: rgba(255,255,255,0.85);
+    --text-2: rgba(255,255,255,0.55);
+    --text-3: rgba(255,255,255,0.3);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  html, body { background: #000; color: var(--text-1); font-family: var(--sans); height: 100%; }
+
+  .page { padding: 32px; max-width: 1400px; margin: 0 auto; }
+  .page-title { font-size: 13px; font-family: var(--mono); color: var(--cyan); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
+  .page-sub { font-size: 28px; font-weight: 700; color: var(--text-0); margin-bottom: 8px; }
+  .page-desc { font-size: 14px; color: var(--text-2); margin-bottom: 40px; max-width: 600px; line-height: 1.6; }
+
+  /* App shell mockup */
+  .shell {
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 80px rgba(0,212,255,0.05), 0 40px 80px rgba(0,0,0,0.8);
+    margin-bottom: 48px;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: rgba(7,7,17,0.98);
+    border-bottom: 1px solid var(--border);
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 24px;
+    backdrop-filter: blur(20px);
+    position: relative;
+  }
+  .topbar::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.3;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 0.2em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot {
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--cyan);
+    animation: blink 2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  .nav-tabs {
+    display: flex;
+    gap: 2px;
+  }
+  .nav-tab {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-tab.active {
+    color: var(--cyan);
+    background: var(--cyan-dim);
+  }
+
+  .spacer { flex: 1; }
+
+  /* Market indices strip */
+  .indices {
+    display: flex;
+    gap: 20px;
+  }
+  .index {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+  .index-name { color: var(--text-3); letter-spacing: 0.05em; }
+  .index-val { color: var(--text-0); font-weight: 500; }
+  .index-chg.up { color: var(--green); }
+  .index-chg.dn { color: var(--red); }
+
+  .mode-badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    background: var(--amber-dim);
+    border: 1px solid rgba(255,176,32,0.3);
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 4px;
+    border: 1px solid;
+    cursor: pointer;
+  }
+  .btn-scan { color: var(--cyan); border-color: rgba(0,212,255,0.4); background: var(--cyan-dim); }
+  .btn-analyze { color: var(--amber); border-color: rgba(255,176,32,0.4); background: var(--amber-dim); }
+  .btn-execute { color: var(--green); border-color: rgba(0,255,148,0.4); background: var(--green-dim); }
+
+  /* Main layout */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr 300px;
+    height: 640px;
+  }
+
+  /* Left nav */
+  .left-nav {
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+  }
+  .nav-section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 8px 16px 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .nav-item.active {
+    color: var(--text-0);
+    background: var(--bg-hover);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    border-radius: 0 2px 2px 0;
+  }
+  .nav-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .nav-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .nav-dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .nav-dot.cyan { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .nav-dot.dim { background: var(--text-3); }
+  .nav-badge {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-3);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* Main content */
+  .main-content {
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Summary strip */
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
+  }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 6px;
+  }
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-0);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .metric-val.green { color: var(--green); }
+  .metric-val.red { color: var(--red); }
+  .metric-delta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-3);
+  }
+  .metric-delta.up { color: var(--green); }
+  .metric-delta.dn { color: var(--red); }
+
+  /* Chart area */
+  .chart-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .chart-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .chart-controls {
+    display: flex;
+    gap: 4px;
+  }
+  .chart-ctrl {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .chart-ctrl.active { color: var(--cyan); border-color: rgba(0,212,255,0.3); background: var(--cyan-dim); }
+
+  /* Fake SVG chart */
+  .chart-canvas {
+    width: 100%;
+    height: 140px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-canvas svg { width: 100%; height: 100%; }
+
+  /* Positions grid */
+  .positions-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .table-header {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px 90px 80px 100px 80px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .th {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+  .table-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px 90px 80px 100px 80px;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+    align-items: center;
+  }
+  .table-row:hover { background: var(--bg-hover); }
+  .table-row.active { background: rgba(0,212,255,0.05); border-left: 2px solid var(--cyan); }
+  .td {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-1);
+  }
+  .td.dim { color: var(--text-2); }
+  .td.green { color: var(--green); }
+  .td.red { color: var(--red); }
+  .td.ticker { color: var(--text-0); font-weight: 700; font-size: 12px; }
+
+  /* Score bar */
+  .score-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .score-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 99px;
+  }
+  .score-fill.high { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .score-fill.mid { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .score-fill.low { background: var(--amber); }
+
+  /* Status dot */
+  .status-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 5px;
+  }
+  .status-dot.green { background: var(--green); box-shadow: 0 0 5px var(--green); }
+  .status-dot.red { background: var(--red); box-shadow: 0 0 5px var(--red); }
+  .status-dot.amber { background: var(--amber); box-shadow: 0 0 5px var(--amber); }
+
+  /* Right panel */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .right-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .rtab {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding: 10px 10px 8px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .rtab.active {
+    color: var(--cyan);
+    border-bottom-color: var(--cyan);
+  }
+  .right-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Risk ring */
+  .risk-ring-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .ring-svg { flex-shrink: 0; }
+  .ring-text-block {}
+  .ring-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em; color: var(--text-3); margin-bottom: 4px; text-transform: uppercase; }
+  .ring-score { font-family: var(--mono); font-size: 32px; font-weight: 700; color: var(--green); line-height: 1; }
+  .ring-status { font-family: var(--mono); font-size: 10px; color: var(--green); }
+
+  /* Risk bars */
+  .risk-component {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .risk-comp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .risk-comp-name {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-2);
+  }
+  .risk-comp-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .risk-comp-val.ok { color: var(--green); }
+  .risk-comp-val.warn { color: var(--amber); }
+  .risk-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .risk-fill { height: 100%; border-radius: 99px; }
+  .risk-fill.ok { background: var(--green); }
+  .risk-fill.warn { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .risk-fill.danger { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+  /* Action cards */
+  .action-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .action-card.buy { border-left: 2px solid var(--green); }
+  .action-card.sell { border-left: 2px solid var(--red); }
+  .action-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .action-ticker { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text-0); }
+  .action-type {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .action-type.buy { background: var(--green-dim); color: var(--green); }
+  .action-type.sell { background: var(--red-dim); color: var(--red); }
+  .action-type.approve { background: rgba(0,212,255,0.1); color: var(--cyan); }
+  .action-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-3);
+    line-height: 1.6;
+  }
+  .action-meta span { color: var(--text-2); }
+  .confidence-bar {
+    margin-top: 8px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .confidence-fill { height: 100%; background: var(--green); border-radius: 99px; }
+
+  /* Sections below mockup */
+  .design-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+  .info-card {
+    background: #0c0c1a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .info-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 12px;
+  }
+  .info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--text-2);
+  }
+  .info-dot { flex-shrink: 0; margin-top: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--border-bright); }
+
+  /* Palette */
+  .palette {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .swatch-block {
+    width: 40px; height: 40px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .swatch-label { font-family: var(--mono); font-size: 9px; color: var(--text-3); letter-spacing: 0.05em; }
+
+  /* Screen list */
+  .screens-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .screen-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .screen-card:hover { border-color: var(--border-bright); background: var(--bg-hover); }
+  .screen-icon {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    background: var(--cyan-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+  }
+  .screen-name { font-size: 13px; font-weight: 600; color: var(--text-0); margin-bottom: 4px; }
+  .screen-desc { font-size: 11px; color: var(--text-3); line-height: 1.4; }
+
+  .regime-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 3px;
+  }
+  .regime-badge.bull { color: var(--green); background: var(--green-dim); border: 1px solid rgba(0,255,148,0.25); }
+
+  .sparkline-wrap { width: 60px; height: 24px; flex-shrink: 0; }
+  .sparkline-wrap svg { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-title">Proposed Design Direction</div>
+  <div class="page-sub">NEXUS — Portfolio Intelligence Platform</div>
+  <div class="page-desc">Bloomberg terminal meets Linear meets fighter jet HUD. Dense, futuristic, and immediately legible. Every pixel earns its place.</div>
+
+  <!-- App shell mockup -->
+  <div class="shell">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        NEXUS
+      </div>
+      <div class="nav-tabs">
+        <div class="nav-tab active">Command</div>
+        <div class="nav-tab">Signals</div>
+        <div class="nav-tab">Risk</div>
+        <div class="nav-tab">Alpha</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="indices">
+        <div class="index">
+          <span class="index-name">SPX</span>
+          <span class="index-val">5,847.21</span>
+          <span class="index-chg up">▲ 0.34%</span>
+        </div>
+        <div class="index">
+          <span class="index-name">RUT</span>
+          <span class="index-val">2,102.88</span>
+          <span class="index-chg dn">▼ 0.12%</span>
+        </div>
+        <div class="index">
+          <span class="index-name">VIX</span>
+          <span class="index-val">14.8</span>
+          <span class="index-chg up">▲ 2.1%</span>
+        </div>
+      </div>
+      <div class="mode-badge">PAPER</div>
+      <div class="btn btn-scan">Scan</div>
+      <div class="btn btn-analyze">Analyze</div>
+      <div class="btn btn-execute">Execute</div>
+    </div>
+
+    <!-- Main 3-col layout -->
+    <div class="main-layout">
+      <!-- Left nav -->
+      <div class="left-nav">
+        <div class="nav-section-label">Portfolios</div>
+        <div class="nav-item active">
+          <div class="nav-dot green"></div>
+          microcap
+          <span class="nav-badge">+8.4%</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-dot green"></div>
+          ai
+          <span class="nav-badge">+12.1%</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-dot amber"></div>
+          sph
+          <span class="nav-badge">+2.3%</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-dot dim"></div>
+          largeboi
+          <span class="nav-badge">-0.8%</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-dot green"></div>
+          10k
+          <span class="nav-badge">+5.7%</span>
+        </div>
+        <div class="nav-item">
+          <div class="nav-dot dim"></div>
+          boomers
+          <span class="nav-badge">+1.1%</span>
+        </div>
+
+        <div class="nav-section-label" style="margin-top: 8px;">Views</div>
+        <div class="nav-item">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
+          Overview
+        </div>
+        <div class="nav-item">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Constellation
+        </div>
+        <div class="nav-item">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 12l4-4 4 4 4-4"/></svg>
+          Performance
+        </div>
+        <div class="nav-item">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Risk Matrix
+        </div>
+
+        <div class="nav-section-label" style="margin-top: 8px;">Activity</div>
+        <div class="nav-item" style="color: var(--green);">
+          <div class="status-dot green"></div>
+          3 signals
+        </div>
+        <div class="nav-item">
+          <div class="status-dot amber"></div>
+          2 warnings
+        </div>
+      </div>
+
+      <!-- Main content -->
+      <div class="main-content">
+        <!-- Metrics strip -->
+        <div class="summary-strip">
+          <div class="metric-card">
+            <div class="metric-label">Total Equity</div>
+            <div class="metric-val">$482,304</div>
+            <div class="metric-delta up">▲ $4,127 today</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Cash Available</div>
+            <div class="metric-val">$89,441</div>
+            <div class="metric-delta dim">18.5% undeployed</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Open Positions</div>
+            <div class="metric-val">24</div>
+            <div class="metric-delta dim">6 portfolios</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total Return</div>
+            <div class="metric-val green">+8.4%</div>
+            <div class="metric-delta up">vs SPX +3.1%</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Market Regime</div>
+            <div style="margin-top: 4px;">
+              <span class="regime-badge bull">● BULL</span>
+            </div>
+            <div class="metric-delta dim">Day 7 of current</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-section">
+          <div class="chart-header">
+            <div class="chart-title">Equity Curve — microcap</div>
+            <div class="chart-controls">
+              <div class="chart-ctrl">1M</div>
+              <div class="chart-ctrl">3M</div>
+              <div class="chart-ctrl active">YTD</div>
+              <div class="chart-ctrl">All</div>
+            </div>
+          </div>
+          <div class="chart-canvas">
+            <svg viewBox="0 0 700 140" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00D4FF" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#00D4FF" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="refGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#FF4060" stop-opacity="0.1"/>
+                  <stop offset="100%" stop-color="#FF4060" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid lines -->
+              <line x1="0" y1="35" x2="700" y2="35" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+              <line x1="0" y1="70" x2="700" y2="70" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+              <line x1="0" y1="105" x2="700" y2="105" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+              <!-- SPX reference line -->
+              <path d="M0,100 C50,95 100,98 150,90 C200,82 250,88 300,80 C350,72 400,78 450,72 C500,66 550,70 600,65 C650,60 700,62 700,60" fill="none" stroke="rgba(255,64,96,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+              <!-- Area fill -->
+              <path d="M0,120 C50,115 100,110 150,95 C200,80 250,90 300,72 C350,55 400,65 450,48 C500,32 550,45 600,30 C650,20 700,22 700,18 L700,140 L0,140Z" fill="url(#chartGrad)"/>
+              <!-- Main line -->
+              <path d="M0,120 C50,115 100,110 150,95 C200,80 250,90 300,72 C350,55 400,65 450,48 C500,32 550,45 600,30 C650,20 700,22 700,18" fill="none" stroke="#00D4FF" stroke-width="2"/>
+              <!-- Endpoint glow -->
+              <circle cx="700" cy="18" r="4" fill="#00D4FF" opacity="0.8"/>
+              <circle cx="700" cy="18" r="8" fill="rgba(0,212,255,0.2)"/>
+              <!-- Entry point markers -->
+              <circle cx="200" cy="80" r="3" fill="rgba(0,255,148,0.8)"/>
+              <circle cx="420" cy="50" r="3" fill="rgba(255,64,96,0.8)"/>
+              <!-- X axis labels -->
+              <text x="0" y="138" fill="rgba(255,255,255,0.2)" font-size="8" font-family="JetBrains Mono, monospace">Jan</text>
+              <text x="160" y="138" fill="rgba(255,255,255,0.2)" font-size="8" font-family="JetBrains Mono, monospace">Feb</text>
+              <text x="340" y="138" fill="rgba(255,255,255,0.2)" font-size="8" font-family="JetBrains Mono, monospace">Mar</text>
+              <text x="660" y="138" fill="rgba(255,255,255,0.2)" font-size="8" font-family="JetBrains Mono, monospace">Now</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Positions table -->
+        <div class="positions-section">
+          <div class="table-header">
+            <div class="th">Ticker</div>
+            <div class="th">Score</div>
+            <div class="th">Price</div>
+            <div class="th">P&L</div>
+            <div class="th">Value</div>
+            <div class="th">Stop / Target</div>
+            <div class="th">Regime</div>
+          </div>
+          <!-- Row 1 -->
+          <div class="table-row active">
+            <div class="td ticker">CELH</div>
+            <div class="td">
+              <div class="score-bar-wrap">
+                <div class="score-bar"><div class="score-fill high" style="width:82%"></div></div>
+                <span style="font-size:10px;color:var(--green);font-family:var(--mono)">82</span>
+              </div>
+            </div>
+            <div class="td">$47.20</div>
+            <div class="td green">+14.3%</div>
+            <div class="td">$9,440</div>
+            <div class="td" style="font-size:9px;color:var(--text-3)">$42.10 / $58.00</div>
+            <div class="td"><span class="status-dot green"></span><span style="font-size:10px;font-family:var(--mono);color:var(--text-2)">BULL</span></div>
+          </div>
+          <!-- Row 2 -->
+          <div class="table-row">
+            <div class="td ticker">POWL</div>
+            <div class="td">
+              <div class="score-bar-wrap">
+                <div class="score-bar"><div class="score-fill high" style="width:77%"></div></div>
+                <span style="font-size:10px;color:var(--green);font-family:var(--mono)">77</span>
+              </div>
+            </div>
+            <div class="td">$183.44</div>
+            <div class="td green">+9.7%</div>
+            <div class="td">$18,344</div>
+            <div class="td" style="font-size:9px;color:var(--text-3)">$168.20 / $210.00</div>
+            <div class="td"><span class="status-dot green"></span><span style="font-size:10px;font-family:var(--mono);color:var(--text-2)">BULL</span></div>
+          </div>
+          <!-- Row 3 -->
+          <div class="table-row">
+            <div class="td ticker">SMPL</div>
+            <div class="td">
+              <div class="score-bar-wrap">
+                <div class="score-bar"><div class="score-fill mid" style="width:64%"></div></div>
+                <span style="font-size:10px;color:var(--cyan);font-family:var(--mono)">64</span>
+              </div>
+            </div>
+            <div class="td">$29.18</div>
+            <div class="td dim">+0.4%</div>
+            <div class="td">$5,836</div>
+            <div class="td" style="font-size:9px;color:var(--text-3)">$26.50 / $36.00</div>
+            <div class="td"><span class="status-dot amber"></span><span style="font-size:10px;font-family:var(--mono);color:var(--text-2)">SIDE</span></div>
+          </div>
+          <!-- Row 4 -->
+          <div class="table-row">
+            <div class="td ticker">MTDR</div>
+            <div class="td">
+              <div class="score-bar-wrap">
+                <div class="score-bar"><div class="score-fill low" style="width:48%"></div></div>
+                <span style="font-size:10px;color:var(--amber);font-family:var(--mono)">48</span>
+              </div>
+            </div>
+            <div class="td">$44.91</div>
+            <div class="td red">-3.2%</div>
+            <div class="td">$6,737</div>
+            <div class="td" style="font-size:9px;color:var(--red)">$41.00 / $56.00</div>
+            <div class="td"><span class="status-dot green"></span><span style="font-size:10px;font-family:var(--mono);color:var(--text-2)">BULL</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <div class="right-panel">
+        <div class="right-tabs">
+          <div class="rtab active">Risk</div>
+          <div class="rtab">Signals</div>
+          <div class="rtab">Activity</div>
+          <div class="rtab">AI</div>
+        </div>
+        <div class="right-content">
+          <!-- Risk ring -->
+          <div class="risk-ring-wrap">
+            <svg class="ring-svg" width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="6"/>
+              <circle cx="36" cy="36" r="30" fill="none" stroke="#00FF94" stroke-width="6"
+                stroke-dasharray="141 188" stroke-dashoffset="-47" stroke-linecap="round"
+                style="filter: drop-shadow(0 0 6px #00FF94)"/>
+              <text x="36" y="40" text-anchor="middle" fill="#00FF94" font-family="JetBrains Mono" font-size="14" font-weight="700">75</text>
+            </svg>
+            <div class="ring-text-block">
+              <div class="ring-label">Risk Score</div>
+              <div class="ring-score">75</div>
+              <div class="ring-status">LOW RISK</div>
+            </div>
+          </div>
+
+          <!-- Risk components -->
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="risk-component">
+              <div class="risk-comp-header">
+                <span class="risk-comp-name">Concentration</span>
+                <span class="risk-comp-val ok">82</span>
+              </div>
+              <div class="risk-bar"><div class="risk-fill ok" style="width:82%"></div></div>
+            </div>
+            <div class="risk-component">
+              <div class="risk-comp-header">
+                <span class="risk-comp-name">Volatility</span>
+                <span class="risk-comp-val warn">54</span>
+              </div>
+              <div class="risk-bar"><div class="risk-fill warn" style="width:54%"></div></div>
+            </div>
+            <div class="risk-component">
+              <div class="risk-comp-header">
+                <span class="risk-comp-name">Drawdown</span>
+                <span class="risk-comp-val ok">78</span>
+              </div>
+              <div class="risk-bar"><div class="risk-fill ok" style="width:78%"></div></div>
+            </div>
+            <div class="risk-component">
+              <div class="risk-comp-header">
+                <span class="risk-comp-name">Cash Buffer</span>
+                <span class="risk-comp-val ok">88</span>
+              </div>
+              <div class="risk-bar"><div class="risk-fill ok" style="width:88%"></div></div>
+            </div>
+            <div class="risk-component">
+              <div class="risk-comp-header">
+                <span class="risk-comp-name">Sector Exposure</span>
+                <span class="risk-comp-val warn">61</span>
+              </div>
+              <div class="risk-bar"><div class="risk-fill warn" style="width:61%"></div></div>
+            </div>
+          </div>
+
+          <!-- AI signal cards -->
+          <div style="margin-top:4px;">
+            <div class="risk-comp-name" style="margin-bottom:8px;">PENDING SIGNALS</div>
+            <div class="action-card buy" style="margin-bottom:8px;">
+              <div class="action-card-top">
+                <span class="action-ticker">NOVA</span>
+                <div style="display:flex;gap:4px;">
+                  <span class="action-type buy">BUY</span>
+                  <span class="action-type approve">APPROVED</span>
+                </div>
+              </div>
+              <div class="action-meta">
+                200 shares @ <span>$28.40</span> · Score <span>79</span><br>
+                SL <span>$25.90</span> · TP <span>$36.00</span>
+              </div>
+              <div class="confidence-bar"><div class="confidence-fill" style="width:88%"></div></div>
+            </div>
+            <div class="action-card sell" style="margin-bottom:8px;">
+              <div class="action-card-top">
+                <span class="action-ticker">CRC</span>
+                <div style="display:flex;gap:4px;">
+                  <span class="action-type sell">SELL</span>
+                  <span class="action-type approve">APPROVED</span>
+                </div>
+              </div>
+              <div class="action-meta">
+                Stop triggered @ <span>$31.20</span><br>
+                Realized P&L: <span style="color:var(--red)">-5.4%</span>
+              </div>
+              <div class="confidence-bar"><div class="confidence-fill" style="width:95%;background:var(--red)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Design info cards -->
+  <div class="design-info">
+    <div class="info-card">
+      <div class="info-title">Color System</div>
+      <div class="palette">
+        <div class="swatch"><div class="swatch-block" style="background:#070711;border:1px solid rgba(255,255,255,0.1)"></div><div class="swatch-label">Void</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#00D4FF;box-shadow:0 0 12px rgba(0,212,255,0.5)"></div><div class="swatch-label">Cyan</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#00FF94;box-shadow:0 0 12px rgba(0,255,148,0.4)"></div><div class="swatch-label">Green</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#FFB020;box-shadow:0 0 12px rgba(255,176,32,0.4)"></div><div class="swatch-label">Amber</div></div>
+        <div class="swatch"><div class="swatch-block" style="background:#FF4060;box-shadow:0 0 12px rgba(255,64,96,0.4)"></div><div class="swatch-label">Red</div></div>
+      </div>
+      <div class="info-item"><div class="info-dot"></div>Deep space black — #070711 — base canvas</div>
+      <div class="info-item"><div class="info-dot"></div>Electric cyan for primary UI chrome & accent</div>
+      <div class="info-item"><div class="info-dot"></div>Neon green for profit & "go" states</div>
+      <div class="info-item"><div class="info-dot"></div>Amber for warnings & PAPER mode badge</div>
+      <div class="info-item"><div class="info-dot"></div>All glow effects via CSS drop-shadow & box-shadow</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Typography</div>
+      <div style="margin-bottom:16px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#00D4FF;margin-bottom:4px;">$482,304.18</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(255,255,255,0.3);">TOTAL EQUITY</div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-family:'Inter',sans-serif;font-size:14px;font-weight:600;color:rgba(255,255,255,0.85);margin-bottom:2px;">Position Detail View</div>
+        <div style="font-family:'Inter',sans-serif;font-size:12px;color:rgba(255,255,255,0.4);">Contextual copy and labels</div>
+      </div>
+      <div class="info-item"><div class="info-dot"></div>JetBrains Mono — all numbers, labels, tickers, badges</div>
+      <div class="info-item"><div class="info-dot"></div>Inter — prose, nav, headings, modals</div>
+      <div class="info-item"><div class="info-dot"></div>Letter-spacing on ALL-CAPS mono labels: 0.12-0.15em</div>
+    </div>
+    <div class="info-card">
+      <div class="info-title">Motion System</div>
+      <div class="info-item"><div class="info-dot"></div>Framer Motion for all enter/exit transitions (layout animations, shared elements)</div>
+      <div class="info-item"><div class="info-dot"></div>Count-up animations for equity & P&L on load/refresh</div>
+      <div class="info-item"><div class="info-dot"></div>Micro-pulse on live data fields (subtle opacity breathe)</div>
+      <div class="info-item"><div class="info-dot"></div>Skeleton shimmer during loading states</div>
+      <div class="info-item"><div class="info-dot"></div>Staggered row reveals on table loads (each row 30ms later)</div>
+      <div class="info-item"><div class="info-dot"></div>Chart line draw-on animation with SVG stroke-dashoffset</div>
+      <div class="info-item"><div class="info-dot"></div>Slide + fade for right panel tab switching</div>
+    </div>
+  </div>
+
+  <!-- Screen inventory -->
+  <div style="font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:16px;">7 Major Screens</div>
+  <div class="screens-grid">
+    <div class="screen-card">
+      <div class="screen-icon">⚡</div>
+      <div class="screen-name">Command Center</div>
+      <div class="screen-desc">Multi-portfolio overview, orbital map, equity curves, live regime indicators</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">📊</div>
+      <div class="screen-name">Portfolio Deep Dive</div>
+      <div class="screen-desc">Single portfolio: position grid, candlesticks, factor scores, stop/target bars</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">🎯</div>
+      <div class="screen-name">Signal Console</div>
+      <div class="screen-desc">Watchlist candidates, scan results, AI analysis pipeline, action queue</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">🛡</div>
+      <div class="screen-name">Risk Matrix</div>
+      <div class="screen-desc">Full risk scoreboard, correlation heatmap, exposure breakdown, warnings</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">🧬</div>
+      <div class="screen-name">Alpha Engine</div>
+      <div class="screen-desc">Performance attribution, factor learning, strategy health grades, CAGR</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">📋</div>
+      <div class="screen-name">Activity Log</div>
+      <div class="screen-desc">Full transaction history, trade analytics, P&L waterfall, win/loss stats</div>
+    </div>
+    <div class="screen-card">
+      <div class="screen-icon">⚙️</div>
+      <div class="screen-name">Portfolio Config</div>
+      <div class="screen-desc">Strategy DNA, scoring weights, sector allocation, universe management</div>
+    </div>
+    <div class="screen-card" style="border-style:dashed;opacity:0.4;">
+      <div class="screen-icon" style="background:var(--border);">+</div>
+      <div class="screen-name">+ New Portfolio</div>
+      <div class="screen-desc">AI-assisted strategy generation modal</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
