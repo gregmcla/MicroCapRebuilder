@@ -518,17 +518,17 @@ export default function MatrixGrid({
 
                   {/* Ticker + all-time perf */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span className="matrix-tk" style={{ fontSize: 13, fontWeight: 600, color: "#555", letterSpacing: "0.04em", transition: "all 0.12s" }}>
+                    <span className="matrix-tk" style={{ fontSize: 13, fontWeight: 700, color: "#ccc", letterSpacing: "0.04em", transition: "all 0.12s" }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: pc(pos.perf) }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: pc(pos.perf) }}>
                       {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
                     </span>
                   </div>
 
                   {/* Value + sparkline */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                    <span style={{ fontSize: 10, color: "#888" }}>{fv(pos.value)}</span>
+                    <span style={{ fontSize: 10, color: "#aaa" }}>{fv(pos.value)}</span>
                     <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={56} h={18} />
                   </div>
 
