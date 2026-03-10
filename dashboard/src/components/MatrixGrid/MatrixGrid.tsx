@@ -729,11 +729,12 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
       </div>
     );
   }
+  const COLS = "90px 50px 90px 90px 90px 80px 60px 1fr";
   return (
     <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
       <div style={{
         display: "grid",
-        gridTemplateColumns: "90px 50px 90px 80px 80px 80px 1fr",
+        gridTemplateColumns: COLS,
         padding: "4px 20px",
         fontSize: 7, color: "#555", letterSpacing: "0.12em",
         borderBottom: "1px solid rgba(74,222,128,0.04)",
@@ -742,18 +743,27 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
         <span>DATE</span>
         <span>ACT</span>
         <span>TICKER</span>
-        <span>SHARES</span>
-        <span>PRICE</span>
-        <span>TOTAL</span>
+        <span>ENTRY / QTY</span>
+        <span>SELL / PRICE</span>
+        <span>P&L / TOTAL</span>
+        <span>RET%</span>
         <span>REASON</span>
       </div>
       {sorted.map((tx) => {
         const isBuy = tx.action === "BUY";
         const ac = isBuy ? "#4ade80" : "#f87171";
+        const hasPnl = !isBuy && tx.realized_pnl != null && tx.realized_pnl_pct != null;
+        const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "#4ade80" : "#f87171") : "#aaa";
+        const pnlStr = hasPnl
+          ? `${tx.realized_pnl! >= 0 ? "+" : ""}$${Math.abs(tx.realized_pnl!).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          : `$${tx.total_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+        const pctStr = hasPnl
+          ? `${tx.realized_pnl_pct! >= 0 ? "+" : ""}${tx.realized_pnl_pct!.toFixed(1)}%`
+          : "";
         return (
           <div key={tx.transaction_id} style={{
             display: "grid",
-            gridTemplateColumns: "90px 50px 90px 80px 80px 80px 1fr",
+            gridTemplateColumns: COLS,
             padding: "5px 20px",
             borderBottom: "1px solid rgba(255,255,255,0.02)",
             fontSize: 9, fontFamily: MATRIX_FONT, alignItems: "center",
@@ -761,9 +771,17 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
             <span style={{ color: "#555", fontSize: 8 }}>{tx.date.slice(0, 10)}</span>
             <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
             <span onClick={() => onTickerClick(tx.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{tx.ticker}</span>
-            <span style={{ color: "#888" }}>{tx.shares}</span>
+            {/* Entry price (sells) or qty (buys) */}
+            {!isBuy && tx.entry_price != null
+              ? <span style={{ color: "#666" }}>${tx.entry_price.toFixed(2)}</span>
+              : <span style={{ color: "#888" }}>{isBuy ? tx.shares : "—"}</span>
+            }
+            {/* Sell price or buy price */}
             <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
-            <span style={{ color: "#aaa", fontWeight: 600 }}>${tx.total_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            {/* P&L $ (sells) or total (buys) */}
+            <span style={{ color: pnlColor, fontWeight: 600 }}>{pnlStr}</span>
+            {/* Return % (sells only) */}
+            <span style={{ color: pnlColor, fontWeight: 600, fontSize: 8 }}>{pctStr}</span>
             <span style={{ color: "#555", fontSize: 8 }}>{tx.reason}</span>
           </div>
         );
