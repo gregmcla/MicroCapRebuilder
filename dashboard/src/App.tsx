@@ -75,8 +75,11 @@ export default function App() {
       ? summaries.map((s) => ({ id: s.id, name: s.name }))
       : [{ id: portfolioId, name: portfolioId }];
     const map = buildPortfolioMap(ids);
-    return map.get(portfolioId) ?? null;
-  }, [isOverview, portfolioId, overview]);
+    const base = map.get(portfolioId) ?? null;
+    if (!base) return null;
+    const equityCurve = state?.snapshots?.map((s) => s.day_pnl_pct) ?? [];
+    return equityCurve.length >= 3 ? { ...base, equityCurve } : base;
+  }, [isOverview, portfolioId, overview, state?.snapshots]);
 
   const matrixPositions = useMemo(() => {
     if (!activeMatrixPortfolio || !state?.positions) return [];
