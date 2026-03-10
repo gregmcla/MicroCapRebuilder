@@ -50,6 +50,11 @@ def run_ai_allocation(
     """
     client_type, client = get_ai_client()
 
+    # Build set of held tickers for sell validation
+    held_tickers: set = set()
+    if not state.positions.empty:
+        held_tickers = set(state.positions["ticker"].tolist())
+
     # Layer 1 sells are mechanical — always APPROVE them
     reviewed: list[ReviewedAction] = []
     for sell_action in layer1_sells:
@@ -105,7 +110,8 @@ def run_ai_allocation(
         allocation_data = _parse_json(response_text)
 
         valid_buys, ai_sells = _validate_allocation(
-            allocation_data, available_cash, state.total_equity, scored_candidates
+            allocation_data, available_cash, state.total_equity, scored_candidates,
+            held_tickers=held_tickers,
         )
 
         ai_actions = _convert_to_reviewed_actions(
@@ -345,6 +351,7 @@ def _validate_allocation(
     available_cash: float,
     total_equity: float,
     scored_candidates: list,
+    held_tickers: set = None,
 ) -> tuple[list, list]:
     """
     Enforce hard constraints on AI allocation output.
@@ -354,6 +361,8 @@ def _validate_allocation(
     """
     price_map = {c["ticker"]: c.get("current_price", 0) for c in scored_candidates}
     max_position = total_equity * 0.25
+    if held_tickers is None:
+        held_tickers = set()
 
     valid_buys = []
     running_cost = 0.0
@@ -394,6 +403,14 @@ def _validate_allocation(
 
         if price <= 0:
             print(f"  [Validate] Skipping {ticker}: invalid price ${price}")
+            continue
+
+        # Stop must be below buy price, target must be above buy price
+        if stop_loss >= price:
+            print(f"  [Validate] Skipping {ticker}: stop_loss ${stop_loss:.2f} >= price ${price:.2f} (would trigger immediately)")
+            continue
+        if take_profit <= price:
+            print(f"  [Validate] Skipping {ticker}: take_profit ${take_profit:.2f} <= price ${price:.2f}")
             continue
 
         # Cross-check price against scored price (5% tolerance)
