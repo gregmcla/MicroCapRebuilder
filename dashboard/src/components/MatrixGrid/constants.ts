@@ -115,12 +115,12 @@ export const pc = (p: number): string =>
   p > 5 ? "#4ade80" : p > 0 ? "#86c98e" : p > -5 ? "#c98e86" : "#f87171";
 
 export const pbg = (p: number): string => {
-  if (p > 15) return "rgba(74,222,128,0.28)";
-  if (p > 5)  return "rgba(74,222,128,0.18)";
-  if (p > 0)  return "rgba(74,222,128,0.10)";
-  if (p > -5) return "rgba(248,113,113,0.10)";
-  if (p > -10) return "rgba(248,113,113,0.18)";
-  return "rgba(248,113,113,0.28)";
+  if (p > 15) return "#163826";
+  if (p > 5)  return "#0f2a1a";
+  if (p > 0)  return "#0a1c10";
+  if (p > -5) return "#1c0a0a";
+  if (p > -10) return "#2a0f0f";
+  return "#381616";
 };
 
 export const fv = (v: number): string =>
