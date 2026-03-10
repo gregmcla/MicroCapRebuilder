@@ -7,18 +7,19 @@ interface EKGStripProps {
 
 /** Expand an array of daily pnl % values into a smooth scrolling point buffer.
  *  Each day → 20 points: flat noise → spike → flat noise. */
-function buildBuffer(pnlArray: number[]): { v: number; pct: number }[] {
-  const pts: { v: number; pct: number }[] = [];
+function buildBuffer(pnlArray: number[]): { v: number; pct: number; flat: boolean }[] {
+  const pts: { v: number; pct: number; flat: boolean }[] = [];
   for (const pct of pnlArray) {
     const amp = Math.max(-4, Math.min(4, pct));
     for (let k = 0; k < 20; k++) {
       let v: number;
+      let flat = false;
       if      (k === 9 || k === 10) v = amp;
       else if (k === 8 || k === 11) v = amp * 0.55;
       else if (k === 7 || k === 12) v = amp * 0.22;
       else if (k === 6 || k === 13) v = amp * 0.07;
-      else                          v = (Math.random() - 0.5) * 0.09;
-      pts.push({ v, pct });
+      else { v = 0; flat = true; }
+      pts.push({ v, pct, flat });
     }
   }
   return pts;
@@ -34,7 +35,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
   );
 
   // Real-data buffer state
-  const realRef = useRef<{ pts: { v: number; pct: number }[]; pos: number } | null>(null);
+  const realRef = useRef<{ pts: { v: number; pct: number; flat: boolean }[]; pos: number; color: string } | null>(null);
 
   useEffect(() => {
     linesRef.current = portfolios.map(() => ({
@@ -44,7 +45,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
     // Rebuild real buffer when equity curve changes
     const curve = portfolios[0]?.equityCurve;
     if (curve && curve.length >= 3) {
-      realRef.current = { pts: buildBuffer(curve), pos: 0 };
+      realRef.current = { pts: buildBuffer(curve), pos: 0, color: portfolios[0]?.color ?? "#4ade80" };
     } else {
       realRef.current = null;
     }
@@ -85,7 +86,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
         const visible = Math.floor(w / step) + 2;
         const y0      = h / 2;
         const range   = h * 0.38;
-        const color   = portfolios[0]?.color ?? "#4ade80";
+        const color   = real.color;
 
         // Advance scroll every 2 frames
         if (frame % 2 === 0) real.pos = (real.pos + 1) % real.pts.length;
@@ -93,7 +94,11 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
         // Collect visible slice
         const slice: { v: number; pct: number }[] = [];
         for (let k = 0; k < visible; k++) {
-          slice.push(real.pts[(real.pos + k) % real.pts.length]);
+          const pt = real.pts[(real.pos + k) % real.pts.length];
+          slice.push({
+            v:   pt.flat ? (Math.random() - 0.5) * 0.09 : pt.v,
+            pct: pt.pct,
+          });
         }
 
         // Zero baseline
@@ -141,7 +146,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
 
         // Cursor dot at right edge
         const last   = slice[slice.length - 1];
-        const cx     = (slice.length - 1) * step;
+        const cx     = Math.min((slice.length - 1) * step, w - 2);
         const cy     = y0 - last.v * range;
         const dotCol = last.pct > 0 ? "#4ade80" : last.pct < 0 ? "#f87171" : "#4ade80";
         ctx.beginPath();
@@ -206,7 +211,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
       cancelAnimationFrame(frameRef.current);
       window.removeEventListener("resize", resize);
     };
-  }, [portfolios]);
+  }, []);
 
   return (
     <canvas ref={ref} style={{ width: "100%", height: "100%", display: "block" }} />
