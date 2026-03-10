@@ -240,8 +240,11 @@ def get_overview():
 
             # Sparkline: last 30 daily equity values from snapshots
             sparkline: list[float] = []
+            equity_curve: list[float] = []
             if len(snapshots) >= 2:
                 sparkline = [float(v) for v in snapshots["total_equity"].tail(30).tolist()]
+            if len(snapshots) >= 3 and "day_pnl_pct" in snapshots.columns:
+                equity_curve = [float(v) for v in snapshots["day_pnl_pct"].tail(60).tolist()]
 
             summary = {
                 "id": p.id, "name": p.name, "universe": p.universe,
@@ -256,6 +259,7 @@ def get_overview():
                 "total_return_pct": round(total_return_pct, 2),
                 "deployed_pct": deployed_pct,
                 "sparkline": sparkline,
+                "equity_curve": equity_curve,
             }
             total_equity += state.total_equity
             total_cash += state.cash

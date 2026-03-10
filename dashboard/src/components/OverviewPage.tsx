@@ -690,8 +690,14 @@ export default function OverviewPage() {
     if (!portfolios?.length) return [];
     const ids = portfolios.map((p: any) => ({ id: p.id, name: p.name }));
     const map = buildPortfolioMap(ids);
-    return ids.map((p: { id: string; name: string }) => map.get(p.id)!).filter(Boolean);
-  }, [portfolios]);
+    const summaryMap = new Map((overview?.portfolios ?? []).map((s) => [s.id, s]));
+    return ids.map((p: { id: string; name: string }) => {
+      const base = map.get(p.id);
+      if (!base) return null;
+      const ec = summaryMap.get(p.id)?.equity_curve ?? [];
+      return ec.length >= 3 ? { ...base, equityCurve: ec } : base;
+    }).filter(Boolean) as MatrixPortfolio[];
+  }, [portfolios, overview?.portfolios]);
 
   const matrixPositions = useMemo(() => {
     if (!overview?.all_positions?.length || !matrixPortfolios.length) return [];

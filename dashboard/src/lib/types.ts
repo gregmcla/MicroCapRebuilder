@@ -52,6 +52,7 @@ export interface PortfolioSummary {
   total_return_pct: number;
   deployed_pct: number;
   sparkline?: number[];
+  equity_curve?: number[];
   error?: string;
 }
 
