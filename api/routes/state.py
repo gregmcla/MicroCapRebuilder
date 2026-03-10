@@ -60,7 +60,7 @@ def _serialize_state(state):
     # manual close-all remnants from before transaction tracking began.
     # Also builds per-trade P&L map for display in the activity feed.
     realized_pnl = 0.0
-    trade_pnl: dict[str, tuple[float, float]] = {}  # transaction_id -> (pnl_dollar, pnl_pct)
+    trade_pnl: dict[str, tuple[float, float, float]] = {}  # transaction_id -> (pnl_dollar, pnl_pct, entry_price)
     txns = state.transactions
     if not txns.empty and "action" in txns.columns:
         _holdings: dict = {}  # ticker -> (shares, total_cost)
@@ -83,17 +83,20 @@ def _serialize_state(state):
                     realized_pnl += _pnl
                     _holdings[_ticker] = (max(0.0, _hs - _shares), max(0.0, _hc - _cost))
                     if _tid:
-                        trade_pnl[_tid] = (round(_pnl, 2), round(_pnl_pct, 2))
+                        trade_pnl[_tid] = (round(_pnl, 2), round(_pnl_pct, 2), round(_avg, 2))
     realized_pnl = round(realized_pnl, 2)
 
     # Annotate transactions with per-trade P&L before serializing
     transactions_out = transactions.tail(50).copy()
     if trade_pnl and "transaction_id" in transactions_out.columns:
         transactions_out["realized_pnl"] = transactions_out["transaction_id"].apply(
-            lambda tid: trade_pnl.get(str(tid), (None, None))[0]
+            lambda tid: trade_pnl.get(str(tid), (None, None, None))[0]
         )
         transactions_out["realized_pnl_pct"] = transactions_out["transaction_id"].apply(
-            lambda tid: trade_pnl.get(str(tid), (None, None))[1]
+            lambda tid: trade_pnl.get(str(tid), (None, None, None))[1]
+        )
+        transactions_out["entry_price"] = transactions_out["transaction_id"].apply(
+            lambda tid: trade_pnl.get(str(tid), (None, None, None))[2]
         )
 
     # Zero out stale day_change values in positions when markets are closed.

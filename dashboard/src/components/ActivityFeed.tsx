@@ -71,6 +71,7 @@ function FeedItem({
   const icon = isBuy ? "▲" : "▼";
   const badge = reasonBadge[tx.reason];
   const hasPnl = !isBuy && tx.realized_pnl != null && tx.realized_pnl_pct != null;
+  const hasEntry = !isBuy && tx.entry_price != null;
   const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "var(--green)" : "var(--red)") : undefined;
 
   return (
@@ -92,9 +93,21 @@ function FeedItem({
         <span className="font-semibold w-12 shrink-0" style={{ color: "var(--text-3)" }}>
           {tx.ticker}
         </span>
-        <span className="font-mono" style={{ color: "var(--text-2)" }}>
-          {tx.shares}@${tx.price.toFixed(2)}
-        </span>
+
+        {/* SELL: entry → sell price */}
+        {!isBuy && hasEntry ? (
+          <span className="font-mono" style={{ color: "var(--text-2)" }}>
+            ${tx.entry_price!.toFixed(2)}
+            <span style={{ color: "var(--text-0)", margin: "0 2px" }}>→</span>
+            ${tx.price.toFixed(2)}
+          </span>
+        ) : (
+          <span className="font-mono" style={{ color: "var(--text-2)" }}>
+            {tx.shares}@${tx.price.toFixed(2)}
+          </span>
+        )}
+
+        {/* P&L for sells, total cost for buys */}
         {hasPnl ? (
           <span
             className="font-mono font-semibold"
@@ -113,6 +126,7 @@ function FeedItem({
             })}
           </span>
         )}
+
         {badge && (
           <span
             className="ml-auto font-semibold px-1 py-0.5 rounded tracking-wider"

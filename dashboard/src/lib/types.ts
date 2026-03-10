@@ -125,6 +125,7 @@ export interface Transaction {
   signal_rank?: number | null;
   realized_pnl?: number | null;
   realized_pnl_pct?: number | null;
+  entry_price?: number | null;
 }
 
 export interface Snapshot {
