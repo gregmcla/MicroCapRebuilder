@@ -112,15 +112,15 @@ export function positionToMatrix(pos: Position, port: MatrixPortfolio): MatrixPo
 }
 
 export const pc = (p: number): string =>
-  p > 5 ? "#4ade80" : p > 0 ? "#5a9a6a" : p > -5 ? "#9a6a5a" : "#f87171";
+  p > 5 ? "#4ade80" : p > 0 ? "#86c98e" : p > -5 ? "#c98e86" : "#f87171";
 
 export const pbg = (p: number): string => {
-  if (p > 15) return "rgba(74,222,128,0.06)";
-  if (p > 5)  return "rgba(74,222,128,0.025)";
-  if (p > 0)  return "rgba(74,222,128,0.008)";
-  if (p > -5) return "rgba(248,113,113,0.008)";
-  if (p > -10) return "rgba(248,113,113,0.025)";
-  return "rgba(248,113,113,0.06)";
+  if (p > 15) return "rgba(74,222,128,0.14)";
+  if (p > 5)  return "rgba(74,222,128,0.08)";
+  if (p > 0)  return "rgba(74,222,128,0.04)";
+  if (p > -5) return "rgba(248,113,113,0.04)";
+  if (p > -10) return "rgba(248,113,113,0.08)";
+  return "rgba(248,113,113,0.14)";
 };
 
 export const fv = (v: number): string =>

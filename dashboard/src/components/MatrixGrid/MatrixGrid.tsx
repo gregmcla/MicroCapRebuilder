@@ -217,7 +217,7 @@ export default function MatrixGrid({
         @keyframes matrixBlink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes matrixBreathe { 0%,100%{opacity:0.72} 50%{opacity:0.92} }
         .matrix-cell { animation: matrixBreathe var(--breath-dur,4s) ease-in-out infinite; }
-        .matrix-cell:hover { background: rgba(74,222,128,0.035) !important; animation: none !important; opacity: 1 !important; }
+        .matrix-cell:hover { background: rgba(74,222,128,0.09) !important; animation: none !important; opacity: 1 !important; }
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
         .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
@@ -454,7 +454,7 @@ export default function MatrixGrid({
                     onPositionClick?.(pos);
                   }}
                   style={{
-                    background: pbg(pos.perf),
+                    background: `linear-gradient(135deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.018) 100%), ${pbg(pos.perf)}`,
                     padding: "9px 9px 6px",
                     cursor: "crosshair",
                     position: "relative",
@@ -463,7 +463,7 @@ export default function MatrixGrid({
                     transform: mounted ? undefined : "translateY(6px)",
                     transition: mounted ? "border-color 0.15s, background 0.15s" : "opacity 0.3s, transform 0.4s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
-                    borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "99" : "10"}`,
+                    borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "cc" : "40"}`,
                     ["--breath-dur" as string]: `${breathDur}s`,
                     animationDelay: `${-(i * 0.3) % breathDur}s`,
                     animation: isGlitch
