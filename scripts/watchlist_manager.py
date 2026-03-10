@@ -100,7 +100,7 @@ class WatchlistManager:
         self.portfolio_id = portfolio_id
         self.config = load_config_from_files(portfolio_id) if portfolio_id else load_config()
         self.discovery_config = self.config.get("discovery", {}).get("watchlist", {})
-        self.max_tickers = self.discovery_config.get("max_tickers", 150)
+        self.max_tickers = self.discovery_config.get("max_tickers", 250)
         self.stale_days = self.discovery_config.get("stale_days_threshold", 30)
         self.sector_weights = self.discovery_config.get("sector_weights", {})
         self.total_watchlist_slots = self.discovery_config.get(

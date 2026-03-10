@@ -473,7 +473,7 @@ def create_portfolio(
     if "watchlist" not in config["discovery"]:
         config["discovery"]["watchlist"] = {}
     config["discovery"]["watchlist"]["total_watchlist_slots"] = preset.get(
-        "total_watchlist_slots", config["discovery"].get("watchlist", {}).get("max_tickers", 150)
+        "total_watchlist_slots", config["discovery"].get("watchlist", {}).get("max_tickers", 250)
     )
     if sector_weights:
         config["discovery"]["watchlist"]["sector_weights"] = dict(sector_weights)

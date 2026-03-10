@@ -240,7 +240,7 @@
       "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 150,
+      "max_tickers": 250,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,

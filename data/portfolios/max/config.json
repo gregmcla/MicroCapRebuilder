@@ -6,16 +6,16 @@
     "simulated_slippage_pct": 0.05,
     "paper_data_suffix": "_paper"
   },
-  "starting_capital": 1000000.0,
+  "starting_capital": 5000000.0,
   "initial_deployment_target_pct": 90.0,
-  "risk_per_trade_pct": 8,
-  "max_position_pct": 12,
+  "risk_per_trade_pct": 8.0,
+  "max_position_pct": 12.0,
   "max_positions": 999,
-  "default_stop_loss_pct": 7,
-  "default_take_profit_pct": 20,
+  "default_stop_loss_pct": 7.0,
+  "default_take_profit_pct": 20.0,
   "volatility_lookback_days": 20,
-  "benchmark_symbol": "^RUT",
-  "fallback_benchmark": "IWM",
+  "benchmark_symbol": "^GSPC",
+  "fallback_benchmark": "SPY",
   "chart_days": 30,
   "scoring": {
     "default_weights": {
@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 40,
-      "SIDEWAYS": 50,
-      "BEAR": 60
+      "BULL": 40.0,
+      "SIDEWAYS": 50.0,
+      "BEAR": 60.0
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -91,7 +91,7 @@
     "capital_preservation": {
       "enabled": true,
       "triggers": {
-        "drawdown_threshold_pct": 10,
+        "drawdown_threshold_pct": 10.0,
         "risk_score_threshold": 40,
         "regime_bear_auto_enable": true
       },
@@ -233,10 +233,10 @@
       "volume_anomalies": false
     },
     "filters": {
-      "min_market_cap_m": 500,
+      "min_market_cap_m": 50,
       "max_market_cap_m": 999999,
-      "min_avg_volume": 200000,
-      "min_price": 5.0,
+      "min_avg_volume": 100000,
+      "min_price": 2.0,
       "max_price": 5000.0
     },
     "watchlist": {
@@ -248,8 +248,7 @@
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75,
       "total_watchlist_slots": 500
-    },
-    "sector_filter": []
+    }
   },
   "universe": {
     "enabled": true,
@@ -262,11 +261,11 @@
       "etf_holdings": {
         "enabled": true,
         "etfs": [
-          "XLI",
-          "XLU",
-          "SMH",
-          "PAVE",
-          "COPX"
+          "UPRO",
+          "TQQQ",
+          "SOXL",
+          "UVXY",
+          "SDOW"
         ]
       },
       "exchange_listings": {
@@ -280,26 +279,25 @@
       },
       "extended": {
         "max_tickers": 6000,
-        "scan_frequency": "rotating_3day"
+        "scan_frequency": "daily"
       }
     },
     "filters": {
-      "min_market_cap_m": 500,
+      "min_market_cap_m": 50,
       "max_market_cap_m": 999999,
-      "min_avg_volume": 200000,
-      "min_price": 5.0,
+      "min_avg_volume": 100000,
+      "min_price": 2.0,
       "max_price": 5000.0
     }
   },
   "strategy": {
     "name": "Default",
     "sectors": [],
-    "trading_style": "balanced",
+    "trading_style": null,
     "created_via": "ai_driven",
     "ai_prompt": null,
-    "ai_rationale": null,
-    "universe": "allcap"
+    "ai_rationale": null
   },
   "ai_driven": true,
-  "strategy_dna": "AI Infrastructure & Ancillary Picks-and-Shovels\n                                                                                                                        \n  The AI buildout is a multi-decade infrastructure supercycle. I don't want to own the AI companies \u2014 I want to own\n  everything they desperately need to exist and scale. The real money in a gold rush is selling shovels, not mining\n  gold.\n\n  Target the physical and industrial layer: power generation and grid infrastructure that feeds data centers (utilities\n  pivoting to AI load, natural gas peakers, nuclear operators), electrical components and switchgear manufacturers,\n  cooling systems (liquid cooling, precision HVAC), and the construction and engineering firms building the facilities\n  themselves. Layer in raw materials that are being consumed at accelerating rates: copper (wiring and busbars), rare\n  earth elements (magnets in motors and drives), and specialty gases used in semiconductor fabrication.\n\n  Add the semiconductor supply chain below the chip level \u2014 wafer manufacturers, substrate makers, PCB fabricators,\n  chemical suppliers, and precision equipment companies that enable chip production without being chip designers\n  themselves. Include networking infrastructure: fiber optic cable manufacturers, optical transceiver companies, and\n  high-speed interconnect suppliers that handle the data movement between GPUs and storage.\n\n  Avoid: AI software companies, LLM API providers, AI chip designers (Nvidia, AMD, Intel), and cloud hyperscalers (AWS,\n  Azure, GCP). These are the picks-and-shovels customers, not the suppliers. Also avoid consumer tech with incidental AI\n   features \u2014 I want pure industrial exposure.\n\n  Buy names that are already seeing order book acceleration, capex tailwinds from hyperscaler spending, or explicit\n  mentions of data center demand in earnings calls. Momentum confirmation matters \u2014 I want the market to already be\n  pricing in the demand, not waiting for it. Hold as long as AI infrastructure capex spending remains on an upward\n  trajectory."
+  "strategy_dna": "extreme aggressive approach, your only goal is to make the MAXIMUM amount of money in the next 2 trading days at any means necessary. GO!"
 }
