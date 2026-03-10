@@ -279,7 +279,7 @@
       },
       "extended": {
         "max_tickers": 6000,
-        "scan_frequency": "daily"
+        "scan_frequency": "rotating_3day"
       }
     },
     "filters": {
