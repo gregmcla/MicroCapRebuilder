@@ -829,14 +829,27 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     # Fetch live prices for ALL tickers (buys and sells) so we record the real
     # fill price, not the stale cache price from analyze time.
+    # BUYs with no confirmed live price are dropped entirely — never fall back to stale data.
+    confirmed_live: set[str] = set()
     all_tickers = [r.original.ticker for r in actions_to_execute]
     if all_tickers:
-        live_prices, _, _ = fetch_prices_batch(all_tickers)
+        live_prices, _, prev_closes = fetch_prices_batch(all_tickers)
         for reviewed in actions_to_execute:
             action = reviewed.original
             fresh = live_prices.get(action.ticker)
             if not fresh or fresh <= 0:
+                if action.action_type == "BUY":
+                    print(f"  ⛔ {action.ticker}: no live price — buy skipped (won't use stale data)")
                 continue
+            # Sanity-check: price must be within 2× of yesterday's close.
+            # Catches MultiIndex confusion, bad cache entries, and yfinance data glitches.
+            prev = prev_closes.get(action.ticker)
+            if prev and prev > 0 and action.action_type == "BUY":
+                ratio = fresh / prev
+                if ratio > 2.0 or ratio < 0.5:
+                    print(f"  ⛔ {action.ticker}: live price ${fresh:.2f} is {ratio:.2f}× prev_close ${prev:.2f} — bad data, buy skipped")
+                    continue
+            confirmed_live.add(action.ticker)
             old_price = action.price
             if abs(fresh - old_price) / old_price < 0.001:
                 continue  # price hasn't moved meaningfully, skip
@@ -855,6 +868,16 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 # For sells, just update the price — no stop/target to rescale
                 action.price = round(fresh, 4)
                 print(f"  🔄 {action.ticker}: refreshed SELL price ${old_price:.2f} → ${fresh:.2f}")
+
+    # Drop any BUY that didn't get a confirmed live price
+    before = len(actions_to_execute)
+    actions_to_execute = [
+        r for r in actions_to_execute
+        if r.original.action_type != "BUY" or r.original.ticker in confirmed_live
+    ]
+    skipped = before - len(actions_to_execute)
+    if skipped:
+        print(f"  ⛔ Dropped {skipped} buy(s) with no confirmed live price")
 
     print(f"\n{'='*60}")
     print("EXECUTING APPROVED ACTIONS")
