@@ -265,31 +265,33 @@ export default function TopBar({
         <span style={{ color: "var(--border-1)", fontSize: "16px", fontWeight: 300 }}>|</span>
         <PortfolioSwitcher />
         <FreshnessIndicator />
-        <button
-          onClick={() => setShowSettings(true)}
-          title="Portfolio Settings"
-          style={{
-            background: "none",
-            border: "1px solid var(--border-1)",
-            borderRadius: "5px",
-            color: "var(--text-0)",
-            cursor: "pointer",
-            width: "24px",
-            height: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "13px",
-            lineHeight: 1,
-            transition: "color 0.15s, border-color 0.15s",
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-0)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)"; }}
-        >
-          ⚙
-        </button>
+        {state?.ai_driven && (
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Strategy DNA"
+            style={{
+              background: "none",
+              border: "1px solid var(--border-1)",
+              borderRadius: "5px",
+              color: "var(--text-0)",
+              cursor: "pointer",
+              width: "24px",
+              height: "24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "13px",
+              lineHeight: 1,
+              transition: "color 0.15s, border-color 0.15s",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-0)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)"; }}
+          >
+            ⚙
+          </button>
+        )}
       </div>
-      {showSettings && <PortfolioSettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && state?.ai_driven && <PortfolioSettingsModal onClose={() => setShowSettings(false)} />}
 
       {/* Center: market indices */}
       <div className="flex-1 flex justify-center min-w-0">

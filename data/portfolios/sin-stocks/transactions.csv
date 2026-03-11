@@ -1,0 +1,6 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
+25e4fbb1,2026-03-10,WRLD,BUY,532,140.74,74871.02,118.55,185.87,SIGNAL,SIDEWAYS,0,{},
+4e7a5e47,2026-03-10,ABEV,BUY,16472,3.04,49992.52,2.55,3.86,SIGNAL,SIDEWAYS,0,{},
+cba89f1e,2026-03-10,GBDC,BUY,4095,12.22,50061.38,10.49,14.48,SIGNAL,SIDEWAYS,0,{},
+ce5d7456,2026-03-10,BXSL,BUY,2080,24.02,49972.0,20.44,28.42,SIGNAL,SIDEWAYS,0,{},
+54ff595e,2026-03-10,NLY,BUY,2210,22.56,49857.6,19.0,27.0,SIGNAL,SIDEWAYS,0,{},

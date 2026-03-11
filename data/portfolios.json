@@ -23,7 +23,7 @@
       "universe": "allcap",
       "created": "2026-03-06T17:39:29",
       "starting_capital": 100000.0,
-      "active": true
+      "active": false
     },
     "largecap": {
       "id": "largecap",
@@ -231,7 +231,7 @@
       "universe": "allcap",
       "created": "2026-03-06T17:41:01",
       "starting_capital": 100000.0,
-      "active": true
+      "active": false
     },
     "avg": {
       "id": "avg",
@@ -270,6 +270,22 @@
       "name": "Sin Stocks",
       "universe": "allcap",
       "created": "2026-03-10T14:11:50",
+      "starting_capital": 500000.0,
+      "active": true
+    },
+    "max": {
+      "id": "max",
+      "name": "MAX",
+      "universe": "allcap",
+      "created": "2026-03-10T16:13:13",
+      "starting_capital": 5000000.0,
+      "active": true
+    },
+    "looksmaxxing": {
+      "id": "looksmaxxing",
+      "name": "Looksmaxxing",
+      "universe": "allcap",
+      "created": "2026-03-10T22:16:35",
       "starting_capital": 500000.0,
       "active": true
     }

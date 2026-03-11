@@ -1,1 +1,6 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+WRLD,532,140.735,137.45,73123.4,-1747.62,-2.33,118.55,185.87,2026-03-10,Financial Services,140.93,-1085.28,-1.46
+ABEV,16472,3.035,2.99,49333.64,-658.88,-1.32,2.55,3.86,2026-03-10,Consumer Defensive,3.04,-411.8,-0.83
+GBDC,4095,12.225,12.12,49631.4,-429.98,-0.86,10.49,14.48,2026-03-10,Financial Services,12.23,-286.65,-0.57
+BXSL,2080,24.025,23.99,49888.8,-83.2,-0.17,20.44,28.42,2026-03-10,Financial Services,24.03,52.0,0.1
+NLY,2210,22.56,22.32,49327.2,-530.4,-1.06,19.0,27.0,2026-03-10,Real Estate,22.56,-397.8,-0.8

@@ -1,0 +1,41 @@
+{
+  "holdings": {
+    "UPRO": [
+      "IQMM",
+      "NVDA",
+      "AAPL",
+      "MSFT",
+      "AMZN",
+      "GOOGL",
+      "AVGO"
+    ],
+    "TQQQ": [
+      "IQMM",
+      "NVDA",
+      "AAPL",
+      "MSFT",
+      "AMZN",
+      "TSLA",
+      "META"
+    ],
+    "SOXL": [
+      "MU",
+      "AMAT",
+      "NVDA",
+      "AMD"
+    ],
+    "UVXY": [
+      "IQMM"
+    ],
+    "SDOW": [
+      "IQMM"
+    ]
+  },
+  "last_updated": {
+    "UPRO": "2026-03-10T16:13:22.558083",
+    "TQQQ": "2026-03-10T16:13:22.646697",
+    "SOXL": "2026-03-10T16:13:22.744766",
+    "UVXY": "2026-03-10T16:13:22.844284",
+    "SDOW": "2026-03-10T16:13:22.939263"
+  }
+}

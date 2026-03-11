@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three Design Directions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0a0a0a; color: #fff; font-family: 'Inter', sans-serif; }
+
+  .page { padding: 32px; max-width: 1500px; margin: 0 auto; }
+  .page-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
+  .page-title { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: rgba(255,255,255,0.45); margin-bottom: 40px; }
+
+  .directions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+
+  .dir-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .dir-card:hover { transform: translateY(-3px); }
+  .dir-card.selected { border-color: #fff; }
+
+  .dir-label {
+    position: absolute;
+    top: 14px; left: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 3px;
+    z-index: 10;
+  }
+
+  .dir-name {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .dir-tagline {
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .dir-traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 0;
+  }
+  .trait {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    padding: 3px 7px;
+    border-radius: 3px;
+    border: 1px solid;
+  }
+  .dir-footer {
+    padding: 16px;
+  }
+
+  /* ─────────────────────────────────────
+     DIRECTION A: AXIOM
+     Monochrome brutalism — pure black/white
+     Top command strip only, no sidebar
+  ──────────────────────────────────────── */
+  .dir-a { background: #000; }
+  .dir-a .dir-label { background: #fff; color: #000; }
+  .dir-a .dir-name { color: #fff; }
+  .dir-a .dir-tagline { color: rgba(255,255,255,0.5); }
+  .dir-a .trait { color: rgba(255,255,255,0.4); border-color: rgba(255,255,255,0.15); }
+  .dir-a .dir-footer { background: #000; border-top: 1px solid rgba(255,255,255,0.08); }
+
+  .axiom-shell { background: #000; padding: 0; }
+
+  .axiom-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 20px;
+    height: 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .axiom-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: #fff;
+    padding-right: 20px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+    margin-right: 20px;
+  }
+  .axiom-cmd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 3px 10px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .axiom-cmd kbd {
+    font-family: inherit;
+    font-size: 8px;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.06);
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .axiom-sp { flex: 1; }
+  .axiom-stat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-left: 20px;
+    border-left: 1px solid rgba(255,255,255,0.08);
+  }
+  .axiom-stat-item { color: rgba(255,255,255,0.35); }
+  .axiom-stat-item span { color: #fff; }
+  .axiom-stat-item .up { color: #4AFF8C; }
+  .axiom-stat-item .dn { color: #FF4455; }
+
+  /* Big number hero */
+  .axiom-hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .axiom-kpi {
+    padding: 18px 20px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .axiom-kpi:last-child { border-right: none; }
+  .axiom-kpi-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    margin-bottom: 6px;
+  }
+  .axiom-kpi-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 3px;
+  }
+  .axiom-kpi-val.up { color: #4AFF8C; }
+  .axiom-kpi-val.dn { color: #FF4455; }
+  .axiom-kpi-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* Position rows */
+  .axiom-positions {
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .axiom-thead {
+    display: grid;
+    grid-template-columns: 70px 1fr 80px 80px 70px 90px;
+    padding: 8px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .axiom-th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+  }
+  .axiom-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 80px 80px 70px 90px;
+    padding: 9px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center;
+    transition: background 0.1s;
+  }
+  .axiom-row:hover { background: rgba(255,255,255,0.02); }
+  .axiom-row.hl { background: rgba(255,255,255,0.03); border-left: 2px solid #fff; padding-left: 18px; }
+  .axiom-td {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+  }
+  .axiom-td.bold { color: #fff; font-weight: 600; font-size: 12px; }
+  .axiom-td.up { color: #4AFF8C; }
+  .axiom-td.dn { color: #FF4455; }
+  .axiom-score-track {
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .axiom-score-fill { height: 100%; background: #fff; border-radius: 1px; }
+
+  /* Chart stub */
+  .axiom-chart-area {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+  }
+  .axiom-chart {
+    padding: 14px 20px;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .axiom-chart-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 8px;
+  }
+
+  .axiom-side {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .axiom-side-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 8px;
+  }
+  .axiom-signal {
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .axiom-signal-ticker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .axiom-signal-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+  }
+  .axiom-buy {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #4AFF8C;
+    border: 1px solid rgba(74,255,140,0.3);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+  .axiom-sell {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #FF4455;
+    border: 1px solid rgba(255,68,85,0.3);
+    padding: 2px 5px;
+    border-radius: 2px;
+  }
+
+
+  /* ─────────────────────────────────────
+     DIRECTION B: VELA
+     Spatial canvas — portfolios as positioned clusters
+     Warm indigo/midnight + electric lime
+  ──────────────────────────────────────── */
+  .dir-b { background: #080C18; }
+  .dir-b .dir-label { background: #C8FF00; color: #080C18; }
+  .dir-b .dir-name { color: #fff; }
+  .dir-b .dir-tagline { color: rgba(255,255,255,0.45); }
+  .dir-b .trait { color: rgba(200,255,0,0.6); border-color: rgba(200,255,0,0.2); }
+  .dir-b .dir-footer { background: #080C18; border-top: 1px solid rgba(255,255,255,0.06); }
+
+  .vela-shell { background: #080C18; }
+
+  .vela-topbar {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    gap: 12px;
+  }
+  .vela-logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #C8FF00;
+    letter-spacing: -0.02em;
+  }
+  .vela-dot { width: 5px; height: 5px; background: #C8FF00; border-radius: 50%; box-shadow: 0 0 8px #C8FF00; }
+  .vela-sp { flex: 1; }
+  .vela-index {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.35);
+    display: flex;
+    gap: 4px;
+  }
+  .vela-index span { color: rgba(255,255,255,0.7); }
+  .vela-index .up { color: #C8FF00; }
+  .vela-index .dn { color: #FF6B6B; }
+  .vela-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+  }
+  .vela-btn-primary { background: #C8FF00; color: #080C18; }
+  .vela-btn-ghost { background: rgba(200,255,0,0.1); color: #C8FF00; border: 1px solid rgba(200,255,0,0.2); }
+
+  /* Canvas area */
+  .vela-canvas-wrap {
+    position: relative;
+    height: 340px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 30% 40%, rgba(200,255,0,0.03) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 60%, rgba(100,150,255,0.04) 0%, transparent 60%);
+  }
+
+  /* Grid overlay */
+  .vela-canvas-wrap::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Portfolio nodes */
+  .vela-cluster {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .vela-node {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+    position: relative;
+  }
+  .vela-node-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 4px;
+    text-align: center;
+  }
+  .vela-node-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+  }
+  .vela-node-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    text-align: center;
+  }
+
+  /* Orbital rings */
+  .vela-orbit {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid;
+    pointer-events: none;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Position satellites */
+  .vela-sat {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .vela-sat:hover { transform: scale(1.8); }
+  .vela-sat-label {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: rgba(255,255,255,0.4);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* Side info panel overlay */
+  .vela-info-panel {
+    position: absolute;
+    right: 16px; top: 16px;
+    width: 190px;
+    background: rgba(8,12,24,0.9);
+    border: 1px solid rgba(200,255,0,0.15);
+    border-radius: 10px;
+    padding: 14px;
+    backdrop-filter: blur(20px);
+  }
+  .vela-info-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .vela-info-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 12px;
+  }
+  .vela-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .vela-metric-k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.05em;
+  }
+  .vela-metric-v {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #fff;
+    font-weight: 600;
+  }
+  .vela-metric-v.up { color: #C8FF00; }
+  .vela-metric-v.dn { color: #FF6B6B; }
+
+  /* Bottom strip */
+  .vela-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .vela-bottom-block {
+    padding: 12px 16px;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  .vela-bottom-block:last-child { border-right: none; }
+  .vela-block-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 8px;
+  }
+  .vela-signal-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .vela-signal-t { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600; color: #fff; }
+  .vela-signal-s { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); }
+  .vela-signal-b { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; color: #C8FF00; border: 1px solid rgba(200,255,0,0.3); padding: 1px 5px; border-radius: 2px; }
+  .vela-cmd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    cursor: pointer;
+  }
+  .vela-cmd-pill:hover { border-color: rgba(200,255,0,0.3); color: #C8FF00; }
+  .vela-cmd-pill kbd { font-family: 'JetBrains Mono', monospace; font-size: 9px; opacity: 0.5; }
+
+
+  /* ─────────────────────────────────────
+     DIRECTION C: MERIDIAN
+     Bento grid — editorial warmth
+     Amber/gold on warm dark, Clash Display type
+  ──────────────────────────────────────── */
+  .dir-c { background: #0C0800; }
+  .dir-c .dir-label { background: #FFD060; color: #0C0800; }
+  .dir-c .dir-name { color: #fff; }
+  .dir-c .dir-tagline { color: rgba(255,240,200,0.4); }
+  .dir-c .trait { color: rgba(255,208,96,0.6); border-color: rgba(255,208,96,0.15); }
+  .dir-c .dir-footer { background: #0C0800; border-top: 1px solid rgba(255,255,255,0.05); }
+
+  .meridian-shell { background: #0C0800; padding: 12px; }
+
+  .meridian-topbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .meridian-logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #FFD060;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .meridian-logo-mark {
+    width: 20px; height: 20px;
+    background: #FFD060;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 900;
+    color: #0C0800;
+  }
+  .meridian-sp { flex: 1; }
+  .meridian-btn {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+  }
+  .meridian-btn-gold { background: #FFD060; color: #0C0800; }
+  .meridian-btn-ghost { background: rgba(255,208,96,0.08); color: #FFD060; border: 1px solid rgba(255,208,96,0.2); }
+
+  /* Bento grid */
+  .bento {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 180px;
+    grid-template-rows: 100px 100px 90px;
+    gap: 8px;
+  }
+  .bento-cell {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bento-cell:hover { border-color: rgba(255,208,96,0.15); }
+
+  /* Equity hero */
+  .bento-equity {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+  }
+  .bento-equity-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,208,96,0.4);
+    margin-bottom: 6px;
+  }
+  .bento-equity-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .bento-equity-delta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: #5DFFB3;
+  }
+
+  /* Chart cell */
+  .bento-chart {
+    grid-column: 2 / 4;
+    grid-row: 1 / 3;
+  }
+  .bento-chart-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 8px;
+  }
+
+  /* Right tall cell */
+  .bento-regime {
+    grid-column: 4 / 5;
+    grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(255,208,96,0.04);
+    border-color: rgba(255,208,96,0.1);
+  }
+  .bento-regime-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .bento-regime-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgba(255,208,96,0.4);
+    margin-bottom: 4px;
+  }
+  .bento-regime-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #FFD060;
+    margin-bottom: 12px;
+  }
+  .bento-regime-metric {
+    width: 100%;
+    text-align: left;
+    padding: 4px 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .bento-regime-metric-k { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: rgba(255,255,255,0.2); }
+  .bento-regime-metric-v { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 600; }
+
+  /* Return cell */
+  .bento-return {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+  }
+  .bento-return-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 6px;
+  }
+  .bento-return-val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: #5DFFB3;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .bento-return-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* Bottom row */
+  .bento-positions-bar {
+    grid-column: 1 / 4;
+    grid-row: 3 / 4;
+    padding: 10px 14px;
+  }
+  .bento-pos-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .bento-pos-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex: 1;
+  }
+  .bento-pos-chip:hover { border-color: rgba(255,208,96,0.2); background: rgba(255,208,96,0.04); }
+  .bento-pos-chip.hl { border-color: rgba(93,255,179,0.3); background: rgba(93,255,179,0.05); }
+  .bento-pos-ticker { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #fff; }
+  .bento-pos-pnl { font-family: 'JetBrains Mono', monospace; font-size: 10px; margin-left: auto; }
+  .bento-pos-pnl.up { color: #5DFFB3; }
+  .bento-pos-pnl.dn { color: #FF6B6B; }
+  .bento-pos-score {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+  }
+  .bento-pos-score.hi { background: rgba(93,255,179,0.15); color: #5DFFB3; border: 1px solid rgba(93,255,179,0.3); }
+  .bento-pos-score.md { background: rgba(255,208,96,0.1); color: #FFD060; border: 1px solid rgba(255,208,96,0.2); }
+  .bento-pos-score.lo { background: rgba(255,107,107,0.1); color: #FF6B6B; border: 1px solid rgba(255,107,107,0.2); }
+
+  .bento-signals-col {
+    grid-column: 4 / 5;
+    grid-row: 3 / 4;
+    padding: 10px 12px;
+  }
+  .bento-sig-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,208,96,0.35);
+    margin-bottom: 6px;
+  }
+  .bento-sig-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+  }
+  .bento-sig-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .bento-sig-text { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.5); }
+  .bento-sig-text strong { color: #fff; }
+
+  /* ── shared helpers ── */
+  .mini-svg { display: block; width: 100%; }
+  .section-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 32px 0; }
+
+  /* Option wrapper */
+  .option-wrapper {
+    cursor: pointer;
+  }
+  .option-wrapper input[type=radio] { display: none; }
+  .option-wrapper input:checked + .dir-card { outline: 3px solid rgba(255,255,255,0.8); }
+
+  /* Bottom legend */
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 32px;
+  }
+  .comparison-table th, .comparison-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 12px;
+  }
+  .comparison-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.02);
+  }
+  .comparison-table td { color: rgba(255,255,255,0.6); }
+  .comparison-table td:first-child { font-weight: 600; color: rgba(255,255,255,0.9); }
+  .ct-a { color: rgba(255,255,255,0.8) !important; }
+  .ct-b { color: #C8FF00 !important; }
+  .ct-c { color: #FFD060 !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-eyebrow">Design Directions — Round 2</div>
+  <div class="page-title">Three completely different paradigms</div>
+  <div class="page-sub">Click a card to select. These share zero DNA with the existing app.</div>
+
+  <div class="directions">
+
+    <!-- ═══════════════════ DIRECTION A: AXIOM ═══════════════════ -->
+    <label class="option-wrapper">
+      <input type="radio" name="dir" value="a">
+      <div class="dir-card dir-a" data-choice="a" onclick="toggleSelect(this)">
+        <div class="dir-label">A — AXIOM</div>
+        <div class="axiom-shell">
+          <!-- Top bar -->
+          <div class="axiom-bar">
+            <div class="axiom-logo">AXIOM</div>
+            <div class="axiom-cmd">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Command...
+              <kbd>⌘K</kbd>
+            </div>
+            <div class="axiom-sp"></div>
+            <div class="axiom-stat">
+              <div class="axiom-stat-item">SPX <span>5,847</span></div>
+              <div class="axiom-stat-item">RUT <span class="dn">2,102</span></div>
+              <div class="axiom-stat-item">PAPER</div>
+            </div>
+          </div>
+          <!-- KPI hero row -->
+          <div class="axiom-hero">
+            <div class="axiom-kpi">
+              <div class="axiom-kpi-label">Equity</div>
+              <div class="axiom-kpi-val">$482,304</div>
+              <div class="axiom-kpi-sub">+$4,127 today</div>
+            </div>
+            <div class="axiom-kpi">
+              <div class="axiom-kpi-label">Return</div>
+              <div class="axiom-kpi-val up">+8.4%</div>
+              <div class="axiom-kpi-sub">vs SPX +3.1%</div>
+            </div>
+            <div class="axiom-kpi">
+              <div class="axiom-kpi-label">Positions</div>
+              <div class="axiom-kpi-val">24</div>
+              <div class="axiom-kpi-sub">6 portfolios</div>
+            </div>
+            <div class="axiom-kpi">
+              <div class="axiom-kpi-label">Risk</div>
+              <div class="axiom-kpi-val">75/100</div>
+              <div class="axiom-kpi-sub">LOW</div>
+            </div>
+          </div>
+          <!-- Positions + signals -->
+          <div class="axiom-chart-area">
+            <div class="axiom-chart">
+              <div class="axiom-chart-label">All Positions — microcap</div>
+              <div class="axiom-positions">
+                <div class="axiom-thead">
+                  <div class="axiom-th">Ticker</div>
+                  <div class="axiom-th">Score</div>
+                  <div class="axiom-th">Price</div>
+                  <div class="axiom-th">P&L</div>
+                  <div class="axiom-th">Value</div>
+                  <div class="axiom-th">Stop/Target</div>
+                </div>
+                <div class="axiom-row hl">
+                  <div class="axiom-td bold">CELH</div>
+                  <div class="axiom-td">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:3px;">82</div>
+                    <div class="axiom-score-track"><div class="axiom-score-fill" style="width:82%"></div></div>
+                  </div>
+                  <div class="axiom-td">$47.20</div>
+                  <div class="axiom-td up">+14.3%</div>
+                  <div class="axiom-td">$9,440</div>
+                  <div class="axiom-td" style="font-size:9px;">$42↓ · $58↑</div>
+                </div>
+                <div class="axiom-row">
+                  <div class="axiom-td bold">POWL</div>
+                  <div class="axiom-td">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:3px;">77</div>
+                    <div class="axiom-score-track"><div class="axiom-score-fill" style="width:77%"></div></div>
+                  </div>
+                  <div class="axiom-td">$183.44</div>
+                  <div class="axiom-td up">+9.7%</div>
+                  <div class="axiom-td">$18,344</div>
+                  <div class="axiom-td" style="font-size:9px;">$168↓ · $210↑</div>
+                </div>
+                <div class="axiom-row">
+                  <div class="axiom-td bold">MTDR</div>
+                  <div class="axiom-td">
+                    <div style="font-size:10px;color:rgba(255,255,255,0.6);margin-bottom:3px;">48</div>
+                    <div class="axiom-score-track"><div class="axiom-score-fill" style="width:48%;background:rgba(255,68,85,0.7)"></div></div>
+                  </div>
+                  <div class="axiom-td">$44.91</div>
+                  <div class="axiom-td dn">−3.2%</div>
+                  <div class="axiom-td">$6,737</div>
+                  <div class="axiom-td" style="font-size:9px;color:rgba(255,68,85,0.7);">$41↓ · $56↑</div>
+                </div>
+              </div>
+            </div>
+            <div class="axiom-side">
+              <div class="axiom-side-label">Signals</div>
+              <div class="axiom-signal">
+                <div>
+                  <div class="axiom-signal-ticker">NOVA</div>
+                  <div class="axiom-signal-meta">79 · 200sh · $28.40</div>
+                </div>
+                <div class="axiom-buy">BUY</div>
+              </div>
+              <div class="axiom-signal">
+                <div>
+                  <div class="axiom-signal-ticker">CRC</div>
+                  <div class="axiom-signal-meta">Stop hit · -5.4%</div>
+                </div>
+                <div class="axiom-sell">SELL</div>
+              </div>
+              <div class="axiom-signal">
+                <div>
+                  <div class="axiom-signal-ticker">SMPL</div>
+                  <div class="axiom-signal-meta">71 · 150sh · $29.18</div>
+                </div>
+                <div class="axiom-buy">BUY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dir-footer">
+          <div class="dir-name">AXIOM — Monochrome Brutalism</div>
+          <div class="dir-tagline" style="margin:4px 0 10px;">Pure black/white. No sidebar. Top command strip + ⌘K palette. Every pixel is data. Bloomberg Terminal energy — but designed in 2026.</div>
+          <div class="dir-traits">
+            <span class="trait">Pure B&W</span>
+            <span class="trait">No sidebar</span>
+            <span class="trait">⌘K-first</span>
+            <span class="trait">Ultra-dense</span>
+            <span class="trait">Full-width</span>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <!-- ═══════════════════ DIRECTION B: VELA ═══════════════════ -->
+    <label class="option-wrapper">
+      <input type="radio" name="dir" value="b">
+      <div class="dir-card dir-b" data-choice="b" onclick="toggleSelect(this)">
+        <div class="dir-label">B — VELA</div>
+        <div class="vela-shell">
+          <div class="vela-topbar">
+            <div class="vela-logo">
+              <div class="vela-dot"></div>
+              VELA
+            </div>
+            <div class="vela-sp"></div>
+            <div class="vela-index">SPX&nbsp;<span>5,847</span>&nbsp;<span class="up">▲0.3%</span></div>
+            <div style="width:1px;height:16px;background:rgba(255,255,255,0.08);margin:0 8px;"></div>
+            <div class="vela-btn vela-btn-ghost">Analyze</div>
+            <div class="vela-btn vela-btn-primary">Execute</div>
+          </div>
+
+          <!-- Spatial canvas -->
+          <div class="vela-canvas-wrap">
+
+            <!-- microcap cluster (main) -->
+            <div class="vela-cluster" style="left:28%;top:28%;">
+              <!-- Orbital rings -->
+              <div class="vela-orbit" style="width:90px;height:90px;border-color:rgba(200,255,0,0.06);"></div>
+              <div class="vela-orbit" style="width:130px;height:130px;border-color:rgba(200,255,0,0.04);"></div>
+              <!-- Main node -->
+              <div class="vela-node" style="width:58px;height:58px;background:radial-gradient(circle at 40% 35%,rgba(200,255,0,0.2),rgba(200,255,0,0.05));border-color:rgba(200,255,0,0.35);box-shadow:0 0 20px rgba(200,255,0,0.12);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#C8FF00;">+8.4%</div>
+                <div style="font-family:'Space Grotesk',sans-serif;font-size:8px;color:rgba(255,255,255,0.7);">$241K</div>
+              </div>
+              <!-- Satellites -->
+              <div class="vela-sat" style="background:#C8FF00;box-shadow:0 0 6px rgba(200,255,0,0.5);left:-50px;top:-12px;" title="CELH"></div>
+              <div class="vela-sat" style="background:#C8FF00;box-shadow:0 0 6px rgba(200,255,0,0.4);left:-40px;top:40px;" title="POWL"></div>
+              <div class="vela-sat" style="background:rgba(255,107,107,0.8);box-shadow:0 0 5px rgba(255,107,107,0.4);left:38px;top:-30px;" title="MTDR"></div>
+              <div class="vela-sat" style="background:rgba(200,255,0,0.5);left:44px;top:30px;" title="SMPL"></div>
+              <div class="vela-node-name">microcap</div>
+              <div class="vela-node-val" style="font-size:8px;">11 positions</div>
+            </div>
+
+            <!-- ai cluster -->
+            <div class="vela-cluster" style="left:58%;top:18%;">
+              <div class="vela-orbit" style="width:70px;height:70px;border-color:rgba(150,180,255,0.08);"></div>
+              <div class="vela-node" style="width:46px;height:46px;background:radial-gradient(circle at 40% 35%,rgba(150,180,255,0.2),rgba(150,180,255,0.04));border-color:rgba(150,180,255,0.3);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;color:#96B4FF;">+12.1%</div>
+              </div>
+              <div class="vela-sat" style="background:#96B4FF;left:-34px;top:-8px;"></div>
+              <div class="vela-sat" style="background:#96B4FF;left:28px;top:-20px;"></div>
+              <div class="vela-sat" style="background:#96B4FF;left:28px;top:16px;"></div>
+              <div class="vela-node-name">ai</div>
+              <div class="vela-node-val">8 positions</div>
+            </div>
+
+            <!-- sph cluster -->
+            <div class="vela-cluster" style="left:70%;top:52%;">
+              <div class="vela-orbit" style="width:60px;height:60px;border-color:rgba(255,176,32,0.08);"></div>
+              <div class="vela-node" style="width:38px;height:38px;background:radial-gradient(circle at 40% 35%,rgba(255,176,32,0.15),rgba(255,176,32,0.03));border-color:rgba(255,176,32,0.25);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:#FFB020;">+2.3%</div>
+              </div>
+              <div class="vela-sat" style="background:rgba(255,176,32,0.7);left:-28px;top:0px;"></div>
+              <div class="vela-node-name">sph</div>
+            </div>
+
+            <!-- largeboi cluster -->
+            <div class="vela-cluster" style="left:44%;top:60%;">
+              <div class="vela-node" style="width:32px;height:32px;background:rgba(255,68,85,0.05);border-color:rgba(255,68,85,0.2);">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:7px;color:#FF4455;">-0.8%</div>
+              </div>
+              <div class="vela-node-name">largeboi</div>
+            </div>
+
+            <!-- Connection lines (SVG) -->
+            <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <line x1="35" y1="38" x2="62" y2="28" stroke="rgba(200,255,0,0.06)" stroke-width="0.3"/>
+              <line x1="35" y1="38" x2="47" y2="62" stroke="rgba(200,255,0,0.04)" stroke-width="0.3"/>
+            </svg>
+
+            <!-- Info panel overlay -->
+            <div class="vela-info-panel">
+              <div class="vela-info-title">CELH</div>
+              <div class="vela-info-sub">Celsius Holdings · microcap</div>
+              <div class="vela-metric"><span class="vela-metric-k">Score</span><span class="vela-metric-v">82</span></div>
+              <div class="vela-metric"><span class="vela-metric-k">P&L</span><span class="vela-metric-v up">+14.3%</span></div>
+              <div class="vela-metric"><span class="vela-metric-k">Value</span><span class="vela-metric-v">$9,440</span></div>
+              <div class="vela-metric"><span class="vela-metric-k">Entry</span><span class="vela-metric-v">$41.30</span></div>
+              <div class="vela-metric"><span class="vela-metric-k">Regime</span><span class="vela-metric-v up">BULL</span></div>
+            </div>
+          </div>
+
+          <!-- Bottom strip -->
+          <div class="vela-bottom">
+            <div class="vela-bottom-block">
+              <div class="vela-block-label">Quick Actions</div>
+              <div style="display:flex;flex-wrap:wrap;">
+                <div class="vela-cmd-pill">⚡ Scan <kbd>S</kbd></div>
+                <div class="vela-cmd-pill">🔍 Analyze <kbd>A</kbd></div>
+                <div class="vela-cmd-pill">▶ Execute <kbd>E</kbd></div>
+              </div>
+            </div>
+            <div class="vela-bottom-block">
+              <div class="vela-block-label">Signals</div>
+              <div class="vela-signal-row"><span class="vela-signal-t">NOVA</span><span class="vela-signal-s">score 79 · $28.40</span><span class="vela-signal-b">BUY</span></div>
+              <div class="vela-signal-row"><span class="vela-signal-t">SMPL</span><span class="vela-signal-s">score 71 · $29.18</span><span class="vela-signal-b">BUY</span></div>
+            </div>
+            <div class="vela-bottom-block">
+              <div class="vela-block-label">Total Equity</div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:2px;">$482,304</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#C8FF00;">▲ +8.4% total return</div>
+            </div>
+          </div>
+        </div>
+        <div class="dir-footer">
+          <div class="dir-name">VELA — Spatial Canvas</div>
+          <div class="dir-tagline" style="margin:4px 0 10px;">Portfolios as solar systems. Positions orbit as satellites — size = value, color = P&L. Click to zoom in. Zero traditional chrome. Feels like nothing else in fintech.</div>
+          <div class="dir-traits">
+            <span class="trait">Midnight blue</span>
+            <span class="trait">Electric lime</span>
+            <span class="trait">Spatial / zoomable</span>
+            <span class="trait">No sidebar nav</span>
+            <span class="trait">Orbital metaphor</span>
+          </div>
+        </div>
+      </div>
+    </label>
+
+    <!-- ═══════════════════ DIRECTION C: MERIDIAN ═══════════════════ -->
+    <label class="option-wrapper">
+      <input type="radio" name="dir" value="c">
+      <div class="dir-card dir-c" data-choice="c" onclick="toggleSelect(this)">
+        <div class="dir-label">C — MERIDIAN</div>
+        <div class="meridian-shell">
+          <div class="meridian-topbar">
+            <div class="meridian-logo">
+              <div class="meridian-logo-mark">M</div>
+              MERIDIAN
+            </div>
+            <div class="meridian-sp"></div>
+            <div class="meridian-btn meridian-btn-ghost" style="margin-right:6px;">Scan</div>
+            <div class="meridian-btn meridian-btn-gold">Analyze →</div>
+          </div>
+
+          <!-- Bento grid -->
+          <div class="bento">
+
+            <!-- Equity -->
+            <div class="bento-cell bento-equity">
+              <div class="bento-equity-label">Total Equity</div>
+              <div class="bento-equity-val">$482,304</div>
+              <div class="bento-equity-delta">▲ $4,127 today</div>
+            </div>
+
+            <!-- Chart (spans 2 cols, 2 rows) -->
+            <div class="bento-cell bento-chart">
+              <div class="bento-chart-label">Equity Curve — All Portfolios</div>
+              <svg class="mini-svg" viewBox="0 0 300 100" height="100">
+                <defs>
+                  <linearGradient id="mg1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FFD060" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#FFD060" stop-opacity="0"/>
+                  </linearGradient>
+                  <linearGradient id="mg2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#5DFFB3" stop-opacity="0.15"/>
+                    <stop offset="100%" stop-color="#5DFFB3" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <!-- Grid -->
+                <line x1="0" y1="33" x2="300" y2="33" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                <line x1="0" y1="66" x2="300" y2="66" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+                <!-- ai portfolio line -->
+                <path d="M0,80 C40,74 80,70 110,58 C140,46 160,52 190,38 C220,26 250,30 300,14" fill="none" stroke="#5DFFB3" stroke-width="1.5"/>
+                <!-- microcap line + fill -->
+                <path d="M0,85 C40,80 80,78 120,68 C160,58 190,64 220,52 C250,42 270,44 300,34 L300,100 L0,100Z" fill="url(#mg1)"/>
+                <path d="M0,85 C40,80 80,78 120,68 C160,58 190,64 220,52 C250,42 270,44 300,34" fill="none" stroke="#FFD060" stroke-width="1.5"/>
+                <!-- Labels -->
+                <text x="295" y="32" fill="#FFD060" font-size="6" font-family="JetBrains Mono" text-anchor="end">microcap</text>
+                <text x="295" y="12" fill="#5DFFB3" font-size="6" font-family="JetBrains Mono" text-anchor="end">ai</text>
+              </svg>
+            </div>
+
+            <!-- Regime -->
+            <div class="bento-cell bento-regime">
+              <div class="bento-regime-icon">⬆</div>
+              <div class="bento-regime-label">Market Regime</div>
+              <div class="bento-regime-val">BULL</div>
+              <div class="bento-regime-metric">
+                <div class="bento-regime-metric-k">Day</div>
+                <div class="bento-regime-metric-v">7 active</div>
+              </div>
+              <div class="bento-regime-metric">
+                <div class="bento-regime-metric-k">Mult.</div>
+                <div class="bento-regime-metric-v">1.0×</div>
+              </div>
+              <div class="bento-regime-metric">
+                <div class="bento-regime-metric-k">VIX</div>
+                <div class="bento-regime-metric-v">14.8</div>
+              </div>
+            </div>
+
+            <!-- Return -->
+            <div class="bento-cell bento-return">
+              <div class="bento-return-label">Total Return</div>
+              <div class="bento-return-val">+8.4%</div>
+              <div class="bento-return-sub">vs SPX +3.1%</div>
+            </div>
+
+            <!-- Position chips row -->
+            <div class="bento-cell bento-positions-bar">
+              <div style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,208,96,0.3);margin-bottom:8px;">Top Positions</div>
+              <div class="bento-pos-row">
+                <div class="bento-pos-chip hl">
+                  <div class="bento-pos-score hi">82</div>
+                  <span class="bento-pos-ticker">CELH</span>
+                  <span class="bento-pos-pnl up">+14.3%</span>
+                </div>
+                <div class="bento-pos-chip">
+                  <div class="bento-pos-score hi">77</div>
+                  <span class="bento-pos-ticker">POWL</span>
+                  <span class="bento-pos-pnl up">+9.7%</span>
+                </div>
+                <div class="bento-pos-chip">
+                  <div class="bento-pos-score md">64</div>
+                  <span class="bento-pos-ticker">SMPL</span>
+                  <span class="bento-pos-pnl up">+0.4%</span>
+                </div>
+                <div class="bento-pos-chip">
+                  <div class="bento-pos-score lo">48</div>
+                  <span class="bento-pos-ticker">MTDR</span>
+                  <span class="bento-pos-pnl dn">-3.2%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Signal col -->
+            <div class="bento-cell bento-signals-col">
+              <div class="bento-sig-label">Live Signals</div>
+              <div class="bento-sig-item">
+                <div class="bento-sig-dot" style="background:#5DFFB3;box-shadow:0 0 4px #5DFFB3;"></div>
+                <div class="bento-sig-text"><strong>NOVA</strong> — BUY · 79</div>
+              </div>
+              <div class="bento-sig-item">
+                <div class="bento-sig-dot" style="background:#FF6B6B;box-shadow:0 0 4px #FF6B6B;"></div>
+                <div class="bento-sig-text"><strong>CRC</strong> — STOP hit</div>
+              </div>
+              <div class="bento-sig-item">
+                <div class="bento-sig-dot" style="background:#FFD060;"></div>
+                <div class="bento-sig-text"><strong>VIX</strong> above 14</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="dir-footer">
+          <div class="dir-name">MERIDIAN — Warm Bento</div>
+          <div class="dir-tagline" style="margin:4px 0 10px;">Warm amber on dark cognac. Bento grid layout — no sidebar, no rails. Information lives in purpose-built blocks, not panels. Stripe Dashboard meets Notion for algo trading.</div>
+          <div class="dir-traits">
+            <span class="trait">Warm amber</span>
+            <span class="trait">Bento grid</span>
+            <span class="trait">Card-first</span>
+            <span class="trait">No navigation rails</span>
+            <span class="trait">Editorial feel</span>
+          </div>
+        </div>
+      </div>
+    </label>
+
+  </div><!-- end .directions -->
+
+  <!-- Comparison table -->
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Dimension</th>
+        <th>A — AXIOM</th>
+        <th>B — VELA</th>
+        <th>C — MERIDIAN</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Visual identity</td>
+        <td class="ct-a">Pure black/white, stark</td>
+        <td class="ct-b">Midnight + electric lime</td>
+        <td class="ct-c">Warm dark + amber/gold</td>
+      </tr>
+      <tr>
+        <td>Layout model</td>
+        <td class="ct-a">Full-width rows, no sidebar</td>
+        <td class="ct-b">Spatial canvas, no chrome</td>
+        <td class="ct-c">Bento grid blocks</td>
+      </tr>
+      <tr>
+        <td>Navigation</td>
+        <td class="ct-a">⌘K command palette</td>
+        <td class="ct-b">Click/zoom nodes</td>
+        <td class="ct-c">Top nav + block navigation</td>
+      </tr>
+      <tr>
+        <td>Information density</td>
+        <td class="ct-a">Extreme — raw data walls</td>
+        <td class="ct-b">Spatial — gestalt first</td>
+        <td class="ct-c">High but breathable</td>
+      </tr>
+      <tr>
+        <td>Closest analog</td>
+        <td class="ct-a">Bloomberg Terminal redesigned</td>
+        <td class="ct-b">Figma + Robinhood</td>
+        <td class="ct-c">Stripe Dashboard + Linear</td>
+      </tr>
+      <tr>
+        <td>Distinctness from existing app</td>
+        <td class="ct-a">Very different</td>
+        <td class="ct-b">Completely different</td>
+        <td class="ct-c">Very different</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.dir-card').forEach(c => c.style.outline = '');
+  el.style.outline = '3px solid rgba(255,255,255,0.7)';
+  el.style.outlineOffset = '2px';
+}
+</script>
+</body>
+</html>

@@ -1,9 +1,8 @@
 {
-  "ARLP": 5,
-  "EXC": 5,
-  "VMD": 4,
-  "MRVL": 4,
-  "ATO": 3,
-  "AWK": 3,
-  "FE": 2
+  "ARLP": 1,
+  "FE": 1,
+  "VMD": 1,
+  "MRVL": 1,
+  "EXC": 1,
+  "AWK": 1
 }

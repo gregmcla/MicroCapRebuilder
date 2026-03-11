@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Round 3 — Three Radically Different Directions</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Fira+Code:wght@300;400;500;600;700&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Chakra+Petch:wght@300;400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #1a1a1a; }
+body { font-family: sans-serif; }
+
+/* Page wrapper */
+.page { padding: 0; }
+
+/* Direction header (outside the mockup) */
+.dir-wrap { margin-bottom: 0; }
+.dir-meta {
+  background: #111;
+  padding: 28px 40px;
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.dir-letter-badge {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800;
+  flex-shrink: 0; font-family: sans-serif;
+}
+.dir-text { flex: 1; }
+.dir-name { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; font-family: sans-serif; }
+.dir-desc { font-size: 13px; color: rgba(255,255,255,0.45); line-height: 1.5; max-width: 600px; font-family: sans-serif; }
+.dir-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.dir-pill {
+  font-family: monospace; font-size: 10px; letter-spacing: 0.05em;
+  padding: 3px 9px; border-radius: 4px; border: 1px solid;
+}
+.dir-select-btn {
+  font-family: sans-serif; font-size: 12px; font-weight: 600;
+  padding: 8px 20px; border-radius: 8px; cursor: pointer;
+  border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.04); white-space: nowrap;
+  margin-top: 4px; transition: all 0.2s;
+}
+.dir-select-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.dir-wrap.selected .dir-select-btn { background: #fff; color: #000; border-color: #fff; }
+
+.mockup-frame {
+  width: 100%;
+  overflow: hidden;
+}
+
+.section-gap { height: 4px; background: #222; }
+
+
+/* ═══════════════════════════════════════════════════
+   A — ORACLE
+   Warm paper · Light theme · Financial broadsheet
+   Playfair Display + Fira Code
+   Colors: Cream #F9F4EC, Charcoal #1A1714, Salmon #E8553C
+═══════════════════════════════════════════════════ */
+
+.oracle {
+  background: #F9F4EC;
+  font-family: 'Fira Code', monospace;
+  color: #1A1714;
+  min-height: 580px;
+}
+
+.oracle-topbar {
+  background: #1A1714;
+  display: flex; align-items: center;
+  padding: 0 32px; height: 52px;
+  gap: 0;
+}
+.oracle-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; font-weight: 900; font-style: italic;
+  color: #F9F4EC;
+  letter-spacing: -0.01em;
+  padding-right: 28px;
+  border-right: 1px solid rgba(255,255,255,0.12);
+  margin-right: 28px;
+}
+.oracle-nav { display: flex; gap: 0; }
+.oracle-nav-item {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px; font-weight: 400;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  padding: 0 16px; height: 52px;
+  display: flex; align-items: center;
+  cursor: pointer; transition: color 0.15s;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+.oracle-nav-item.active { color: #fff; background: rgba(255,255,255,0.05); }
+.oracle-sp { flex: 1; }
+.oracle-markets {
+  display: flex; gap: 0;
+  border-left: 1px solid rgba(255,255,255,0.1);
+}
+.oracle-mkt {
+  display: flex; flex-direction: column;
+  padding: 0 20px; border-right: 1px solid rgba(255,255,255,0.06);
+  justify-content: center;
+}
+.oracle-mkt-name {
+  font-family: 'Fira Code', monospace; font-size: 7px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3); margin-bottom: 2px;
+}
+.oracle-mkt-val { font-family: 'Fira Code', monospace; font-size: 12px; font-weight: 500; color: #fff; }
+.oracle-mkt-chg { font-family: 'Fira Code', monospace; font-size: 9px; }
+.oracle-mkt-chg.up { color: #52C97A; }
+.oracle-mkt-chg.dn { color: #E8553C; }
+.oracle-mode {
+  font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #E8553C; border: 1px solid rgba(232,85,60,0.4);
+  padding: 4px 10px; border-radius: 3px; margin: 0 16px;
+}
+.oracle-action-btns { display: flex; gap: 6px; margin-left: 8px; }
+.oracle-btn {
+  font-family: 'Fira Code', monospace; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 3px; cursor: pointer; border: 1px solid;
+}
+.oracle-btn-sec { color: rgba(255,255,255,0.45); border-color: rgba(255,255,255,0.1); background: transparent; }
+.oracle-btn-prim { color: #1A1714; border-color: #F9F4EC; background: #F9F4EC; }
+
+/* Headline strip */
+.oracle-headline {
+  background: #F9F4EC;
+  border-bottom: 3px solid #1A1714;
+  padding: 20px 32px;
+  display: flex; align-items: baseline; gap: 40px;
+}
+.oracle-portfolio-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 42px; font-weight: 900; font-style: italic;
+  color: #1A1714; line-height: 1; letter-spacing: -0.02em;
+}
+.oracle-headline-divider {
+  width: 2px; height: 40px; background: #E8553C; flex-shrink: 0;
+}
+.oracle-kpi-row { display: flex; gap: 32px; align-items: center; }
+.oracle-kpi {}
+.oracle-kpi-label {
+  font-family: 'Fira Code', monospace; font-size: 8px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(26,23,20,0.4); margin-bottom: 3px;
+}
+.oracle-kpi-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; font-weight: 700; color: #1A1714; line-height: 1;
+}
+.oracle-kpi-val.pos { color: #2A8A4A; }
+.oracle-kpi-val.neg { color: #E8553C; }
+.oracle-kpi-sub {
+  font-family: 'Fira Code', monospace; font-size: 9px;
+  color: rgba(26,23,20,0.4); margin-top: 2px;
+}
+.oracle-regime-badge {
+  font-family: 'Fira Code', monospace; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  background: #2A8A4A; color: #fff;
+  padding: 5px 12px; border-radius: 2px;
+}
+
+/* Main body: 3-column newspaper-style */
+.oracle-body {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr 1fr;
+  border-top: 1px solid rgba(26,23,20,0.12);
+}
+.oracle-col { border-right: 1px solid rgba(26,23,20,0.1); }
+.oracle-col:last-child { border-right: none; }
+.oracle-col-header {
+  font-family: 'Fira Code', monospace; font-size: 8px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: rgba(26,23,20,0.35);
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(26,23,20,0.1);
+  background: rgba(26,23,20,0.025);
+}
+
+/* Positions list (left col) */
+.oracle-pos-row {
+  display: grid; grid-template-columns: 64px 1fr 70px 70px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(26,23,20,0.06);
+  align-items: center; cursor: pointer; transition: background 0.1s;
+}
+.oracle-pos-row:hover { background: rgba(26,23,20,0.03); }
+.oracle-pos-row.hl { background: rgba(232,85,60,0.05); border-left: 3px solid #E8553C; padding-left: 13px; }
+.oracle-pos-ticker { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: #1A1714; }
+.oracle-pos-score {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.oracle-pos-score-num { font-family: 'Fira Code', monospace; font-size: 10px; color: rgba(26,23,20,0.4); }
+.oracle-score-bar { height: 2px; background: rgba(26,23,20,0.1); border-radius: 1px; overflow: hidden; }
+.oracle-score-fill { height: 100%; border-radius: 1px; }
+.oracle-pos-price { font-family: 'Fira Code', monospace; font-size: 10px; color: rgba(26,23,20,0.55); text-align: right; }
+.oracle-pos-pnl { font-family: 'Fira Code', monospace; font-size: 10px; text-align: right; }
+.oracle-pos-pnl.up { color: #2A8A4A; }
+.oracle-pos-pnl.dn { color: #E8553C; }
+
+/* Chart (middle col) */
+.oracle-chart-area { padding: 12px 16px; }
+.oracle-chart-title {
+  font-family: 'Fira Code', monospace; font-size: 8px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(26,23,20,0.35); margin-bottom: 10px;
+  display: flex; justify-content: space-between;
+}
+
+/* Signal col (right) */
+.oracle-signal {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(26,23,20,0.06);
+}
+.oracle-signal-top {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+}
+.oracle-signal-ticker { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: #1A1714; }
+.oracle-signal-tag {
+  font-family: 'Fira Code', monospace; font-size: 8px; font-weight: 600;
+  letter-spacing: 0.1em; padding: 2px 7px; border-radius: 2px;
+}
+.oracle-signal-tag.buy { background: rgba(42,138,74,0.12); color: #2A8A4A; border: 1px solid rgba(42,138,74,0.3); }
+.oracle-signal-tag.sell { background: rgba(232,85,60,0.1); color: #E8553C; border: 1px solid rgba(232,85,60,0.3); }
+.oracle-signal-tag.veto { background: rgba(26,23,20,0.07); color: rgba(26,23,20,0.4); border: 1px solid rgba(26,23,20,0.15); }
+.oracle-signal-meta { font-family: 'Fira Code', monospace; font-size: 9px; color: rgba(26,23,20,0.4); line-height: 1.7; }
+.oracle-signal-meta em { color: rgba(26,23,20,0.65); font-style: normal; }
+.oracle-confidence-bar { margin-top: 6px; height: 2px; background: rgba(26,23,20,0.08); border-radius: 1px; overflow: hidden; }
+.oracle-confidence-fill { height: 100%; border-radius: 1px; }
+
+
+
+/* ═══════════════════════════════════════════════════
+   B — PRISM
+   Acid Industrial · White + Acid Lime · Brutalist
+   Barlow Condensed (ultra-compressed) + DM Mono
+   Colors: White #FFFFFF, Black #0A0A0A, Acid #C8FF00
+═══════════════════════════════════════════════════ */
+
+.prism {
+  background: #FFFFFF;
+  font-family: 'DM Mono', monospace;
+  color: #0A0A0A;
+}
+
+.prism-topbar {
+  background: #0A0A0A;
+  display: flex; align-items: stretch;
+  height: 50px; padding: 0;
+}
+.prism-logo-block {
+  display: flex; align-items: center;
+  padding: 0 24px;
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.prism-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px; font-weight: 900; font-style: italic;
+  letter-spacing: -0.02em; color: #C8FF00;
+  line-height: 1;
+}
+.prism-nav { display: flex; align-items: stretch; }
+.prism-nav-tab {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  padding: 0 18px; display: flex; align-items: center;
+  border-right: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+}
+.prism-nav-tab.active { color: #C8FF00; background: rgba(200,255,0,0.06); }
+.prism-sp { flex: 1; }
+.prism-stat-strip { display: flex; align-items: stretch; border-left: 1px solid rgba(255,255,255,0.06); }
+.prism-stat {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 16px; border-right: 1px solid rgba(255,255,255,0.06);
+}
+.prism-stat-k { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 2px; }
+.prism-stat-v { font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: #fff; }
+.prism-stat-v.up { color: #C8FF00; }
+.prism-stat-v.dn { color: #FF4040; }
+.prism-mode-block {
+  display: flex; align-items: center; padding: 0 16px;
+  background: #C8FF00;
+}
+.prism-mode-text {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #0A0A0A;
+}
+
+/* Hero metrics */
+.prism-hero {
+  background: #fff;
+  border-bottom: 2px solid #0A0A0A;
+  display: grid; grid-template-columns: auto 1px 1fr 1px auto 1px auto 1px auto;
+  padding: 0;
+  align-items: stretch;
+}
+.prism-metric {
+  padding: 22px 28px;
+}
+.prism-divider { background: #0A0A0A; width: 1px; }
+.prism-metric-label {
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(10,10,10,0.3); margin-bottom: 6px;
+}
+.prism-metric-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 40px; font-weight: 900; color: #0A0A0A;
+  line-height: 1; letter-spacing: -0.02em;
+}
+.prism-metric-val.up { color: #1A8A3A; }
+.prism-metric-val.dn { color: #CC2020; }
+.prism-metric-val.acid { color: #0A0A0A; background: #C8FF00; padding: 2px 8px; display: inline-block; margin-top: 2px; font-size: 28px; }
+.prism-metric-sub {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  color: rgba(10,10,10,0.35); margin-top: 3px;
+}
+
+/* Body */
+.prism-body {
+  display: grid; grid-template-columns: 1fr 260px;
+  border-top: 1px solid rgba(10,10,10,0.08);
+}
+
+.prism-left { border-right: 2px solid #0A0A0A; }
+.prism-left-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(10,10,10,0.1);
+  background: #0A0A0A;
+}
+.prism-left-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.5);
+}
+.prism-sort-btn {
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  color: rgba(255,255,255,0.3); letter-spacing: 0.08em;
+}
+
+/* Prism table */
+.prism-thead {
+  display: grid; grid-template-columns: 72px 1fr 80px 80px 70px 100px;
+  padding: 8px 24px; background: rgba(10,10,10,0.03);
+  border-bottom: 1px solid rgba(10,10,10,0.08);
+}
+.prism-th {
+  font-family: 'DM Mono', monospace; font-size: 8px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: rgba(10,10,10,0.25);
+}
+.prism-row {
+  display: grid; grid-template-columns: 72px 1fr 80px 80px 70px 100px;
+  padding: 10px 24px; border-bottom: 1px solid rgba(10,10,10,0.06);
+  align-items: center; cursor: pointer; transition: background 0.1s;
+}
+.prism-row:hover { background: rgba(10,10,10,0.02); }
+.prism-row.hl { background: rgba(200,255,0,0.08); border-left: 3px solid #C8FF00; padding-left: 21px; }
+.prism-td { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(10,10,10,0.55); }
+.prism-td.ticker { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 900; color: #0A0A0A; letter-spacing: 0.02em; }
+.prism-td.up { color: #1A8A3A; }
+.prism-td.dn { color: #CC2020; }
+.prism-score-track { height: 3px; background: rgba(10,10,10,0.08); border-radius: 1px; margin-top: 4px; overflow: hidden; }
+.prism-score-f { height: 100%; border-radius: 1px; background: #C8FF00; }
+.prism-score-f.lo { background: #FF4040; }
+.prism-score-f.md { background: rgba(10,10,10,0.3); }
+
+/* Signals right */
+.prism-right { padding: 0; }
+.prism-right-header {
+  padding: 12px 20px;
+  background: #C8FF00;
+  border-bottom: 2px solid #0A0A0A;
+}
+.prism-right-title {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase; color: #0A0A0A;
+}
+.prism-signal {
+  padding: 14px 20px; border-bottom: 1px solid rgba(10,10,10,0.08);
+  position: relative; overflow: hidden;
+}
+.prism-signal.buy::before { content: 'BUY'; position: absolute; right: -8px; top: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 60px; font-weight: 900; color: rgba(26,138,58,0.05); pointer-events: none; }
+.prism-signal.sell::before { content: 'SELL'; position: absolute; right: -8px; top: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 60px; font-weight: 900; color: rgba(204,32,32,0.06); pointer-events: none; }
+.prism-signal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.prism-signal-ticker { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; color: #0A0A0A; letter-spacing: 0.02em; }
+.prism-signal-badge {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 900;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 0;
+}
+.prism-signal-badge.buy { background: #1A8A3A; color: #fff; }
+.prism-signal-badge.sell { background: #CC2020; color: #fff; }
+.prism-signal-badge.mod { background: #0A0A0A; color: #C8FF00; }
+.prism-signal-meta { font-family: 'DM Mono', monospace; font-size: 9px; color: rgba(10,10,10,0.45); line-height: 1.8; }
+.prism-signal-meta strong { color: #0A0A0A; }
+.prism-conf { margin-top: 6px; height: 3px; background: rgba(10,10,10,0.08); }
+.prism-conf-f { height: 100%; }
+
+
+
+/* ═══════════════════════════════════════════════════
+   C — CASSINI
+   Deep space telemetry · NASA mission control aesthetic
+   Chakra Petch + IBM Plex Mono
+   Colors: #040810 (near black), #E8F0FF (near white), #FF7A00 (telemetry orange)
+═══════════════════════════════════════════════════ */
+
+.cassini {
+  background: #040810;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #E8F0FF;
+  min-height: 580px;
+}
+
+.cassini-topbar {
+  display: flex; align-items: center;
+  height: 46px; padding: 0 28px;
+  border-bottom: 1px solid rgba(232,240,255,0.06);
+  gap: 0;
+  background: rgba(4,8,16,0.98);
+}
+.cassini-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding-right: 24px;
+  border-right: 1px solid rgba(232,240,255,0.07);
+  margin-right: 24px;
+}
+.cassini-logo-mark {
+  width: 24px; height: 24px;
+  border: 1.5px solid #FF7A00;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+.cassini-logo-mark::after {
+  content: '';
+  width: 6px; height: 6px;
+  background: #FF7A00;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #FF7A00;
+}
+.cassini-logo-text {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 15px; font-weight: 700; color: #E8F0FF;
+  letter-spacing: 0.15em; text-transform: uppercase;
+}
+.cassini-mission {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: rgba(232,240,255,0.3);
+  letter-spacing: 0.05em;
+  padding-right: 24px; border-right: 1px solid rgba(232,240,255,0.06); margin-right: 24px;
+}
+.cassini-mission span { color: #FF7A00; }
+.cassini-sp { flex: 1; }
+.cassini-status-row { display: flex; gap: 0; }
+.cassini-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 18px; border-right: 1px solid rgba(232,240,255,0.06);
+}
+.cassini-status-label { font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(232,240,255,0.25); }
+.cassini-status-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; color: #E8F0FF; }
+.cassini-status-val.up { color: #3DDB7A; }
+.cassini-status-val.dn { color: #FF4455; }
+.cassini-actions { display: flex; gap: 8px; margin-left: 16px; }
+.cassini-btn {
+  font-family: 'Chakra Petch', sans-serif; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 5px 14px; cursor: pointer;
+  border-radius: 0; border: 1px solid;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.cassini-btn-sec { color: rgba(232,240,255,0.4); border-color: rgba(232,240,255,0.12); background: transparent; }
+.cassini-btn-prim { color: #040810; border-color: #FF7A00; background: #FF7A00; }
+
+/* Instrument panel — top row */
+.cassini-instruments {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  border-bottom: 1px solid rgba(232,240,255,0.06);
+}
+.cassini-instrument {
+  padding: 16px 20px;
+  border-right: 1px solid rgba(232,240,255,0.05);
+  position: relative; overflow: hidden;
+}
+.cassini-instrument:last-child { border-right: none; }
+.cassini-instrument::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,122,0,0.3), transparent);
+}
+.cassini-inst-label {
+  font-family: 'IBM Plex Mono', monospace; font-size: 7px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(232,240,255,0.25); margin-bottom: 6px;
+}
+.cassini-inst-val {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 24px; font-weight: 700; color: #E8F0FF;
+  line-height: 1; margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+.cassini-inst-val.pos { color: #3DDB7A; }
+.cassini-inst-val.neg { color: #FF4455; }
+.cassini-inst-val.orange { color: #FF7A00; }
+.cassini-inst-sub {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  color: rgba(232,240,255,0.25);
+}
+
+/* Main body */
+.cassini-body {
+  display: grid; grid-template-columns: 220px 1fr 260px;
+  height: 340px;
+}
+
+/* Left: portfolio select */
+.cassini-portfolios {
+  border-right: 1px solid rgba(232,240,255,0.06);
+  overflow-y: auto;
+}
+.cassini-portf-header {
+  font-family: 'IBM Plex Mono', monospace; font-size: 7px;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(232,240,255,0.2);
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(232,240,255,0.05);
+  background: rgba(232,240,255,0.02);
+}
+.cassini-portf-item {
+  padding: 10px 16px; border-bottom: 1px solid rgba(232,240,255,0.04);
+  cursor: pointer; transition: background 0.1s;
+  display: flex; align-items: center; gap: 10px;
+}
+.cassini-portf-item:hover { background: rgba(232,240,255,0.03); }
+.cassini-portf-item.active {
+  background: rgba(255,122,0,0.07);
+  border-left: 2px solid #FF7A00; padding-left: 14px;
+}
+.cassini-portf-indicator {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.cassini-portf-name {
+  font-family: 'Chakra Petch', sans-serif; font-size: 11px; font-weight: 600;
+  color: #E8F0FF; text-transform: uppercase; letter-spacing: 0.05em;
+  flex: 1;
+}
+.cassini-portf-pct {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+}
+.cassini-portf-pct.up { color: #3DDB7A; }
+.cassini-portf-pct.dn { color: #FF4455; }
+
+/* Center: positions table */
+.cassini-positions { overflow-y: auto; }
+.cassini-pos-header {
+  display: grid; grid-template-columns: 70px 1fr 80px 80px 72px 100px;
+  padding: 8px 20px;
+  border-bottom: 1px solid rgba(232,240,255,0.06);
+  background: rgba(232,240,255,0.02);
+  position: sticky; top: 0;
+}
+.cassini-pos-th {
+  font-family: 'IBM Plex Mono', monospace; font-size: 7px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: rgba(232,240,255,0.2);
+}
+.cassini-pos-row {
+  display: grid; grid-template-columns: 70px 1fr 80px 80px 72px 100px;
+  padding: 9px 20px; border-bottom: 1px solid rgba(232,240,255,0.04);
+  align-items: center; cursor: pointer; transition: background 0.1s;
+}
+.cassini-pos-row:hover { background: rgba(232,240,255,0.025); }
+.cassini-pos-row.active {
+  background: rgba(255,122,0,0.06);
+  border-left: 2px solid rgba(255,122,0,0.6); padding-left: 18px;
+}
+.cassini-pos-td { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(232,240,255,0.5); }
+.cassini-pos-td.ticker { font-family: 'Chakra Petch', sans-serif; font-size: 13px; font-weight: 700; color: #E8F0FF; letter-spacing: 0.05em; }
+.cassini-pos-td.up { color: #3DDB7A; }
+.cassini-pos-td.dn { color: #FF4455; }
+.cassini-pos-td.warn { color: #FF7A00; }
+.cass-score { display: flex; flex-direction: column; gap: 3px; }
+.cass-score-val { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(232,240,255,0.4); }
+.cass-score-bar { height: 2px; background: rgba(232,240,255,0.06); border-radius: 1px; overflow: hidden; }
+.cass-score-fill { height: 100%; border-radius: 1px; }
+
+/* Right: signals */
+.cassini-signals { border-left: 1px solid rgba(232,240,255,0.06); }
+.cassini-signals-header {
+  font-family: 'IBM Plex Mono', monospace; font-size: 7px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: rgba(232,240,255,0.2);
+  padding: 10px 16px; border-bottom: 1px solid rgba(232,240,255,0.05);
+  background: rgba(232,240,255,0.02);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.cassini-signals-count { color: #FF7A00; }
+.cassini-signal {
+  padding: 12px 16px; border-bottom: 1px solid rgba(232,240,255,0.04);
+}
+.cassini-signal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+.cassini-signal-ticker { font-family: 'Chakra Petch', sans-serif; font-size: 15px; font-weight: 700; color: #E8F0FF; letter-spacing: 0.08em; }
+.cassini-signal-badges { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.cassini-signal-badge {
+  font-family: 'IBM Plex Mono', monospace; font-size: 8px; font-weight: 600;
+  letter-spacing: 0.1em; padding: 2px 6px;
+  clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+}
+.cassini-signal-badge.buy { background: rgba(61,219,122,0.15); color: #3DDB7A; border: 1px solid rgba(61,219,122,0.3); }
+.cassini-signal-badge.sell { background: rgba(255,68,85,0.12); color: #FF4455; border: 1px solid rgba(255,68,85,0.25); }
+.cassini-signal-badge.approved { background: rgba(255,122,0,0.12); color: #FF7A00; border: 1px solid rgba(255,122,0,0.25); }
+.cassini-signal-meta {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  color: rgba(232,240,255,0.3); line-height: 1.8;
+}
+.cassini-signal-meta span { color: rgba(232,240,255,0.6); }
+.cass-conf { margin-top: 7px; height: 2px; background: rgba(232,240,255,0.06); overflow: hidden; }
+.cass-conf-f { height: 100%; }
+
+
+/* ═══════════════════════════════
+   OUTER PAGE CHROME
+═══════════════════════════════ */
+.outer {
+  background: #111;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.section-title {
+  font-family: sans-serif; font-size: 20px; font-weight: 700; color: #fff;
+  margin-bottom: 4px;
+}
+.section-sub {
+  font-family: sans-serif; font-size: 12px; color: rgba(255,255,255,0.4);
+  margin-bottom: 40px;
+}
+.divider { height: 3px; background: rgba(255,255,255,0.06); margin: 0 40px; }
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="section-title">Three Radically Different Directions</div>
+  <div class="section-sub">Each is a completely distinct aesthetic world. Click a header to select.</div>
+</div>
+
+<!-- ══════ A — ORACLE ══════ -->
+<div class="dir-wrap" id="dir-a" onclick="selectDir('a')">
+  <div class="dir-meta">
+    <div class="dir-letter-badge" style="background:#E8553C;color:#fff;">A</div>
+    <div class="dir-text">
+      <div class="dir-name">ORACLE — Warm Paper / Financial Broadsheet</div>
+      <div class="dir-desc">Light theme. Cream and charcoal. Feels like the Financial Times crossed with a precision instrument. Big italic serif for portfolio names, monospace for all data. Completely different emotional register — authoritative, considered, analog-warm.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#E8553C;border-color:rgba(232,85,60,0.3);">Light theme</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Playfair Display serif</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Cream + charcoal + salmon</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Newspaper grid</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">FT / WSJ energy</span>
+      </div>
+    </div>
+    <button class="dir-select-btn" id="btn-a">Select A</button>
+  </div>
+  <div class="mockup-frame">
+    <div class="oracle">
+      <!-- Top bar -->
+      <div class="oracle-topbar">
+        <div class="oracle-logo">Oracle</div>
+        <div class="oracle-nav">
+          <div class="oracle-nav-item active">Command</div>
+          <div class="oracle-nav-item">Signals</div>
+          <div class="oracle-nav-item">Risk</div>
+          <div class="oracle-nav-item">Alpha</div>
+          <div class="oracle-nav-item">Log</div>
+        </div>
+        <div class="oracle-sp"></div>
+        <div class="oracle-markets">
+          <div class="oracle-mkt">
+            <div class="oracle-mkt-name">S&P 500</div>
+            <div class="oracle-mkt-val">5,847</div>
+            <div class="oracle-mkt-chg up">▲ 0.34%</div>
+          </div>
+          <div class="oracle-mkt">
+            <div class="oracle-mkt-name">Russell 2K</div>
+            <div class="oracle-mkt-val">2,102</div>
+            <div class="oracle-mkt-chg dn">▼ 0.12%</div>
+          </div>
+          <div class="oracle-mkt">
+            <div class="oracle-mkt-name">VIX</div>
+            <div class="oracle-mkt-val">14.8</div>
+            <div class="oracle-mkt-chg up">▲ 2.1%</div>
+          </div>
+        </div>
+        <div class="oracle-mode">Paper</div>
+        <div class="oracle-action-btns">
+          <div class="oracle-btn oracle-btn-sec">Scan</div>
+          <div class="oracle-btn oracle-btn-sec">Analyze</div>
+          <div class="oracle-btn oracle-btn-prim">Execute</div>
+        </div>
+      </div>
+      <!-- Headline strip -->
+      <div class="oracle-headline">
+        <div class="oracle-portfolio-name">microcap</div>
+        <div class="oracle-headline-divider"></div>
+        <div class="oracle-kpi-row">
+          <div class="oracle-kpi">
+            <div class="oracle-kpi-label">Equity</div>
+            <div class="oracle-kpi-val">$241,882</div>
+            <div class="oracle-kpi-sub">+$2,041 today</div>
+          </div>
+          <div class="oracle-kpi">
+            <div class="oracle-kpi-label">Return</div>
+            <div class="oracle-kpi-val pos">+8.4%</div>
+            <div class="oracle-kpi-sub">vs ^RUT +2.1%</div>
+          </div>
+          <div class="oracle-kpi">
+            <div class="oracle-kpi-label">Positions</div>
+            <div class="oracle-kpi-val">11</div>
+            <div class="oracle-kpi-sub">$38k free cash</div>
+          </div>
+          <div class="oracle-kpi">
+            <div class="oracle-kpi-label">Risk</div>
+            <div class="oracle-kpi-val">75/100</div>
+            <div class="oracle-kpi-sub">Low exposure</div>
+          </div>
+          <div class="oracle-regime-badge">BULL · Day 7</div>
+        </div>
+      </div>
+      <!-- 3-col newspaper body -->
+      <div class="oracle-body">
+        <!-- Left: positions -->
+        <div class="oracle-col">
+          <div class="oracle-col-header">Holdings by Score</div>
+          <div class="oracle-pos-row hl">
+            <div class="oracle-pos-ticker">CELH</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">82</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:82%;background:#2A8A4A;"></div></div>
+            </div>
+            <div class="oracle-pos-price">$47.20</div>
+            <div class="oracle-pos-pnl up">+14.3%</div>
+          </div>
+          <div class="oracle-pos-row">
+            <div class="oracle-pos-ticker">POWL</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">77</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:77%;background:#2A8A4A;"></div></div>
+            </div>
+            <div class="oracle-pos-price">$183.44</div>
+            <div class="oracle-pos-pnl up">+9.7%</div>
+          </div>
+          <div class="oracle-pos-row">
+            <div class="oracle-pos-ticker">ESE</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">71</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:71%;background:#2A8A4A;"></div></div>
+            </div>
+            <div class="oracle-pos-price">$62.10</div>
+            <div class="oracle-pos-pnl up">+6.2%</div>
+          </div>
+          <div class="oracle-pos-row">
+            <div class="oracle-pos-ticker">SMPL</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">64</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:64%;background:rgba(26,23,20,0.25);"></div></div>
+            </div>
+            <div class="oracle-pos-price">$29.18</div>
+            <div class="oracle-pos-pnl" style="color:rgba(26,23,20,0.4);">+0.4%</div>
+          </div>
+          <div class="oracle-pos-row">
+            <div class="oracle-pos-ticker">KMT</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">59</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:59%;background:rgba(26,23,20,0.2);"></div></div>
+            </div>
+            <div class="oracle-pos-price">$34.55</div>
+            <div class="oracle-pos-pnl dn">−1.8%</div>
+          </div>
+          <div class="oracle-pos-row">
+            <div class="oracle-pos-ticker">MTDR</div>
+            <div class="oracle-pos-score">
+              <div class="oracle-pos-score-num">48</div>
+              <div class="oracle-score-bar"><div class="oracle-score-fill" style="width:48%;background:#E8553C;"></div></div>
+            </div>
+            <div class="oracle-pos-price">$44.91</div>
+            <div class="oracle-pos-pnl dn">−3.2%</div>
+          </div>
+        </div>
+        <!-- Center: chart -->
+        <div class="oracle-col">
+          <div class="oracle-col-header">Equity Curve — Year to Date</div>
+          <div class="oracle-chart-area">
+            <div class="oracle-chart-title">
+              <span>microcap vs ^RUT benchmark</span>
+              <span>Jan → Mar 2026</span>
+            </div>
+            <svg width="100%" height="200" viewBox="0 0 560 200" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="og1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#E8553C" stop-opacity="0.12"/>
+                  <stop offset="100%" stop-color="#E8553C" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="og2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2A8A4A" stop-opacity="0.1"/>
+                  <stop offset="100%" stop-color="#2A8A4A" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid -->
+              <line x1="0" y1="50" x2="560" y2="50" stroke="rgba(26,23,20,0.06)" stroke-width="1"/>
+              <line x1="0" y1="100" x2="560" y2="100" stroke="rgba(26,23,20,0.06)" stroke-width="1"/>
+              <line x1="0" y1="150" x2="560" y2="150" stroke="rgba(26,23,20,0.06)" stroke-width="1"/>
+              <!-- Benchmark -->
+              <path d="M0,160 C80,155 160,150 240,142 C320,134 400,138 480,132 C520,129 545,128 560,125" fill="none" stroke="rgba(26,23,20,0.2)" stroke-width="1" stroke-dasharray="5,5"/>
+              <!-- Portfolio area -->
+              <path d="M0,165 C80,158 160,150 240,130 C320,110 380,120 440,96 C490,78 530,82 560,62 L560,200 L0,200Z" fill="url(#og1)"/>
+              <!-- Portfolio line -->
+              <path d="M0,165 C80,158 160,150 240,130 C320,110 380,120 440,96 C490,78 530,82 560,62" fill="none" stroke="#E8553C" stroke-width="2"/>
+              <!-- Entry markers -->
+              <circle cx="240" cy="130" r="3" fill="#2A8A4A" opacity="0.7"/>
+              <circle cx="380" cy="120" r="3" fill="#E8553C" opacity="0.7"/>
+              <!-- Endpoint -->
+              <circle cx="560" cy="62" r="4" fill="#E8553C"/>
+              <!-- Labels -->
+              <text x="4" y="195" fill="rgba(26,23,20,0.25)" font-size="9" font-family="Fira Code,monospace">Jan 2026</text>
+              <text x="220" y="195" fill="rgba(26,23,20,0.25)" font-size="9" font-family="Fira Code,monospace">Feb 2026</text>
+              <text x="430" y="195" fill="rgba(26,23,20,0.25)" font-size="9" font-family="Fira Code,monospace">Mar 2026</text>
+              <text x="545" y="58" fill="#E8553C" font-size="9" font-family="Fira Code,monospace" text-anchor="end">+8.4%</text>
+              <text x="545" y="120" fill="rgba(26,23,20,0.3)" font-size="8" font-family="Fira Code,monospace" text-anchor="end">^RUT</text>
+              <!-- Risk bar at bottom -->
+              <rect x="0" y="180" width="560" height="8" fill="rgba(26,23,20,0.04)"/>
+              <rect x="0" y="180" width="462" height="8" fill="rgba(42,138,74,0.2)"/>
+            </svg>
+            <div style="display:flex;gap:16px;margin-top:8px;">
+              <div style="display:flex;align-items:center;gap:5px;font-family:'Fira Code',monospace;font-size:9px;color:rgba(26,23,20,0.4);">
+                <div style="width:16px;height:2px;background:#E8553C;"></div> microcap
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;font-family:'Fira Code',monospace;font-size:9px;color:rgba(26,23,20,0.4);">
+                <div style="width:16px;height:1px;border-top:1px dashed rgba(26,23,20,0.3);"></div> ^RUT
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;font-family:'Fira Code',monospace;font-size:9px;color:rgba(42,138,74,0.6);">
+                <div style="width:8px;height:8px;background:rgba(42,138,74,0.2);border-radius:50%;border:1px solid #2A8A4A;"></div> Buy
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: signals -->
+        <div class="oracle-col">
+          <div class="oracle-col-header">AI Signal Queue — 3 pending</div>
+          <div class="oracle-signal">
+            <div class="oracle-signal-top">
+              <div class="oracle-signal-ticker">NOVA</div>
+              <div class="oracle-signal-tag buy">APPROVED · BUY</div>
+            </div>
+            <div class="oracle-signal-meta">
+              200 shares @ <em>$28.40</em><br>
+              Score <em>79</em> · SL <em>$25.90</em> · TP <em>$36.00</em><br>
+              Confidence <em>88%</em>
+            </div>
+            <div class="oracle-confidence-bar"><div class="oracle-confidence-fill" style="width:88%;background:#2A8A4A;"></div></div>
+          </div>
+          <div class="oracle-signal">
+            <div class="oracle-signal-top">
+              <div class="oracle-signal-ticker">CRC</div>
+              <div class="oracle-signal-tag sell">STOP · SELL</div>
+            </div>
+            <div class="oracle-signal-meta">
+              Stop triggered @ <em>$31.20</em><br>
+              Realized P&L: <em style="color:#E8553C;">−5.4%</em><br>
+              Entry: <em>$33.00</em> on 2026-02-14
+            </div>
+            <div class="oracle-confidence-bar"><div class="oracle-confidence-fill" style="width:95%;background:#E8553C;"></div></div>
+          </div>
+          <div class="oracle-signal">
+            <div class="oracle-signal-top">
+              <div class="oracle-signal-ticker">SMPL</div>
+              <div class="oracle-signal-tag veto">VETO</div>
+            </div>
+            <div class="oracle-signal-meta">
+              150 shares @ <em>$29.18</em><br>
+              Score <em>71</em> · Margin concern<br>
+              AI: deteriorating gross margin
+            </div>
+            <div class="oracle-confidence-bar"><div class="oracle-confidence-fill" style="width:52%;background:rgba(26,23,20,0.2);"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ B — PRISM ══════ -->
+<div class="dir-wrap" id="dir-b" onclick="selectDir('b')">
+  <div class="dir-meta">
+    <div class="dir-letter-badge" style="background:#C8FF00;color:#0A0A0A;">B</div>
+    <div class="dir-text">
+      <div class="dir-name">PRISM — Acid Industrial / Brutalist</div>
+      <div class="dir-desc">White background, black ink, one savage accent: acid lime #C8FF00. Barlow Condensed at extreme weights for all headlines — tickers look like a race results board. Zero gradients, zero shadows. Feels like a Braun radio designed by someone who trades momentum equities.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#C8FF00;border-color:rgba(200,255,0,0.3);">White / black</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Acid lime accent</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Barlow Condensed Heavy</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Zero gradients</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Brutalist precision</span>
+      </div>
+    </div>
+    <button class="dir-select-btn" id="btn-b">Select B</button>
+  </div>
+  <div class="mockup-frame">
+    <div class="prism">
+      <!-- Topbar -->
+      <div class="prism-topbar">
+        <div class="prism-logo-block"><div class="prism-logo">PRISM</div></div>
+        <div class="prism-nav">
+          <div class="prism-nav-tab active">Command</div>
+          <div class="prism-nav-tab">Signals</div>
+          <div class="prism-nav-tab">Risk</div>
+          <div class="prism-nav-tab">Alpha</div>
+        </div>
+        <div class="prism-sp"></div>
+        <div class="prism-stat-strip">
+          <div class="prism-stat"><div class="prism-stat-k">SPX</div><div class="prism-stat-v">5,847 <span class="up">▲0.3%</span></div></div>
+          <div class="prism-stat"><div class="prism-stat-k">RUT</div><div class="prism-stat-v">2,102 <span class="dn">▼0.1%</span></div></div>
+          <div class="prism-stat"><div class="prism-stat-k">VIX</div><div class="prism-stat-v">14.8</div></div>
+        </div>
+        <div class="prism-mode-block"><div class="prism-mode-text">PAPER MODE</div></div>
+      </div>
+      <!-- Hero metrics -->
+      <div class="prism-hero">
+        <div class="prism-metric">
+          <div class="prism-metric-label">Total Equity</div>
+          <div class="prism-metric-val">$482,304</div>
+          <div class="prism-metric-sub">6 portfolios active</div>
+        </div>
+        <div class="prism-divider"></div>
+        <div class="prism-metric">
+          <div class="prism-metric-label">Today P&L</div>
+          <div class="prism-metric-val up">+$4,127</div>
+          <div class="prism-metric-sub">+0.86% on day</div>
+        </div>
+        <div class="prism-divider"></div>
+        <div class="prism-metric">
+          <div class="prism-metric-label">Total Return</div>
+          <div class="prism-metric-val up">+8.4%</div>
+          <div class="prism-metric-sub">vs SPX +3.1%</div>
+        </div>
+        <div class="prism-divider"></div>
+        <div class="prism-metric">
+          <div class="prism-metric-label">Regime</div>
+          <div class="prism-metric-val acid">BULL</div>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="prism-body">
+        <div class="prism-left">
+          <div class="prism-left-header">
+            <div class="prism-left-title">Positions — microcap</div>
+            <div class="prism-sort-btn">sort: score ↓</div>
+          </div>
+          <div class="prism-thead">
+            <div class="prism-th">Ticker</div>
+            <div class="prism-th">Score</div>
+            <div class="prism-th">Price</div>
+            <div class="prism-th">P&L</div>
+            <div class="prism-th">Value</div>
+            <div class="prism-th">Stop / Target</div>
+          </div>
+          <div class="prism-row hl">
+            <div class="prism-td ticker">CELH</div>
+            <div class="prism-td">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;color:#0A0A0A;margin-bottom:4px;">82</div>
+              <div class="prism-score-track"><div class="prism-score-f" style="width:82%;"></div></div>
+            </div>
+            <div class="prism-td">$47.20</div>
+            <div class="prism-td up">+14.3%</div>
+            <div class="prism-td">$9,440</div>
+            <div class="prism-td" style="font-size:9px;">$42.10 ↓ / $58.00 ↑</div>
+          </div>
+          <div class="prism-row">
+            <div class="prism-td ticker">POWL</div>
+            <div class="prism-td">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;margin-bottom:4px;">77</div>
+              <div class="prism-score-track"><div class="prism-score-f" style="width:77%;"></div></div>
+            </div>
+            <div class="prism-td">$183.44</div>
+            <div class="prism-td up">+9.7%</div>
+            <div class="prism-td">$18,344</div>
+            <div class="prism-td" style="font-size:9px;">$168.20 ↓ / $210 ↑</div>
+          </div>
+          <div class="prism-row">
+            <div class="prism-td ticker">ESE</div>
+            <div class="prism-td">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;margin-bottom:4px;">71</div>
+              <div class="prism-score-track"><div class="prism-score-f" style="width:71%;"></div></div>
+            </div>
+            <div class="prism-td">$62.10</div>
+            <div class="prism-td up">+6.2%</div>
+            <div class="prism-td">$7,452</div>
+            <div class="prism-td" style="font-size:9px;">$56.00 ↓ / $78 ↑</div>
+          </div>
+          <div class="prism-row">
+            <div class="prism-td ticker">SMPL</div>
+            <div class="prism-td">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;margin-bottom:4px;">64</div>
+              <div class="prism-score-track"><div class="prism-score-f md" style="width:64%;"></div></div>
+            </div>
+            <div class="prism-td">$29.18</div>
+            <div class="prism-td" style="color:rgba(10,10,10,0.35);">+0.4%</div>
+            <div class="prism-td">$5,836</div>
+            <div class="prism-td" style="font-size:9px;">$26.50 ↓ / $36 ↑</div>
+          </div>
+          <div class="prism-row">
+            <div class="prism-td ticker">MTDR</div>
+            <div class="prism-td">
+              <div style="font-family:'DM Mono',monospace;font-size:11px;margin-bottom:4px;">48</div>
+              <div class="prism-score-track"><div class="prism-score-f lo" style="width:48%;"></div></div>
+            </div>
+            <div class="prism-td">$44.91</div>
+            <div class="prism-td dn">−3.2%</div>
+            <div class="prism-td">$6,737</div>
+            <div class="prism-td dn" style="font-size:9px;">$41.00 ↓ NEAR STOP</div>
+          </div>
+        </div>
+        <!-- Signals right -->
+        <div class="prism-right">
+          <div class="prism-right-header"><div class="prism-right-title">Signals — 3</div></div>
+          <div class="prism-signal buy">
+            <div class="prism-signal-top">
+              <div class="prism-signal-ticker">NOVA</div>
+              <div class="prism-signal-badge buy">BUY</div>
+            </div>
+            <div class="prism-signal-meta">
+              200sh @ <strong>$28.40</strong> · Score <strong>79</strong><br>
+              SL <strong>$25.90</strong> · TP <strong>$36.00</strong>
+            </div>
+            <div class="prism-conf"><div class="prism-conf-f" style="width:88%;background:#1A8A3A;"></div></div>
+          </div>
+          <div class="prism-signal sell">
+            <div class="prism-signal-top">
+              <div class="prism-signal-ticker">CRC</div>
+              <div class="prism-signal-badge sell">STOP</div>
+            </div>
+            <div class="prism-signal-meta">
+              Stop @ <strong>$31.20</strong><br>
+              P&L: <strong style="color:#CC2020;">−5.4%</strong>
+            </div>
+            <div class="prism-conf"><div class="prism-conf-f" style="width:95%;background:#CC2020;"></div></div>
+          </div>
+          <div class="prism-signal">
+            <div class="prism-signal-top">
+              <div class="prism-signal-ticker">SMPL</div>
+              <div class="prism-signal-badge mod">VETO</div>
+            </div>
+            <div class="prism-signal-meta">
+              Score <strong>71</strong> · AI declined<br>
+              Margin risk flagged
+            </div>
+            <div class="prism-conf"><div class="prism-conf-f" style="width:52%;background:#C8FF00;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════ C — CASSINI ══════ -->
+<div class="dir-wrap" id="dir-c" onclick="selectDir('c')">
+  <div class="dir-meta">
+    <div class="dir-letter-badge" style="background:#FF7A00;color:#040810;">C</div>
+    <div class="dir-text">
+      <div class="dir-name">CASSINI — Deep Space Telemetry / Mission Control</div>
+      <div class="dir-desc">Near-black (#040810) with cold blue-white text. Single accent: telemetry orange #FF7A00. Chakra Petch for all display type — geometric, mechanical, unique. Feels like NASA mission control crossed with a quant hedge fund. Clipped corners (polygon clip-paths) everywhere. Nothing soft.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#FF7A00;border-color:rgba(255,122,0,0.3);">Near-black + orange</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Chakra Petch display</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">IBM Plex Mono data</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">Clipped-corner elements</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.5);border-color:rgba(255,255,255,0.12);">NASA telemetry aesthetic</span>
+      </div>
+    </div>
+    <button class="dir-select-btn" id="btn-c">Select C</button>
+  </div>
+  <div class="mockup-frame">
+    <div class="cassini">
+      <div class="cassini-topbar">
+        <div class="cassini-logo">
+          <div class="cassini-logo-mark"></div>
+          <div class="cassini-logo-text">Cassini</div>
+        </div>
+        <div class="cassini-mission">MISSION: <span>PAPER-ALPHA-01</span></div>
+        <div class="cassini-sp"></div>
+        <div class="cassini-status-row">
+          <div class="cassini-status">
+            <div class="cassini-status-label">SPX</div>
+            <div class="cassini-status-val up">5,847 ▲</div>
+          </div>
+          <div class="cassini-status">
+            <div class="cassini-status-label">RUT</div>
+            <div class="cassini-status-val dn">2,102 ▼</div>
+          </div>
+          <div class="cassini-status">
+            <div class="cassini-status-label">VIX</div>
+            <div class="cassini-status-val">14.8</div>
+          </div>
+        </div>
+        <div class="cassini-actions">
+          <div class="cassini-btn cassini-btn-sec">SCAN</div>
+          <div class="cassini-btn cassini-btn-sec">ANALYZE</div>
+          <div class="cassini-btn cassini-btn-prim">EXECUTE</div>
+        </div>
+      </div>
+      <!-- Instrument panel -->
+      <div class="cassini-instruments">
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Total Equity</div>
+          <div class="cassini-inst-val">$482,304</div>
+          <div class="cassini-inst-sub">6 portfolios</div>
+        </div>
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Day P&L</div>
+          <div class="cassini-inst-val pos">+$4,127</div>
+          <div class="cassini-inst-sub">+0.86% on day</div>
+        </div>
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Total Return</div>
+          <div class="cassini-inst-val pos">+8.4%</div>
+          <div class="cassini-inst-sub">α vs SPX +5.3%</div>
+        </div>
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Open Positions</div>
+          <div class="cassini-inst-val">24</div>
+          <div class="cassini-inst-sub">$89k deployed free</div>
+        </div>
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Risk Score</div>
+          <div class="cassini-inst-val pos">75/100</div>
+          <div class="cassini-inst-sub">Low exposure</div>
+        </div>
+        <div class="cassini-instrument">
+          <div class="cassini-inst-label">Market Regime</div>
+          <div class="cassini-inst-val orange">BULL</div>
+          <div class="cassini-inst-sub">Day 7 · 1.0× mult</div>
+        </div>
+      </div>
+      <!-- Main 3-col body -->
+      <div class="cassini-body">
+        <!-- Portfolios left -->
+        <div class="cassini-portfolios">
+          <div class="cassini-portf-header">Portfolio Select</div>
+          <div class="cassini-portf-item active">
+            <div class="cassini-portf-indicator" style="background:#3DDB7A;box-shadow:0 0 5px #3DDB7A;"></div>
+            <div class="cassini-portf-name">microcap</div>
+            <div class="cassini-portf-pct up">+8.4%</div>
+          </div>
+          <div class="cassini-portf-item">
+            <div class="cassini-portf-indicator" style="background:#3DDB7A;box-shadow:0 0 5px #3DDB7A;"></div>
+            <div class="cassini-portf-name">ai</div>
+            <div class="cassini-portf-pct up">+12.1%</div>
+          </div>
+          <div class="cassini-portf-item">
+            <div class="cassini-portf-indicator" style="background:#FF7A00;box-shadow:0 0 5px rgba(255,122,0,0.5);"></div>
+            <div class="cassini-portf-name">sph</div>
+            <div class="cassini-portf-pct up">+2.3%</div>
+          </div>
+          <div class="cassini-portf-item">
+            <div class="cassini-portf-indicator" style="background:#FF4455;"></div>
+            <div class="cassini-portf-name">largeboi</div>
+            <div class="cassini-portf-pct dn">−0.8%</div>
+          </div>
+          <div class="cassini-portf-item">
+            <div class="cassini-portf-indicator" style="background:#3DDB7A;"></div>
+            <div class="cassini-portf-name">10k</div>
+            <div class="cassini-portf-pct up">+5.7%</div>
+          </div>
+          <div class="cassini-portf-item">
+            <div class="cassini-portf-indicator" style="background:rgba(232,240,255,0.2);"></div>
+            <div class="cassini-portf-name">boomers</div>
+            <div class="cassini-portf-pct up">+1.1%</div>
+          </div>
+        </div>
+        <!-- Positions center -->
+        <div class="cassini-positions">
+          <div class="cassini-pos-header">
+            <div class="cassini-pos-th">Ticker</div>
+            <div class="cassini-pos-th">Score</div>
+            <div class="cassini-pos-th">Price</div>
+            <div class="cassini-pos-th">P&L</div>
+            <div class="cassini-pos-th">Value</div>
+            <div class="cassini-pos-th">Stop / Target</div>
+          </div>
+          <div class="cassini-pos-row active">
+            <div class="cassini-pos-td ticker">CELH</div>
+            <div class="cassini-pos-td">
+              <div class="cass-score">
+                <div class="cass-score-val">82</div>
+                <div class="cass-score-bar"><div class="cass-score-fill" style="width:82%;background:#3DDB7A;"></div></div>
+              </div>
+            </div>
+            <div class="cassini-pos-td">$47.20</div>
+            <div class="cassini-pos-td up">+14.3%</div>
+            <div class="cassini-pos-td">$9,440</div>
+            <div class="cassini-pos-td" style="font-size:9px;">$42.10↓ $58.00↑</div>
+          </div>
+          <div class="cassini-pos-row">
+            <div class="cassini-pos-td ticker">POWL</div>
+            <div class="cassini-pos-td">
+              <div class="cass-score">
+                <div class="cass-score-val">77</div>
+                <div class="cass-score-bar"><div class="cass-score-fill" style="width:77%;background:#3DDB7A;"></div></div>
+              </div>
+            </div>
+            <div class="cassini-pos-td">$183.44</div>
+            <div class="cassini-pos-td up">+9.7%</div>
+            <div class="cassini-pos-td">$18,344</div>
+            <div class="cassini-pos-td" style="font-size:9px;">$168↓ $210↑</div>
+          </div>
+          <div class="cassini-pos-row">
+            <div class="cassini-pos-td ticker">SMPL</div>
+            <div class="cassini-pos-td">
+              <div class="cass-score">
+                <div class="cass-score-val">64</div>
+                <div class="cass-score-bar"><div class="cass-score-fill" style="width:64%;background:rgba(232,240,255,0.3);"></div></div>
+              </div>
+            </div>
+            <div class="cassini-pos-td">$29.18</div>
+            <div class="cassini-pos-td" style="color:rgba(232,240,255,0.3);">+0.4%</div>
+            <div class="cassini-pos-td">$5,836</div>
+            <div class="cassini-pos-td" style="font-size:9px;">$26.50↓ $36↑</div>
+          </div>
+          <div class="cassini-pos-row">
+            <div class="cassini-pos-td ticker">MTDR</div>
+            <div class="cassini-pos-td">
+              <div class="cass-score">
+                <div class="cass-score-val">48</div>
+                <div class="cass-score-bar"><div class="cass-score-fill" style="width:48%;background:#FF4455;"></div></div>
+              </div>
+            </div>
+            <div class="cassini-pos-td">$44.91</div>
+            <div class="cassini-pos-td dn">−3.2%</div>
+            <div class="cassini-pos-td">$6,737</div>
+            <div class="cassini-pos-td warn" style="font-size:9px;">$41↓ NEAR STOP</div>
+          </div>
+        </div>
+        <!-- Signals right -->
+        <div class="cassini-signals">
+          <div class="cassini-signals-header">
+            <span>Signal Queue</span>
+            <span class="cassini-signals-count">3 PENDING</span>
+          </div>
+          <div class="cassini-signal">
+            <div class="cassini-signal-top">
+              <div class="cassini-signal-ticker">NOVA</div>
+              <div class="cassini-signal-badges">
+                <div class="cassini-signal-badge buy">BUY</div>
+                <div class="cassini-signal-badge approved">APPROVED</div>
+              </div>
+            </div>
+            <div class="cassini-signal-meta">
+              200sh @ <span>$28.40</span> · Score <span>79</span><br>
+              SL <span>$25.90</span> · TP <span>$36.00</span><br>
+              Conf. <span>88%</span>
+            </div>
+            <div class="cass-conf"><div class="cass-conf-f" style="width:88%;background:#3DDB7A;"></div></div>
+          </div>
+          <div class="cassini-signal">
+            <div class="cassini-signal-top">
+              <div class="cassini-signal-ticker">CRC</div>
+              <div class="cassini-signal-badges">
+                <div class="cassini-signal-badge sell">SELL</div>
+                <div class="cassini-signal-badge approved">STOP</div>
+              </div>
+            </div>
+            <div class="cassini-signal-meta">
+              Stop @ <span>$31.20</span><br>
+              P&L: <span style="color:#FF4455;">−5.4%</span>
+            </div>
+            <div class="cass-conf"><div class="cass-conf-f" style="width:95%;background:#FF4455;"></div></div>
+          </div>
+          <div class="cassini-signal">
+            <div class="cassini-signal-top">
+              <div class="cassini-signal-ticker">SMPL</div>
+              <div class="cassini-signal-badges">
+                <div class="cassini-signal-badge" style="background:rgba(232,240,255,0.06);color:rgba(232,240,255,0.4);border:1px solid rgba(232,240,255,0.12);">VETO</div>
+              </div>
+            </div>
+            <div class="cassini-signal-meta">
+              Score <span>71</span> · Declined<br>
+              Margin risk flagged
+            </div>
+            <div class="cass-conf"><div class="cass-conf-f" style="width:52%;background:#FF7A00;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px;background:#111;"></div>
+
+<script>
+function selectDir(id) {
+  ['a','b','c'].forEach(d => {
+    document.getElementById('dir-'+d).classList.remove('selected');
+    document.getElementById('btn-'+d).textContent = 'Select '+d.toUpperCase();
+  });
+  document.getElementById('dir-'+id).classList.add('selected');
+  document.getElementById('btn-'+id).textContent = '✓ Selected';
+  if (window.__brainstorm_selectOption) window.__brainstorm_selectOption(id, document.querySelector('#dir-'+id+' .dir-name').textContent);
+}
+</script>
+</body>
+</html>

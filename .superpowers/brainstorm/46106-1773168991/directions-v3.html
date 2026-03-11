@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Three Design Directions</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #111; color: #fff; font-family: 'Inter', sans-serif; }
+
+  .page { padding: 40px; max-width: 1200px; margin: 0 auto; }
+  .page-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 40px; }
+
+  /* Each direction is a tall stacked card */
+  .dir-block {
+    margin-bottom: 48px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .dir-block:hover { border-color: rgba(255,255,255,0.2); }
+  .dir-block.selected { border-color: rgba(255,255,255,0.7); }
+
+  /* Direction header bar */
+  .dir-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .dir-letter {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .dir-header-text { flex: 1; }
+  .dir-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+  .dir-tagline { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.4; }
+  .dir-traits { display: flex; flex-wrap: wrap; gap: 5px; }
+  .trait {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+  }
+  .select-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .dir-block.selected .select-badge {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+  }
+
+  /* Preview area */
+  .dir-preview {
+    padding: 24px;
+  }
+
+  /* ══════════════════════════════════════════════
+     A — AXIOM: Pure black/white full-width data
+  ══════════════════════════════════════════════ */
+  .axiom { background: #000; }
+  .axiom .dir-header { background: #000; }
+  .axiom .dir-letter { background: #fff; color: #000; }
+  .axiom .trait { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.12); }
+  .axiom .dir-preview { background: #000; padding: 0; }
+
+  .ax-topbar {
+    display: flex; align-items: center;
+    height: 44px; padding: 0 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    gap: 24px;
+  }
+  .ax-logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.3em; color: #fff;
+    padding-right: 24px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .ax-search {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.07);
+    padding: 4px 12px; border-radius: 4px;
+    width: 200px;
+  }
+  .ax-search kbd { font-family: inherit; font-size: 9px; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 2px; color: rgba(255,255,255,0.3); }
+  .ax-sp { flex: 1; }
+  .ax-markets {
+    display: flex; gap: 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    padding-left: 24px; border-left: 1px solid rgba(255,255,255,0.07);
+  }
+  .ax-m { color: rgba(255,255,255,0.35); }
+  .ax-m span { color: #fff; }
+  .ax-m .up { color: #4AFF8C; }
+  .ax-m .dn { color: #FF4455; }
+  .ax-actions { display: flex; gap: 8px; padding-left: 20px; }
+  .ax-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 5px 12px; border-radius: 3px; cursor: pointer; border: 1px solid;
+  }
+  .ax-btn-scan { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.15); background: transparent; }
+  .ax-btn-analyze { color: #fff; border-color: rgba(255,255,255,0.4); background: transparent; }
+  .ax-btn-exec { color: #000; border-color: #4AFF8C; background: #4AFF8C; }
+
+  /* Hero metrics */
+  .ax-metrics {
+    display: grid; grid-template-columns: repeat(6, 1fr);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ax-metric {
+    padding: 20px 24px;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  .ax-metric:last-child { border-right: none; }
+  .ax-metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: rgba(255,255,255,0.2); margin-bottom: 8px;
+  }
+  .ax-metric-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 4px;
+  }
+  .ax-metric-val.up { color: #4AFF8C; }
+  .ax-metric-val.dn { color: #FF4455; }
+  .ax-metric-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.18); }
+
+  /* Main content: chart left, signals right */
+  .ax-body { display: grid; grid-template-columns: 1fr 280px; }
+
+  .ax-chart-col {
+    padding: 20px 24px;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  .ax-col-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.18); margin-bottom: 14px;
+    display: flex; justify-content: space-between;
+  }
+  .ax-col-label-right { color: rgba(255,255,255,0.1); }
+
+  /* Positions table */
+  .ax-thead {
+    display: grid;
+    grid-template-columns: 72px 1fr 90px 90px 80px 110px 80px;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px;
+  }
+  .ax-th { font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.18); }
+  .ax-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 90px 90px 80px 110px 80px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    align-items: center;
+    transition: background 0.1s;
+  }
+  .ax-row:hover { background: rgba(255,255,255,0.02); margin: 0 -24px; padding: 10px 24px; }
+  .ax-row.hl { background: rgba(255,255,255,0.025); border-left: 2px solid #fff; margin-left: -24px; padding-left: 22px; }
+  .ax-td { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5); }
+  .ax-td.bold { color: #fff; font-weight: 700; font-size: 13px; letter-spacing: -0.01em; }
+  .ax-td.up { color: #4AFF8C; }
+  .ax-td.dn { color: #FF4455; }
+  .ax-td.warn { color: rgba(255,180,32,0.8); }
+  .ax-score-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .ax-score-num { font-size: 11px; color: rgba(255,255,255,0.45); }
+  .ax-score-bar { height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden; }
+  .ax-score-fill { height: 100%; border-radius: 1px; }
+
+  /* Signal col */
+  .ax-signal-col { padding: 20px; }
+  .ax-signal-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: rgba(255,255,255,0.18); margin-bottom: 12px;
+  }
+  .ax-signal {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ax-signal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .ax-signal-ticker { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #fff; }
+  .ax-signal-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
+    padding: 2px 7px; border-radius: 2px; border: 1px solid;
+  }
+  .ax-signal-badge.buy { color: #4AFF8C; border-color: rgba(74,255,140,0.3); }
+  .ax-signal-badge.sell { color: #FF4455; border-color: rgba(255,68,85,0.3); }
+  .ax-signal-badge.approved { color: rgba(255,255,255,0.5); border-color: rgba(255,255,255,0.1); }
+  .ax-signal-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); line-height: 1.6; }
+  .ax-signal-meta em { color: rgba(255,255,255,0.55); font-style: normal; }
+  .ax-confidence { margin-top: 8px; height: 1px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
+  .ax-confidence-fill { height: 100%; background: #4AFF8C; }
+
+  /* ══════════════════════════════════════════════
+     B — VELA: Spatial canvas + lime
+  ══════════════════════════════════════════════ */
+  .vela { background: #06091A; }
+  .vela .dir-header { background: #06091A; }
+  .vela .dir-letter { background: #C8FF00; color: #06091A; }
+  .vela .trait { color: rgba(200,255,0,0.6); border-color: rgba(200,255,0,0.18); }
+  .vela .dir-preview { background: #06091A; padding: 0; }
+
+  .vl-topbar {
+    display: flex; align-items: center; height: 48px;
+    padding: 0 24px; gap: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .vl-logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px; font-weight: 700; color: #C8FF00;
+    letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px;
+  }
+  .vl-pulse { width: 7px; height: 7px; background: #C8FF00; border-radius: 50%; box-shadow: 0 0 10px #C8FF00; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; box-shadow: 0 0 10px #C8FF00; } 50% { opacity: 0.5; box-shadow: 0 0 4px #C8FF00; } }
+  .vl-sp { flex: 1; }
+  .vl-markets {
+    display: flex; gap: 20px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  .vl-m { color: rgba(255,255,255,0.3); }
+  .vl-m span { color: rgba(255,255,255,0.7); }
+  .vl-m .up { color: #C8FF00; }
+  .vl-m .dn { color: #FF6B6B; }
+  .vl-btns { display: flex; gap: 8px; }
+  .vl-btn {
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 6px 16px; border-radius: 8px; cursor: pointer; border: 1px solid;
+  }
+  .vl-btn-ghost { background: rgba(200,255,0,0.08); color: #C8FF00; border-color: rgba(200,255,0,0.2); }
+  .vl-btn-solid { background: #C8FF00; color: #06091A; border-color: #C8FF00; }
+
+  /* Canvas section */
+  .vl-canvas-section {
+    position: relative; height: 380px; overflow: hidden;
+    background:
+      radial-gradient(ellipse at 25% 45%, rgba(200,255,0,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 35%, rgba(100,130,255,0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 75%, rgba(255,100,150,0.03) 0%, transparent 40%);
+  }
+  /* Dot grid */
+  .vl-canvas-section::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  /* Clusters */
+  .vl-cluster { position: absolute; }
+  .vl-node-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+  .vl-ring {
+    position: absolute; border-radius: 50%; border: 1px solid;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .vl-node {
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; cursor: pointer; border: 1.5px solid;
+    position: relative; z-index: 2;
+    transition: all 0.2s;
+  }
+  .vl-node:hover { transform: scale(1.06); }
+  .vl-node-pct { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; }
+  .vl-node-cash { font-family: 'JetBrains Mono', monospace; font-size: 7px; }
+  .vl-label-block { text-align: center; margin-top: 6px; }
+  .vl-label-name { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.8); }
+  .vl-label-sub { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: rgba(255,255,255,0.3); }
+
+  /* Satellites */
+  .vl-sat {
+    position: absolute; border-radius: 50%; cursor: pointer;
+    transition: transform 0.15s;
+    z-index: 3;
+  }
+  .vl-sat:hover { transform: scale(2); z-index: 10; }
+  .vl-sat-tip {
+    display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%);
+    background: rgba(6,9,26,0.95); border: 1px solid rgba(200,255,0,0.2);
+    border-radius: 5px; padding: 5px 8px; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #C8FF00;
+  }
+  .vl-sat:hover .vl-sat-tip { display: block; }
+
+  /* Overlay card */
+  .vl-overlay {
+    position: absolute; right: 24px; top: 24px;
+    width: 220px;
+    background: rgba(6,9,26,0.92);
+    border: 1px solid rgba(200,255,0,0.15);
+    border-radius: 12px; padding: 16px;
+    backdrop-filter: blur(16px);
+  }
+  .vl-overlay-name { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .vl-overlay-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); margin-bottom: 12px; }
+  .vl-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .vl-row:last-child { border-bottom: none; }
+  .vl-row-k { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.28); letter-spacing: 0.05em; text-transform: uppercase; }
+  .vl-row-v { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #fff; }
+  .vl-row-v.up { color: #C8FF00; }
+  .vl-row-v.dn { color: #FF6B6B; }
+
+  /* Bottom strip */
+  .vl-bottom {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+  .vl-bottom-block {
+    padding: 16px 24px;
+    border-right: 1px solid rgba(255,255,255,0.05);
+  }
+  .vl-bottom-block:last-child { border-right: none; }
+  .vl-bottom-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.2); margin-bottom: 10px;
+  }
+  .vl-big { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 4px; }
+  .vl-big-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #C8FF00; }
+  .vl-sig-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .vl-sig-t { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #fff; }
+  .vl-sig-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); }
+  .vl-sig-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 6px; border-radius: 3px; border: 1px solid;
+  }
+  .vl-sig-tag.buy { color: #C8FF00; border-color: rgba(200,255,0,0.3); }
+  .vl-sig-tag.sell { color: #FF6B6B; border-color: rgba(255,107,107,0.3); }
+  .vl-cmd-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vl-cmd {
+    font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 500;
+    color: rgba(255,255,255,0.4); border: 1px solid rgba(255,255,255,0.08);
+    padding: 5px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .vl-cmd:hover { color: #C8FF00; border-color: rgba(200,255,0,0.25); }
+  .vl-cmd kbd { font-family: 'JetBrains Mono', monospace; font-size: 9px; opacity: 0.5; }
+
+
+  /* ══════════════════════════════════════════════
+     C — MERIDIAN: Warm amber bento
+  ══════════════════════════════════════════════ */
+  .meridian { background: #0D0900; }
+  .meridian .dir-header { background: #0D0900; }
+  .meridian .dir-letter { background: #FFD060; color: #0D0900; }
+  .meridian .trait { color: rgba(255,208,96,0.6); border-color: rgba(255,208,96,0.15); }
+  .meridian .dir-preview { background: #0D0900; padding: 0; }
+
+  .mr-topbar {
+    display: flex; align-items: center; height: 48px;
+    padding: 0 24px; gap: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .mr-logo {
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px; font-weight: 700; color: #fff;
+  }
+  .mr-logo-mark {
+    width: 26px; height: 26px; border-radius: 7px; background: #FFD060;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 900; color: #0D0900;
+  }
+  .mr-nav { display: flex; gap: 0; margin-left: 8px; }
+  .mr-nav-item {
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.35);
+    padding: 4px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+  }
+  .mr-nav-item.active { color: #fff; background: rgba(255,255,255,0.06); }
+  .mr-sp { flex: 1; }
+  .mr-markets { display: flex; gap: 16px; }
+  .mr-m { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); }
+  .mr-m span { color: rgba(255,255,255,0.65); }
+  .mr-m .up { color: #5DFFB3; }
+  .mr-m .dn { color: #FF6B6B; }
+  .mr-btns { display: flex; gap: 8px; }
+  .mr-btn {
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 6px 14px; border-radius: 8px; cursor: pointer; border: 1px solid;
+  }
+  .mr-btn-ghost { background: rgba(255,208,96,0.07); color: #FFD060; border-color: rgba(255,208,96,0.2); }
+  .mr-btn-solid { background: #FFD060; color: #0D0900; border-color: #FFD060; }
+
+  /* Bento grid */
+  .mr-bento {
+    display: grid;
+    grid-template-columns: 280px 1fr 1fr 200px;
+    grid-template-rows: 160px 160px 100px;
+    gap: 10px;
+    padding: 16px;
+    min-height: 440px;
+  }
+  .mr-cell {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 18px; overflow: hidden; position: relative;
+    transition: border-color 0.15s;
+  }
+  .mr-cell:hover { border-color: rgba(255,208,96,0.12); }
+  .mr-cell-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255,208,96,0.3); margin-bottom: 10px;
+  }
+
+  /* Equity hero */
+  .mr-equity { grid-column: 1/2; grid-row: 1/2; }
+  .mr-equity-val { font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .mr-equity-delta { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5DFFB3; margin-bottom: 12px; }
+  .mr-equity-cash { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); }
+
+  /* Chart spans 2 cols, 2 rows */
+  .mr-chart { grid-column: 2/4; grid-row: 1/3; }
+
+  /* Regime */
+  .mr-regime {
+    grid-column: 4/5; grid-row: 1/3;
+    display: flex; flex-direction: column;
+    background: rgba(255,208,96,0.03); border-color: rgba(255,208,96,0.08);
+  }
+  .mr-regime-bull { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 700; color: #FFD060; margin-bottom: 4px; }
+  .mr-regime-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.25); margin-bottom: 16px; }
+  .mr-regime-stat { padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.05); }
+  .mr-regime-stat-k { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .mr-regime-stat-v { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.7); }
+
+  /* Return */
+  .mr-return { grid-column: 1/2; grid-row: 2/3; }
+  .mr-return-val { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; color: #5DFFB3; line-height: 1; margin-bottom: 4px; letter-spacing: -0.02em; }
+  .mr-return-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.2); }
+
+  /* Bottom full-width positions row */
+  .mr-positions { grid-column: 1/4; grid-row: 3/4; padding: 14px 16px; }
+  .mr-pos-label { font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,208,96,0.3); margin-bottom: 10px; }
+  .mr-pos-row { display: flex; gap: 8px; }
+  .mr-pos-chip {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 8px 14px; cursor: pointer; flex: 1;
+    transition: all 0.15s;
+  }
+  .mr-pos-chip:hover { border-color: rgba(255,208,96,0.2); background: rgba(255,208,96,0.04); }
+  .mr-pos-chip.hl { border-color: rgba(93,255,179,0.25); background: rgba(93,255,179,0.04); }
+  .mr-pos-chip.warn { border-color: rgba(255,107,107,0.2); }
+  .mr-score-circle {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700;
+  }
+  .mr-score-circle.hi { background: rgba(93,255,179,0.12); color: #5DFFB3; border: 1px solid rgba(93,255,179,0.25); }
+  .mr-score-circle.md { background: rgba(255,208,96,0.1); color: #FFD060; border: 1px solid rgba(255,208,96,0.2); }
+  .mr-score-circle.lo { background: rgba(255,107,107,0.1); color: #FF6B6B; border: 1px solid rgba(255,107,107,0.2); }
+  .mr-pos-body { flex: 1; }
+  .mr-pos-ticker { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .mr-pos-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: rgba(255,255,255,0.3); }
+  .mr-pos-pnl { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+  .mr-pos-pnl.up { color: #5DFFB3; }
+  .mr-pos-pnl.dn { color: #FF6B6B; }
+
+  /* Signals */
+  .mr-signals { grid-column: 4/5; grid-row: 3/4; }
+  .mr-sig-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .mr-sig-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .mr-sig-text { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.4); }
+  .mr-sig-text strong { color: #fff; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-title">Three directions — pick one</div>
+  <div class="page-sub">Each is a full reimagination. No sidebar nav, completely different color stories.</div>
+
+  <!-- ══════ A — AXIOM ══════ -->
+  <div class="dir-block axiom" data-choice="a" onclick="toggleSelect(this)">
+    <div class="dir-header">
+      <div class="dir-letter">A</div>
+      <div class="dir-header-text">
+        <div class="dir-name">AXIOM — Monochrome Brutalism</div>
+        <div class="dir-tagline">Pure black + white. Extreme data density. No sidebar — just a top command strip and ⌘K palette. Bloomberg Terminal energy redesigned for 2026.</div>
+        <div class="dir-traits" style="margin-top:8px;">
+          <span class="trait">Pure B&W</span>
+          <span class="trait">⌘K nav</span>
+          <span class="trait">Full-width rows</span>
+          <span class="trait">Ultra-dense</span>
+          <span class="trait">No sidebar</span>
+        </div>
+      </div>
+      <div class="select-badge">Select A</div>
+    </div>
+    <div class="dir-preview">
+      <!-- Top bar -->
+      <div class="ax-topbar">
+        <div class="ax-logo">AXIOM</div>
+        <div class="ax-search">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Search or command...
+          <kbd>⌘K</kbd>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.2);margin-left:4px;">microcap · 11 positions</div>
+        <div class="ax-sp"></div>
+        <div class="ax-markets">
+          <div class="ax-m">SPX <span>5,847</span> <span class="up">▲0.34%</span></div>
+          <div class="ax-m">RUT <span>2,102</span> <span class="dn">▼0.12%</span></div>
+          <div class="ax-m">VIX <span>14.8</span></div>
+        </div>
+        <div class="ax-actions">
+          <div class="ax-btn ax-btn-scan">Scan</div>
+          <div class="ax-btn ax-btn-analyze">Analyze</div>
+          <div class="ax-btn ax-btn-exec">Execute</div>
+        </div>
+      </div>
+      <!-- Metric row -->
+      <div class="ax-metrics">
+        <div class="ax-metric">
+          <div class="ax-metric-label">Total Equity</div>
+          <div class="ax-metric-val">$482,304</div>
+          <div class="ax-metric-sub">across 6 portfolios</div>
+        </div>
+        <div class="ax-metric">
+          <div class="ax-metric-label">Today P&L</div>
+          <div class="ax-metric-val up">+$4,127</div>
+          <div class="ax-metric-sub">+0.86% on day</div>
+        </div>
+        <div class="ax-metric">
+          <div class="ax-metric-label">Total Return</div>
+          <div class="ax-metric-val up">+8.4%</div>
+          <div class="ax-metric-sub">vs SPX +3.1%</div>
+        </div>
+        <div class="ax-metric">
+          <div class="ax-metric-label">Open Positions</div>
+          <div class="ax-metric-val">24</div>
+          <div class="ax-metric-sub">$89k undeployed</div>
+        </div>
+        <div class="ax-metric">
+          <div class="ax-metric-label">Risk Score</div>
+          <div class="ax-metric-val">75/100</div>
+          <div class="ax-metric-sub">LOW</div>
+        </div>
+        <div class="ax-metric">
+          <div class="ax-metric-label">Regime</div>
+          <div class="ax-metric-val up">BULL</div>
+          <div class="ax-metric-sub">Day 7 · 1.0× size</div>
+        </div>
+      </div>
+      <!-- Body: positions + signals -->
+      <div class="ax-body">
+        <div class="ax-chart-col">
+          <div class="ax-col-label">
+            <span>Positions — microcap</span>
+            <span class="ax-col-label-right">Score ↓</span>
+          </div>
+          <div class="ax-thead">
+            <div class="ax-th">Ticker</div>
+            <div class="ax-th">Score</div>
+            <div class="ax-th">Price</div>
+            <div class="ax-th">Unr. P&L</div>
+            <div class="ax-th">Value</div>
+            <div class="ax-th">Stop / Target</div>
+            <div class="ax-th">Regime</div>
+          </div>
+          <div class="ax-row hl">
+            <div class="ax-td bold">CELH</div>
+            <div class="ax-td">
+              <div class="ax-score-wrap">
+                <div class="ax-score-num">82</div>
+                <div class="ax-score-bar"><div class="ax-score-fill" style="width:82%;background:#fff;"></div></div>
+              </div>
+            </div>
+            <div class="ax-td">$47.20</div>
+            <div class="ax-td up">+14.3%</div>
+            <div class="ax-td">$9,440</div>
+            <div class="ax-td" style="font-size:9px;color:rgba(255,255,255,0.3);">$42.10 ↓ · $58.00 ↑</div>
+            <div class="ax-td" style="font-size:10px;color:#4AFF8C;">BULL</div>
+          </div>
+          <div class="ax-row">
+            <div class="ax-td bold">POWL</div>
+            <div class="ax-td">
+              <div class="ax-score-wrap">
+                <div class="ax-score-num">77</div>
+                <div class="ax-score-bar"><div class="ax-score-fill" style="width:77%;background:rgba(255,255,255,0.7);"></div></div>
+              </div>
+            </div>
+            <div class="ax-td">$183.44</div>
+            <div class="ax-td up">+9.7%</div>
+            <div class="ax-td">$18,344</div>
+            <div class="ax-td" style="font-size:9px;color:rgba(255,255,255,0.3);">$168.20 ↓ · $210.00 ↑</div>
+            <div class="ax-td" style="font-size:10px;color:#4AFF8C;">BULL</div>
+          </div>
+          <div class="ax-row">
+            <div class="ax-td bold">SMPL</div>
+            <div class="ax-td">
+              <div class="ax-score-wrap">
+                <div class="ax-score-num">64</div>
+                <div class="ax-score-bar"><div class="ax-score-fill" style="width:64%;background:rgba(255,255,255,0.5);"></div></div>
+              </div>
+            </div>
+            <div class="ax-td">$29.18</div>
+            <div class="ax-td" style="color:rgba(255,255,255,0.4);">+0.4%</div>
+            <div class="ax-td">$5,836</div>
+            <div class="ax-td" style="font-size:9px;color:rgba(255,255,255,0.3);">$26.50 ↓ · $36.00 ↑</div>
+            <div class="ax-td" style="font-size:10px;color:rgba(255,180,32,0.7);">SIDE</div>
+          </div>
+          <div class="ax-row">
+            <div class="ax-td bold">MTDR</div>
+            <div class="ax-td">
+              <div class="ax-score-wrap">
+                <div class="ax-score-num">48</div>
+                <div class="ax-score-bar"><div class="ax-score-fill" style="width:48%;background:rgba(255,68,85,0.7);"></div></div>
+              </div>
+            </div>
+            <div class="ax-td">$44.91</div>
+            <div class="ax-td dn">−3.2%</div>
+            <div class="ax-td">$6,737</div>
+            <div class="ax-td" style="font-size:9px;color:rgba(255,68,85,0.6);">$41.00 ↓ near stop</div>
+            <div class="ax-td" style="font-size:10px;color:#4AFF8C;">BULL</div>
+          </div>
+        </div>
+        <!-- Signal col -->
+        <div class="ax-signal-col">
+          <div class="ax-signal-header">Pending Signals — 3</div>
+          <div class="ax-signal">
+            <div class="ax-signal-top">
+              <div class="ax-signal-ticker">NOVA</div>
+              <div style="display:flex;gap:5px;">
+                <div class="ax-signal-badge buy">BUY</div>
+                <div class="ax-signal-badge approved">APPROVED</div>
+              </div>
+            </div>
+            <div class="ax-signal-meta">
+              200 shares @ <em>$28.40</em><br>
+              Score <em>79</em> · SL <em>$25.90</em> · TP <em>$36.00</em>
+            </div>
+            <div class="ax-confidence"><div class="ax-confidence-fill" style="width:88%"></div></div>
+          </div>
+          <div class="ax-signal">
+            <div class="ax-signal-top">
+              <div class="ax-signal-ticker">CRC</div>
+              <div style="display:flex;gap:5px;">
+                <div class="ax-signal-badge sell">SELL</div>
+                <div class="ax-signal-badge approved">STOP</div>
+              </div>
+            </div>
+            <div class="ax-signal-meta">
+              Stop triggered @ <em>$31.20</em><br>
+              Realized: <em style="color:#FF4455;">−5.4%</em>
+            </div>
+            <div class="ax-confidence"><div class="ax-confidence-fill" style="width:95%;background:#FF4455;"></div></div>
+          </div>
+          <div class="ax-signal">
+            <div class="ax-signal-top">
+              <div class="ax-signal-ticker">SMPL</div>
+              <div class="ax-signal-badge buy">BUY</div>
+            </div>
+            <div class="ax-signal-meta">
+              150 shares @ <em>$29.18</em><br>
+              Score <em>71</em> · VETO pending review
+            </div>
+            <div class="ax-confidence"><div class="ax-confidence-fill" style="width:62%;background:rgba(255,180,32,0.7);"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ B — VELA ══════ -->
+  <div class="dir-block vela" data-choice="b" onclick="toggleSelect(this)">
+    <div class="dir-header">
+      <div class="dir-letter">B</div>
+      <div class="dir-header-text">
+        <div class="dir-name">VELA — Spatial Canvas</div>
+        <div class="dir-tagline">Portfolios as solar systems floating in 2D space. Positions orbit as glowing satellites — size = market value, color = P&L. Click to zoom, hover to inspect. Zero traditional chrome.</div>
+        <div class="dir-traits" style="margin-top:8px;">
+          <span class="trait">Midnight blue</span>
+          <span class="trait">Electric lime</span>
+          <span class="trait">Orbital metaphor</span>
+          <span class="trait">Spatial/zoomable</span>
+          <span class="trait">No sidebar</span>
+        </div>
+      </div>
+      <div class="select-badge">Select B</div>
+    </div>
+    <div class="dir-preview">
+      <div class="vl-topbar">
+        <div class="vl-logo"><div class="vl-pulse"></div>VELA</div>
+        <div class="vl-sp"></div>
+        <div class="vl-markets">
+          <div class="vl-m">SPX <span>5,847</span> <span class="up">▲0.3%</span></div>
+          <div class="vl-m">RUT <span>2,102</span> <span class="dn">▼0.1%</span></div>
+          <div class="vl-m">VIX <span>14.8</span></div>
+        </div>
+        <div style="width:1px;height:20px;background:rgba(255,255,255,0.07);margin:0 8px;"></div>
+        <div class="vl-btns">
+          <div class="vl-btn vl-btn-ghost">⚡ Scan</div>
+          <div class="vl-btn vl-btn-ghost">🔍 Analyze</div>
+          <div class="vl-btn vl-btn-solid">▶ Execute</div>
+        </div>
+      </div>
+
+      <div class="vl-canvas-section">
+        <!-- microcap cluster -->
+        <div class="vl-cluster" style="left:22%;top:38%;">
+          <div class="vl-node-wrap" style="width:70px;height:70px;">
+            <div class="vl-ring" style="width:110px;height:110px;border-color:rgba(200,255,0,0.08);"></div>
+            <div class="vl-ring" style="width:155px;height:155px;border-color:rgba(200,255,0,0.04);"></div>
+            <div class="vl-node" style="width:70px;height:70px;background:radial-gradient(circle at 38% 35%, rgba(200,255,0,0.18), rgba(200,255,0,0.04));border-color:rgba(200,255,0,0.4);box-shadow:0 0 24px rgba(200,255,0,0.1);">
+              <div class="vl-node-pct" style="color:#C8FF00;">+8.4%</div>
+              <div class="vl-node-cash" style="color:rgba(255,255,255,0.5);">$241K</div>
+            </div>
+            <!-- satellites: green = profit, red = loss -->
+            <div class="vl-sat" style="width:10px;height:10px;background:#C8FF00;box-shadow:0 0 8px rgba(200,255,0,0.6);left:-52px;top:10px;" title="CELH +14.3%"><div class="vl-sat-tip">CELH +14.3%</div></div>
+            <div class="vl-sat" style="width:12px;height:12px;background:#C8FF00;box-shadow:0 0 8px rgba(200,255,0,0.5);left:-44px;top:58px;" title="POWL +9.7%"><div class="vl-sat-tip">POWL +9.7%</div></div>
+            <div class="vl-sat" style="width:8px;height:8px;background:rgba(200,255,0,0.5);left:4px;top:-48px;" title="KMT +3.1%"><div class="vl-sat-tip">KMT +3.1%</div></div>
+            <div class="vl-sat" style="width:8px;height:8px;background:rgba(255,107,107,0.8);box-shadow:0 0 6px rgba(255,107,107,0.4);left:50px;top:-30px;" title="MTDR -3.2%"><div class="vl-sat-tip">MTDR -3.2%</div></div>
+            <div class="vl-sat" style="width:7px;height:7px;background:rgba(200,255,0,0.4);left:58px;top:30px;" title="SMPL +0.4%"><div class="vl-sat-tip">SMPL +0.4%</div></div>
+            <div class="vl-sat" style="width:9px;height:9px;background:#C8FF00;box-shadow:0 0 6px rgba(200,255,0,0.4);left:-38px;top:-32px;" title="ESE +6.2%"><div class="vl-sat-tip">ESE +6.2%</div></div>
+          </div>
+          <div class="vl-label-block">
+            <div class="vl-label-name">microcap</div>
+            <div class="vl-label-sub">11 positions · BULL</div>
+          </div>
+        </div>
+
+        <!-- ai cluster -->
+        <div class="vl-cluster" style="left:56%;top:20%;">
+          <div class="vl-node-wrap" style="width:58px;height:58px;">
+            <div class="vl-ring" style="width:90px;height:90px;border-color:rgba(150,180,255,0.1);"></div>
+            <div class="vl-ring" style="width:125px;height:125px;border-color:rgba(150,180,255,0.05);"></div>
+            <div class="vl-node" style="width:58px;height:58px;background:radial-gradient(circle at 38% 35%, rgba(150,180,255,0.18), rgba(150,180,255,0.04));border-color:rgba(150,180,255,0.35);box-shadow:0 0 20px rgba(150,180,255,0.08);">
+              <div class="vl-node-pct" style="color:#96B4FF;">+12.1%</div>
+              <div class="vl-node-cash" style="color:rgba(255,255,255,0.5);">$118K</div>
+            </div>
+            <div class="vl-sat" style="width:9px;height:9px;background:#96B4FF;box-shadow:0 0 6px rgba(150,180,255,0.5);left:-42px;top:-5px;"></div>
+            <div class="vl-sat" style="width:11px;height:11px;background:#96B4FF;box-shadow:0 0 7px rgba(150,180,255,0.4);left:-34px;top:42px;"></div>
+            <div class="vl-sat" style="width:8px;height:8px;background:#96B4FF;left:38px;top:-24px;"></div>
+            <div class="vl-sat" style="width:7px;height:7px;background:rgba(255,107,107,0.6);left:38px;top:24px;"></div>
+          </div>
+          <div class="vl-label-block">
+            <div class="vl-label-name">ai</div>
+            <div class="vl-label-sub">8 positions · BULL</div>
+          </div>
+        </div>
+
+        <!-- sph cluster -->
+        <div class="vl-cluster" style="left:75%;top:55%;">
+          <div class="vl-node-wrap" style="width:44px;height:44px;">
+            <div class="vl-ring" style="width:70px;height:70px;border-color:rgba(255,176,32,0.1);"></div>
+            <div class="vl-node" style="width:44px;height:44px;background:radial-gradient(circle at 38% 35%, rgba(255,176,32,0.15), rgba(255,176,32,0.03));border-color:rgba(255,176,32,0.3);">
+              <div class="vl-node-pct" style="font-size:8px;color:#FFB020;">+2.3%</div>
+            </div>
+            <div class="vl-sat" style="width:8px;height:8px;background:rgba(255,176,32,0.7);left:-34px;top:0;"></div>
+            <div class="vl-sat" style="width:7px;height:7px;background:rgba(255,107,107,0.6);left:28px;top:-24px;"></div>
+          </div>
+          <div class="vl-label-block">
+            <div class="vl-label-name">sph</div>
+            <div class="vl-label-sub">3 positions</div>
+          </div>
+        </div>
+
+        <!-- largeboi cluster -->
+        <div class="vl-cluster" style="left:42%;top:65%;">
+          <div class="vl-node-wrap" style="width:36px;height:36px;">
+            <div class="vl-node" style="width:36px;height:36px;background:rgba(255,68,85,0.05);border-color:rgba(255,68,85,0.2);">
+              <div class="vl-node-pct" style="font-size:8px;color:#FF4455;">-0.8%</div>
+            </div>
+            <div class="vl-sat" style="width:7px;height:7px;background:rgba(255,107,107,0.5);left:-28px;top:0;"></div>
+          </div>
+          <div class="vl-label-block">
+            <div class="vl-label-name">largeboi</div>
+            <div class="vl-label-sub">2 ETFs</div>
+          </div>
+        </div>
+
+        <!-- Connection lines -->
+        <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line x1="28" y1="52" x2="58" y2="32" stroke="rgba(200,255,0,0.06)" stroke-width="0.4" stroke-dasharray="2,3"/>
+          <line x1="28" y1="52" x2="44" y2="70" stroke="rgba(200,255,0,0.04)" stroke-width="0.3" stroke-dasharray="2,3"/>
+          <line x1="60" y1="32" x2="76" y2="60" stroke="rgba(150,180,255,0.05)" stroke-width="0.3" stroke-dasharray="2,3"/>
+        </svg>
+
+        <!-- Overlay card (selected node detail) -->
+        <div class="vl-overlay">
+          <div class="vl-overlay-name">CELH</div>
+          <div class="vl-overlay-sub">Celsius Holdings · microcap</div>
+          <div class="vl-row"><span class="vl-row-k">Score</span><span class="vl-row-v">82 / 100</span></div>
+          <div class="vl-row"><span class="vl-row-k">Price</span><span class="vl-row-v">$47.20</span></div>
+          <div class="vl-row"><span class="vl-row-k">Unr. P&L</span><span class="vl-row-v up">+14.3%</span></div>
+          <div class="vl-row"><span class="vl-row-k">Value</span><span class="vl-row-v">$9,440</span></div>
+          <div class="vl-row"><span class="vl-row-k">Stop</span><span class="vl-row-v">$42.10</span></div>
+          <div class="vl-row"><span class="vl-row-k">Target</span><span class="vl-row-v">$58.00</span></div>
+          <div class="vl-row"><span class="vl-row-k">Regime</span><span class="vl-row-v up">BULL</span></div>
+        </div>
+
+        <!-- Legend -->
+        <div style="position:absolute;left:16px;bottom:16px;display:flex;gap:16px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.25);">
+            <div style="width:8px;height:8px;border-radius:50%;background:#C8FF00;box-shadow:0 0 5px rgba(200,255,0,0.5);"></div> Profit
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.25);">
+            <div style="width:8px;height:8px;border-radius:50%;background:#FF6B6B;box-shadow:0 0 5px rgba(255,107,107,0.5);"></div> Loss
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.2);">Satellite size = position value</div>
+        </div>
+      </div>
+
+      <!-- Bottom strip -->
+      <div class="vl-bottom">
+        <div class="vl-bottom-block">
+          <div class="vl-bottom-label">Total Equity</div>
+          <div class="vl-big">$482,304</div>
+          <div class="vl-big-sub">▲ +8.4% total return</div>
+        </div>
+        <div class="vl-bottom-block">
+          <div class="vl-bottom-label">Pending Signals</div>
+          <div class="vl-sig-item">
+            <span class="vl-sig-t">NOVA</span>
+            <span class="vl-sig-meta">score 79</span>
+            <span class="vl-sig-tag buy">BUY</span>
+          </div>
+          <div class="vl-sig-item">
+            <span class="vl-sig-t">CRC</span>
+            <span class="vl-sig-meta">stop hit</span>
+            <span class="vl-sig-tag sell">SELL</span>
+          </div>
+          <div class="vl-sig-item">
+            <span class="vl-sig-t">SMPL</span>
+            <span class="vl-sig-meta">score 71</span>
+            <span class="vl-sig-tag buy">BUY</span>
+          </div>
+        </div>
+        <div class="vl-bottom-block">
+          <div class="vl-bottom-label">Quick Actions</div>
+          <div class="vl-cmd-row">
+            <div class="vl-cmd">⚡ Scan <kbd>S</kbd></div>
+            <div class="vl-cmd">🔍 Analyze <kbd>A</kbd></div>
+            <div class="vl-cmd">⌘K Command</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ C — MERIDIAN ══════ -->
+  <div class="dir-block meridian" data-choice="c" onclick="toggleSelect(this)">
+    <div class="dir-header">
+      <div class="dir-letter">C</div>
+      <div class="dir-header-text">
+        <div class="dir-name">MERIDIAN — Warm Bento Grid</div>
+        <div class="dir-tagline">Amber and gold on warm dark cognac. No sidebar, no rails — information lives in purpose-built bento blocks. Stripe Dashboard meets Linear, built for algo trading.</div>
+        <div class="dir-traits" style="margin-top:8px;">
+          <span class="trait">Warm amber/gold</span>
+          <span class="trait">Bento grid</span>
+          <span class="trait">Card-first</span>
+          <span class="trait">No nav rails</span>
+          <span class="trait">Editorial feel</span>
+        </div>
+      </div>
+      <div class="select-badge">Select C</div>
+    </div>
+    <div class="dir-preview">
+      <!-- Top bar -->
+      <div class="mr-topbar">
+        <div class="mr-logo">
+          <div class="mr-logo-mark">M</div>
+          MERIDIAN
+        </div>
+        <div class="mr-nav">
+          <div class="mr-nav-item active">Command</div>
+          <div class="mr-nav-item">Signals</div>
+          <div class="mr-nav-item">Risk</div>
+          <div class="mr-nav-item">Alpha</div>
+        </div>
+        <div class="mr-sp"></div>
+        <div class="mr-markets">
+          <div class="mr-m">SPX <span>5,847</span> <span class="up">▲0.3%</span></div>
+          <div class="mr-m">RUT <span>2,102</span> <span class="dn">▼0.1%</span></div>
+          <div class="mr-m">VIX <span>14.8</span></div>
+        </div>
+        <div style="width:1px;height:20px;background:rgba(255,255,255,0.06);margin:0 8px;"></div>
+        <div class="mr-btns">
+          <div class="mr-btn mr-btn-ghost">Scan</div>
+          <div class="mr-btn mr-btn-ghost">Analyze</div>
+          <div class="mr-btn mr-btn-solid">Execute →</div>
+        </div>
+      </div>
+
+      <!-- Bento grid -->
+      <div class="mr-bento">
+        <!-- Equity -->
+        <div class="mr-cell mr-equity">
+          <div class="mr-cell-label">Total Equity</div>
+          <div class="mr-equity-val">$482,304</div>
+          <div class="mr-equity-delta">▲ $4,127 today</div>
+          <div class="mr-equity-cash">$89,441 cash · 18.5% free</div>
+        </div>
+
+        <!-- Chart (2 cols × 2 rows) -->
+        <div class="mr-cell mr-chart">
+          <div class="mr-cell-label">Equity Curves — All Portfolios</div>
+          <svg width="100%" height="210" viewBox="0 0 500 210" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gAI" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#5DFFB3" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#5DFFB3" stop-opacity="0"/>
+              </linearGradient>
+              <linearGradient id="gMC" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#FFD060" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#FFD060" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid -->
+            <line x1="0" y1="53" x2="500" y2="53" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+            <line x1="0" y1="106" x2="500" y2="106" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+            <line x1="0" y1="159" x2="500" y2="159" stroke="rgba(255,255,255,0.04)" stroke-width="0.5"/>
+            <!-- ai line -->
+            <path d="M0,180 C60,170 120,162 180,140 C240,118 290,130 340,100 C390,72 430,80 500,42" fill="url(#gAI)"/>
+            <path d="M0,180 C60,170 120,162 180,140 C240,118 290,130 340,100 C390,72 430,80 500,42" fill="none" stroke="#5DFFB3" stroke-width="2"/>
+            <!-- microcap fill + line -->
+            <path d="M0,190 C60,183 120,178 175,163 C230,148 270,158 310,140 C360,120 410,130 500,105 L500,210 L0,210Z" fill="url(#gMC)"/>
+            <path d="M0,190 C60,183 120,178 175,163 C230,148 270,158 310,140 C360,120 410,130 500,105" fill="none" stroke="#FFD060" stroke-width="2"/>
+            <!-- Endpoint dots -->
+            <circle cx="500" cy="42" r="4" fill="#5DFFB3" opacity="0.8"/>
+            <circle cx="500" cy="42" r="9" fill="rgba(93,255,179,0.15)"/>
+            <circle cx="500" cy="105" r="4" fill="#FFD060" opacity="0.8"/>
+            <circle cx="500" cy="105" r="9" fill="rgba(255,208,96,0.15)"/>
+            <!-- Labels -->
+            <text x="490" y="38" fill="#5DFFB3" font-size="9" font-family="JetBrains Mono" text-anchor="end">ai +12.1%</text>
+            <text x="490" y="122" fill="#FFD060" font-size="9" font-family="JetBrains Mono" text-anchor="end">microcap +8.4%</text>
+            <!-- X labels -->
+            <text x="4" y="207" fill="rgba(255,255,255,0.18)" font-size="8" font-family="JetBrains Mono">Jan</text>
+            <text x="164" y="207" fill="rgba(255,255,255,0.18)" font-size="8" font-family="JetBrains Mono">Feb</text>
+            <text x="330" y="207" fill="rgba(255,255,255,0.18)" font-size="8" font-family="JetBrains Mono">Mar</text>
+            <text x="470" y="207" fill="rgba(255,255,255,0.18)" font-size="8" font-family="JetBrains Mono">Now</text>
+          </svg>
+        </div>
+
+        <!-- Regime (right tall) -->
+        <div class="mr-cell mr-regime">
+          <div class="mr-cell-label">Market Regime</div>
+          <div class="mr-regime-bull">BULL</div>
+          <div class="mr-regime-sub">3 consecutive closes above SMA</div>
+          <div class="mr-regime-stat">
+            <div class="mr-regime-stat-k">Active days</div>
+            <div class="mr-regime-stat-v">7</div>
+          </div>
+          <div class="mr-regime-stat">
+            <div class="mr-regime-stat-k">Size mult.</div>
+            <div class="mr-regime-stat-v">1.0×</div>
+          </div>
+          <div class="mr-regime-stat">
+            <div class="mr-regime-stat-k">VIX</div>
+            <div class="mr-regime-stat-v">14.8</div>
+          </div>
+          <div class="mr-regime-stat">
+            <div class="mr-regime-stat-k">Benchmark</div>
+            <div class="mr-regime-stat-v">^RUT</div>
+          </div>
+        </div>
+
+        <!-- Total Return -->
+        <div class="mr-cell mr-return">
+          <div class="mr-cell-label">Total Return</div>
+          <div class="mr-return-val">+8.4%</div>
+          <div class="mr-return-sub">vs SPX +3.1% · α +5.3%</div>
+        </div>
+
+        <!-- Position chips -->
+        <div class="mr-cell mr-positions" style="grid-column:1/4;grid-row:3/4;">
+          <div class="mr-pos-label">Top Positions</div>
+          <div class="mr-pos-row">
+            <div class="mr-pos-chip hl">
+              <div class="mr-score-circle hi">82</div>
+              <div class="mr-pos-body">
+                <div class="mr-pos-ticker">CELH</div>
+                <div class="mr-pos-meta">$47.20 · $9,440</div>
+              </div>
+              <div class="mr-pos-pnl up">+14.3%</div>
+            </div>
+            <div class="mr-pos-chip">
+              <div class="mr-score-circle hi">77</div>
+              <div class="mr-pos-body">
+                <div class="mr-pos-ticker">POWL</div>
+                <div class="mr-pos-meta">$183.44 · $18,344</div>
+              </div>
+              <div class="mr-pos-pnl up">+9.7%</div>
+            </div>
+            <div class="mr-pos-chip">
+              <div class="mr-score-circle md">64</div>
+              <div class="mr-pos-body">
+                <div class="mr-pos-ticker">SMPL</div>
+                <div class="mr-pos-meta">$29.18 · $5,836</div>
+              </div>
+              <div class="mr-pos-pnl up">+0.4%</div>
+            </div>
+            <div class="mr-pos-chip warn">
+              <div class="mr-score-circle lo">48</div>
+              <div class="mr-pos-body">
+                <div class="mr-pos-ticker">MTDR</div>
+                <div class="mr-pos-meta">$44.91 · $6,737</div>
+              </div>
+              <div class="mr-pos-pnl dn">−3.2%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signals col -->
+        <div class="mr-cell mr-signals" style="grid-column:4/5;grid-row:3/4;">
+          <div class="mr-cell-label">Signals</div>
+          <div class="mr-sig-item">
+            <div class="mr-sig-dot" style="background:#5DFFB3;box-shadow:0 0 5px #5DFFB3;"></div>
+            <div class="mr-sig-text"><strong>NOVA</strong> · BUY · 79</div>
+          </div>
+          <div class="mr-sig-item">
+            <div class="mr-sig-dot" style="background:#FF6B6B;box-shadow:0 0 5px #FF6B6B;"></div>
+            <div class="mr-sig-text"><strong>CRC</strong> · STOP</div>
+          </div>
+          <div class="mr-sig-item">
+            <div class="mr-sig-dot" style="background:#FFD060;"></div>
+            <div class="mr-sig-text"><strong>SMPL</strong> · VETO</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.dir-block').forEach(b => {
+    b.classList.remove('selected');
+    b.querySelector('.select-badge').textContent = 'Select ' + b.dataset.choice.toUpperCase();
+  });
+  el.classList.add('selected');
+  el.querySelector('.select-badge').textContent = '✓ Selected';
+  // fire event for companion
+  if (window.__brainstorm_selectOption) window.__brainstorm_selectOption(el.dataset.choice, el.querySelector('.dir-name').textContent);
+}
+</script>
+</body>
+</html>

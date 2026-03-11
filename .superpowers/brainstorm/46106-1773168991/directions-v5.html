@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Council Directions — Round 4</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&family=Fira+Code:wght@300;400;500;600;700&family=Martian+Mono:wght@300;400;500;600;700;800&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{background:#1c1c1c;}body{font-family:sans-serif;}
+
+/* Outer chrome */
+.page{padding:40px;display:flex;flex-direction:column;gap:0;}
+.page-title{font-family:sans-serif;font-size:19px;font-weight:700;color:#fff;margin-bottom:3px;}
+.page-sub{font-family:sans-serif;font-size:12px;color:rgba(255,255,255,0.35);margin-bottom:36px;}
+.dir-wrapper{margin-bottom:4px;}
+.dir-meta{background:#181818;border-top:1px solid rgba(255,255,255,0.06);padding:24px 32px;display:flex;align-items:flex-start;gap:20px;}
+.dir-badge{width:42px;height:42px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex-shrink:0;font-family:sans-serif;}
+.dir-body{flex:1;}
+.dir-name{font-size:16px;font-weight:700;color:#fff;margin-bottom:3px;font-family:sans-serif;}
+.dir-quote{font-size:12px;color:rgba(255,255,255,0.35);font-style:italic;margin-bottom:5px;font-family:sans-serif;}
+.dir-desc{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.55;max-width:640px;font-family:sans-serif;}
+.dir-pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;}
+.dir-pill{font-family:monospace;font-size:9px;letter-spacing:0.04em;padding:3px 8px;border-radius:3px;border:1px solid;}
+.dir-btn{font-family:sans-serif;font-size:11px;font-weight:600;padding:7px 18px;border-radius:6px;cursor:pointer;border:1.5px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.03);white-space:nowrap;margin-top:2px;transition:all 0.15s;}
+.dir-btn:hover{border-color:rgba(255,255,255,0.45);color:#fff;}
+.dir-wrapper.selected .dir-btn{background:#fff;color:#000;border-color:#fff;}
+.mockup{width:100%;}
+.gap{height:2px;background:#222;}
+
+
+/* ═══════════════════════════════════════════════════════
+   A — DATUM  (Tufte)
+   "Above all else, show the data."
+   Off-white #F7F6F3 · Warm charcoal #1A1914
+   EB Garamond (editorial) + Fira Code (data)
+   Only data-semantic colors: profit green, loss red
+═══════════════════════════════════════════════════════ */
+.datum{background:#F7F6F3;color:#1A1914;font-family:'Fira Code',monospace;}
+
+.datum-bar{
+  background:#1A1914;
+  display:flex;align-items:center;
+  height:44px;padding:0 28px;gap:0;
+}
+.datum-logo{
+  font-family:'EB Garamond',serif;
+  font-size:20px;font-weight:800;font-style:italic;
+  color:#F7F6F3;letter-spacing:-0.01em;
+  padding-right:24px;border-right:1px solid rgba(247,246,243,0.1);
+  margin-right:24px;
+}
+.datum-nav{display:flex;gap:0;}
+.datum-nav-item{
+  font-family:'Fira Code',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;
+  color:rgba(247,246,243,0.3);padding:0 14px;height:44px;
+  display:flex;align-items:center;cursor:pointer;
+  border-right:1px solid rgba(247,246,243,0.05);
+}
+.datum-nav-item.active{color:#F7F6F3;}
+.datum-sp{flex:1;}
+.datum-mkt{display:flex;align-items:center;gap:0;}
+.datum-mkt-item{
+  display:flex;align-items:baseline;gap:5px;
+  padding:0 16px;border-right:1px solid rgba(247,246,243,0.07);
+  font-family:'Fira Code',monospace;
+}
+.datum-mkt-name{font-size:8px;letter-spacing:0.1em;color:rgba(247,246,243,0.3);}
+.datum-mkt-val{font-size:12px;color:#F7F6F3;}
+.datum-mkt-chg{font-size:9px;}
+.datum-mkt-chg.up{color:#52C45A;}
+.datum-mkt-chg.dn{color:#C44444;}
+.datum-actions{display:flex;gap:5px;margin-left:18px;}
+.datum-btn{
+  font-family:'Fira Code',monospace;font-size:8px;font-weight:600;
+  letter-spacing:0.1em;text-transform:uppercase;
+  padding:5px 12px;border-radius:2px;cursor:pointer;border:1px solid;
+}
+.datum-btn-outline{color:rgba(247,246,243,0.4);border-color:rgba(247,246,243,0.12);background:transparent;}
+.datum-btn-fill{color:#1A1914;background:#F7F6F3;border-color:#F7F6F3;}
+
+/* Summary strip — horizontal data row, no cards */
+.datum-summary{
+  display:flex;align-items:baseline;
+  padding:16px 28px;gap:32px;
+  border-bottom:2px solid #1A1914;
+}
+.datum-summary-stat{}
+.datum-ss-label{font-family:'Fira Code',monospace;font-size:7px;letter-spacing:0.15em;text-transform:uppercase;color:rgba(26,25,20,0.3);margin-bottom:3px;}
+.datum-ss-val{font-family:'EB Garamond',serif;font-size:28px;font-weight:700;color:#1A1914;line-height:1;letter-spacing:-0.01em;}
+.datum-ss-val.up{color:#2D6A30;}
+.datum-ss-val.dn{color:#B02020;}
+.datum-ss-sub{font-family:'Fira Code',monospace;font-size:9px;color:rgba(26,25,20,0.3);margin-top:2px;}
+.datum-vdiv{width:1px;height:40px;background:rgba(26,25,20,0.1);flex-shrink:0;}
+.datum-regime{
+  display:flex;align-items:center;gap:7px;margin-left:auto;
+  font-family:'Fira Code',monospace;font-size:9px;letter-spacing:0.08em;color:rgba(26,25,20,0.5);
+}
+.datum-regime-box{
+  font-family:'EB Garamond',serif;font-size:14px;font-weight:700;font-style:italic;
+  background:#1A1914;color:#F7F6F3;padding:4px 10px;
+}
+
+/* Main: positions table (the whole app) */
+.datum-main{display:grid;grid-template-columns:1fr 280px;}
+
+.datum-positions{}
+.datum-pos-thead{
+  display:grid;
+  grid-template-columns:80px 90px 60px 70px 80px 80px 1fr 100px;
+  padding:8px 28px;
+  border-bottom:1px solid rgba(26,25,20,0.12);
+  background:rgba(26,25,20,0.03);
+  position:sticky;top:0;
+}
+.datum-th{font-family:'Fira Code',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(26,25,20,0.3);}
+.datum-th.right{text-align:right;}
+
+.datum-row{
+  display:grid;
+  grid-template-columns:80px 90px 60px 70px 80px 80px 1fr 100px;
+  padding:9px 28px;
+  border-bottom:1px solid rgba(26,25,20,0.07);
+  align-items:center;cursor:pointer;
+  transition:background 0.1s;
+}
+.datum-row:hover{background:rgba(26,25,20,0.025);}
+.datum-row.hl{
+  background:rgba(26,25,20,0.04);
+  border-left:2px solid #1A1914;
+  padding-left:26px;
+}
+.datum-td{font-family:'Fira Code',monospace;font-size:10px;color:rgba(26,25,20,0.55);}
+.datum-td.right{text-align:right;}
+.datum-td.ticker{font-family:'EB Garamond',serif;font-size:16px;font-weight:700;color:#1A1914;font-style:normal;}
+.datum-td.up{color:#2D6A30;}
+.datum-td.dn{color:#B02020;}
+.datum-td.dim{color:rgba(26,25,20,0.35);}
+
+/* Score: just a number and a tiny bar */
+.datum-score-wrap{display:flex;flex-direction:column;gap:3px;}
+.datum-score-num{font-family:'Fira Code',monospace;font-size:10px;color:rgba(26,25,20,0.5);}
+.datum-score-bar{height:2px;background:rgba(26,25,20,0.08);border-radius:1px;overflow:hidden;}
+.datum-score-fill{height:100%;border-radius:1px;}
+
+/* Sparkline cell */
+.datum-spark{width:100%;height:24px;}
+.datum-spark svg{display:block;width:100%;height:100%;}
+
+/* Right panel: signals as text, not cards */
+.datum-right{border-left:1px solid rgba(26,25,20,0.1);padding:0;}
+.datum-right-head{
+  font-family:'Fira Code',monospace;font-size:8px;letter-spacing:0.14em;text-transform:uppercase;
+  color:rgba(26,25,20,0.3);padding:9px 18px;
+  border-bottom:1px solid rgba(26,25,20,0.1);
+  background:rgba(26,25,20,0.025);
+}
+.datum-signal{padding:11px 18px;border-bottom:1px solid rgba(26,25,20,0.07);}
+.datum-sig-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;}
+.datum-sig-ticker{font-family:'EB Garamond',serif;font-size:18px;font-weight:700;color:#1A1914;}
+.datum-sig-type{font-family:'Fira Code',monospace;font-size:8px;letter-spacing:0.1em;font-weight:600;}
+.datum-sig-type.buy{color:#2D6A30;}
+.datum-sig-type.sell{color:#B02020;}
+.datum-sig-type.veto{color:rgba(26,25,20,0.3);}
+.datum-sig-meta{font-family:'Fira Code',monospace;font-size:9px;color:rgba(26,25,20,0.4);line-height:1.9;}
+.datum-sig-meta em{color:rgba(26,25,20,0.65);font-style:normal;}
+.datum-sig-bar{margin-top:6px;height:2px;background:rgba(26,25,20,0.07);border-radius:1px;overflow:hidden;}
+.datum-sig-fill{height:100%;}
+
+/* Risk row at bottom */
+.datum-risk-strip{
+  border-top:2px solid #1A1914;
+  display:grid;grid-template-columns:repeat(5,1fr);
+}
+.datum-risk-item{padding:10px 28px;border-right:1px solid rgba(26,25,20,0.08);}
+.datum-risk-item:last-child{border-right:none;}
+.datum-risk-label{font-family:'Fira Code',monospace;font-size:7px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(26,25,20,0.28);margin-bottom:4px;}
+.datum-risk-bar{height:3px;background:rgba(26,25,20,0.08);border-radius:1px;overflow:hidden;margin-bottom:3px;}
+.datum-risk-fill{height:100%;border-radius:1px;}
+.datum-risk-val{font-family:'Fira Code',monospace;font-size:9px;color:rgba(26,25,20,0.45);}
+.datum-risk-val.ok{color:#2D6A30;}
+.datum-risk-val.warn{color:#B07010;}
+
+
+/* ═══════════════════════════════════════════════════════
+   B — SYSTEMA  (Crouwel)
+   "The grid is not a constraint. The grid is the design."
+   #0C0C0C · #DADAD2 · ONE accent: #FF5500
+   Martian Mono throughout — machine-readable, systematic
+   8px base unit. EVERYTHING is derived from 8px.
+═══════════════════════════════════════════════════════ */
+.systema{background:#0C0C0C;color:#DADAD2;font-family:'Martian Mono',monospace;}
+
+.sys-bar{
+  display:grid;grid-template-columns:auto 1fr auto;
+  align-items:stretch;
+  height:48px;
+  border-bottom:1px solid rgba(218,218,210,0.06);
+}
+.sys-logo-cell{
+  display:flex;align-items:center;
+  padding:0 24px;
+  border-right:1px solid rgba(218,218,210,0.06);
+}
+.sys-logo{
+  font-family:'Martian Mono',monospace;font-size:13px;font-weight:800;
+  letter-spacing:0.25em;text-transform:uppercase;color:#FF5500;
+}
+.sys-nav{display:flex;align-items:stretch;}
+.sys-nav-item{
+  display:flex;align-items:center;
+  padding:0 20px;font-size:9px;font-weight:600;
+  letter-spacing:0.12em;text-transform:uppercase;
+  color:rgba(218,218,210,0.25);
+  border-right:1px solid rgba(218,218,210,0.04);cursor:pointer;
+}
+.sys-nav-item.active{color:#FF5500;}
+.sys-right-cell{
+  display:flex;align-items:center;gap:0;
+  border-left:1px solid rgba(218,218,210,0.06);
+}
+.sys-mkt{
+  display:flex;align-items:center;gap:8px;
+  padding:0 20px;border-right:1px solid rgba(218,218,210,0.05);
+  font-size:9px;
+}
+.sys-mkt-k{color:rgba(218,218,210,0.2);letter-spacing:0.06em;}
+.sys-mkt-v{color:#DADAD2;font-weight:600;}
+.sys-mkt-v.up{color:#3AB86A;}
+.sys-mkt-v.dn{color:#CC3333;}
+.sys-action{
+  display:flex;align-items:center;
+  padding:0 16px;border-right:1px solid rgba(218,218,210,0.05);
+  font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;
+  color:rgba(218,218,210,0.3);cursor:pointer;transition:color 0.1s;
+}
+.sys-action:hover{color:#DADAD2;}
+.sys-action.primary{color:#0C0C0C;background:#FF5500;}
+
+/* Instrument row */
+.sys-instruments{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  border-bottom:1px solid rgba(218,218,210,0.06);
+}
+.sys-inst{
+  padding:16px 24px;
+  border-right:1px solid rgba(218,218,210,0.05);
+  position:relative;
+}
+.sys-inst::after{
+  content:'';position:absolute;bottom:0;left:24px;right:24px;
+  height:1px;background:rgba(218,218,210,0.04);
+}
+.sys-inst-num{
+  font-size:22px;font-weight:800;color:#DADAD2;
+  line-height:1;margin-bottom:4px;letter-spacing:-0.02em;
+}
+.sys-inst-num.up{color:#3AB86A;}
+.sys-inst-num.dn{color:#CC3333;}
+.sys-inst-num.accent{color:#FF5500;}
+.sys-inst-label{
+  font-size:7px;font-weight:500;letter-spacing:0.18em;text-transform:uppercase;
+  color:rgba(218,218,210,0.2);margin-bottom:6px;
+}
+.sys-inst-sub{font-size:8px;color:rgba(218,218,210,0.2);}
+
+/* Grid body */
+.sys-body{
+  display:grid;
+  grid-template-columns:200px 1fr;
+  border-bottom:1px solid rgba(218,218,210,0.06);
+}
+
+/* Left: portfolio list */
+.sys-portf-list{border-right:1px solid rgba(218,218,210,0.06);}
+.sys-portf-head{
+  padding:8px 24px;font-size:7px;font-weight:600;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:rgba(218,218,210,0.15);
+  border-bottom:1px solid rgba(218,218,210,0.04);
+  background:rgba(218,218,210,0.02);
+}
+.sys-portf-item{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 24px;border-bottom:1px solid rgba(218,218,210,0.04);
+  cursor:pointer;transition:background 0.1s;
+}
+.sys-portf-item:hover{background:rgba(218,218,210,0.03);}
+.sys-portf-item.active{
+  background:rgba(255,85,0,0.07);
+  border-left:2px solid #FF5500;
+  padding-left:22px;
+}
+.sys-portf-num{font-size:7px;color:rgba(218,218,210,0.15);font-weight:600;letter-spacing:0.08em;width:14px;flex-shrink:0;}
+.sys-portf-name{font-size:10px;font-weight:600;color:#DADAD2;letter-spacing:0.06em;text-transform:uppercase;flex:1;}
+.sys-portf-pct{font-size:10px;font-weight:700;}
+.sys-portf-pct.up{color:#3AB86A;}
+.sys-portf-pct.dn{color:#CC3333;}
+.sys-portf-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+/* Right: positions */
+.sys-positions{}
+.sys-pos-head{
+  display:grid;
+  grid-template-columns:72px 1fr 88px 80px 72px 108px;
+  padding:8px 24px;
+  border-bottom:1px solid rgba(218,218,210,0.06);
+  background:rgba(218,218,210,0.02);
+}
+.sys-th{font-size:7px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:rgba(218,218,210,0.18);}
+.sys-row{
+  display:grid;
+  grid-template-columns:72px 1fr 88px 80px 72px 108px;
+  padding:10px 24px;
+  border-bottom:1px solid rgba(218,218,210,0.04);
+  align-items:center;cursor:pointer;transition:background 0.1s;
+}
+.sys-row:hover{background:rgba(218,218,210,0.025);}
+.sys-row.active{
+  background:rgba(255,85,0,0.06);
+  border-left:2px solid rgba(255,85,0,0.6);
+  padding-left:22px;
+}
+.sys-td{font-size:10px;color:rgba(218,218,210,0.5);}
+.sys-td.ticker{font-size:13px;font-weight:800;color:#DADAD2;letter-spacing:0.04em;}
+.sys-td.up{color:#3AB86A;}
+.sys-td.dn{color:#CC3333;}
+.sys-td.warn{color:#FF5500;}
+.sys-score{display:flex;flex-direction:column;gap:4px;}
+.sys-score-v{font-size:10px;color:rgba(218,218,210,0.4);}
+.sys-score-bar{height:2px;background:rgba(218,218,210,0.07);border-radius:1px;overflow:hidden;}
+.sys-score-f{height:100%;border-radius:1px;}
+
+/* Signal footer */
+.sys-signals{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border-top:1px solid rgba(218,218,210,0.06);
+}
+.sys-sig-block{padding:16px 24px;border-right:1px solid rgba(218,218,210,0.05);}
+.sys-sig-block:last-child{border-right:none;}
+.sys-sig-head{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:10px;
+}
+.sys-sig-title{font-size:7px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;color:rgba(218,218,210,0.2);}
+.sys-sig-badge{
+  font-size:7px;font-weight:700;letter-spacing:0.1em;
+  padding:2px 6px;border:1px solid;
+}
+.sys-sig-badge.buy{color:#3AB86A;border-color:rgba(58,184,106,0.3);}
+.sys-sig-badge.sell{color:#CC3333;border-color:rgba(204,51,51,0.3);}
+.sys-sig-badge.veto{color:rgba(218,218,210,0.25);border-color:rgba(218,218,210,0.08);}
+.sys-sig-ticker{font-size:22px;font-weight:800;color:#DADAD2;letter-spacing:0.02em;margin-bottom:5px;}
+.sys-sig-meta{font-size:9px;color:rgba(218,218,210,0.3);line-height:1.8;}
+.sys-sig-meta span{color:rgba(218,218,210,0.6);}
+.sys-sig-conf{margin-top:8px;height:2px;background:rgba(218,218,210,0.07);overflow:hidden;}
+.sys-conf-f{height:100%;}
+
+
+/* ═══════════════════════════════════════════════════════
+   C — DISPATCH  (Abloh: the 3% rule)
+   "Reference something completely outside the category."
+   Cultural borrow: 1970s Soviet technical documentation
+   #F0EDE6 (aged paper) · #0D0D0D · #CC0000 (Soviet red)
+   Courier Prime THROUGHOUT — even for tickers
+   Layout: numbered report sections, formal tables
+═══════════════════════════════════════════════════════ */
+.dispatch{background:#F0EDE6;color:#0D0D0D;font-family:'Courier Prime',monospace;}
+
+.dsp-topbar{
+  background:#0D0D0D;
+  display:flex;align-items:center;height:48px;padding:0 28px;gap:20px;
+}
+.dsp-logo{
+  font-family:'Courier Prime',monospace;font-size:15px;font-weight:700;
+  letter-spacing:0.06em;color:#F0EDE6;
+  display:flex;align-items:center;gap:10px;
+}
+.dsp-logo-box{
+  width:22px;height:22px;background:#CC0000;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#F0EDE6;
+}
+.dsp-sp{flex:1;}
+.dsp-mkt{
+  display:flex;gap:20px;
+  font-family:'Courier Prime',monospace;font-size:11px;
+  color:rgba(240,237,230,0.4);
+}
+.dsp-mkt span{color:rgba(240,237,230,0.75);}
+.dsp-mkt .up{color:#4CAF50;}
+.dsp-mkt .dn{color:#CC0000;}
+.dsp-mode{
+  font-family:'Courier Prime',monospace;font-size:9px;font-weight:700;
+  letter-spacing:0.1em;color:#CC0000;
+  border:1px solid rgba(204,0,0,0.5);padding:3px 8px;
+}
+.dsp-actions{display:flex;gap:8px;}
+.dsp-btn{
+  font-family:'Courier Prime',monospace;font-size:10px;font-weight:700;
+  letter-spacing:0.06em;padding:5px 14px;cursor:pointer;border:1px solid;
+}
+.dsp-btn-out{color:rgba(240,237,230,0.4);border-color:rgba(240,237,230,0.12);background:transparent;}
+.dsp-btn-red{color:#F0EDE6;background:#CC0000;border-color:#CC0000;}
+
+/* Document header */
+.dsp-doc-header{
+  border-bottom:3px solid #0D0D0D;
+  padding:16px 28px 12px;
+  display:flex;align-items:flex-end;justify-content:space-between;
+}
+.dsp-doc-meta{
+  font-family:'Courier Prime',monospace;
+  font-size:10px;color:rgba(13,13,13,0.4);line-height:1.9;
+}
+.dsp-doc-meta strong{color:#0D0D0D;}
+.dsp-doc-title{
+  font-family:'Courier Prime',monospace;
+  font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  color:rgba(13,13,13,0.35);
+}
+
+/* Section structure */
+.dsp-body{display:grid;grid-template-columns:1fr 1fr;}
+.dsp-section{}
+.dsp-section-header{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 24px;
+  border-bottom:1px solid rgba(13,13,13,0.12);
+  background:rgba(13,13,13,0.03);
+}
+.dsp-section-num{
+  font-family:'Courier Prime',monospace;font-size:10px;font-weight:700;
+  color:#CC0000;letter-spacing:0.05em;
+}
+.dsp-section-title{
+  font-family:'Courier Prime',monospace;font-size:10px;font-weight:700;
+  letter-spacing:0.08em;text-transform:uppercase;color:rgba(13,13,13,0.5);
+}
+.dsp-col-divider{width:1px;background:rgba(13,13,13,0.1);}
+
+/* Report table */
+.dsp-table{width:100%;border-collapse:collapse;}
+.dsp-table th{
+  font-family:'Courier Prime',monospace;font-size:8px;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;color:rgba(13,13,13,0.35);
+  padding:6px 10px;text-align:left;
+  border-bottom:1px solid rgba(13,13,13,0.1);
+}
+.dsp-table td{
+  font-family:'Courier Prime',monospace;font-size:10px;color:rgba(13,13,13,0.6);
+  padding:7px 10px;border-bottom:1px solid rgba(13,13,13,0.06);
+  vertical-align:middle;
+}
+.dsp-table tr:hover td{background:rgba(13,13,13,0.03);}
+.dsp-table tr.hl td{background:rgba(204,0,0,0.04);border-left:2px solid #CC0000;}
+.dsp-table tr.hl td:first-child{padding-left:8px;}
+.dsp-ticker-cell{font-weight:700;color:#0D0D0D;font-size:13px;}
+.dsp-up{color:#2E7D32;}
+.dsp-dn{color:#CC0000;}
+.dsp-dim{color:rgba(13,13,13,0.35);}
+.dsp-score-num{color:rgba(13,13,13,0.5);}
+.dsp-score-cell{display:flex;flex-direction:column;gap:3px;}
+.dsp-score-bar{height:2px;background:rgba(13,13,13,0.1);border-radius:0;overflow:hidden;}
+.dsp-score-f{height:100%;}
+
+/* KPI section (right top) */
+.dsp-kpi-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  padding:0;
+}
+.dsp-kpi{
+  padding:14px 20px;border-right:1px solid rgba(13,13,13,0.08);border-bottom:1px solid rgba(13,13,13,0.08);
+}
+.dsp-kpi:nth-child(even){border-right:none;}
+.dsp-kpi-label{font-family:'Courier Prime',monospace;font-size:7px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(13,13,13,0.3);margin-bottom:5px;}
+.dsp-kpi-val{font-family:'Courier Prime',monospace;font-size:22px;font-weight:700;color:#0D0D0D;line-height:1;margin-bottom:3px;}
+.dsp-kpi-val.up{color:#2E7D32;}
+.dsp-kpi-val.red{color:#CC0000;}
+.dsp-kpi-sub{font-family:'Courier Prime',monospace;font-size:9px;color:rgba(13,13,13,0.35);}
+
+/* Regime block */
+.dsp-regime-block{
+  padding:14px 20px;
+  border-top:1px solid rgba(13,13,13,0.08);
+}
+.dsp-regime-label{font-family:'Courier Prime',monospace;font-size:7px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(13,13,13,0.3);margin-bottom:6px;}
+.dsp-regime-val{
+  display:inline-block;
+  font-family:'Courier Prime',monospace;font-size:14px;font-weight:700;letter-spacing:0.08em;
+  background:#0D0D0D;color:#F0EDE6;padding:4px 12px;margin-bottom:5px;
+}
+.dsp-regime-meta{font-family:'Courier Prime',monospace;font-size:9px;color:rgba(13,13,13,0.35);line-height:1.8;}
+.dsp-regime-meta strong{color:rgba(13,13,13,0.6);}
+
+/* Signal section (right bottom) */
+.dsp-signal-full{border-top:1px solid rgba(13,13,13,0.1);}
+.dsp-sig{
+  padding:10px 24px;border-bottom:1px solid rgba(13,13,13,0.07);
+  display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;
+}
+.dsp-sig-action{
+  font-family:'Courier Prime',monospace;font-size:9px;font-weight:700;
+  letter-spacing:0.1em;writing-mode:vertical-rl;text-orientation:mixed;
+  transform:rotate(180deg);
+  padding:4px 2px;margin-top:2px;
+}
+.dsp-sig-action.buy{color:#2E7D32;border-left:2px solid #2E7D32;}
+.dsp-sig-action.sell{color:#CC0000;border-left:2px solid #CC0000;}
+.dsp-sig-action.veto{color:rgba(13,13,13,0.25);border-left:2px solid rgba(13,13,13,0.12);}
+.dsp-sig-body{}
+.dsp-sig-ticker{font-family:'Courier Prime',monospace;font-size:16px;font-weight:700;color:#0D0D0D;margin-bottom:3px;}
+.dsp-sig-meta{font-family:'Courier Prime',monospace;font-size:9px;color:rgba(13,13,13,0.45);line-height:1.8;}
+.dsp-sig-meta em{color:rgba(13,13,13,0.65);font-style:normal;}
+.dsp-sig-conf-wrap{}
+.dsp-sig-conf-label{font-family:'Courier Prime',monospace;font-size:7px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(13,13,13,0.25);margin-bottom:4px;text-align:right;}
+.dsp-sig-conf-val{font-family:'Courier Prime',monospace;font-size:14px;font-weight:700;color:#0D0D0D;text-align:right;}
+.dsp-sig-conf-val.buy{color:#2E7D32;}
+.dsp-sig-conf-val.sell{color:#CC0000;}
+
+/* Risk row (bottom full-width) */
+.dsp-risk{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  border-top:3px solid #0D0D0D;
+  grid-column:1/-1;
+}
+.dsp-risk-item{padding:10px 24px;border-right:1px solid rgba(13,13,13,0.08);}
+.dsp-risk-item:last-child{border-right:none;}
+.dsp-risk-section{font-family:'Courier Prime',monospace;font-size:7px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(13,13,13,0.28);margin-bottom:4px;}
+.dsp-risk-bar{height:3px;background:rgba(13,13,13,0.08);overflow:hidden;margin-bottom:4px;}
+.dsp-risk-f{height:100%;}
+.dsp-risk-val{font-family:'Courier Prime',monospace;font-size:10px;color:rgba(13,13,13,0.5);}
+.dsp-risk-val.ok{color:#2E7D32;}
+.dsp-risk-val.warn{color:#CC7A00;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-title">Council Directions — Round 4</div>
+  <div class="page-sub">Tufte · Crouwel · Abloh — three philosophies, three worlds</div>
+</div>
+
+<!-- ═══════════════ A — DATUM (Tufte) ═══════════════ -->
+<div class="dir-wrapper" id="dw-a" onclick="pick('a')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#2D6A30;color:#fff;">A</div>
+    <div class="dir-body">
+      <div class="dir-name">DATUM — Tufte's Law</div>
+      <div class="dir-quote">"Above all else, show the data."</div>
+      <div class="dir-desc">Light theme. Cream paper. EB Garamond for everything editorial, Fira Code for every number. No chrome — the data IS the interface. Sparklines in every row. The full portfolio visible at once without a single click. No panels, no tabs, no glow. Only ink.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#2D6A30;border-color:rgba(45,106,48,0.35);">Data-ink ratio supreme</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">EB Garamond + Fira Code</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Cream paper · warm charcoal</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Small multiples everywhere</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Zero decoration</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-a">Select A</button>
+  </div>
+  <div class="mockup">
+    <div class="datum">
+      <!-- Topbar -->
+      <div class="datum-bar">
+        <div class="datum-logo">Datum</div>
+        <div class="datum-nav">
+          <div class="datum-nav-item active">Command</div>
+          <div class="datum-nav-item">Signals</div>
+          <div class="datum-nav-item">Risk</div>
+          <div class="datum-nav-item">Alpha</div>
+          <div class="datum-nav-item">Log</div>
+        </div>
+        <div class="datum-sp"></div>
+        <div class="datum-mkt">
+          <div class="datum-mkt-item"><span class="datum-mkt-name">SPX</span><span class="datum-mkt-val">5,847</span><span class="datum-mkt-chg up">+0.34%</span></div>
+          <div class="datum-mkt-item"><span class="datum-mkt-name">RUT</span><span class="datum-mkt-val">2,102</span><span class="datum-mkt-chg dn">-0.12%</span></div>
+          <div class="datum-mkt-item"><span class="datum-mkt-name">VIX</span><span class="datum-mkt-val">14.8</span><span class="datum-mkt-chg up">+2.1%</span></div>
+        </div>
+        <div class="datum-actions">
+          <div class="datum-btn datum-btn-outline">Scan</div>
+          <div class="datum-btn datum-btn-outline">Analyze</div>
+          <div class="datum-btn datum-btn-fill">Execute</div>
+        </div>
+      </div>
+      <!-- Summary strip -->
+      <div class="datum-summary">
+        <div class="datum-summary-stat">
+          <div class="datum-ss-label">Equity</div>
+          <div class="datum-ss-val">$482,304</div>
+          <div class="datum-ss-sub">6 portfolios</div>
+        </div>
+        <div class="datum-vdiv"></div>
+        <div class="datum-summary-stat">
+          <div class="datum-ss-label">Today</div>
+          <div class="datum-ss-val up">+$4,127</div>
+          <div class="datum-ss-sub">+0.86%</div>
+        </div>
+        <div class="datum-vdiv"></div>
+        <div class="datum-summary-stat">
+          <div class="datum-ss-label">Return</div>
+          <div class="datum-ss-val up">+8.4%</div>
+          <div class="datum-ss-sub">α +5.3% vs SPX</div>
+        </div>
+        <div class="datum-vdiv"></div>
+        <div class="datum-summary-stat">
+          <div class="datum-ss-label">Cash</div>
+          <div class="datum-ss-val">$89,441</div>
+          <div class="datum-ss-sub">18.5% free</div>
+        </div>
+        <div class="datum-vdiv"></div>
+        <div class="datum-summary-stat">
+          <div class="datum-ss-label">Positions</div>
+          <div class="datum-ss-val">24</div>
+          <div class="datum-ss-sub">6 portfolios</div>
+        </div>
+        <div class="datum-regime">
+          <span>microcap · ^RUT · BULL</span>
+          <div class="datum-regime-box">BULL · Day 7</div>
+        </div>
+      </div>
+      <!-- Positions + signals -->
+      <div class="datum-main">
+        <div class="datum-positions">
+          <div class="datum-pos-thead">
+            <div class="datum-th">Ticker</div>
+            <div class="datum-th">Score</div>
+            <div class="datum-th right">Price</div>
+            <div class="datum-th right">P&L</div>
+            <div class="datum-th right">Value</div>
+            <div class="datum-th right">Day</div>
+            <div class="datum-th">Trend</div>
+            <div class="datum-th right">Stop / TP</div>
+          </div>
+          <div class="datum-row hl">
+            <div class="datum-td ticker">CELH</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">82</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:82%;background:#2D6A30;"></div></div></div></div>
+            <div class="datum-td right">$47.20</div>
+            <div class="datum-td right up">+14.3%</div>
+            <div class="datum-td right">$9,440</div>
+            <div class="datum-td right up">+1.2%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,20 8,18 16,15 24,12 32,14 40,9 48,6 60,4" fill="none" stroke="#2D6A30" stroke-width="1.5"/></svg></div>
+            <div class="datum-td right dim" style="font-size:8px;">$42↓ $58↑</div>
+          </div>
+          <div class="datum-row">
+            <div class="datum-td ticker">POWL</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">77</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:77%;background:#2D6A30;"></div></div></div></div>
+            <div class="datum-td right">$183.44</div>
+            <div class="datum-td right up">+9.7%</div>
+            <div class="datum-td right">$18,344</div>
+            <div class="datum-td right up">+0.8%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,22 8,20 16,18 24,16 32,18 40,14 48,11 60,8" fill="none" stroke="#2D6A30" stroke-width="1.5"/></svg></div>
+            <div class="datum-td right dim" style="font-size:8px;">$168↓ $210↑</div>
+          </div>
+          <div class="datum-row">
+            <div class="datum-td ticker">ESE</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">71</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:71%;background:#2D6A30;"></div></div></div></div>
+            <div class="datum-td right">$62.10</div>
+            <div class="datum-td right up">+6.2%</div>
+            <div class="datum-td right">$7,452</div>
+            <div class="datum-td right up">+0.4%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,18 8,17 16,16 24,14 32,15 40,12 48,10 60,9" fill="none" stroke="#2D6A30" stroke-width="1.5"/></svg></div>
+            <div class="datum-td right dim" style="font-size:8px;">$56↓ $78↑</div>
+          </div>
+          <div class="datum-row">
+            <div class="datum-td ticker">SMPL</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">64</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:64%;background:rgba(26,25,20,0.2);"></div></div></div></div>
+            <div class="datum-td right">$29.18</div>
+            <div class="datum-td right dim">+0.4%</div>
+            <div class="datum-td right">$5,836</div>
+            <div class="datum-td right dim">+0.1%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,14 8,13 16,15 24,12 32,13 40,14 48,12 60,13" fill="none" stroke="rgba(26,25,20,0.25)" stroke-width="1.5"/></svg></div>
+            <div class="datum-td right dim" style="font-size:8px;">$26↓ $36↑</div>
+          </div>
+          <div class="datum-row">
+            <div class="datum-td ticker">KMT</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">59</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:59%;background:rgba(26,25,20,0.18);"></div></div></div></div>
+            <div class="datum-td right">$34.55</div>
+            <div class="datum-td right dn">-1.8%</div>
+            <div class="datum-td right">$4,146</div>
+            <div class="datum-td right dn">-0.6%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,10 8,11 16,10 24,13 32,12 40,14 48,16 60,18" fill="none" stroke="#B02020" stroke-width="1.5" opacity="0.6"/></svg></div>
+            <div class="datum-td right dim" style="font-size:8px;">$31↓ $44↑</div>
+          </div>
+          <div class="datum-row">
+            <div class="datum-td ticker">MTDR</div>
+            <div class="datum-td"><div class="datum-score-wrap"><div class="datum-score-num">48</div><div class="datum-score-bar"><div class="datum-score-fill" style="width:48%;background:#B02020;"></div></div></div></div>
+            <div class="datum-td right">$44.91</div>
+            <div class="datum-td right dn">-3.2%</div>
+            <div class="datum-td right">$6,737</div>
+            <div class="datum-td right dn">-1.1%</div>
+            <div class="datum-spark"><svg viewBox="0 0 60 24" preserveAspectRatio="none"><polyline points="0,6 8,7 16,9 24,10 32,13 40,15 48,18 60,20" fill="none" stroke="#B02020" stroke-width="1.5"/></svg></div>
+            <div class="datum-td right dn" style="font-size:8px;">$41↓ NEAR</div>
+          </div>
+        </div>
+        <!-- Signal col -->
+        <div class="datum-right">
+          <div class="datum-right-head">Signal queue — 3 pending</div>
+          <div class="datum-signal">
+            <div class="datum-sig-top"><div class="datum-sig-ticker">NOVA</div><div class="datum-sig-type buy">BUY · APPROVED</div></div>
+            <div class="datum-sig-meta">200 shares @ <em>$28.40</em><br>Score <em>79</em> · SL <em>$25.90</em> · TP <em>$36.00</em><br>Confidence <em>88%</em></div>
+            <div class="datum-sig-bar"><div class="datum-sig-fill" style="width:88%;background:#2D6A30;"></div></div>
+          </div>
+          <div class="datum-signal">
+            <div class="datum-sig-top"><div class="datum-sig-ticker">CRC</div><div class="datum-sig-type sell">SELL · STOP HIT</div></div>
+            <div class="datum-sig-meta">Stop triggered @ <em>$31.20</em><br>Realized P&L: <em style="color:#B02020;">-5.4%</em><br>Entry: <em>$33.00</em> · 2026-02-14</div>
+            <div class="datum-sig-bar"><div class="datum-sig-fill" style="width:95%;background:#B02020;"></div></div>
+          </div>
+          <div class="datum-signal">
+            <div class="datum-sig-top"><div class="datum-sig-ticker">SMPL</div><div class="datum-sig-type veto">VETO</div></div>
+            <div class="datum-sig-meta">Score <em>71</em> · AI declined<br>Deteriorating gross margin<br>Confidence <em>52%</em></div>
+            <div class="datum-sig-bar"><div class="datum-sig-fill" style="width:52%;background:rgba(26,25,20,0.18);"></div></div>
+          </div>
+        </div>
+      </div>
+      <!-- Risk strip -->
+      <div class="datum-risk-strip">
+        <div class="datum-risk-item"><div class="datum-risk-label">Concentration</div><div class="datum-risk-bar"><div class="datum-risk-fill" style="width:82%;background:#2D6A30;"></div></div><div class="datum-risk-val ok">82 · OK</div></div>
+        <div class="datum-risk-item"><div class="datum-risk-label">Volatility</div><div class="datum-risk-bar"><div class="datum-risk-fill" style="width:54%;background:#B07010;"></div></div><div class="datum-risk-val warn">54 · WARN</div></div>
+        <div class="datum-risk-item"><div class="datum-risk-label">Drawdown</div><div class="datum-risk-bar"><div class="datum-risk-fill" style="width:78%;background:#2D6A30;"></div></div><div class="datum-risk-val ok">78 · OK</div></div>
+        <div class="datum-risk-item"><div class="datum-risk-label">Cash Buffer</div><div class="datum-risk-bar"><div class="datum-risk-fill" style="width:88%;background:#2D6A30;"></div></div><div class="datum-risk-val ok">88 · OK</div></div>
+        <div class="datum-risk-item"><div class="datum-risk-label">Sector Exposure</div><div class="datum-risk-bar"><div class="datum-risk-fill" style="width:61%;background:#B07010;"></div></div><div class="datum-risk-val warn">61 · WARN</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gap"></div>
+
+<!-- ═══════════════ B — SYSTEMA (Crouwel) ═══════════════ -->
+<div class="dir-wrapper" id="dw-b" onclick="pick('b')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#FF5500;color:#fff;">B</div>
+    <div class="dir-body">
+      <div class="dir-name">SYSTEMA — Crouwel's Grid</div>
+      <div class="dir-quote">"The grid is not a constraint. The grid is the design."</div>
+      <div class="dir-desc">Near-black #0C0C0C. Martian Mono throughout — mechanical, systematic, reads like a grotesque but is monospaced. One accent: construction orange #FF5500. 8px base unit, every element derived mathematically. Portfolio items are numbered. Nothing is placed by eye.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#FF5500;border-color:rgba(255,85,0,0.35);">Strict 8px grid</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Martian Mono</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">#FF5500 single accent</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Dark · systematic</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Zero local decisions</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-b">Select B</button>
+  </div>
+  <div class="mockup">
+    <div class="systema">
+      <div class="sys-bar">
+        <div class="sys-logo-cell"><div class="sys-logo">SYSTEMA</div></div>
+        <div class="sys-nav">
+          <div class="sys-nav-item active">01 Command</div>
+          <div class="sys-nav-item">02 Signals</div>
+          <div class="sys-nav-item">03 Risk</div>
+          <div class="sys-nav-item">04 Alpha</div>
+          <div class="sys-nav-item">05 Log</div>
+        </div>
+        <div class="sys-right-cell">
+          <div class="sys-mkt"><span class="sys-mkt-k">SPX</span><span class="sys-mkt-v">5,847 <span class="up">+0.3%</span></span></div>
+          <div class="sys-mkt"><span class="sys-mkt-k">RUT</span><span class="sys-mkt-v">2,102 <span class="dn">-0.1%</span></span></div>
+          <div class="sys-mkt"><span class="sys-mkt-k">VIX</span><span class="sys-mkt-v">14.8</span></div>
+          <div class="sys-action">SCAN</div>
+          <div class="sys-action">ANALYZE</div>
+          <div class="sys-action primary">EXECUTE</div>
+        </div>
+      </div>
+      <!-- Instruments -->
+      <div class="sys-instruments">
+        <div class="sys-inst"><div class="sys-inst-label">Total Equity</div><div class="sys-inst-num">$482,304</div><div class="sys-inst-sub">6 portfolios</div></div>
+        <div class="sys-inst"><div class="sys-inst-label">Day P&L</div><div class="sys-inst-num up">+$4,127</div><div class="sys-inst-sub">+0.86% day</div></div>
+        <div class="sys-inst"><div class="sys-inst-label">Total Return</div><div class="sys-inst-num up">+8.4%</div><div class="sys-inst-sub">α +5.3% SPX</div></div>
+        <div class="sys-inst"><div class="sys-inst-label">Positions</div><div class="sys-inst-num">24</div><div class="sys-inst-sub">$89k free</div></div>
+        <div class="sys-inst"><div class="sys-inst-label">Risk Score</div><div class="sys-inst-num">75/100</div><div class="sys-inst-sub">Low</div></div>
+        <div class="sys-inst"><div class="sys-inst-label">Regime</div><div class="sys-inst-num accent">BULL</div><div class="sys-inst-sub">Day 7 · 1.0×</div></div>
+      </div>
+      <!-- Body -->
+      <div class="sys-body">
+        <div class="sys-portf-list">
+          <div class="sys-portf-head">Portfolio Index</div>
+          <div class="sys-portf-item active"><span class="sys-portf-num">01</span><span class="sys-portf-name">microcap</span><span class="sys-portf-dot" style="background:#3AB86A;"></span><span class="sys-portf-pct up">+8.4%</span></div>
+          <div class="sys-portf-item"><span class="sys-portf-num">02</span><span class="sys-portf-name">ai</span><span class="sys-portf-dot" style="background:#3AB86A;"></span><span class="sys-portf-pct up">+12.1%</span></div>
+          <div class="sys-portf-item"><span class="sys-portf-num">03</span><span class="sys-portf-name">sph</span><span class="sys-portf-dot" style="background:#FF5500;"></span><span class="sys-portf-pct up">+2.3%</span></div>
+          <div class="sys-portf-item"><span class="sys-portf-num">04</span><span class="sys-portf-name">largeboi</span><span class="sys-portf-dot" style="background:#CC3333;"></span><span class="sys-portf-pct dn">-0.8%</span></div>
+          <div class="sys-portf-item"><span class="sys-portf-num">05</span><span class="sys-portf-name">10k</span><span class="sys-portf-dot" style="background:#3AB86A;"></span><span class="sys-portf-pct up">+5.7%</span></div>
+          <div class="sys-portf-item"><span class="sys-portf-num">06</span><span class="sys-portf-name">boomers</span><span class="sys-portf-dot" style="background:rgba(218,218,210,0.3);"></span><span class="sys-portf-pct up">+1.1%</span></div>
+        </div>
+        <div class="sys-positions">
+          <div class="sys-pos-head">
+            <div class="sys-th">Ticker</div>
+            <div class="sys-th">Score</div>
+            <div class="sys-th">Price</div>
+            <div class="sys-th">P&L</div>
+            <div class="sys-th">Value</div>
+            <div class="sys-th">Stop / Target</div>
+          </div>
+          <div class="sys-row active">
+            <div class="sys-td ticker">CELH</div>
+            <div class="sys-td"><div class="sys-score"><div class="sys-score-v">82</div><div class="sys-score-bar"><div class="sys-score-f" style="width:82%;background:#3AB86A;"></div></div></div></div>
+            <div class="sys-td">$47.20</div>
+            <div class="sys-td up">+14.3%</div>
+            <div class="sys-td">$9,440</div>
+            <div class="sys-td" style="font-size:8px;">$42.10↓ $58.00↑</div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-td ticker">POWL</div>
+            <div class="sys-td"><div class="sys-score"><div class="sys-score-v">77</div><div class="sys-score-bar"><div class="sys-score-f" style="width:77%;background:#3AB86A;"></div></div></div></div>
+            <div class="sys-td">$183.44</div>
+            <div class="sys-td up">+9.7%</div>
+            <div class="sys-td">$18,344</div>
+            <div class="sys-td" style="font-size:8px;">$168↓ $210↑</div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-td ticker">SMPL</div>
+            <div class="sys-td"><div class="sys-score"><div class="sys-score-v">64</div><div class="sys-score-bar"><div class="sys-score-f" style="width:64%;background:rgba(218,218,210,0.25);"></div></div></div></div>
+            <div class="sys-td">$29.18</div>
+            <div class="sys-td" style="color:rgba(218,218,210,0.28);">+0.4%</div>
+            <div class="sys-td">$5,836</div>
+            <div class="sys-td" style="font-size:8px;">$26.50↓ $36↑</div>
+          </div>
+          <div class="sys-row">
+            <div class="sys-td ticker">MTDR</div>
+            <div class="sys-td"><div class="sys-score"><div class="sys-score-v">48</div><div class="sys-score-bar"><div class="sys-score-f" style="width:48%;background:#CC3333;"></div></div></div></div>
+            <div class="sys-td">$44.91</div>
+            <div class="sys-td dn">-3.2%</div>
+            <div class="sys-td">$6,737</div>
+            <div class="sys-td warn" style="font-size:8px;">$41↓ NEAR STOP</div>
+          </div>
+        </div>
+      </div>
+      <!-- Signal footer -->
+      <div class="sys-signals">
+        <div class="sys-sig-block">
+          <div class="sys-sig-head"><div class="sys-sig-title">Signal 01</div><div class="sys-sig-badge buy">BUY · APPROVED</div></div>
+          <div class="sys-sig-ticker">NOVA</div>
+          <div class="sys-sig-meta">200sh @ <span>$28.40</span> · Score <span>79</span><br>SL <span>$25.90</span> · TP <span>$36.00</span> · Conf <span>88%</span></div>
+          <div class="sys-sig-conf"><div class="sys-conf-f" style="width:88%;background:#3AB86A;"></div></div>
+        </div>
+        <div class="sys-sig-block">
+          <div class="sys-sig-head"><div class="sys-sig-title">Signal 02</div><div class="sys-sig-badge sell">SELL · STOP</div></div>
+          <div class="sys-sig-ticker">CRC</div>
+          <div class="sys-sig-meta">Stop @ <span>$31.20</span><br>Realized: <span style="color:#CC3333;">-5.4%</span></div>
+          <div class="sys-sig-conf"><div class="sys-conf-f" style="width:95%;background:#CC3333;"></div></div>
+        </div>
+        <div class="sys-sig-block">
+          <div class="sys-sig-head"><div class="sys-sig-title">Signal 03</div><div class="sys-sig-badge veto">VETO</div></div>
+          <div class="sys-sig-ticker">SMPL</div>
+          <div class="sys-sig-meta">Score <span>71</span> · Margin risk<br>AI declined · Conf <span>52%</span></div>
+          <div class="sys-sig-conf"><div class="sys-conf-f" style="width:52%;background:#FF5500;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gap"></div>
+
+<!-- ═══════════════ C — DISPATCH (Abloh) ═══════════════ -->
+<div class="dir-wrapper" id="dw-c" onclick="pick('c')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#CC0000;color:#fff;">C</div>
+    <div class="dir-body">
+      <div class="dir-name">DISPATCH — Abloh's 3% Rule</div>
+      <div class="dir-quote">"Reference something completely outside the category."</div>
+      <div class="dir-desc">Aged paper #F0EDE6. Courier Prime THROUGHOUT — typewriter font in a trading terminal. That's the 3% wrong thing that makes everything else unforgettable. Layout reads like a 1970s Soviet technical document: numbered sections ("3.1 HOLDINGS REGISTER"), formal tables, red Soviet accent. Nothing like it exists in fintech.</div>
+      <div class="dir-pills">
+        <span class="dir-pill" style="color:#CC0000;border-color:rgba(204,0,0,0.35);">Courier Prime everywhere</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Soviet technical doc aesthetic</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Aged paper + Soviet red</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Numbered report sections</span>
+        <span class="dir-pill" style="color:rgba(255,255,255,0.45);border-color:rgba(255,255,255,0.1);">Completely outside fintech</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-c">Select C</button>
+  </div>
+  <div class="mockup">
+    <div class="dispatch">
+      <div class="dsp-topbar">
+        <div class="dsp-logo"><div class="dsp-logo-box">D</div>DISPATCH</div>
+        <div class="dsp-sp"></div>
+        <div class="dsp-mkt">SPX <span>5,847 <span class="up">+0.3%</span></span> &nbsp;·&nbsp; RUT <span>2,102 <span class="dn">-0.1%</span></span> &nbsp;·&nbsp; VIX <span>14.8</span></div>
+        <div class="dsp-mode">PAPER MODE</div>
+        <div class="dsp-actions">
+          <div class="dsp-btn dsp-btn-out">SCAN</div>
+          <div class="dsp-btn dsp-btn-out">ANALYZE</div>
+          <div class="dsp-btn dsp-btn-red">EXECUTE</div>
+        </div>
+      </div>
+      <!-- Document header -->
+      <div class="dsp-doc-header">
+        <div class="dsp-doc-meta">
+          PORTFOLIO INTELLIGENCE REPORT &nbsp;·&nbsp; <strong>microcap</strong><br>
+          DATE: <strong>2026-03-10</strong> &nbsp;·&nbsp; STATUS: <strong>PAPER MODE</strong> &nbsp;·&nbsp; UNIVERSE: <strong>MICROCAP ^RUT</strong>
+        </div>
+        <div class="dsp-doc-title">Technical Analysis Document v4.2</div>
+      </div>
+      <!-- 2-col body -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:2px solid #0D0D0D;">
+        <!-- Left: holdings table -->
+        <div style="border-right:1px solid rgba(13,13,13,0.1);">
+          <div class="dsp-section-header">
+            <span class="dsp-section-num">3.1</span>
+            <span class="dsp-section-title">Holdings Register — Sorted by Composite Score</span>
+          </div>
+          <table class="dsp-table" style="width:100%;">
+            <thead>
+              <tr>
+                <th>TICKER</th>
+                <th>SCORE</th>
+                <th>PRICE</th>
+                <th>P&L</th>
+                <th>VALUE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="hl">
+                <td><span class="dsp-ticker-cell">CELH</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">082</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:82%;background:#2E7D32;"></div></div></div></td>
+                <td>$47.20</td>
+                <td class="dsp-up">+14.3%</td>
+                <td>$9,440</td>
+              </tr>
+              <tr>
+                <td><span class="dsp-ticker-cell">POWL</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">077</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:77%;background:#2E7D32;"></div></div></div></td>
+                <td>$183.44</td>
+                <td class="dsp-up">+9.7%</td>
+                <td>$18,344</td>
+              </tr>
+              <tr>
+                <td><span class="dsp-ticker-cell">ESE</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">071</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:71%;background:#2E7D32;"></div></div></div></td>
+                <td>$62.10</td>
+                <td class="dsp-up">+6.2%</td>
+                <td>$7,452</td>
+              </tr>
+              <tr>
+                <td><span class="dsp-ticker-cell">SMPL</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">064</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:64%;background:rgba(13,13,13,0.18);"></div></div></div></td>
+                <td>$29.18</td>
+                <td class="dsp-dim">+0.4%</td>
+                <td>$5,836</td>
+              </tr>
+              <tr>
+                <td><span class="dsp-ticker-cell">KMT</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">059</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:59%;background:rgba(13,13,13,0.15);"></div></div></div></td>
+                <td>$34.55</td>
+                <td class="dsp-dn">-1.8%</td>
+                <td>$4,146</td>
+              </tr>
+              <tr>
+                <td><span class="dsp-ticker-cell">MTDR</span></td>
+                <td><div class="dsp-score-cell"><span class="dsp-score-num">048</span><div class="dsp-score-bar"><div class="dsp-score-f" style="width:48%;background:#CC0000;"></div></div></div></td>
+                <td>$44.91</td>
+                <td class="dsp-dn">-3.2%</td>
+                <td>$6,737</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Right: KPIs + regime + signals -->
+        <div>
+          <div class="dsp-section-header">
+            <span class="dsp-section-num">3.2</span>
+            <span class="dsp-section-title">Performance Summary</span>
+          </div>
+          <div class="dsp-kpi-grid">
+            <div class="dsp-kpi"><div class="dsp-kpi-label">Total Equity</div><div class="dsp-kpi-val">$482,304</div><div class="dsp-kpi-sub">across 6 portfolios</div></div>
+            <div class="dsp-kpi"><div class="dsp-kpi-label">Today P&L</div><div class="dsp-kpi-val up">+$4,127</div><div class="dsp-kpi-sub">+0.86% on day</div></div>
+            <div class="dsp-kpi"><div class="dsp-kpi-label">Total Return</div><div class="dsp-kpi-val up">+8.4%</div><div class="dsp-kpi-sub">α +5.3% vs SPX</div></div>
+            <div class="dsp-kpi"><div class="dsp-kpi-label">Free Cash</div><div class="dsp-kpi-val">$89,441</div><div class="dsp-kpi-sub">18.5% undeployed</div></div>
+          </div>
+          <div class="dsp-regime-block">
+            <div class="dsp-regime-label">4.1 Market Regime Classification</div>
+            <div class="dsp-regime-val">BULL</div>
+            <div class="dsp-regime-meta">
+              Consecutive closes above SMA: <strong>7</strong><br>
+              Position size multiplier: <strong>1.0×</strong><br>
+              Benchmark: <strong>^RUT</strong> · VIX: <strong>14.8</strong>
+            </div>
+          </div>
+          <!-- Signals -->
+          <div class="dsp-section-header" style="margin-top:0;">
+            <span class="dsp-section-num">5.1</span>
+            <span class="dsp-section-title">Signal Analysis — 3 Pending</span>
+          </div>
+          <div class="dsp-signal-full">
+            <div class="dsp-sig">
+              <div class="dsp-sig-action buy">BUY</div>
+              <div class="dsp-sig-body">
+                <div class="dsp-sig-ticker">NOVA</div>
+                <div class="dsp-sig-meta">200 shares @ <em>$28.40</em><br>Score <em>079</em> · SL <em>$25.90</em> · TP <em>$36.00</em></div>
+              </div>
+              <div class="dsp-sig-conf-wrap">
+                <div class="dsp-sig-conf-label">Conf.</div>
+                <div class="dsp-sig-conf-val buy">88%</div>
+              </div>
+            </div>
+            <div class="dsp-sig">
+              <div class="dsp-sig-action sell">SELL</div>
+              <div class="dsp-sig-body">
+                <div class="dsp-sig-ticker">CRC</div>
+                <div class="dsp-sig-meta">Stop triggered @ <em>$31.20</em><br>Realized: <em style="color:#CC0000;">-5.4%</em></div>
+              </div>
+              <div class="dsp-sig-conf-wrap">
+                <div class="dsp-sig-conf-label">Conf.</div>
+                <div class="dsp-sig-conf-val sell">95%</div>
+              </div>
+            </div>
+            <div class="dsp-sig">
+              <div class="dsp-sig-action veto">VETO</div>
+              <div class="dsp-sig-body">
+                <div class="dsp-sig-ticker">SMPL</div>
+                <div class="dsp-sig-meta">Score <em>071</em> · AI declined<br>Deteriorating margin</div>
+              </div>
+              <div class="dsp-sig-conf-wrap">
+                <div class="dsp-sig-conf-label">Conf.</div>
+                <div class="dsp-sig-conf-val" style="color:rgba(13,13,13,0.4);">52%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Risk row -->
+      <div class="dsp-risk">
+        <div class="dsp-risk-item"><div class="dsp-risk-section">6.1 Concentration</div><div class="dsp-risk-bar"><div class="dsp-risk-f" style="width:82%;background:#2E7D32;"></div></div><div class="dsp-risk-val ok">082 / OK</div></div>
+        <div class="dsp-risk-item"><div class="dsp-risk-section">6.2 Volatility</div><div class="dsp-risk-bar"><div class="dsp-risk-f" style="width:54%;background:#CC7A00;"></div></div><div class="dsp-risk-val warn">054 / WARN</div></div>
+        <div class="dsp-risk-item"><div class="dsp-risk-section">6.3 Drawdown</div><div class="dsp-risk-bar"><div class="dsp-risk-f" style="width:78%;background:#2E7D32;"></div></div><div class="dsp-risk-val ok">078 / OK</div></div>
+        <div class="dsp-risk-item"><div class="dsp-risk-section">6.4 Cash Buffer</div><div class="dsp-risk-bar"><div class="dsp-risk-f" style="width:88%;background:#2E7D32;"></div></div><div class="dsp-risk-val ok">088 / OK</div></div>
+        <div class="dsp-risk-item"><div class="dsp-risk-section">6.5 Sector Exp.</div><div class="dsp-risk-bar"><div class="dsp-risk-f" style="width:61%;background:#CC7A00;"></div></div><div class="dsp-risk-val warn">061 / WARN</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px;background:#1c1c1c;"></div>
+
+<script>
+function pick(id) {
+  ['a','b','c'].forEach(x => {
+    document.getElementById('dw-'+x).classList.remove('selected');
+    document.getElementById('btn-'+x).textContent = 'Select '+x.toUpperCase();
+  });
+  document.getElementById('dw-'+id).classList.add('selected');
+  document.getElementById('btn-'+id).textContent = '✓ Selected';
+  if(window.__brainstorm_selectOption) window.__brainstorm_selectOption(id, document.querySelector('#dw-'+id+' .dir-name').textContent);
+}
+</script>
+</body>
+</html>

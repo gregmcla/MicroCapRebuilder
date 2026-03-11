@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIA — Design Directions v7</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+/* ================================================================
+   DIRECTION SELECTOR
+   ================================================================ */
+.dir-nav {
+  position: sticky; top: 0; z-index: 1000;
+  background: #000; border-bottom: 1px solid #2a2a2a;
+  display: flex;
+}
+.dir-btn {
+  flex: 1; padding: 14px 20px;
+  background: transparent; color: #555;
+  border: none; border-right: 1px solid #2a2a2a;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s;
+}
+.dir-btn:last-child { border-right: none; }
+.dir-btn:hover { color: #ccc; background: #0d0d0d; }
+.dir-btn.active { color: #fff; border-bottom: 2px solid #fff; margin-bottom: -1px; }
+.dir-btn .dir-label { display: block; font-size: 8px; color: #444; letter-spacing: 1px; margin-top: 2px; }
+.dir-btn.active .dir-label { color: #888; }
+
+.direction { display: none; }
+.direction.visible { display: block; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ================================================================
+   DIRECTION A: WEATHER STATION
+   National Financial Weather Service — Abloh's move: NOAA meets Equities
+   ================================================================ */
+.weather {
+  background: #070F1C;
+  color: #D8EEFF;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+.weather * { font-family: 'Share Tech Mono', monospace; }
+.weather .syne { font-family: 'Syne', sans-serif; }
+
+.wx-header {
+  background: #0B1E35;
+  border-bottom: 2px solid #1B3B5E;
+  padding: 0;
+  animation: fadeUp 0.5s ease both;
+}
+.wx-header-bar {
+  background: #0F2A48;
+  padding: 8px 32px;
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid #1B3B5E;
+}
+.wx-agency {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 4px; color: #7EC8E3;
+  text-transform: uppercase;
+}
+.wx-timestamp { font-size: 11px; color: #4A7A9B; letter-spacing: 1px; }
+
+.wx-title-row {
+  padding: 20px 32px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+.wx-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px; font-weight: 800;
+  color: #EAF4FF; letter-spacing: -1px;
+  line-height: 1.1;
+}
+.wx-title span { color: #7EC8E3; }
+.wx-nav-stats {
+  display: flex; gap: 32px; align-items: flex-end;
+}
+.wx-nav-stat { text-align: right; }
+.wx-nav-stat .val {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px; font-weight: 700;
+}
+.wx-nav-stat .val.pos { color: #4CAF50; }
+.wx-nav-stat .val.neg { color: #FF6B35; }
+.wx-nav-stat .lbl { font-size: 9px; color: #4A7A9B; letter-spacing: 2px; }
+
+.wx-regime-bar {
+  background: #0E2A46;
+  border-top: 1px solid #1B3B5E; border-bottom: 1px solid #1B3B5E;
+  padding: 6px 32px;
+  display: flex; gap: 40px; align-items: center;
+}
+.wx-regime-item { font-size: 10px; color: #4A7A9B; letter-spacing: 1px; }
+.wx-regime-item span { color: #EAF4FF; margin-left: 8px; }
+.wx-regime-item .bull { color: #4CAF50; }
+.wx-regime-item .advisory { color: #F0C040; }
+
+.wx-body { padding: 32px; display: grid; grid-template-columns: 300px 1fr; gap: 24px; }
+
+.wx-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+.wx-panel {
+  border: 1px solid #1B3B5E;
+  background: #0B1E35;
+  padding: 16px;
+  animation: fadeUp 0.5s ease both;
+}
+.wx-panel-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 3px; color: #4A7A9B;
+  text-transform: uppercase;
+  border-bottom: 1px solid #1B3B5E;
+  padding-bottom: 10px; margin-bottom: 14px;
+}
+
+.wx-condition-row {
+  display: flex; justify-content: space-between;
+  padding: 5px 0; border-bottom: 1px solid #0F2A48;
+  font-size: 11px;
+}
+.wx-condition-row:last-child { border-bottom: none; }
+.wx-cond-label { color: #4A7A9B; }
+.wx-cond-value { color: #EAF4FF; }
+.wx-cond-value.bull { color: #4CAF50; }
+.wx-cond-value.warn { color: #F0C040; }
+.wx-cond-value.alert { color: #FF6B35; }
+
+.wx-forecast-day {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #0F2A48; font-size: 11px;
+}
+.wx-forecast-day:last-child { border-bottom: none; }
+.wx-fc-date { color: #4A7A9B; width: 60px; }
+.wx-fc-cond { color: #EAF4FF; flex: 1; padding: 0 8px; }
+.wx-fc-score { color: #7EC8E3; text-align: right; }
+
+/* Watches & Warnings */
+.wx-alert {
+  border-left: 3px solid #F0C040;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: rgba(240,192,64,0.05);
+  font-size: 11px;
+}
+.wx-alert:last-child { margin-bottom: 0; }
+.wx-alert.red { border-color: #FF3B3B; background: rgba(255,59,59,0.05); }
+.wx-alert.blue { border-color: #7EC8E3; background: rgba(126,200,227,0.05); }
+.wx-alert-type {
+  font-size: 9px; letter-spacing: 2px; color: #F0C040;
+  text-transform: uppercase; margin-bottom: 3px;
+}
+.wx-alert.red .wx-alert-type { color: #FF3B3B; }
+.wx-alert.blue .wx-alert-type { color: #7EC8E3; }
+.wx-alert-text { color: #9BBDD4; line-height: 1.5; }
+
+/* Station Reports Table */
+.wx-main { animation: fadeUp 0.5s 0.1s ease both; }
+.wx-station-header {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px; font-weight: 700; letter-spacing: 3px; color: #4A7A9B;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.wx-table {
+  width: 100%; border-collapse: collapse;
+  border: 1px solid #1B3B5E;
+}
+.wx-table th {
+  background: #0B1E35; padding: 8px 12px;
+  font-size: 9px; letter-spacing: 2px; color: #4A7A9B;
+  text-transform: uppercase; text-align: left;
+  border-bottom: 1px solid #1B3B5E; font-weight: 400;
+}
+.wx-table td {
+  padding: 10px 12px; font-size: 12px;
+  border-bottom: 1px solid #0F2A48; color: #9BBDD4;
+  vertical-align: top;
+}
+.wx-table tr:last-child td { border-bottom: none; }
+.wx-table tr:hover td { background: rgba(126,200,227,0.03); cursor: default; }
+
+.wx-station-id { color: #EAF4FF !important; font-weight: 700; }
+.wx-station-name { color: #6A96B8 !important; font-size: 10px !important; display: block; margin-top: 1px; }
+.wx-temp-pos { color: #4CAF50 !important; }
+.wx-temp-neg { color: #FF6B35 !important; }
+.wx-condition-fair { color: #4CAF50 !important; }
+.wx-condition-cloudy { color: #F0C040 !important; }
+.wx-condition-alert { color: #FF6B35 !important; font-weight: 700; }
+.wx-remarks { font-size: 10px !important; color: #4A7A9B !important; }
+.wx-metar-string {
+  font-size: 10px; color: #2A5A7A; margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+.wx-candidates {
+  margin-top: 24px;
+  animation: fadeUp 0.5s 0.2s ease both;
+}
+.wx-candidate-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 12px; border: 1px solid #0F2A48;
+  margin-bottom: 4px; background: #0B1E35;
+  transition: border-color 0.15s; cursor: pointer;
+}
+.wx-candidate-row:hover { border-color: #1B3B5E; }
+.wx-cand-station { color: #EAF4FF; font-weight: 700; width: 50px; }
+.wx-cand-name { color: #6A96B8; font-size: 11px; flex: 1; }
+.wx-cand-score { color: #7EC8E3; }
+.wx-cand-status {
+  font-size: 9px; letter-spacing: 2px; padding: 2px 8px;
+  background: rgba(76,175,80,0.15); color: #4CAF50; border: 1px solid rgba(76,175,80,0.3);
+}
+
+/* ================================================================
+   DIRECTION B: PATENT OFFICE
+   USPTO Application No. — Abloh's move: IP filing system meets portfolio
+   ================================================================ */
+.patent {
+  background: #FAF8F0;
+  color: #1A1A1A;
+  font-family: 'EB Garamond', serif;
+  min-height: 100vh;
+  padding: 40px 0;
+}
+.patent-page {
+  max-width: 860px;
+  margin: 0 auto;
+  background: #FAF8F0;
+  border: 1px solid #C8C0A8;
+  box-shadow: 0 4px 40px rgba(0,0,0,0.12);
+}
+.patent-cover {
+  padding: 48px 64px;
+  border-bottom: 3px double #1A3B6E;
+  position: relative;
+  animation: fadeUp 0.5s ease both;
+}
+.patent-seal {
+  width: 80px; height: 80px;
+  border: 3px solid #1A3B6E;
+  border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+}
+.patent-seal-inner { text-align: center; }
+.patent-seal-text {
+  font-size: 6px; font-weight: 700; letter-spacing: 2px;
+  color: #1A3B6E; text-transform: uppercase; line-height: 1.4;
+}
+.patent-office-title {
+  text-align: center;
+  font-family: 'EB Garamond', serif;
+  font-size: 13px; font-weight: 600; letter-spacing: 4px;
+  text-transform: uppercase; color: #1A3B6E;
+  margin-bottom: 4px;
+}
+.patent-office-subtitle {
+  text-align: center;
+  font-family: 'Courier Prime', monospace;
+  font-size: 10px; color: #6B6050; letter-spacing: 2px;
+}
+.patent-rule { border: none; border-top: 1px solid #BFB89E; margin: 24px 0; }
+.patent-rule.thick { border-top: 2px solid #1A3B6E; }
+
+.patent-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px 48px; margin: 16px 0;
+}
+.patent-meta-item { }
+.patent-meta-label {
+  font-family: 'Courier Prime', monospace;
+  font-size: 9px; letter-spacing: 2px; color: #8A7F6E;
+  text-transform: uppercase;
+}
+.patent-meta-value {
+  font-family: 'Courier Prime', monospace;
+  font-size: 12px; color: #1A1A1A;
+  border-bottom: 1px solid #BFB89E; padding-bottom: 4px; margin-top: 2px;
+}
+.patent-main-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 22px; font-weight: 700; line-height: 1.3;
+  color: #1A1A1A; text-align: center; margin: 24px 0;
+  text-transform: uppercase; letter-spacing: 1px;
+}
+
+.patent-body { padding: 0 64px 64px; animation: fadeUp 0.5s 0.1s ease both; }
+.patent-section-title {
+  font-family: 'Courier Prime', monospace;
+  font-size: 11px; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: #1A3B6E;
+  border-bottom: 1px solid #1A3B6E;
+  padding-bottom: 4px; margin: 32px 0 16px;
+}
+.patent-abstract {
+  font-family: 'EB Garamond', serif;
+  font-size: 15px; line-height: 1.8; color: #3A3A3A;
+  text-align: justify;
+}
+
+/* Claims */
+.patent-claim {
+  margin-bottom: 32px;
+  border-left: 3px solid #BFB89E;
+  padding-left: 20px;
+  position: relative;
+  animation: fadeUp 0.5s ease both;
+}
+.patent-claim-num {
+  font-family: 'Courier Prime', monospace;
+  font-size: 10px; font-weight: 700; letter-spacing: 2px;
+  color: #1A3B6E; margin-bottom: 4px;
+}
+.patent-claim-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 17px; font-weight: 700; color: #1A1A1A;
+  margin-bottom: 8px;
+}
+.patent-claim-preamble {
+  font-family: 'EB Garamond', serif;
+  font-size: 14px; color: #3A3A3A; margin-bottom: 12px; line-height: 1.7;
+  font-style: italic;
+}
+.patent-sub-claims { padding-left: 16px; }
+.patent-sub-claim {
+  font-family: 'Courier Prime', monospace;
+  font-size: 12px; color: #3A3A3A;
+  padding: 4px 0; display: flex; gap: 12px;
+  border-bottom: 1px dotted #E0D8C8; line-height: 1.6;
+}
+.patent-sub-claim:last-child { border-bottom: none; }
+.patent-sub-label { color: #8A7F6E; width: 16px; flex-shrink: 0; }
+.patent-claim-ref {
+  font-family: 'EB Garamond', serif;
+  font-size: 12px; color: #8A7F6E; margin-top: 8px; font-style: italic;
+}
+.patent-claim-stamp {
+  position: absolute; right: -20px; top: 0;
+  width: 80px; height: 80px;
+  border: 2px solid #BF0A30;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transform: rotate(-12deg);
+  opacity: 0.85;
+}
+.patent-stamp-text {
+  font-family: 'Courier Prime', monospace;
+  font-size: 7px; font-weight: 700; letter-spacing: 1px;
+  color: #BF0A30; text-align: center; text-transform: uppercase;
+  line-height: 1.4;
+}
+.patent-examiner-note {
+  background: rgba(191,10,48,0.04);
+  border: 1px solid rgba(191,10,48,0.2);
+  border-radius: 2px;
+  padding: 8px 12px; margin-top: 8px;
+  font-family: 'Courier Prime', monospace;
+  font-size: 11px; color: #BF0A30; font-style: italic;
+}
+.patent-examiner-note::before {
+  content: 'EXAMINER\'S NOTE: ';
+  font-weight: 700; font-style: normal;
+}
+
+/* Patent drawings */
+.patent-drawing {
+  border: 1px solid #BFB89E;
+  padding: 24px;
+  margin: 16px 0;
+  text-align: center;
+  background: #F5F3EA;
+}
+.patent-drawing-label {
+  font-family: 'Courier Prime', monospace;
+  font-size: 10px; letter-spacing: 2px; color: #8A7F6E;
+  text-transform: uppercase; margin-bottom: 16px;
+}
+.patent-chart-ascii {
+  font-family: 'Courier Prime', monospace;
+  font-size: 11px; line-height: 1.5; color: #1A3B6E;
+  text-align: left; display: inline-block;
+}
+
+.patent-footer {
+  padding: 24px 64px;
+  border-top: 2px solid #1A3B6E;
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+.patent-signature {
+  border-top: 1px solid #1A1A1A;
+  padding-top: 8px; margin-top: 24px;
+  font-family: 'Courier Prime', monospace; font-size: 11px; color: #6B6050;
+}
+
+/* ================================================================
+   DIRECTION C: THE CHART
+   ARIA Hot 100 — Abloh's move: Billboard music chart meets portfolio
+   ================================================================ */
+.chart {
+  background: #000000;
+  color: #F5F5F5;
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+}
+
+.chart-masthead {
+  background: #000;
+  border-bottom: 4px solid #F5C518;
+  padding: 32px 48px 28px;
+  animation: fadeUp 0.5s ease both;
+}
+.chart-logo {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 80px; line-height: 0.9;
+  color: #F5C518; letter-spacing: 4px;
+  border-bottom: 2px solid #1A1A1A;
+  padding-bottom: 16px; margin-bottom: 16px;
+}
+.chart-logo span { color: #F5F5F5; }
+.chart-tagline {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; letter-spacing: 3px; color: #666;
+  text-transform: uppercase;
+}
+.chart-meta-row {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  margin-top: 16px;
+}
+.chart-date-block { }
+.chart-date-label { font-size: 9px; letter-spacing: 2px; color: #444; text-transform: uppercase; }
+.chart-date-value {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 20px; color: #F5C518; letter-spacing: 2px;
+}
+.chart-stats {
+  display: flex; gap: 32px; text-align: right;
+}
+.chart-stat-block .val {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 22px; color: #F5F5F5; letter-spacing: 1px;
+}
+.chart-stat-block .val.pos { color: #00E676; }
+.chart-stat-block .lbl { font-size: 9px; color: #444; letter-spacing: 2px; }
+
+/* Chart column headers */
+.chart-col-headers {
+  background: #0A0A0A;
+  border-bottom: 1px solid #1A1A1A;
+  padding: 10px 48px;
+  display: grid;
+  grid-template-columns: 80px 60px 60px 60px 1fr 120px 80px;
+  gap: 8px; align-items: center;
+  animation: fadeUp 0.4s 0.05s ease both;
+}
+.chart-col-hdr {
+  font-size: 8px; letter-spacing: 2px; color: #444;
+  text-transform: uppercase;
+}
+.chart-col-hdr.right { text-align: right; }
+.chart-col-hdr.center { text-align: center; }
+
+/* Chart entries */
+.chart-entries { padding: 0 48px; }
+.chart-entry {
+  display: grid;
+  grid-template-columns: 80px 60px 60px 60px 1fr 120px 80px;
+  gap: 8px; align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid #111;
+  transition: background 0.15s; cursor: pointer;
+  animation: fadeUp 0.4s ease both;
+}
+.chart-entry:hover { background: rgba(245,197,24,0.03); }
+
+.chart-pos-num {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 52px; line-height: 1; color: #F5C518;
+  letter-spacing: 0;
+}
+.chart-pos-num.dim { color: #2A2A2A; }
+
+.chart-movement {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+}
+.chart-move-badge {
+  font-size: 9px; font-weight: 500; padding: 3px 6px;
+  letter-spacing: 1px; text-align: center;
+}
+.chart-move-badge.new { background: #F5C518; color: #000; }
+.chart-move-badge.up { color: #00E676; border: 1px solid rgba(0,230,118,0.3); }
+.chart-move-badge.down { color: #FF1744; border: 1px solid rgba(255,23,68,0.3); }
+.chart-move-badge.steady { color: #555; border: 1px solid #222; }
+
+.chart-peak { font-size: 11px; color: #444; text-align: center; }
+.chart-wks { font-size: 11px; color: #555; text-align: center; }
+
+.chart-title-block { }
+.chart-title {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 22px; color: #F5F5F5; letter-spacing: 1px;
+  line-height: 1.1;
+}
+.chart-artist {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: #666; margin-top: 2px;
+}
+.chart-entry-meta {
+  font-size: 10px; color: #444; margin-top: 4px; line-height: 1.6;
+}
+
+.chart-cert-block {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.chart-cert {
+  font-size: 9px; font-weight: 500; padding: 2px 8px;
+  letter-spacing: 1.5px; border: 1px solid;
+  text-transform: uppercase;
+}
+.chart-cert.diamond { color: #A8DAFF; border-color: rgba(168,218,255,0.4); background: rgba(168,218,255,0.06); }
+.chart-cert.platinum { color: #CECECE; border-color: rgba(206,206,206,0.3); background: rgba(206,206,206,0.05); }
+.chart-cert.gold { color: #F5C518; border-color: rgba(245,197,24,0.3); background: rgba(245,197,24,0.05); }
+.chart-cert.charted { color: #444; border-color: #222; }
+
+.chart-change {
+  text-align: right;
+  font-family: 'Bebas Neue', cursive;
+  font-size: 22px; letter-spacing: 1px;
+}
+.chart-change.pos { color: #00E676; }
+.chart-change.neg { color: #FF1744; }
+.chart-change-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: #444; text-align: right; }
+
+/* Section dividers */
+.chart-section-banner {
+  background: #0A0A0A; border-top: 1px solid #1A1A1A; border-bottom: 1px solid #1A1A1A;
+  padding: 10px 48px;
+  font-family: 'Bebas Neue', cursive;
+  font-size: 14px; color: #333; letter-spacing: 4px;
+  text-transform: uppercase;
+  animation: fadeUp 0.4s ease both;
+}
+.chart-section-banner.gold-line { border-top: 2px solid #F5C518; }
+
+/* Bubbling Under */
+.chart-bubbling {
+  padding: 0 48px 48px;
+  animation: fadeUp 0.4s 0.2s ease both;
+}
+.chart-bubble-entry {
+  display: flex; gap: 24px; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #0F0F0F;
+  cursor: pointer; transition: background 0.15s;
+}
+.chart-bubble-entry:hover { padding-left: 8px; }
+.chart-bubble-rank {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: #333; width: 50px;
+}
+.chart-bubble-ticker { font-size: 13px; color: #888; font-weight: 500; width: 50px; }
+.chart-bubble-name { font-size: 11px; color: #444; flex: 1; }
+.chart-bubble-score {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 18px; color: #F5C518; letter-spacing: 1px;
+}
+.chart-bubble-action {
+  font-size: 9px; letter-spacing: 2px; padding: 2px 8px;
+  background: rgba(245,197,24,0.1); color: #F5C518;
+  border: 1px solid rgba(245,197,24,0.2);
+}
+
+/* Chart footnote */
+.chart-footer {
+  padding: 24px 48px;
+  border-top: 2px solid #F5C518;
+  background: #000;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.chart-footer-legend { display: flex; gap: 24px; }
+.chart-legend-item {
+  font-size: 9px; color: #444; letter-spacing: 1px; display: flex; gap: 6px; align-items: center;
+}
+.chart-legend-dot { width: 6px; height: 6px; border-radius: 50%; }
+.chart-copyright {
+  font-size: 9px; color: #2A2A2A; letter-spacing: 1px;
+  font-family: 'DM Mono', monospace;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     DIRECTION SELECTOR NAV
+     ============================================================ -->
+<nav class="dir-nav">
+  <button class="dir-btn active" onclick="showDir('a')">
+    DIRECTION A
+    <span class="dir-label">WEATHER STATION</span>
+  </button>
+  <button class="dir-btn" onclick="showDir('b')">
+    DIRECTION B
+    <span class="dir-label">PATENT OFFICE</span>
+  </button>
+  <button class="dir-btn" onclick="showDir('c')">
+    DIRECTION C
+    <span class="dir-label">THE CHART</span>
+  </button>
+</nav>
+
+<!-- ============================================================
+     DIRECTION A: ARIA NATIONAL FINANCIAL WEATHER SERVICE
+     ============================================================ -->
+<div class="direction weather visible" id="dir-a">
+
+  <div class="wx-header">
+    <div class="wx-header-bar">
+      <span class="wx-agency syne">ARIA NATIONAL FINANCIAL WEATHER SERVICE</span>
+      <span class="wx-timestamp">OBSERVATION TIME: 10 MAR 2026 / 1641Z / PORTFOLIO: MICROCAP</span>
+    </div>
+    <div class="wx-title-row">
+      <div>
+        <div class="wx-title syne">AREA FORECAST<br><span>DISCUSSION</span></div>
+        <div style="margin-top:8px;font-size:10px;color:#4A7A9B;letter-spacing:2px;">NMC/ARIA · WALL STREET FORECAST OFFICE · ANALYSIS VALID THRU 15 MAR 2026</div>
+      </div>
+      <div class="wx-nav-stats">
+        <div class="wx-nav-stat">
+          <div class="val pos syne">$127,450</div>
+          <div class="lbl">NAV · USD</div>
+        </div>
+        <div class="wx-nav-stat">
+          <div class="val pos syne">+$2,340</div>
+          <div class="lbl">DAY GAIN</div>
+        </div>
+        <div class="wx-nav-stat">
+          <div class="val pos syne">+1.87%</div>
+          <div class="lbl">DAY RETURN</div>
+        </div>
+      </div>
+    </div>
+    <div class="wx-regime-bar">
+      <div class="wx-regime-item">REGIME <span class="bull">■ BULL MARKET</span></div>
+      <div class="wx-regime-item">BENCHMARK <span>^RUT · IWM</span></div>
+      <div class="wx-regime-item">PRESSURE <span class="bull">HIGH (RISING)</span></div>
+      <div class="wx-regime-item">VISIBILITY <span class="bull">UNLIMITED</span></div>
+      <div class="wx-regime-item">ACTIVE STATIONS <span>08</span></div>
+      <div class="wx-regime-item">RISK CAPITAL <span class="advisory">$20,450 DEPLOYED</span></div>
+    </div>
+  </div>
+
+  <div class="wx-body">
+
+    <!-- Sidebar: Current Conditions + Watches + Forecast -->
+    <div class="wx-sidebar">
+
+      <div class="wx-panel" style="animation-delay:0.05s">
+        <div class="wx-panel-title syne">Current Conditions</div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">SKY CONDITION</span>
+          <span class="wx-cond-value bull">FEW CLOUDS / CLEAR</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">SURFACE PRESSURE</span>
+          <span class="wx-cond-value bull">1024 HPA · HIGH</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">TEMPERATURE</span>
+          <span class="wx-cond-value">+1.87°C ABOVE NORM</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">WIND DIRECTION</span>
+          <span class="wx-cond-value bull">NNE 14 KT · FAVORABLE</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">PRECIP (LOSSES)</span>
+          <span class="wx-cond-value warn">2 STATIONS REPORTING</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">DEWPOINT (RISK)</span>
+          <span class="wx-cond-value">48.2% UTILIZATION</span>
+        </div>
+        <div class="wx-condition-row">
+          <span class="wx-cond-label">VISIBILITY</span>
+          <span class="wx-cond-value bull">10+ MI · UNLIMITED</span>
+        </div>
+      </div>
+
+      <div class="wx-panel" style="animation-delay:0.1s">
+        <div class="wx-panel-title syne">WATCHES · WARNINGS · ADVISORIES</div>
+        <div class="wx-alert red">
+          <div class="wx-alert-type">⚠ STOP LOSS WARNING</div>
+          <div class="wx-alert-text">MTDR IN EFFECT THRU 14 MAR. TRAILING STOP ACTIVATED AT $37.23. CURRENT: $38.20. TAKE PROTECTIVE ACTION.</div>
+        </div>
+        <div class="wx-alert" style="animation-delay:0.15s">
+          <div class="wx-alert-type">◆ MOMENTUM ADVISORY</div>
+          <div class="wx-alert-text">ESE DECLINING TREND OBSERVED 3 CONSECUTIVE SESSIONS. DETERIORATION WATCH IN EFFECT.</div>
+        </div>
+        <div class="wx-alert blue" style="animation-delay:0.2s">
+          <div class="wx-alert-type">★ HIGH CONFIDENCE SIGNAL</div>
+          <div class="wx-alert-text">BOOT SCORE 72.4 EXCEEDS BUY THRESHOLD. FAVORABLE CONDITIONS FOR ENTRY DEVELOPING.</div>
+        </div>
+      </div>
+
+      <div class="wx-panel" style="animation-delay:0.15s">
+        <div class="wx-panel-title syne">Extended Outlook (Watchlist)</div>
+        <div class="wx-forecast-day">
+          <span class="wx-fc-date">BOOT</span>
+          <span class="wx-fc-cond">Boot Barn Holdings</span>
+          <span class="wx-fc-score">SCR 72.4</span>
+        </div>
+        <div class="wx-forecast-day">
+          <span class="wx-fc-date">HIMS</span>
+          <span class="wx-fc-cond">Hims &amp; Hers Health</span>
+          <span class="wx-fc-score">SCR 69.8</span>
+        </div>
+        <div class="wx-forecast-day">
+          <span class="wx-fc-date">GMS</span>
+          <span class="wx-fc-cond">GMS Inc.</span>
+          <span class="wx-fc-score">SCR 67.2</span>
+        </div>
+        <div class="wx-forecast-day">
+          <span class="wx-fc-date">LAUR</span>
+          <span class="wx-fc-cond">Laureate Education</span>
+          <span class="wx-fc-score">SCR 65.1</span>
+        </div>
+        <div class="wx-forecast-day">
+          <span class="wx-fc-date">FCPT</span>
+          <span class="wx-fc-cond">Four Corners Property</span>
+          <span class="wx-fc-score">SCR 63.9</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main: Station Reports -->
+    <div class="wx-main">
+      <div class="wx-station-header syne">SURFACE STATION REPORTS — ACTIVE POSITIONS</div>
+      <table class="wx-table">
+        <thead>
+          <tr>
+            <th>STA ID</th>
+            <th>OBSERVATION (COMPANY)</th>
+            <th>SKY / COND</th>
+            <th>TEMP / CHNG</th>
+            <th>DEWPT / SCR</th>
+            <th>WKS HLD</th>
+            <th>UNREALIZED</th>
+            <th>STATUS / RMKS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="wx-station-id">CELH</span><span class="wx-station-name">Celsius Holdings Inc.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Consumer · NASDAQ<br><span class="wx-metar-string">CELH 101400Z 26.17 +14.2% FAIR SCR074</span></td>
+            <td class="wx-condition-fair">■ FAIR<br><span style="font-size:10px;color:#3A6A4A">CLEAR</span></td>
+            <td class="wx-temp-pos">+$2.77<br><span style="font-size:11px">+14.2%</span></td>
+            <td style="color:#7EC8E3">74.2<br><span style="font-size:10px;color:#4A7A9B">STRONG</span></td>
+            <td>18 WKS<br><span style="font-size:10px;color:#4A7A9B">NOV 2025</span></td>
+            <td class="wx-temp-pos">+$2,462<br><span style="font-size:10px">847 SH</span></td>
+            <td><span class="wx-remarks">TRAILING STOP<br>ACTIVE $24.10</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">CRC</span><span class="wx-station-name">California Resources Corp.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Energy · NYSE<br><span class="wx-metar-string">CRC 101400Z 15.80 +11.3% FAIR SCR072</span></td>
+            <td class="wx-condition-fair">■ FAIR<br><span style="font-size:10px;color:#3A6A4A">FEW CLOUDS</span></td>
+            <td class="wx-temp-pos">+$1.60<br><span style="font-size:11px">+11.3%</span></td>
+            <td style="color:#7EC8E3">71.8<br><span style="font-size:10px;color:#4A7A9B">STRONG</span></td>
+            <td>6 WKS<br><span style="font-size:10px;color:#4A7A9B">JAN 2026</span></td>
+            <td class="wx-temp-pos">+$979<br><span style="font-size:10px">612 SH</span></td>
+            <td><span class="wx-remarks">TRAILING STOP<br>ACTIVE $14.82</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">KMT</span><span class="wx-station-name">Kennametal Inc.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Industrials · NYSE<br><span class="wx-metar-string">KMT 101400Z 44.20 +10.2% FAIR SCR069</span></td>
+            <td class="wx-condition-fair">■ FAIR<br><span style="font-size:10px;color:#3A6A4A">MOSTLY CLR</span></td>
+            <td class="wx-temp-pos">+$4.10<br><span style="font-size:11px">+10.2%</span></td>
+            <td style="color:#7EC8E3">69.4<br><span style="font-size:10px;color:#4A7A9B">MODERATE</span></td>
+            <td>5 WKS<br><span style="font-size:10px;color:#4A7A9B">FEB 2026</span></td>
+            <td class="wx-temp-pos">+$1,738<br><span style="font-size:10px">424 SH</span></td>
+            <td><span class="wx-remarks">FLOOR STOP<br>$42.10</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">SM</span><span class="wx-station-name">SM Energy Co.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Energy · NYSE<br><span class="wx-metar-string">SM 101400Z 28.40 +6.0% PRTCLDY SCR066</span></td>
+            <td class="wx-condition-cloudy">◑ PARTLY CLOUDY<br><span style="font-size:10px;color:#8A7040">BKN</span></td>
+            <td class="wx-temp-pos">+$1.60<br><span style="font-size:11px">+6.0%</span></td>
+            <td style="color:#7EC8E3">66.1<br><span style="font-size:10px;color:#4A7A9B">MODERATE</span></td>
+            <td>7 WKS<br><span style="font-size:10px;color:#4A7A9B">JAN 2026</span></td>
+            <td class="wx-temp-pos">+$608<br><span style="font-size:10px">380 SH</span></td>
+            <td><span class="wx-remarks">ENTRY STOP<br>$27.10</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">KOP</span><span class="wx-station-name">Koppers Holdings Inc.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Chemicals · NYSE<br><span class="wx-metar-string">KOP 101400Z 18.90 +9.9% FAIR SCR061</span></td>
+            <td class="wx-condition-fair">■ FAIR<br><span style="font-size:10px;color:#3A6A4A">CLR</span></td>
+            <td class="wx-temp-pos">+$1.70<br><span style="font-size:11px">+9.9%</span></td>
+            <td style="color:#7EC8E3">61.3<br><span style="font-size:10px;color:#4A7A9B">MODERATE</span></td>
+            <td>4 WKS<br><span style="font-size:10px;color:#4A7A9B">FEB 2026</span></td>
+            <td class="wx-temp-pos">+$757<br><span style="font-size:10px">445 SH</span></td>
+            <td><span class="wx-remarks">ENTRY STOP<br>$17.54</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">TDW</span><span class="wx-station-name">Tidewater Inc.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Energy Svc · NYSE<br><span class="wx-metar-string">TDW 101400Z 22.60 +3.7% MSTCLDY SCR064</span></td>
+            <td class="wx-condition-cloudy">◑ MOSTLY CLR<br><span style="font-size:10px;color:#4A7A9B">FEW</span></td>
+            <td class="wx-temp-pos">+$0.80<br><span style="font-size:11px">+3.7%</span></td>
+            <td style="color:#7EC8E3">63.7<br><span style="font-size:10px;color:#4A7A9B">MODERATE</span></td>
+            <td>6 WKS<br><span style="font-size:10px;color:#4A7A9B">JAN 2026</span></td>
+            <td class="wx-temp-pos">+$408<br><span style="font-size:10px">510 SH</span></td>
+            <td><span class="wx-remarks">ENTRY STOP<br>$21.80</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">ESE</span><span class="wx-station-name">ESCO Technologies Inc.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Industrials · NYSE<br><span class="wx-metar-string">ESE 101400Z 42.10 -3.2% CLOUDY SCR056</span></td>
+            <td class="wx-condition-cloudy">◑ CLOUDY<br><span style="font-size:10px;color:#8A7040">OVC</span></td>
+            <td class="wx-temp-neg">-$1.40<br><span style="font-size:11px">-3.2%</span></td>
+            <td style="color:#7EC8E3">55.8<br><span style="font-size:10px;color:#7A6040">MARGINAL</span></td>
+            <td>3 WKS<br><span style="font-size:10px;color:#4A7A9B">FEB 2026</span></td>
+            <td class="wx-temp-neg">-$308<br><span style="font-size:10px">220 SH</span></td>
+            <td><span class="wx-remarks" style="color:#F0C040">DETERIORATION<br>WATCH</span></td>
+          </tr>
+          <tr>
+            <td><span class="wx-station-id">MTDR</span><span class="wx-station-name">Matador Resources Co.</span></td>
+            <td style="font-size:11px;color:#6A96B8">Energy · NYSE<br><span class="wx-metar-string">MTDR 101400Z 38.20 -4.0% STORM SCR049</span></td>
+            <td class="wx-condition-alert">⚠ NEAR STOP<br><span style="font-size:10px">STORM WATCH</span></td>
+            <td class="wx-temp-neg">-$1.60<br><span style="font-size:11px">-4.0%</span></td>
+            <td style="color:#FF6B35">48.6<br><span style="font-size:10px;color:#CC4422">WEAK</span></td>
+            <td>8 WKS<br><span style="font-size:10px;color:#4A7A9B">JAN 2026</span></td>
+            <td class="wx-temp-neg">-$576<br><span style="font-size:10px">360 SH</span></td>
+            <td><span class="wx-remarks" style="color:#FF3B3B">STOP AT $37.23<br>IMMINENT</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Watchlist candidates row -->
+      <div class="wx-candidates">
+        <div class="wx-station-header syne" style="margin-bottom:12px">EXTENDED FORECAST — INCOMING SYSTEMS (WATCHLIST)</div>
+        <div class="wx-candidate-row" style="animation-delay:0.1s">
+          <span class="wx-cand-station">BOOT</span>
+          <span class="wx-cand-name">Boot Barn Holdings Inc.</span>
+          <span style="font-size:10px;color:#4A7A9B">Consumer · NYSE</span>
+          <span class="wx-cand-score">SCR 72.4</span>
+          <span class="wx-cand-status">■ BUY PROPOSAL</span>
+        </div>
+        <div class="wx-candidate-row" style="animation-delay:0.15s">
+          <span class="wx-cand-station">HIMS</span>
+          <span class="wx-cand-name">Hims &amp; Hers Health Inc.</span>
+          <span style="font-size:10px;color:#4A7A9B">Healthcare · NYSE</span>
+          <span class="wx-cand-score">SCR 69.8</span>
+          <span class="wx-cand-status">■ BUY PROPOSAL</span>
+        </div>
+        <div class="wx-candidate-row" style="animation-delay:0.2s">
+          <span class="wx-cand-station">GMS</span>
+          <span class="wx-cand-name">GMS Inc.</span>
+          <span style="font-size:10px;color:#4A7A9B">Industrials · NYSE</span>
+          <span class="wx-cand-score">SCR 67.2</span>
+          <span class="wx-cand-status" style="color:#7EC8E3;border-color:rgba(126,200,227,0.3)">◦ WATCHLIST</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     DIRECTION B: U.S. PATENT AND PORTFOLIO OFFICE
+     ============================================================ -->
+<div class="direction patent" id="dir-b">
+  <div class="patent-page">
+
+    <div class="patent-cover">
+      <div class="patent-seal">
+        <div class="patent-seal-inner">
+          <div class="patent-seal-text">UNITED<br>STATES<br>PATENT<br>OFFICE</div>
+        </div>
+      </div>
+      <div class="patent-office-title">United States Patent and Portfolio Office</div>
+      <div class="patent-office-subtitle">Washington, D.C. 20231 · Est. ARIA System 2025</div>
+      <hr class="patent-rule thick" style="margin:20px 0">
+
+      <div class="patent-meta-grid">
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Application No.</div>
+          <div class="patent-meta-value">US 47-MICROCAP-2026</div>
+        </div>
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Filing Date</div>
+          <div class="patent-meta-value">January 30, 2026</div>
+        </div>
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Assignee</div>
+          <div class="patent-meta-value">ARIA Adaptive Risk &amp; Intelligence Advisor</div>
+        </div>
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Classification</div>
+          <div class="patent-meta-value">G06Q 40/06 · Equity Portfolio Management</div>
+        </div>
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Status</div>
+          <div class="patent-meta-value" style="color:#1A3B6E;font-weight:700">PATENT PENDING · PAPER MODE</div>
+        </div>
+        <div class="patent-meta-item">
+          <div class="patent-meta-label">Portfolio Net Value</div>
+          <div class="patent-meta-value" style="color:#1A1A1A;font-weight:700">$127,450.00 USD</div>
+        </div>
+      </div>
+
+      <hr class="patent-rule thick">
+      <div class="patent-main-title">
+        Method and System for Systematic<br>
+        Micro-Capitalization Equity Position Management<br>
+        Via Multi-Factor Quantitative Signal Analysis
+      </div>
+    </div>
+
+    <div class="patent-body">
+
+      <div class="patent-section-title">Abstract</div>
+      <p class="patent-abstract">
+        A method and system for identifying, entering, monitoring, and exiting equity positions
+        based on a plurality of quantitative signals including price momentum, earnings growth,
+        quality factors, volume analysis, volatility measurement, and value timing, wherein each
+        candidate security is assigned a composite score from 0–100 and subjected to a
+        multi-layer review process comprising mechanical screening, risk assessment, and
+        artificial intelligence validation prior to execution. The present portfolio comprises
+        eight (8) active claims filed across energy, industrial, and consumer sectors, with
+        a current net asset value of $127,450.00 and a day-over-day appreciation of +1.87%.
+        Market regime is classified as BULL as of the observation date.
+      </p>
+
+      <hr class="patent-rule">
+
+      <div class="patent-section-title">Claims</div>
+
+      <!-- CLAIM 1: CELH -->
+      <div class="patent-claim" style="animation-delay:0.05s">
+        <div class="patent-claim-num">CLAIM 1 OF 8 · COMPOSITE SCORE: 74.2 / 100 · CLASSIFICATION: STRONG BUY</div>
+        <div class="patent-claim-title">CELH — Celsius Holdings Inc.</div>
+        <div class="patent-claim-preamble">
+          A long equity position in Celsius Holdings Inc., a Consumer Discretionary issuer
+          trading on NASDAQ, wherein the following conditions of the claim are satisfied and
+          hereby incorporated by reference:
+        </div>
+        <div class="patent-sub-claims">
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(a)</span>
+            <span>Entry filed January 30, 2026 at $20.49 per share for 847 shares, aggregate cost basis $17,355.03</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(b)</span>
+            <span>Current market valuation: $23.40 × 847 shares = $19,809.80; unrealized appreciation of $2,454.77 (14.2%)</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(c)</span>
+            <span>Trailing stop loss anchored at $24.10 (six percent below high of $25.64); floor protection: $21.51</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(d)</span>
+            <span>Factor scores: Price Momentum 82.1 · Earnings Growth 68.4 · Quality 71.2 · Volume 77.8 · Volatility 69.3 · Value/Timing 66.5</span>
+          </div>
+        </div>
+        <div class="patent-claim-ref">Claims 1(a) through 1(d) shall remain enforceable so long as composite score ≥ 60.0 and trailing stop is not breached.</div>
+      </div>
+
+      <!-- CLAIM 2: CRC -->
+      <div class="patent-claim" style="animation-delay:0.1s">
+        <div class="patent-claim-num">CLAIM 2 OF 8 · COMPOSITE SCORE: 71.8 / 100 · CLASSIFICATION: BUY</div>
+        <div class="patent-claim-title">CRC — California Resources Corp.</div>
+        <div class="patent-claim-preamble">
+          A long equity position in California Resources Corporation, an Energy sector issuer
+          trading on NYSE, wherein the following conditions of the claim are satisfied:
+        </div>
+        <div class="patent-sub-claims">
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(a)</span>
+            <span>Entry filed February 1, 2026 at $14.20 per share for 612 shares, aggregate cost basis $8,690.40</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(b)</span>
+            <span>Current market valuation: $15.80 × 612 shares = $9,669.60; unrealized appreciation of $979.20 (11.3%)</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(c)</span>
+            <span>Trailing stop loss anchored at $14.82; take profit target: $18.20</span>
+          </div>
+          <div class="patent-sub-claim">
+            <span class="patent-sub-label">(d)</span>
+            <span>Factor scores: Price Momentum 78.2 · Earnings Growth 64.1 · Quality 69.8 · Volume 74.4 · Volatility 71.2 · Value/Timing 63.2</span>
+          </div>
+        </div>
+        <div class="patent-claim-ref">Claims 2(a) through 2(d) shall remain enforceable so long as composite score ≥ 60.0 and trailing stop is not breached.</div>
+      </div>
+
+      <!-- CLAIM 3: KMT -->
+      <div class="patent-claim" style="animation-delay:0.15s">
+        <div class="patent-claim-num">CLAIM 3 OF 8 · COMPOSITE SCORE: 69.4 / 100 · CLASSIFICATION: BUY</div>
+        <div class="patent-claim-title">KMT — Kennametal Inc.</div>
+        <div class="patent-sub-claims">
+          <div class="patent-sub-claim"><span class="patent-sub-label">(a)</span><span>Entry February 12, 2026 at $40.10 / share · 424 shares · cost basis $17,002.40</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(b)</span><span>Current: $44.20 × 424 = $18,740.80 · unrealized gain +$1,738.40 (+10.2%)</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(c)</span><span>Stop loss: $42.10 (floor) · Take profit: $52.00</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(d)</span><span>Scores: Momentum 75.2 · EPS 61.4 · Quality 70.1 · Volume 68.8 · Volatility 72.4 · Timing 68.3</span></div>
+        </div>
+      </div>
+
+      <!-- CLAIM 7: ESE (with examiner note) -->
+      <div class="patent-claim" style="animation-delay:0.2s">
+        <div class="patent-claim-num">CLAIM 7 OF 8 · COMPOSITE SCORE: 55.8 / 100 · CLASSIFICATION: HOLD — UNDER REVIEW</div>
+        <div class="patent-claim-title">ESE — ESCO Technologies Inc.</div>
+        <div class="patent-sub-claims">
+          <div class="patent-sub-claim"><span class="patent-sub-label">(a)</span><span>Entry February 18, 2026 at $43.50 / share · 220 shares · cost basis $9,570.00</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(b)</span><span>Current: $42.10 × 220 = $9,262.00 · unrealized loss -$308.00 (-3.2%)</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(c)</span><span>Stop loss: $41.33 · Score trending down 3 consecutive sessions</span></div>
+        </div>
+        <div class="patent-examiner-note">Deterioration trend detected. Score decline from 68.2 → 55.8 over 7 sessions. Recommend review prior to renewal of claim. Action may be required within 48 hours.</div>
+      </div>
+
+      <!-- CLAIM 8: MTDR (with stamp) -->
+      <div class="patent-claim" style="animation-delay:0.25s; position:relative; padding-right:110px;">
+        <div class="patent-claim-stamp">
+          <div class="patent-stamp-text">ACTION<br>REQUIRED<br>STOP LOSS<br>IMMINENT</div>
+        </div>
+        <div class="patent-claim-num">CLAIM 8 OF 8 · COMPOSITE SCORE: 48.6 / 100 · CLASSIFICATION: SELL CANDIDATE</div>
+        <div class="patent-claim-title">MTDR — Matador Resources Co.</div>
+        <div class="patent-sub-claims">
+          <div class="patent-sub-claim"><span class="patent-sub-label">(a)</span><span>Entry January 28, 2026 at $39.80 / share · 360 shares · cost basis $14,328.00</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(b)</span><span>Current: $38.20 × 360 = $13,752.00 · unrealized loss -$576.00 (-4.0%)</span></div>
+          <div class="patent-sub-claim"><span class="patent-sub-label">(c)</span>
+            <span style="color:#BF0A30;font-weight:700">TRAILING STOP ACTIVATED: $37.23 · Current price $1.00 above trigger. Claim subject to automatic termination.</span></span>
+          </div>
+        </div>
+        <div class="patent-examiner-note">OFFICE ACTION: This claim is subject to imminent rejection. Trailing stop at $37.23 is within 2.5% of current price. The applicant has not responded to prior deterioration notice. Examiner recommends involuntary termination if breach occurs.</div>
+      </div>
+
+      <hr class="patent-rule">
+      <div class="patent-section-title">Drawings — Figure 1: Portfolio Value Over Time</div>
+      <div class="patent-drawing">
+        <div class="patent-drawing-label">FIG. 1 — NET ASSET VALUE · JAN 30 – MAR 10, 2026 · ALL FIGURES USD</div>
+        <pre class="patent-chart-ascii">$132,000 |                                              *   *
+         |                                          *
+$128,000 |                                      *       *
+         |                                  *
+$124,000 |                              *
+         |                      *   *
+$120,000 |                  *
+         |              *
+$116,000 |          *
+         |      *
+$112,000 |  *
+         +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+            JAN30 FEB05     FEB12     FEB19     FEB26     MAR10
+
+         ◀ Filing Date ($112,000)                   Current ($127,450) ▶
+</pre>
+      </div>
+
+      <hr class="patent-rule">
+      <div class="patent-section-title">Pending Applications (Watchlist)</div>
+      <p class="patent-abstract" style="margin-bottom:16px">
+        The following applications are under examination and subject to prior art review.
+        Filing is pending score confirmation and portfolio capacity:
+      </p>
+      <div style="font-family:'Courier Prime',monospace;font-size:12px;color:#3A3A3A;line-height:2;">
+        <div style="display:flex;gap:24px;border-bottom:1px dotted #BFB89E;padding:6px 0"><span style="width:60px;color:#1A3B6E;font-weight:700">BOOT</span><span style="flex:1">Boot Barn Holdings Inc. — Consumer — NYSE</span><span style="color:#1A3B6E">SCR 72.4 · BUY PROPOSAL</span></div>
+        <div style="display:flex;gap:24px;border-bottom:1px dotted #BFB89E;padding:6px 0"><span style="width:60px;color:#1A3B6E;font-weight:700">HIMS</span><span style="flex:1">Hims &amp; Hers Health Inc. — Healthcare — NYSE</span><span style="color:#1A3B6E">SCR 69.8 · BUY PROPOSAL</span></div>
+        <div style="display:flex;gap:24px;border-bottom:1px dotted #BFB89E;padding:6px 0"><span style="width:60px;color:#6B6050">GMS</span><span style="flex:1">GMS Inc. — Industrials — NYSE</span><span style="color:#6B6050">SCR 67.2 · PENDING EXAMINATION</span></div>
+        <div style="display:flex;gap:24px;padding:6px 0"><span style="width:60px;color:#6B6050">LAUR</span><span style="flex:1">Laureate Education Inc. — Education — NASDAQ</span><span style="color:#6B6050">SCR 65.1 · PENDING EXAMINATION</span></div>
+      </div>
+
+    </div>
+
+    <div class="patent-footer">
+      <div>
+        <div style="font-family:'EB Garamond',serif;font-size:12px;color:#6B6050">Assigned to ARIA System · All claims subject to market conditions</div>
+        <div class="patent-signature">
+          Authorized Representative: _____________________ · ARIA System · March 10, 2026
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:'Courier Prime',monospace;font-size:10px;color:#BFB89E;letter-spacing:2px">PAPER MODE ONLY</div>
+        <div style="font-family:'Courier Prime',monospace;font-size:10px;color:#BFB89E;letter-spacing:2px">NO LIVE EXECUTION</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================
+     DIRECTION C: ARIA HOT 100
+     ============================================================ -->
+<div class="direction chart" id="dir-c">
+
+  <div class="chart-masthead">
+    <div class="chart-logo">ARIA <span>HOT</span> 100</div>
+    <div class="chart-tagline">The Official Ranking of Portfolio Positions by Momentum Score · Powered by Quantitative Analysis</div>
+    <div class="chart-meta-row">
+      <div class="chart-date-block">
+        <div class="chart-date-label">Chart Date</div>
+        <div class="chart-date-value">MARCH 10, 2026</div>
+      </div>
+      <div class="chart-stats">
+        <div class="chart-stat-block">
+          <div class="val pos">+1.87%</div>
+          <div class="lbl">CHART GAIN</div>
+        </div>
+        <div class="chart-stat-block">
+          <div class="val">$127,450</div>
+          <div class="lbl">PORTFOLIO NAV</div>
+        </div>
+        <div class="chart-stat-block">
+          <div class="val">BULL</div>
+          <div class="lbl">MARKET REGIME</div>
+        </div>
+        <div class="chart-stat-block">
+          <div class="val">8</div>
+          <div class="lbl">CHARTING</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-col-headers">
+    <div class="chart-col-hdr">THIS WK</div>
+    <div class="chart-col-hdr center">LAST WK</div>
+    <div class="chart-col-hdr center">PEAK</div>
+    <div class="chart-col-hdr center">WKS</div>
+    <div class="chart-col-hdr">TITLE / ARTIST</div>
+    <div class="chart-col-hdr center">CERT</div>
+    <div class="chart-col-hdr right">CHG</div>
+  </div>
+
+  <div class="chart-entries">
+
+    <div class="chart-entry" style="animation-delay:0.05s">
+      <div class="chart-pos-num">1</div>
+      <div class="chart-movement"><div class="chart-move-badge up">↑2</div></div>
+      <div class="chart-peak" style="color:#F5C518">1</div>
+      <div class="chart-wks">18</div>
+      <div class="chart-title-block">
+        <div class="chart-title">MOMENTUM PLAY</div>
+        <div class="chart-artist">CELH / CELSIUS HOLDINGS INC.</div>
+        <div class="chart-entry-meta">Score: 74.2 · Entry Nov 2025 · 847 shares · $19,809 position<br>Trailing stop active · 18 weeks on chart · Peak: #1</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert platinum">PLATINUM</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">14.2% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+14.2%</div>
+        <div class="chart-change-sub">+$2,454</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.08s">
+      <div class="chart-pos-num">2</div>
+      <div class="chart-movement"><div class="chart-move-badge steady">—</div></div>
+      <div class="chart-peak" style="color:#F5C518">2</div>
+      <div class="chart-wks">6</div>
+      <div class="chart-title-block">
+        <div class="chart-title">ENERGY SURGE</div>
+        <div class="chart-artist">CRC / CALIFORNIA RESOURCES CORP.</div>
+        <div class="chart-entry-meta">Score: 71.8 · Entry Jan 2026 · 612 shares · $9,669 position<br>6 weeks on chart · Peak: #2</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert platinum">PLATINUM</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">11.3% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+11.3%</div>
+        <div class="chart-change-sub">+$979</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.11s">
+      <div class="chart-pos-num">3</div>
+      <div class="chart-movement"><div class="chart-move-badge new">NEW</div></div>
+      <div class="chart-peak">3</div>
+      <div class="chart-wks">5</div>
+      <div class="chart-title-block">
+        <div class="chart-title">INDUSTRIAL ACTION</div>
+        <div class="chart-artist">KMT / KENNAMETAL INC.</div>
+        <div class="chart-entry-meta">Score: 69.4 · Entry Feb 2026 · 424 shares · $18,740 position<br>5 weeks on chart · Peak: #3 · Debut this week</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert gold">GOLD</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">10.2% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+10.2%</div>
+        <div class="chart-change-sub">+$1,738</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.14s">
+      <div class="chart-pos-num">4</div>
+      <div class="chart-movement"><div class="chart-move-badge up">↑1</div></div>
+      <div class="chart-peak">3</div>
+      <div class="chart-wks">4</div>
+      <div class="chart-title-block">
+        <div class="chart-title">COPPER COUNTRY</div>
+        <div class="chart-artist">KOP / KOPPERS HOLDINGS INC.</div>
+        <div class="chart-entry-meta">Score: 61.3 · Entry Feb 2026 · 445 shares · $8,410 position<br>4 weeks on chart · Peak: #3</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert gold">GOLD</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">9.9% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+9.9%</div>
+        <div class="chart-change-sub">+$757</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.17s">
+      <div class="chart-pos-num">5</div>
+      <div class="chart-movement"><div class="chart-move-badge steady">—</div></div>
+      <div class="chart-peak">4</div>
+      <div class="chart-wks">7</div>
+      <div class="chart-title-block">
+        <div class="chart-title">PERMIAN GROOVE</div>
+        <div class="chart-artist">SM / SM ENERGY CO.</div>
+        <div class="chart-entry-meta">Score: 66.1 · Entry Jan 2026 · 380 shares · $10,792 position<br>7 weeks on chart · Peak: #4</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert charted">CHARTED</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">6.0% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+6.0%</div>
+        <div class="chart-change-sub">+$608</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.2s">
+      <div class="chart-pos-num">6</div>
+      <div class="chart-movement"><div class="chart-move-badge steady">—</div></div>
+      <div class="chart-peak">5</div>
+      <div class="chart-wks">6</div>
+      <div class="chart-title-block">
+        <div class="chart-title">OFFSHORE</div>
+        <div class="chart-artist">TDW / TIDEWATER INC.</div>
+        <div class="chart-entry-meta">Score: 63.7 · Entry Jan 2026 · 510 shares · $11,526 position<br>6 weeks on chart · Peak: #5</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert charted">CHARTED</span>
+        <span style="font-size:9px;color:#444;margin-top:2px">3.7% GAIN</span>
+      </div>
+      <div>
+        <div class="chart-change pos">+3.7%</div>
+        <div class="chart-change-sub">+$408</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.23s">
+      <div class="chart-pos-num dim">7</div>
+      <div class="chart-movement"><div class="chart-move-badge down">↓2</div></div>
+      <div class="chart-peak">5</div>
+      <div class="chart-wks">3</div>
+      <div class="chart-title-block">
+        <div class="chart-title" style="color:#888">INSTRUMENT DRIFT</div>
+        <div class="chart-artist" style="color:#444">ESE / ESCO TECHNOLOGIES INC.</div>
+        <div class="chart-entry-meta" style="color:#333">Score: 55.8 · Entry Feb 2026 · 220 shares · $9,262 position<br>Falling — down 2 from peak. Deterioration watch active.</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert" style="color:#333;border-color:#222">FALLING</span>
+        <span style="font-size:9px;color:#333;margin-top:2px">-3.2% LOSS</span>
+      </div>
+      <div>
+        <div class="chart-change neg">-3.2%</div>
+        <div class="chart-change-sub" style="color:#333">-$308</div>
+      </div>
+    </div>
+
+    <div class="chart-entry" style="animation-delay:0.26s">
+      <div class="chart-pos-num dim">8</div>
+      <div class="chart-movement"><div class="chart-move-badge down">↓3</div></div>
+      <div class="chart-peak">5</div>
+      <div class="chart-wks">8</div>
+      <div class="chart-title-block">
+        <div class="chart-title" style="color:#FF1744">STOP LOSS BLUES</div>
+        <div class="chart-artist" style="color:#551020">MTDR / MATADOR RESOURCES CO.</div>
+        <div class="chart-entry-meta" style="color:#330a10">Score: 48.6 · Trailing stop $37.23 · Current $38.20 · NEAR STOP<br>8 weeks on chart. Exit likely this session. Take protective action.</div>
+      </div>
+      <div class="chart-cert-block">
+        <span class="chart-cert" style="color:#FF1744;border-color:rgba(255,23,68,0.3);background:rgba(255,23,68,0.05)">NEAR EXIT</span>
+        <span style="font-size:9px;color:#551020;margin-top:2px">-4.0% LOSS</span>
+      </div>
+      <div>
+        <div class="chart-change neg">-4.0%</div>
+        <div class="chart-change-sub" style="color:#551020">-$576</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bubbling Under -->
+  <div class="chart-section-banner gold-line">BUBBLING UNDER — BUY PROPOSALS &amp; WATCHLIST</div>
+  <div class="chart-bubbling">
+    <div style="font-size:10px;color:#333;letter-spacing:2px;margin-bottom:16px">RANKED BELOW TOP 8 — ELIGIBLE FOR CHART ENTRY UPON EXECUTION</div>
+
+    <div class="chart-bubble-entry" style="animation-delay:0.1s">
+      <span class="chart-bubble-rank">B–01</span>
+      <span class="chart-bubble-ticker" style="color:#F5C518">BOOT</span>
+      <span class="chart-bubble-name">Boot Barn Holdings Inc. · Consumer · NYSE</span>
+      <span class="chart-bubble-score">72.4</span>
+      <span class="chart-bubble-action">BUY PROPOSAL</span>
+    </div>
+    <div class="chart-bubble-entry" style="animation-delay:0.13s">
+      <span class="chart-bubble-rank">B–02</span>
+      <span class="chart-bubble-ticker" style="color:#F5C518">HIMS</span>
+      <span class="chart-bubble-name">Hims &amp; Hers Health Inc. · Healthcare · NYSE</span>
+      <span class="chart-bubble-score">69.8</span>
+      <span class="chart-bubble-action">BUY PROPOSAL</span>
+    </div>
+    <div class="chart-bubble-entry" style="animation-delay:0.16s">
+      <span class="chart-bubble-rank">B–03</span>
+      <span class="chart-bubble-ticker">GMS</span>
+      <span class="chart-bubble-name">GMS Inc. · Industrials · NYSE</span>
+      <span class="chart-bubble-score">67.2</span>
+      <span class="chart-bubble-action" style="color:#666;background:transparent;border-color:#222">WATCHLIST</span>
+    </div>
+    <div class="chart-bubble-entry" style="animation-delay:0.19s">
+      <span class="chart-bubble-rank">B–04</span>
+      <span class="chart-bubble-ticker">LAUR</span>
+      <span class="chart-bubble-name">Laureate Education Inc. · Education · NASDAQ</span>
+      <span class="chart-bubble-score">65.1</span>
+      <span class="chart-bubble-action" style="color:#666;background:transparent;border-color:#222">WATCHLIST</span>
+    </div>
+    <div class="chart-bubble-entry" style="animation-delay:0.22s">
+      <span class="chart-bubble-rank">B–05</span>
+      <span class="chart-bubble-ticker">FCPT</span>
+      <span class="chart-bubble-name">Four Corners Property Trust · REIT · NYSE</span>
+      <span class="chart-bubble-score">63.9</span>
+      <span class="chart-bubble-action" style="color:#666;background:transparent;border-color:#222">WATCHLIST</span>
+    </div>
+  </div>
+
+  <div class="chart-footer">
+    <div class="chart-footer-legend">
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#CECECE"></div>PLATINUM: >10% GAIN</div>
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#F5C518"></div>GOLD: >5% GAIN</div>
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#555"></div>CHARTED: POSITIVE</div>
+      <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#FF1744"></div>NEAR EXIT: BELOW STOP</div>
+    </div>
+    <div class="chart-copyright">© 2026 ARIA SYSTEM · ALL POSITIONS PAPER MODE ONLY · NO LIVE EXECUTION</div>
+  </div>
+
+</div>
+
+<script>
+function showDir(id) {
+  document.querySelectorAll('.direction').forEach(d => d.classList.remove('visible'));
+  document.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('dir-' + id).classList.add('visible');
+  document.querySelectorAll('.dir-btn')[['a','b','c'].indexOf(id)].classList.add('active');
+}
+</script>
+</body>
+</html>

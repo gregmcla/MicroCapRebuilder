@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virgil Abloh — Three Hijacks</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,700;0,800;0,900;1,900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: #111; }
+body { font-family: sans-serif; }
+
+/* ── Outer chrome ── */
+.outer { padding: 40px; }
+.pg-title { font-family: sans-serif; font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.pg-sub { font-family: 'Courier Prime', monospace; font-size: 11px; color: rgba(255,255,255,0.3); margin-bottom: 40px; font-style: italic; }
+
+.dw { margin-bottom: 4px; cursor: pointer; border: 3px solid transparent; transition: border-color 0.2s; }
+.dw:hover { border-color: rgba(255,255,255,0.2); }
+.dw.selected { border-color: #fff; }
+
+.dir-meta { background: #181818; padding: 22px 32px; display: flex; align-items: flex-start; gap: 20px; }
+.dir-badge { width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 16px; flex-shrink: 0; font-family: 'Barlow Condensed', sans-serif; }
+.dir-info { flex: 1; }
+.dir-name { font-family: sans-serif; font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.dir-quote { font-family: 'Courier Prime', monospace; font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; margin-bottom: 6px; }
+.dir-desc { font-family: sans-serif; font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.6; max-width: 680px; }
+.dir-pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.pill { font-family: 'Courier Prime', monospace; font-size: 9px; padding: 2px 7px; border-radius: 3px; border: 1px solid; }
+.dir-btn { font-family: sans-serif; font-size: 11px; font-weight: 600; padding: 7px 18px; border-radius: 6px; cursor: pointer; border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.45); background: transparent; white-space: nowrap; }
+.dw.selected .dir-btn { background: #fff; color: #000; border-color: #fff; }
+
+.gap { height: 3px; background: #0a0a0a; }
+
+
+/* ════════════════════════════════════════════════════════
+   A  —  "CAUTION"
+   Reference: Off-White construction site / industrial tag
+   White background. Diagonal hazard stripes. Heavy stencil.
+   Everything in quotes: "TICKER" "PORTFOLIO" "BUY"
+   Font: Barlow Condensed 900 + Courier Prime
+   Colors: White #FFFFFF · Black #000000 · Safety orange #FF6200
+════════════════════════════════════════════════════════ */
+.caution {
+  background: #FFFFFF;
+  color: #000;
+  font-family: 'Barlow Condensed', sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Diagonal hazard stripe — top border */
+.caution-stripe {
+  height: 14px;
+  background: repeating-linear-gradient(
+    -55deg,
+    #FF6200 0px, #FF6200 12px,
+    #000000 12px, #000000 24px,
+    #FF6200 24px, #FF6200 36px,
+    #000000 36px, #000000 48px
+  );
+  flex-shrink: 0;
+}
+
+.caution-topbar {
+  background: #000;
+  display: flex; align-items: center;
+  height: 52px; padding: 0 28px; gap: 0;
+}
+.caution-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 22px; font-weight: 900; font-style: italic;
+  color: #fff; letter-spacing: 0.02em;
+  padding-right: 24px; border-right: 1px solid rgba(255,255,255,0.1);
+  margin-right: 24px;
+  /* Abloh quotation marks treatment */
+}
+.caution-logo::before { content: '"'; color: #FF6200; margin-right: 2px; }
+.caution-logo::after { content: '"'; color: #FF6200; margin-left: 2px; }
+.caution-nav { display: flex; align-items: stretch; }
+.caution-nav-item {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  padding: 0 18px; display: flex; align-items: center;
+  border-right: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+}
+.caution-nav-item.active { color: #FF6200; }
+.caution-sp { flex: 1; }
+.caution-market-strip {
+  display: flex; align-items: stretch;
+  border-left: 1px solid rgba(255,255,255,0.08);
+}
+.caution-mkt {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 0 18px; border-right: 1px solid rgba(255,255,255,0.06);
+}
+.caution-mkt-k { font-family: 'Courier Prime', monospace; font-size: 7px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.25); margin-bottom: 2px; }
+.caution-mkt-v { font-family: 'Courier Prime', monospace; font-size: 11px; color: #fff; font-weight: 700; }
+.caution-mkt-v .up { color: #3AB868; }
+.caution-mkt-v .dn { color: #CC2222; }
+.caution-paper-tag {
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 8px;
+  background: #FF6200;
+}
+.caution-paper-tag-text {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 900;
+  letter-spacing: 0.15em; text-transform: uppercase; color: #fff;
+}
+.caution-action {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 0 18px; display: flex; align-items: center;
+  color: rgba(255,255,255,0.4); border-right: 1px solid rgba(255,255,255,0.06); cursor: pointer;
+}
+.caution-action.go { color: #fff; background: #222; }
+
+/* Hero KPI row — tag-style */
+.caution-kpi-row {
+  display: grid; grid-template-columns: repeat(6, 1fr);
+  border-bottom: 2px solid #000;
+}
+.caution-kpi {
+  padding: 16px 20px;
+  border-right: 1px solid rgba(0,0,0,0.08);
+  position: relative;
+}
+.caution-kpi:last-child { border-right: none; }
+.caution-kpi-label {
+  font-family: 'Courier Prime', monospace; font-size: 7px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(0,0,0,0.3); margin-bottom: 5px;
+}
+/* Abloh treatment: quotation marks on the value */
+.caution-kpi-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px; font-weight: 900; color: #000; line-height: 1;
+  letter-spacing: -0.01em; margin-bottom: 3px;
+}
+.caution-kpi-val.up { color: #1E6E35; }
+.caution-kpi-val.orange { color: #FF6200; }
+.caution-kpi-sub { font-family: 'Courier Prime', monospace; font-size: 8px; color: rgba(0,0,0,0.3); }
+
+/* Diagonal stripe divider */
+.caution-divider {
+  height: 8px;
+  background: repeating-linear-gradient(
+    -55deg,
+    rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 8px,
+    transparent 8px, transparent 16px
+  );
+  border-top: 1px solid rgba(0,0,0,0.08);
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Main body */
+.caution-body { display: grid; grid-template-columns: 1fr 300px; }
+
+/* Positions — industrial tag style */
+.caution-pos { padding: 0; }
+.caution-pos-head {
+  display: grid; grid-template-columns: 90px 80px 80px 80px 80px 1fr 110px;
+  padding: 8px 24px; background: #000;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.caution-th {
+  font-family: 'Courier Prime', monospace; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+}
+.caution-th::before { content: '"'; color: rgba(255,98,0,0.5); }
+.caution-th::after { content: '"'; color: rgba(255,98,0,0.5); }
+.caution-row {
+  display: grid; grid-template-columns: 90px 80px 80px 80px 80px 1fr 110px;
+  padding: 11px 24px; border-bottom: 1px solid rgba(0,0,0,0.07);
+  align-items: center; cursor: pointer; transition: background 0.1s;
+}
+.caution-row:hover { background: rgba(0,0,0,0.025); }
+.caution-row.hl { background: rgba(255,98,0,0.05); border-left: 4px solid #FF6200; padding-left: 20px; }
+.caution-td { font-family: 'Courier Prime', monospace; font-size: 10px; color: rgba(0,0,0,0.5); }
+/* The ticker is in a "tag" */
+.caution-tag {
+  display: inline-block;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 900;
+  color: #000; letter-spacing: 0.02em;
+  border: 2px solid #000; padding: 0 6px;
+  position: relative;
+}
+.caution-tag.orange { border-color: #FF6200; color: #FF6200; }
+.caution-tag::after {
+  content: ''; position: absolute; top: 3px; right: -6px;
+  width: 4px; height: 4px; border-radius: 50%; background: #000;
+}
+.caution-td.up { color: #1E6E35; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; }
+.caution-td.dn { color: #CC2222; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; }
+.caution-score-strip { height: 3px; background: rgba(0,0,0,0.08); margin-top: 4px; overflow: hidden; }
+.caution-score-fill { height: 100%; }
+
+/* Right: signal cards as shipping labels */
+.caution-signals { border-left: 2px solid #000; }
+.caution-signals-head {
+  background: #000; padding: 10px 18px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 900;
+  letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.4);
+}
+.caution-signals-head::before { content: '"'; color: #FF6200; }
+.caution-signals-head::after { content: '"'; color: #FF6200; }
+.caution-sig {
+  padding: 14px 18px; border-bottom: 1px solid rgba(0,0,0,0.1);
+  position: relative; overflow: hidden;
+}
+.caution-sig-stripe-buy { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #1E6E35; }
+.caution-sig-stripe-sell { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #CC2222; }
+.caution-sig-stripe-veto { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: rgba(0,0,0,0.2); }
+.caution-sig-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; padding-left: 12px; }
+.caution-sig-ticker { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 900; color: #000; }
+.caution-sig-type {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 900;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 2px 8px; border: 2px solid;
+}
+.caution-sig-type.buy { color: #1E6E35; border-color: #1E6E35; }
+.caution-sig-type.sell { color: #CC2222; border-color: #CC2222; }
+.caution-sig-type.veto { color: rgba(0,0,0,0.25); border-color: rgba(0,0,0,0.15); }
+.caution-sig-meta { font-family: 'Courier Prime', monospace; font-size: 9px; color: rgba(0,0,0,0.4); line-height: 1.9; padding-left: 12px; }
+.caution-sig-meta em { color: rgba(0,0,0,0.65); font-style: normal; }
+.caution-sig-bar { margin-top: 7px; height: 3px; background: rgba(0,0,0,0.07); overflow: hidden; padding-left: 12px; }
+.caution-sig-bar-inner { height: 100%; }
+
+/* Bottom stripe */
+.caution-stripe-bottom { height: 14px; background: repeating-linear-gradient(-55deg, #FF6200 0px, #FF6200 12px, #000 12px, #000 24px, #FF6200 24px, #FF6200 36px, #000 36px, #000 48px); }
+
+
+/* ════════════════════════════════════════════════════════
+   B  —  "TRANSIT"
+   Reference: Solari split-flap departure board
+   Airports / train stations — each position is a "flight"
+   Dark amber on near-black — the exact look of a Solari board
+   Font: IBM Plex Mono throughout
+   Colors: #0A0600 (dark) · #F5B800 (amber board) · #FFFFFF accents
+   Layout: rows = positions, columns = departure board fields
+════════════════════════════════════════════════════════ */
+.transit {
+  background: #0A0600;
+  color: #F5B800;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.transit-topbar {
+  background: #050400;
+  display: flex; align-items: center;
+  height: 48px; padding: 0 28px; gap: 24px;
+  border-bottom: 1px solid rgba(245,184,0,0.08);
+}
+.transit-logo {
+  font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 700;
+  color: #F5B800; letter-spacing: 0.18em; text-transform: uppercase;
+  padding-right: 24px; border-right: 1px solid rgba(245,184,0,0.12);
+}
+.transit-status-row { display: flex; gap: 20px; align-items: center; }
+.transit-status-item { font-size: 10px; color: rgba(245,184,0,0.35); letter-spacing: 0.06em; }
+.transit-status-item span { color: #F5B800; }
+.transit-status-item .up { color: #5DD887; }
+.transit-status-item .dn { color: #E86060; }
+.transit-sp { flex: 1; }
+.transit-paper {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  background: rgba(245,184,0,0.12); color: rgba(245,184,0,0.6);
+  padding: 4px 12px; border: 1px solid rgba(245,184,0,0.2);
+}
+.transit-btn {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 5px 14px; border: 1px solid; cursor: pointer;
+}
+.transit-btn-dim { color: rgba(245,184,0,0.3); border-color: rgba(245,184,0,0.1); background: transparent; }
+.transit-btn-bright { color: #0A0600; border-color: #F5B800; background: #F5B800; }
+
+/* The board header — like "DEPARTURES" at an airport */
+.transit-board-header {
+  background: rgba(245,184,0,0.08);
+  border-bottom: 1px solid rgba(245,184,0,0.12);
+  border-top: 1px solid rgba(245,184,0,0.08);
+  padding: 10px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.transit-board-title {
+  font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 700;
+  color: #F5B800; letter-spacing: 0.2em; text-transform: uppercase;
+}
+.transit-board-subtitle {
+  font-size: 9px; color: rgba(245,184,0,0.3); letter-spacing: 0.1em;
+}
+.transit-clock {
+  font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 700;
+  color: #F5B800; letter-spacing: 0.1em;
+}
+.transit-clock-sub { font-size: 9px; color: rgba(245,184,0,0.35); letter-spacing: 0.1em; text-align: right; }
+
+/* Column headers — like a departure board */
+.transit-col-headers {
+  display: grid;
+  grid-template-columns: 90px 200px 120px 100px 100px 90px 1fr;
+  padding: 8px 28px;
+  border-bottom: 2px solid rgba(245,184,0,0.15);
+  background: rgba(245,184,0,0.04);
+}
+.transit-ch {
+  font-family: 'IBM Plex Mono', monospace; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(245,184,0,0.25);
+}
+
+/* Board rows — the split-flap effect is simulated via the typography */
+.transit-row {
+  display: grid;
+  grid-template-columns: 90px 200px 120px 100px 100px 90px 1fr;
+  padding: 0 28px;
+  min-height: 44px;
+  border-bottom: 1px solid rgba(245,184,0,0.06);
+  align-items: center;
+  cursor: pointer; transition: background 0.1s;
+  position: relative;
+}
+.transit-row::after {
+  content: '';
+  position: absolute; bottom: 0; left: 28px; right: 28px;
+  height: 1px; background: rgba(245,184,0,0.04);
+}
+.transit-row:hover { background: rgba(245,184,0,0.04); }
+.transit-row.boarding { background: rgba(245,184,0,0.07); }
+.transit-row.delayed { background: rgba(232,96,96,0.05); }
+
+/* Board cell styles */
+.transit-td { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: rgba(245,184,0,0.6); letter-spacing: 0.03em; }
+.transit-td.ticker { font-size: 16px; font-weight: 700; color: #F5B800; letter-spacing: 0.08em; }
+.transit-td.company { font-size: 10px; color: rgba(245,184,0,0.5); letter-spacing: 0.02em; }
+/* Status — the most Solari element */
+.transit-status-cell {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.transit-status-cell .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.transit-status-cell.boarding { color: #5DD887; }
+.transit-status-cell.boarding .dot { background: #5DD887; box-shadow: 0 0 6px #5DD887; }
+.transit-status-cell.ontime { color: #F5B800; }
+.transit-status-cell.ontime .dot { background: #F5B800; }
+.transit-status-cell.caution { color: #E86060; }
+.transit-status-cell.caution .dot { background: #E86060; box-shadow: 0 0 6px #E86060; }
+.transit-status-cell.hold { color: rgba(245,184,0,0.35); }
+.transit-status-cell.hold .dot { background: rgba(245,184,0,0.3); }
+.transit-td.pnl-up { color: #5DD887; font-weight: 600; }
+.transit-td.pnl-dn { color: #E86060; font-weight: 600; }
+.transit-td.pnl-flat { color: rgba(245,184,0,0.4); }
+/* Score shown as gate number */
+.transit-gate { font-size: 15px; font-weight: 700; color: #F5B800; }
+.transit-progress {
+  width: 60px; height: 3px; background: rgba(245,184,0,0.12);
+  border-radius: 0; overflow: hidden;
+}
+.transit-progress-fill { height: 100%; background: #F5B800; }
+.transit-progress-fill.green { background: #5DD887; }
+.transit-progress-fill.red { background: #E86060; }
+
+/* Summary panel below board */
+.transit-summary {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  border-top: 2px solid rgba(245,184,0,0.15);
+  background: rgba(245,184,0,0.03);
+}
+.transit-sum-item {
+  padding: 14px 20px; border-right: 1px solid rgba(245,184,0,0.07);
+}
+.transit-sum-item:last-child { border-right: none; }
+.transit-sum-label { font-size: 7px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,184,0,0.25); margin-bottom: 6px; }
+.transit-sum-val { font-size: 18px; font-weight: 700; color: #F5B800; line-height: 1; }
+.transit-sum-val.up { color: #5DD887; }
+.transit-sum-val.orange { color: #F5B800; }
+.transit-sum-sub { font-size: 8px; color: rgba(245,184,0,0.3); margin-top: 3px; }
+
+/* Signal bar at bottom */
+.transit-signals {
+  border-top: 1px solid rgba(245,184,0,0.08);
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  background: rgba(5,4,0,0.5);
+}
+.transit-sig {
+  padding: 12px 20px; border-right: 1px solid rgba(245,184,0,0.06);
+  display: flex; align-items: center; gap: 12px;
+}
+.transit-sig:last-child { border-right: none; }
+.transit-sig-arrow {
+  font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 700;
+  flex-shrink: 0;
+}
+.transit-sig-arrow.buy { color: #5DD887; }
+.transit-sig-arrow.sell { color: #E86060; }
+.transit-sig-arrow.veto { color: rgba(245,184,0,0.2); }
+.transit-sig-body {}
+.transit-sig-ticker { font-size: 13px; font-weight: 700; color: #F5B800; margin-bottom: 2px; }
+.transit-sig-meta { font-size: 9px; color: rgba(245,184,0,0.3); line-height: 1.7; }
+.transit-sig-meta span { color: rgba(245,184,0,0.6); }
+.transit-sig-conf { margin-left: auto; }
+.transit-sig-pct { font-size: 16px; font-weight: 700; text-align: right; }
+.transit-sig-pct.buy { color: #5DD887; }
+.transit-sig-pct.sell { color: #E86060; }
+.transit-sig-pct.veto { color: rgba(245,184,0,0.25); }
+.transit-sig-pct-label { font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,184,0,0.2); text-align: right; }
+
+
+/* ════════════════════════════════════════════════════════
+   C  —  "FORM 7741"
+   Reference: US Government form — IRS, W-2, tax document
+   Abloh's move: the 3% wrong thing = official institutional typography
+   in a personal portfolio tool. The interface IS the form.
+   Cream + official blue ruling lines + red ink corrections.
+   Font: Libre Baskerville (the "government official" serif) + Courier Prime
+   Colors: #F8F5EE (institutional cream) · #003580 (official blue) · #CC0000 (red ink)
+════════════════════════════════════════════════════════ */
+.form7741 {
+  background: #F8F5EE;
+  color: #000;
+  font-family: 'Libre Baskerville', serif;
+}
+
+/* Official form top — the "OMB No." header you see on government forms */
+.form-header {
+  background: #F8F5EE;
+  border-bottom: 3px solid #003580;
+  padding: 12px 28px 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 20px;
+  align-items: end;
+}
+.form-agency {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: #003580; margin-bottom: 3px;
+}
+.form-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 22px; font-weight: 700; color: #000; margin-bottom: 1px;
+  letter-spacing: -0.01em;
+}
+.form-subtitle {
+  font-family: 'Courier Prime', monospace; font-size: 10px; color: rgba(0,0,0,0.4);
+}
+.form-omb {
+  text-align: right;
+}
+.form-omb-num {
+  font-family: 'Courier Prime', monospace; font-size: 10px; color: rgba(0,0,0,0.4);
+  margin-bottom: 3px;
+}
+.form-omb-year {
+  font-family: 'Courier Prime', monospace; font-size: 18px; font-weight: 700; color: #003580;
+}
+.form-mode-stamp {
+  display: inline-block;
+  font-family: 'Courier Prime', monospace; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #CC0000; border: 2px solid #CC0000; padding: 2px 8px;
+  transform: rotate(-3deg);
+  margin-left: 12px;
+}
+
+/* Blue ruled lines — the signature government form element */
+.form-ruled {
+  background: repeating-linear-gradient(
+    180deg,
+    #F8F5EE 0px, #F8F5EE 23px,
+    rgba(0,53,128,0.08) 23px, rgba(0,53,128,0.08) 24px
+  );
+}
+
+/* Action bar */
+.form-actionbar {
+  background: #003580;
+  display: flex; align-items: center;
+  height: 42px; padding: 0 28px; gap: 16px;
+}
+.form-actionbar-label {
+  font-family: 'Courier Prime', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.4);
+}
+.form-action {
+  font-family: 'Courier Prime', monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; padding: 4px 14px; border: 1px solid; cursor: pointer;
+}
+.form-action-out { color: rgba(255,255,255,0.35); border-color: rgba(255,255,255,0.15); background: transparent; }
+.form-action-fill { color: #003580; background: #fff; border-color: #fff; }
+.form-sp { flex: 1; }
+.form-mkt {
+  font-family: 'Courier Prime', monospace; font-size: 10px; color: rgba(255,255,255,0.4);
+  display: flex; gap: 16px;
+}
+.form-mkt span { color: rgba(255,255,255,0.75); }
+.form-mkt .up { color: #5DD887; }
+.form-mkt .dn { color: #FF8080; }
+
+/* Part sections */
+.form-part {
+  border-bottom: 1px solid rgba(0,53,128,0.12);
+}
+.form-part-header {
+  background: #003580;
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 28px;
+}
+.form-part-num {
+  font-family: 'Libre Baskerville', serif; font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.5); letter-spacing: 0.05em;
+}
+.form-part-title {
+  font-family: 'Libre Baskerville', serif; font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.85); text-transform: uppercase; letter-spacing: 0.08em;
+}
+
+/* Form fields layout — like tax form boxes */
+.form-row {
+  display: flex;
+  border-bottom: 1px solid rgba(0,53,128,0.08);
+}
+.form-field {
+  flex: 1; padding: 7px 14px;
+  border-right: 1px solid rgba(0,53,128,0.1);
+  position: relative;
+}
+.form-field:last-child { border-right: none; }
+.form-field-box {
+  position: absolute; top: 4px; left: 6px;
+  font-family: 'Courier Prime', monospace; font-size: 7px; font-weight: 700;
+  color: rgba(0,53,128,0.4); letter-spacing: 0.06em;
+}
+.form-field-label {
+  font-family: 'Courier Prime', monospace; font-size: 7px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(0,0,0,0.3); margin-bottom: 3px; margin-top: 2px;
+}
+.form-field-val {
+  font-family: 'Courier Prime', monospace; font-size: 17px; font-weight: 700; color: #000; line-height: 1;
+}
+.form-field-val.up { color: #1A5E2A; }
+.form-field-val.dn { color: #CC0000; }
+.form-field-val.blue { color: #003580; }
+
+/* Holdings table — styled like a Schedule B or D */
+.form-table { width: 100%; border-collapse: collapse; }
+.form-table th {
+  font-family: 'Courier Prime', monospace; font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(0,53,128,0.6); padding: 7px 14px; text-align: left;
+  border-bottom: 1px solid rgba(0,53,128,0.15);
+  background: rgba(0,53,128,0.04);
+}
+.form-table td {
+  font-family: 'Courier Prime', monospace; font-size: 11px; color: rgba(0,0,0,0.6);
+  padding: 8px 14px; border-bottom: 1px solid rgba(0,53,128,0.07);
+  vertical-align: middle;
+}
+.form-table tr:hover td { background: rgba(0,53,128,0.025); }
+/* Red ink treatment for losing/concerning positions */
+.form-table tr.loss td { color: rgba(0,0,0,0.4); }
+.form-table tr.loss td.ticker-cell { color: #CC0000; text-decoration: underline; text-decoration-style: dotted; }
+.form-table tr.hl td { background: rgba(0,53,128,0.04); border-left: 3px solid #003580; }
+.form-table tr.hl td:first-child { padding-left: 11px; }
+.ticker-cell { font-weight: 700; color: #000; font-size: 13px; }
+.td-up { color: #1A5E2A; font-weight: 700; }
+.td-dn { color: #CC0000; font-weight: 700; }
+.score-cell { display: flex; flex-direction: column; gap: 3px; }
+.score-cell-num { font-family: 'Courier Prime', monospace; font-size: 10px; color: rgba(0,0,0,0.4); }
+.score-bar-form { height: 2px; background: rgba(0,53,128,0.1); overflow: hidden; }
+.score-fill-form { height: 100%; }
+
+/* Signal section — looks like a checklist on a form */
+.form-checklist { padding: 12px 28px; }
+.form-check-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid rgba(0,53,128,0.07);
+}
+.form-check-box {
+  width: 14px; height: 14px; border: 1.5px solid rgba(0,0,0,0.3);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.form-check-box.checked-buy { border-color: #1A5E2A; background: rgba(26,94,42,0.1); }
+.form-check-box.checked-buy::after { content: '✓'; font-size: 9px; color: #1A5E2A; font-weight: 700; }
+.form-check-box.checked-sell { border-color: #CC0000; background: rgba(204,0,0,0.07); }
+.form-check-box.checked-sell::after { content: '✗'; font-size: 9px; color: #CC0000; font-weight: 700; }
+.form-check-box.unchecked::after { content: ' '; }
+.form-check-content { flex: 1; }
+.form-check-ticker { font-family: 'Courier Prime', monospace; font-size: 13px; font-weight: 700; color: #000; margin-bottom: 2px; }
+.form-check-meta { font-family: 'Courier Prime', monospace; font-size: 9px; color: rgba(0,0,0,0.4); line-height: 1.8; }
+.form-check-meta em { color: rgba(0,0,0,0.65); font-style: normal; }
+/* Red ink note — like a correction on a form */
+.form-check-note {
+  font-family: 'Courier Prime', monospace; font-size: 9px;
+  color: #CC0000; font-style: italic; margin-top: 2px;
+}
+.form-check-right { text-align: right; }
+.form-check-pct { font-family: 'Courier Prime', monospace; font-size: 14px; font-weight: 700; }
+.form-check-pct.buy { color: #1A5E2A; }
+.form-check-pct.sell { color: #CC0000; }
+.form-check-pct.veto { color: rgba(0,0,0,0.25); }
+.form-check-pct-label { font-family: 'Courier Prime', monospace; font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(0,0,0,0.25); }
+/* Signature line at bottom */
+.form-signature-row {
+  display: flex; align-items: flex-end;
+  padding: 12px 28px; gap: 32px;
+  border-top: 1px solid rgba(0,53,128,0.15);
+  background: rgba(0,53,128,0.02);
+}
+.form-sig-field { flex: 1; }
+.form-sig-label { font-family: 'Courier Prime', monospace; font-size: 7px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(0,0,0,0.25); margin-bottom: 3px; }
+.form-sig-line { border-bottom: 1px solid rgba(0,0,0,0.2); height: 20px; }
+.form-sig-val { font-family: 'Libre Baskerville', serif; font-size: 13px; font-style: italic; color: #003580; }
+</style>
+</head>
+<body>
+
+<!-- ── page title ── -->
+<div class="outer">
+  <div class="pg-title">Virgil Abloh — Three Cultural Hijacks</div>
+  <div class="pg-sub">"Everything I design has quotation marks around it." — each direction borrows from a world that has never touched a trading terminal.</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     A  —  "CAUTION"  (Off-White construction)
+══════════════════════════════════════════ -->
+<div class="dw" id="dw-a" onclick="pick('a')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#FF6200;color:#fff;">A</div>
+    <div class="dir-info">
+      <div class="dir-name">"CAUTION" — Off-White / Construction Site</div>
+      <div class="dir-quote">"The source of inspiration was industrial safety signage. I put 'TICKER' in quotation marks."</div>
+      <div class="dir-desc">White background. Hazard-stripe borders. Every column header in quotes. Tickers rendered as industrial shipping tags with a punched hole. Signal cards are packaging labels. The only colors: black, white, safety orange. Zero dark theme. Zero fintech chrome.</div>
+      <div class="dir-pills">
+        <span class="pill" style="color:#FF6200;border-color:rgba(255,98,0,0.35);">Construction site</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Hazard stripes</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Tickers as tags</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Everything in quotes</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Barlow 900 + Courier</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-a">Select A</button>
+  </div>
+  <div class="caution">
+    <div class="caution-stripe"></div>
+    <div class="caution-topbar">
+      <div class="caution-logo">CAUTION</div>
+      <div class="caution-nav">
+        <div class="caution-nav-item active">Command</div>
+        <div class="caution-nav-item">Signals</div>
+        <div class="caution-nav-item">Risk</div>
+        <div class="caution-nav-item">Alpha</div>
+      </div>
+      <div class="caution-sp"></div>
+      <div class="caution-market-strip">
+        <div class="caution-mkt">
+          <div class="caution-mkt-k">S&P 500</div>
+          <div class="caution-mkt-v">5,847 <span class="up">+0.3%</span></div>
+        </div>
+        <div class="caution-mkt">
+          <div class="caution-mkt-k">Russell 2K</div>
+          <div class="caution-mkt-v">2,102 <span class="dn">-0.1%</span></div>
+        </div>
+        <div class="caution-mkt">
+          <div class="caution-mkt-k">VIX</div>
+          <div class="caution-mkt-v">14.8</div>
+        </div>
+      </div>
+      <div class="caution-paper-tag"><div class="caution-paper-tag-text">Paper Mode</div></div>
+      <div class="caution-action">Scan</div>
+      <div class="caution-action">Analyze</div>
+      <div class="caution-action go">Execute</div>
+    </div>
+    <!-- KPI row -->
+    <div class="caution-kpi-row">
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"total equity"</div>
+        <div class="caution-kpi-val">$482,304</div>
+        <div class="caution-kpi-sub">6 portfolios</div>
+      </div>
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"today p&l"</div>
+        <div class="caution-kpi-val up">+$4,127</div>
+        <div class="caution-kpi-sub">+0.86% day</div>
+      </div>
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"total return"</div>
+        <div class="caution-kpi-val up">+8.4%</div>
+        <div class="caution-kpi-sub">α +5.3% SPX</div>
+      </div>
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"free cash"</div>
+        <div class="caution-kpi-val">$89,441</div>
+        <div class="caution-kpi-sub">18.5%</div>
+      </div>
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"positions"</div>
+        <div class="caution-kpi-val">24</div>
+        <div class="caution-kpi-sub">open</div>
+      </div>
+      <div class="caution-kpi">
+        <div class="caution-kpi-label">"regime"</div>
+        <div class="caution-kpi-val orange">BULL</div>
+        <div class="caution-kpi-sub">Day 7 · 1.0×</div>
+      </div>
+    </div>
+    <div class="caution-divider"></div>
+    <!-- Positions + signals -->
+    <div class="caution-body">
+      <div class="caution-pos">
+        <div class="caution-pos-head">
+          <div class="caution-th">ticker</div>
+          <div class="caution-th">score</div>
+          <div class="caution-th">price</div>
+          <div class="caution-th">p&l</div>
+          <div class="caution-th">value</div>
+          <div class="caution-th">trend</div>
+          <div class="caution-th">stop/target</div>
+        </div>
+        <div class="caution-row hl">
+          <div class="caution-td"><div class="caution-tag orange">CELH</div></div>
+          <div class="caution-td"><div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#000;">82</div><div class="caution-score-strip"><div class="caution-score-fill" style="width:82%;background:#1E6E35;height:3px;"></div></div></div>
+          <div class="caution-td">$47.20</div>
+          <div class="caution-td up">+14.3%</div>
+          <div class="caution-td">$9,440</div>
+          <div class="caution-td"><svg width="60" height="20" viewBox="0 0 60 20"><polyline points="0,18 10,15 20,12 30,10 40,12 50,7 60,4" fill="none" stroke="#1E6E35" stroke-width="2"/></svg></div>
+          <div class="caution-td" style="font-size:9px;color:rgba(0,0,0,0.35);">$42.10 ↓ · $58.00 ↑</div>
+        </div>
+        <div class="caution-row">
+          <div class="caution-td"><div class="caution-tag">POWL</div></div>
+          <div class="caution-td"><div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#000;">77</div><div class="caution-score-strip"><div class="caution-score-fill" style="width:77%;background:#1E6E35;height:3px;"></div></div></div>
+          <div class="caution-td">$183.44</div>
+          <div class="caution-td up">+9.7%</div>
+          <div class="caution-td">$18,344</div>
+          <div class="caution-td"><svg width="60" height="20" viewBox="0 0 60 20"><polyline points="0,16 10,14 20,12 30,11 40,13 50,9 60,7" fill="none" stroke="#1E6E35" stroke-width="2"/></svg></div>
+          <div class="caution-td" style="font-size:9px;color:rgba(0,0,0,0.35);">$168 ↓ · $210 ↑</div>
+        </div>
+        <div class="caution-row">
+          <div class="caution-td"><div class="caution-tag">SMPL</div></div>
+          <div class="caution-td"><div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:rgba(0,0,0,0.35);">64</div><div class="caution-score-strip"><div class="caution-score-fill" style="width:64%;background:rgba(0,0,0,0.2);height:3px;"></div></div></div>
+          <div class="caution-td">$29.18</div>
+          <div class="caution-td" style="color:rgba(0,0,0,0.4);">+0.4%</div>
+          <div class="caution-td">$5,836</div>
+          <div class="caution-td"><svg width="60" height="20" viewBox="0 0 60 20"><polyline points="0,11 10,12 20,10 30,11 40,10 50,12 60,11" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="2"/></svg></div>
+          <div class="caution-td" style="font-size:9px;color:rgba(0,0,0,0.3);">$26.50 ↓ · $36 ↑</div>
+        </div>
+        <div class="caution-row" style="background:rgba(204,34,34,0.03);">
+          <div class="caution-td"><div class="caution-tag" style="border-color:#CC2222;color:#CC2222;">MTDR</div></div>
+          <div class="caution-td"><div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:#CC2222;">48</div><div class="caution-score-strip"><div class="caution-score-fill" style="width:48%;background:#CC2222;height:3px;"></div></div></div>
+          <div class="caution-td">$44.91</div>
+          <div class="caution-td dn">-3.2%</div>
+          <div class="caution-td">$6,737</div>
+          <div class="caution-td"><svg width="60" height="20" viewBox="0 0 60 20"><polyline points="0,5 10,7 20,9 30,11 40,13 50,16 60,18" fill="none" stroke="#CC2222" stroke-width="2"/></svg></div>
+          <div class="caution-td dn" style="font-size:9px;">$41 ↓ NEAR STOP</div>
+        </div>
+      </div>
+      <div class="caution-signals">
+        <div class="caution-signals-head">signals</div>
+        <div class="caution-sig">
+          <div class="caution-sig-stripe-buy"></div>
+          <div class="caution-sig-top">
+            <div class="caution-sig-ticker">NOVA</div>
+            <div class="caution-sig-type buy">BUY</div>
+          </div>
+          <div class="caution-sig-meta">200sh @ <em>$28.40</em> · Score <em>79</em><br>SL <em>$25.90</em> · TP <em>$36.00</em> · Conf <em>88%</em></div>
+          <div class="caution-sig-bar"><div class="caution-sig-bar-inner" style="width:88%;background:#1E6E35;height:3px;"></div></div>
+        </div>
+        <div class="caution-sig">
+          <div class="caution-sig-stripe-sell"></div>
+          <div class="caution-sig-top">
+            <div class="caution-sig-ticker">CRC</div>
+            <div class="caution-sig-type sell">STOP</div>
+          </div>
+          <div class="caution-sig-meta">Stop @ <em>$31.20</em><br>Realized: <em style="color:#CC2222;">-5.4%</em></div>
+          <div class="caution-sig-bar"><div class="caution-sig-bar-inner" style="width:95%;background:#CC2222;height:3px;"></div></div>
+        </div>
+        <div class="caution-sig">
+          <div class="caution-sig-stripe-veto"></div>
+          <div class="caution-sig-top">
+            <div class="caution-sig-ticker">SMPL</div>
+            <div class="caution-sig-type veto">VETO</div>
+          </div>
+          <div class="caution-sig-meta">Score <em>71</em> · Margin risk<br>AI declined · Conf <em>52%</em></div>
+          <div class="caution-sig-bar"><div class="caution-sig-bar-inner" style="width:52%;background:rgba(0,0,0,0.15);height:3px;"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="caution-stripe-bottom"></div>
+  </div>
+</div>
+
+<div class="gap"></div>
+
+
+<!-- ══════════════════════════════════════════
+     B  —  "TRANSIT"  (Solari departure board)
+══════════════════════════════════════════ -->
+<div class="dw" id="dw-b" onclick="pick('b')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#F5B800;color:#0A0600;">B</div>
+    <div class="dir-info">
+      <div class="dir-name">"TRANSIT" — Solari Split-Flap Departure Board</div>
+      <div class="dir-quote">"Your portfolio is a departures board. CELH is BOARDING. MTDR is DELAYED."</div>
+      <div class="dir-desc">The exact amber-on-near-black of a train station Solari board. Each position is a flight: ticker = destination, status = BOARDING / ON TIME / DELAYED / CANCELLED. Score = gate number. Portfolio management as airport operations. Nothing about this says "trading app" until you read the data.</div>
+      <div class="dir-pills">
+        <span class="pill" style="color:#F5B800;border-color:rgba(245,184,0,0.35);">Solari board amber</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Near-black #0A0600</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Positions as flights</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">IBM Plex Mono</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Airport operations UI</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-b">Select B</button>
+  </div>
+  <div class="transit">
+    <div class="transit-topbar">
+      <div class="transit-logo">TRANSIT</div>
+      <div class="transit-status-row">
+        <div class="transit-status-item">SPX <span>5,847 <span class="up">+0.3%</span></span></div>
+        <div class="transit-status-item">RUT <span>2,102 <span class="dn">-0.1%</span></span></div>
+        <div class="transit-status-item">VIX <span>14.8</span></div>
+      </div>
+      <div class="transit-sp"></div>
+      <div class="transit-paper">Paper Mode</div>
+      <div class="transit-btn transit-btn-dim">Scan</div>
+      <div class="transit-btn transit-btn-dim">Analyze</div>
+      <div class="transit-btn transit-btn-bright">Execute</div>
+    </div>
+    <!-- Board header -->
+    <div class="transit-board-header">
+      <div>
+        <div class="transit-board-title">Departures — microcap</div>
+        <div class="transit-board-subtitle">Portfolio · BULL regime · Gate assignments active · 11 positions</div>
+      </div>
+      <div>
+        <div class="transit-clock">14:32</div>
+        <div class="transit-clock-sub">2026-03-10 · EST</div>
+      </div>
+    </div>
+    <!-- Column headers -->
+    <div class="transit-col-headers">
+      <div class="transit-ch">Ticker</div>
+      <div class="transit-ch">Security</div>
+      <div class="transit-ch">Status</div>
+      <div class="transit-ch">Gate (Score)</div>
+      <div class="transit-ch">P&L</div>
+      <div class="transit-ch">Value</div>
+      <div class="transit-ch">Stop / Target</div>
+    </div>
+    <!-- Board rows -->
+    <div class="transit-row boarding">
+      <div class="transit-td ticker">CELH</div>
+      <div class="transit-td company">Celsius Holdings</div>
+      <div class="transit-td"><div class="transit-status-cell boarding"><div class="dot"></div>BOARDING</div></div>
+      <div class="transit-td"><span class="transit-gate">82</span></div>
+      <div class="transit-td pnl-up">+14.3%</div>
+      <div class="transit-td">$9,440</div>
+      <div class="transit-td" style="font-size:9px;color:rgba(245,184,0,0.4);">$42.10 ↓ &nbsp; $58.00 ↑</div>
+    </div>
+    <div class="transit-row">
+      <div class="transit-td ticker">POWL</div>
+      <div class="transit-td company">Powell Industries</div>
+      <div class="transit-td"><div class="transit-status-cell boarding"><div class="dot"></div>BOARDING</div></div>
+      <div class="transit-td"><span class="transit-gate">77</span></div>
+      <div class="transit-td pnl-up">+9.7%</div>
+      <div class="transit-td">$18,344</div>
+      <div class="transit-td" style="font-size:9px;color:rgba(245,184,0,0.4);">$168 ↓ &nbsp; $210 ↑</div>
+    </div>
+    <div class="transit-row">
+      <div class="transit-td ticker">ESE</div>
+      <div class="transit-td company">ESS Tech</div>
+      <div class="transit-td"><div class="transit-status-cell ontime"><div class="dot"></div>ON TIME</div></div>
+      <div class="transit-td"><span class="transit-gate">71</span></div>
+      <div class="transit-td pnl-up">+6.2%</div>
+      <div class="transit-td">$7,452</div>
+      <div class="transit-td" style="font-size:9px;color:rgba(245,184,0,0.4);">$56 ↓ &nbsp; $78 ↑</div>
+    </div>
+    <div class="transit-row">
+      <div class="transit-td ticker">SMPL</div>
+      <div class="transit-td company">Simply Good Foods</div>
+      <div class="transit-td"><div class="transit-status-cell hold"><div class="dot"></div>HOLD</div></div>
+      <div class="transit-td"><span class="transit-gate" style="color:rgba(245,184,0,0.5);">64</span></div>
+      <div class="transit-td pnl-flat">+0.4%</div>
+      <div class="transit-td">$5,836</div>
+      <div class="transit-td" style="font-size:9px;color:rgba(245,184,0,0.4);">$26.50 ↓ &nbsp; $36 ↑</div>
+    </div>
+    <div class="transit-row delayed">
+      <div class="transit-td ticker" style="color:#E86060;">MTDR</div>
+      <div class="transit-td company" style="color:rgba(232,96,96,0.5);">Matador Resources</div>
+      <div class="transit-td"><div class="transit-status-cell caution"><div class="dot"></div>NEAR STOP</div></div>
+      <div class="transit-td"><span class="transit-gate" style="color:#E86060;">48</span></div>
+      <div class="transit-td pnl-dn">-3.2%</div>
+      <div class="transit-td" style="color:rgba(232,96,96,0.7);">$6,737</div>
+      <div class="transit-td" style="font-size:9px;color:#E86060;">$41.00 ↓ CRITICAL</div>
+    </div>
+    <!-- Summary -->
+    <div class="transit-summary">
+      <div class="transit-sum-item"><div class="transit-sum-label">Total Equity</div><div class="transit-sum-val">$482,304</div><div class="transit-sum-sub">6 portfolios</div></div>
+      <div class="transit-sum-item"><div class="transit-sum-label">Today P&L</div><div class="transit-sum-val up">+$4,127</div><div class="transit-sum-sub">+0.86% day</div></div>
+      <div class="transit-sum-item"><div class="transit-sum-label">Total Return</div><div class="transit-sum-val up">+8.4%</div><div class="transit-sum-sub">α +5.3% SPX</div></div>
+      <div class="transit-sum-item"><div class="transit-sum-label">Regime</div><div class="transit-sum-val orange">BULL</div><div class="transit-sum-sub">Day 7 · 1.0×</div></div>
+      <div class="transit-sum-item"><div class="transit-sum-label">Risk Score</div><div class="transit-sum-val">75/100</div><div class="transit-sum-sub">Low</div></div>
+    </div>
+    <!-- Signals -->
+    <div class="transit-signals">
+      <div class="transit-sig">
+        <div class="transit-sig-arrow buy">↑</div>
+        <div class="transit-sig-body">
+          <div class="transit-sig-ticker">NOVA</div>
+          <div class="transit-sig-meta">200sh @ <span>$28.40</span> · Gate <span>79</span><br>SL <span>$25.90</span> · TP <span>$36.00</span></div>
+        </div>
+        <div class="transit-sig-conf">
+          <div class="transit-sig-pct buy">88%</div>
+          <div class="transit-sig-pct-label">confidence</div>
+        </div>
+      </div>
+      <div class="transit-sig">
+        <div class="transit-sig-arrow sell">↓</div>
+        <div class="transit-sig-body">
+          <div class="transit-sig-ticker">CRC</div>
+          <div class="transit-sig-meta">Stop @ <span>$31.20</span><br>Realized: <span style="color:#E86060;">-5.4%</span></div>
+        </div>
+        <div class="transit-sig-conf">
+          <div class="transit-sig-pct sell">STOP</div>
+          <div class="transit-sig-pct-label">triggered</div>
+        </div>
+      </div>
+      <div class="transit-sig">
+        <div class="transit-sig-arrow veto">×</div>
+        <div class="transit-sig-body">
+          <div class="transit-sig-ticker">SMPL</div>
+          <div class="transit-sig-meta">Score <span>71</span> · AI vetoed<br>Margin deterioration</div>
+        </div>
+        <div class="transit-sig-conf">
+          <div class="transit-sig-pct veto">52%</div>
+          <div class="transit-sig-pct-label">confidence</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gap"></div>
+
+
+<!-- ══════════════════════════════════════════
+     C  —  "FORM 7741"  (Government document)
+══════════════════════════════════════════ -->
+<div class="dw" id="dw-c" onclick="pick('c')">
+  <div class="dir-meta">
+    <div class="dir-badge" style="background:#003580;color:#fff;">C</div>
+    <div class="dir-info">
+      <div class="dir-name">"FORM 7741" — US Government Document</div>
+      <div class="dir-quote">"The interface IS the form. Section 3.1: Holdings Register. Sign here to execute."</div>
+      <div class="dir-desc">Institutional cream. Blue ruling lines. Official government serif. Positions are Schedule D entries. Signals are a checklist. Losses have red-ink corrections. The whole portfolio is a document you file. Signals are boxes you check. Nothing about the visual language says tech or finance — it says federal government. That's the 3%.</div>
+      <div class="dir-pills">
+        <span class="pill" style="color:#003580;border-color:rgba(0,53,128,0.4);">Government form</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Official blue ruling</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Red ink corrections</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Libre Baskerville + Courier</span>
+        <span class="pill" style="color:rgba(255,255,255,0.4);border-color:rgba(255,255,255,0.1);">Numbered sections</span>
+      </div>
+    </div>
+    <button class="dir-btn" id="btn-c">Select C</button>
+  </div>
+  <div class="form7741">
+    <!-- Official header -->
+    <div class="form-header">
+      <div>
+        <div class="form-agency">Portfolio Management Authority — Department of Algorithmic Intelligence</div>
+        <div class="form-title">Form 7741 — Portfolio Intelligence Report
+          <span class="form-mode-stamp">PAPER</span>
+        </div>
+        <div class="form-subtitle">For tax year ending December 31, 2026 · Retain all records · See attached instructions</div>
+      </div>
+      <div class="form-omb">
+        <div class="form-omb-num">OMB No. 1545-0741</div>
+        <div class="form-omb-year">2026</div>
+      </div>
+    </div>
+    <!-- Action bar -->
+    <div class="form-actionbar">
+      <div class="form-actionbar-label">Actions:</div>
+      <div class="form-action form-action-out">Scan Universe</div>
+      <div class="form-action form-action-out">Run Analysis</div>
+      <div class="form-action form-action-fill">Execute Approved</div>
+      <div class="form-sp"></div>
+      <div class="form-mkt">SPX <span>5,847 <span class="up">+0.3%</span></span> &nbsp;&nbsp; RUT <span>2,102 <span class="dn">-0.1%</span></span> &nbsp;&nbsp; VIX <span>14.8</span></div>
+    </div>
+    <!-- Part I header -->
+    <div class="form-part">
+      <div class="form-part-header">
+        <span class="form-part-num">Part I</span>
+        <span class="form-part-title">Portfolio Summary — Fiscal Period January 1 – March 10, 2026</span>
+      </div>
+      <!-- Summary fields — like form boxes -->
+      <div class="form-row form-ruled">
+        <div class="form-field">
+          <div class="form-field-box">1a</div>
+          <div class="form-field-label">Total Equity (all portfolios)</div>
+          <div class="form-field-val blue">$482,304.00</div>
+        </div>
+        <div class="form-field">
+          <div class="form-field-box">1b</div>
+          <div class="form-field-label">Net Gain / (Loss) for Period</div>
+          <div class="form-field-val up">+$37,304.00</div>
+        </div>
+        <div class="form-field">
+          <div class="form-field-box">1c</div>
+          <div class="form-field-label">Total Return (%)</div>
+          <div class="form-field-val up">+8.4%</div>
+        </div>
+        <div class="form-field">
+          <div class="form-field-box">1d</div>
+          <div class="form-field-label">Cash Available (undeployed)</div>
+          <div class="form-field-val">$89,441.00</div>
+        </div>
+        <div class="form-field">
+          <div class="form-field-box">1e</div>
+          <div class="form-field-label">Market Regime Classification</div>
+          <div class="form-field-val blue">BULL — Day 7</div>
+        </div>
+      </div>
+    </div>
+    <!-- Part II: Holdings + Part III: Signals side by side -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;">
+      <div style="border-right:2px solid #003580;">
+        <div class="form-part-header">
+          <span class="form-part-num">Part II</span>
+          <span class="form-part-title">Schedule of Holdings — microcap</span>
+        </div>
+        <div class="form-ruled">
+          <table class="form-table">
+            <thead>
+              <tr>
+                <th>Sec.</th>
+                <th>Description</th>
+                <th>Score</th>
+                <th>Price</th>
+                <th>Gain/(Loss)</th>
+                <th>FMV</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="hl">
+                <td><span class="ticker-cell">CELH</span></td>
+                <td style="font-family:'Courier Prime',monospace;font-size:9px;color:rgba(0,0,0,0.4);">Celsius Holdings Inc.</td>
+                <td><div class="score-cell"><span class="score-cell-num">082</span><div class="score-bar-form"><div class="score-fill-form" style="width:82%;background:#1A5E2A;"></div></div></div></td>
+                <td>$47.20</td>
+                <td class="td-up">+14.3%</td>
+                <td>$9,440</td>
+              </tr>
+              <tr class="hl">
+                <td><span class="ticker-cell">POWL</span></td>
+                <td style="font-family:'Courier Prime',monospace;font-size:9px;color:rgba(0,0,0,0.4);">Powell Industries Inc.</td>
+                <td><div class="score-cell"><span class="score-cell-num">077</span><div class="score-bar-form"><div class="score-fill-form" style="width:77%;background:#1A5E2A;"></div></div></div></td>
+                <td>$183.44</td>
+                <td class="td-up">+9.7%</td>
+                <td>$18,344</td>
+              </tr>
+              <tr>
+                <td><span class="ticker-cell">SMPL</span></td>
+                <td style="font-family:'Courier Prime',monospace;font-size:9px;color:rgba(0,0,0,0.4);">Simply Good Foods Co.</td>
+                <td><div class="score-cell"><span class="score-cell-num">064</span><div class="score-bar-form"><div class="score-fill-form" style="width:64%;background:rgba(0,0,0,0.2);"></div></div></div></td>
+                <td>$29.18</td>
+                <td style="color:rgba(0,0,0,0.35);">+0.4%</td>
+                <td>$5,836</td>
+              </tr>
+              <tr class="loss">
+                <td><span class="ticker-cell" style="color:#CC0000;">MTDR</span></td>
+                <td style="font-family:'Courier Prime',monospace;font-size:9px;color:rgba(0,0,0,0.3);">Matador Resources Co.</td>
+                <td><div class="score-cell"><span class="score-cell-num" style="color:#CC0000;">048</span><div class="score-bar-form"><div class="score-fill-form" style="width:48%;background:#CC0000;"></div></div></div></td>
+                <td style="color:rgba(0,0,0,0.4);">$44.91</td>
+                <td class="td-dn">-3.2%</td>
+                <td style="color:rgba(0,0,0,0.4);">$6,737</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="form-part-header">
+          <span class="form-part-num">Part III</span>
+          <span class="form-part-title">Signal Analysis — Pending Authorization</span>
+        </div>
+        <div class="form-checklist form-ruled">
+          <div class="form-check-item">
+            <div class="form-check-box checked-buy"></div>
+            <div class="form-check-content">
+              <div class="form-check-ticker">NOVA — Buy Authorization</div>
+              <div class="form-check-meta">200 shares @ <em>$28.40</em> per share<br>Stop-loss: <em>$25.90</em> · Take-profit: <em>$36.00</em><br>Composite score: <em>79/100</em> · Status: APPROVED</div>
+            </div>
+            <div class="form-check-right">
+              <div class="form-check-pct buy">88%</div>
+              <div class="form-check-pct-label">confidence</div>
+            </div>
+          </div>
+          <div class="form-check-item">
+            <div class="form-check-box checked-sell"></div>
+            <div class="form-check-content">
+              <div class="form-check-ticker">CRC — Stop-Loss Execution</div>
+              <div class="form-check-meta">Stop triggered at <em>$31.20</em><br>Entry: <em>$33.00</em> · 2026-02-14</div>
+              <div class="form-check-note">* Realized loss: -5.4%. See Schedule L for loss carryforward.</div>
+            </div>
+            <div class="form-check-right">
+              <div class="form-check-pct sell">-5.4%</div>
+              <div class="form-check-pct-label">realized</div>
+            </div>
+          </div>
+          <div class="form-check-item">
+            <div class="form-check-box unchecked"></div>
+            <div class="form-check-content">
+              <div class="form-check-ticker">SMPL — Rejected (see note)</div>
+              <div class="form-check-meta">Score <em>71/100</em> · AI advisor declined<br>Reason: deteriorating gross margin</div>
+              <div class="form-check-note">* See attached AI review. Do not execute without further analysis.</div>
+            </div>
+            <div class="form-check-right">
+              <div class="form-check-pct veto">VETO</div>
+              <div class="form-check-pct-label">decision</div>
+            </div>
+          </div>
+        </div>
+        <!-- Signature line -->
+        <div class="form-signature-row">
+          <div class="form-sig-field">
+            <div class="form-sig-label">Authorized signature</div>
+            <div class="form-sig-line"><span class="form-sig-val">Portfolio Manager</span></div>
+          </div>
+          <div class="form-sig-field">
+            <div class="form-sig-label">Date</div>
+            <div class="form-sig-line"><span class="form-sig-val">2026-03-10</span></div>
+          </div>
+          <div class="form-sig-field">
+            <div class="form-sig-label">Risk Score</div>
+            <div class="form-sig-line"><span class="form-sig-val" style="color:#003580;">75/100 — LOW</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="height:40px;background:#111;"></div>
+
+<script>
+function pick(id) {
+  ['a','b','c'].forEach(x => {
+    document.getElementById('dw-'+x).classList.remove('selected');
+    document.getElementById('btn-'+x).textContent = 'Select '+x.toUpperCase();
+  });
+  document.getElementById('dw-'+id).classList.add('selected');
+  document.getElementById('btn-'+id).textContent = '✓ Selected';
+  if (window.__brainstorm_selectOption) window.__brainstorm_selectOption(id, document.querySelector('#dw-'+id+' .dir-name').textContent);
+}
+</script>
+</body>
+</html>
