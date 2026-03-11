@@ -36,6 +36,7 @@ export default function MatrixGrid({
   scanStatus,
   showSecondaryTabs = true,
   filterOverride,
+  positionRationales = {},
 }: MatrixGridProps) {
   const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
@@ -651,7 +652,7 @@ export default function MatrixGrid({
 
       {/* DETAIL: bottom panel in portfolio view, modal in overview */}
       {showSecondaryTabs
-        ? <BottomPanel pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+        ? <BottomPanel pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} rationale={selectedPos ? (positionRationales[selectedPos.ticker] ?? null) : null} />
         : <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
       }
     </div>

@@ -1,4 +1,4 @@
-import type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus } from "../../lib/types";
+import type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus, TradeRationale } from "../../lib/types";
 
 export interface MatrixPortfolio {
   id: string;
@@ -48,7 +48,8 @@ export interface MatrixGridProps {
   scanStatus?: ScanJobStatus;
   showSecondaryTabs?: boolean; // show WATCHLIST/ACTIVITY/LOGS tabs (default true, false for overview)
   filterOverride?: string | null; // when defined, overrides internal filter state and hides filter chips
+  positionRationales?: Record<string, TradeRationale>; // trade rationale per ticker (from PortfolioState)
 }
 
 // Re-export for convenience in mapping functions
-export type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus };
+export type { CrossPortfolioMover, Position, Transaction, WatchlistCandidate, ScanJobStatus, TradeRationale };

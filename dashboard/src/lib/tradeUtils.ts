@@ -1,6 +1,15 @@
 /** Shared trade explanation utilities used by ActivityFeed and CenterPane. */
 
-import type { Transaction } from "./types";
+import type { Transaction, TradeRationale } from "./types";
+
+export function parseTradeRationale(tx: Transaction): TradeRationale | null {
+  if (!tx.trade_rationale) return null;
+  try {
+    return JSON.parse(tx.trade_rationale) as TradeRationale;
+  } catch {
+    return null;
+  }
+}
 
 export const FACTOR_PLAIN: Record<string, string> = {
   price_momentum:   "the stock had strong momentum and was outperforming the market",

@@ -22,6 +22,7 @@ TRANSACTION_COLUMNS = [
     "composite_score",  # Overall score at entry (0-100)
     "factor_scores",    # JSON: {momentum: 65, volatility: 72, ...}
     "signal_rank",      # Rank among candidates (1=top pick)
+    "trade_rationale",  # JSON: {ai_decision, ai_confidence, ai_reasoning, quant_reason, regime, top_factors}
 ]
 
 # Columns required for backward compatibility (original transactions without explainability)

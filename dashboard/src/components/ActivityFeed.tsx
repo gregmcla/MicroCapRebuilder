@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Transaction } from "../lib/types";
-import { tradeExplanation } from "../lib/tradeUtils";
+import { tradeExplanation, parseTradeRationale } from "../lib/tradeUtils";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -34,6 +34,9 @@ const reasonBadge: Record<string, { label: string; bg: string; color: string }> 
 
 
 function ExpandedDetail({ tx }: { tx: Transaction }) {
+  const rationale = parseTradeRationale(tx);
+  const aiText = rationale?.ai_reasoning;
+  const quantText = rationale?.quant_reason;
   return (
     <div
       className="px-3 py-2 text-xs"
@@ -44,8 +47,13 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
       }}
     >
       <p style={{ color: "var(--text-2)", lineHeight: "1.6" }}>
-        {tradeExplanation(tx)}
+        {aiText || tradeExplanation(tx)}
       </p>
+      {aiText && quantText && (
+        <p style={{ color: "var(--text-3)", lineHeight: "1.5", marginTop: "4px", fontSize: "10px", opacity: 0.7 }}>
+          {quantText.split(" | ")[0]}
+        </p>
+      )}
     </div>
   );
 }

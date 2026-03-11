@@ -86,6 +86,26 @@ def _serialize_state(state):
                         trade_pnl[_tid] = (round(_pnl, 2), round(_pnl_pct, 2), round(_avg, 2))
     realized_pnl = round(realized_pnl, 2)
 
+    # Build position_rationales: ticker -> parsed trade_rationale JSON for active positions.
+    # Allows the UI to display "why was this trade opened" when clicking a position.
+    import json as _json
+    position_rationales: dict = {}
+    if not positions.empty and not txns.empty and "trade_rationale" in txns.columns:
+        held_tickers = positions["ticker"].tolist() if "ticker" in positions.columns else []
+        for _ticker in held_tickers:
+            _buy_txns = txns[
+                (txns["ticker"] == _ticker) &
+                (txns["action"] == "BUY") &
+                (txns["trade_rationale"].notna()) &
+                (txns["trade_rationale"] != "")
+            ]
+            if not _buy_txns.empty:
+                _raw = str(_buy_txns.iloc[-1]["trade_rationale"])
+                try:
+                    position_rationales[_ticker] = _json.loads(_raw)
+                except Exception:
+                    pass
+
     # Annotate transactions with per-trade P&L before serializing
     transactions_out = transactions.tail(50).copy()
     if trade_pnl and "transaction_id" in transactions_out.columns:
@@ -120,6 +140,7 @@ def _serialize_state(state):
         "config": state.config,
         "stale_alerts": state.stale_alerts,
         "paper_mode": state.paper_mode,
+        "ai_driven": bool(state.config.get("ai_driven", False)),
         "price_failures": state.price_failures,
         "day_pnl": day_pnl,
         "day_pnl_pct": day_pnl_pct,
@@ -128,6 +149,7 @@ def _serialize_state(state):
         "realized_pnl": realized_pnl,
         "cagr_pct": cagr_pct,
         "starting_capital": starting_capital,
+        "position_rationales": position_rationales,
         "timestamp": serialize(state.timestamp),
     }
 
@@ -191,6 +213,29 @@ def get_ticker_info(portfolio_id: str, ticker: str):
     if result.get("name") != ticker or result.get("sector") is not None:
         _ticker_info_cache[ticker] = (result, now)
     return result
+
+
+@router.get("/position/{ticker}/rationale")
+def get_position_rationale(portfolio_id: str, ticker: str):
+    """Trade rationale for a current position (from most recent BUY transaction)."""
+    import json as _json
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
+    txns = state.transactions
+    if txns.empty or "trade_rationale" not in txns.columns:
+        return {}
+    buy_txns = txns[
+        (txns["ticker"] == ticker) &
+        (txns["action"] == "BUY") &
+        (txns["trade_rationale"].notna()) &
+        (txns["trade_rationale"] != "")
+    ]
+    if buy_txns.empty:
+        return {}
+    raw = str(buy_txns.iloc[-1]["trade_rationale"])
+    try:
+        return _json.loads(raw)
+    except Exception:
+        return {}
 
 
 @router.get("/state")

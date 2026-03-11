@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import type { MatrixPosition, WatchlistCandidate } from "./types";
+import type { MatrixPosition, WatchlistCandidate, TradeRationale } from "./types";
 import type { TickerInfo } from "../../lib/types";
 import { api } from "../../lib/api";
 import Sparkline from "./Sparkline";
 import Reticle from "./Reticle";
+import TradeThesis from "./TradeThesis";
 import { pc, MATRIX_FONT } from "./constants";
 
 const HEAT_COLOR: Record<string, string> = {
@@ -19,6 +20,7 @@ interface DetailCardProps {
 
 export default function DetailCard({ pos, onClose, portfolioId, watchlistCandidates = [] }: DetailCardProps) {
   const [info, setInfo] = useState<TickerInfo | null>(null);
+  const [rationale, setRationale] = useState<TradeRationale | null>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -27,11 +29,14 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
   }, [onClose]);
 
   useEffect(() => {
-    if (!pos) { setInfo(null); return; }
+    if (!pos) { setInfo(null); setRationale(null); return; }
     const pid = portfolioId ?? pos.portfolioId;
     api.getTickerInfo(pid, pos.ticker)
       .then(setInfo)
       .catch(() => setInfo(null));
+    api.getPositionRationale(pid, pos.ticker)
+      .then(r => setRationale(Object.keys(r).length > 0 ? r as TradeRationale : null))
+      .catch(() => setRationale(null));
   }, [pos?.ticker, pos?.portfolioId, portfolioId]);
 
   if (!pos) return null;
@@ -149,6 +154,18 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
             }}>
               <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={424} h={60} />
+            </div>
+          )}
+
+          {/* Trade Thesis — shown when rationale is available */}
+          {rationale && (
+            <div style={{
+              margin: "4px 0 12px",
+              padding: "10px 12px",
+              background: "rgba(255,255,255,0.015)",
+              border: `1px solid ${col}22`,
+            }}>
+              <TradeThesis rationale={rationale} accentColor={col} />
             </div>
           )}
 

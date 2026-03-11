@@ -19,6 +19,7 @@ import type {
   GeneratedStrategy,
   TradingStyle,
   TickerInfo,
+  TradeRationale,
 } from "./types";
 
 const BASE = "/api";
@@ -109,6 +110,8 @@ export const api = {
 
   getTickerInfo: (pid: string, ticker: string) =>
     get<TickerInfo>(`/${pid}/position/${ticker}/info`),
+  getPositionRationale: (pid: string, ticker: string) =>
+    get<TradeRationale | Record<string, never>>(`/${pid}/position/${ticker}/rationale`),
 
   // --- Market endpoints (global, not portfolio-scoped) ---
   getMarketIndices: () => get<MarketIndices>("/market/indices"),

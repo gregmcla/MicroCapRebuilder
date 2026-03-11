@@ -109,6 +109,15 @@ export interface Position {
   day_change_pct?: number;
 }
 
+export interface TradeRationale {
+  ai_decision: "APPROVE" | "MODIFY" | "VETO" | string;
+  ai_confidence: number;
+  ai_reasoning: string;
+  quant_reason: string;
+  regime: string;
+  top_factors: Array<{ name: string; score: number }>;
+}
+
 export interface Transaction {
   transaction_id: string;
   date: string;
@@ -127,6 +136,7 @@ export interface Transaction {
   realized_pnl?: number | null;
   realized_pnl_pct?: number | null;
   entry_price?: number | null;
+  trade_rationale?: string | null;
 }
 
 export interface Snapshot {
@@ -169,6 +179,7 @@ export interface PortfolioState {
   cagr_pct: number;
   starting_capital: number;
   timestamp: string;
+  position_rationales?: Record<string, TradeRationale>;
 }
 
 export interface RiskComponent {

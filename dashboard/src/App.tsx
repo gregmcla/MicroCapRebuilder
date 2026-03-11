@@ -126,6 +126,7 @@ export default function App() {
                 transactions={state?.transactions ?? []}
                 watchlistCandidates={watchlistData?.candidates ?? []}
                 scanStatus={scanStatus}
+                positionRationales={state?.position_rationales ?? {}}
               />
             </div>
           </div>

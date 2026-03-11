@@ -917,6 +917,22 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 shares = max_affordable
             available_cash -= shares * action.price
 
+        # Build trade rationale JSON so the UI can display "why was this trade made"
+        _fs = action.factor_scores or {}
+        _top_factors = sorted(
+            [{"name": k, "score": round(float(v), 1)} for k, v in _fs.items() if k != "composite"],
+            key=lambda x: x["score"], reverse=True
+        )[:3]
+        _ai_decision = reviewed.decision.value if hasattr(reviewed.decision, "value") else str(reviewed.decision)
+        _trade_rationale = json.dumps({
+            "ai_decision": _ai_decision,
+            "ai_confidence": round(float(reviewed.confidence or 0), 3),
+            "ai_reasoning": (reviewed.ai_reasoning or "")[:500],
+            "quant_reason": action.reason or "",
+            "regime": action.regime or "",
+            "top_factors": _top_factors,
+        })
+
         tx = {
             "transaction_id": str(uuid.uuid4())[:8],
             "date": date.today().isoformat(),
@@ -937,6 +953,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "composite_score": action.quant_score if action.action_type == "BUY" else "",
             "factor_scores": json.dumps(action.factor_scores) if action.action_type == "BUY" else "",
             "signal_rank": "",
+            "trade_rationale": _trade_rationale,
         }
         validated.append((reviewed, tx))
 
