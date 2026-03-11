@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { MatrixPosition, WatchlistCandidate, TradeRationale } from "./types";
+import type { MatrixPosition, WatchlistCandidate, TradeRationale, Transaction } from "./types";
 import type { TickerInfo, ChartDataPoint } from "../../lib/types";
 import { api } from "../../lib/api";
 import InteractiveSparkline from "./InteractiveSparkline";
 import Reticle from "./Reticle";
 import TradeThesis from "./TradeThesis";
+import { tradeExplanation } from "../../lib/tradeUtils";
 import { pc, MATRIX_FONT } from "./constants";
 
 const HEAT_COLOR: Record<string, string> = {
@@ -17,9 +18,10 @@ interface BottomPanelProps {
   portfolioId?: string;
   watchlistCandidates?: WatchlistCandidate[];
   rationale?: TradeRationale | null;
+  buyTx?: Transaction | null;
 }
 
-export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [], rationale = null }: BottomPanelProps) {
+export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [], rationale = null, buyTx = null }: BottomPanelProps) {
   const [info,      setInfo]      = useState<TickerInfo | null>(null);
   const [chartPts,  setChartPts]  = useState<ChartDataPoint[]>([]);
 
@@ -249,86 +251,105 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           </div>
         </div>
 
-        {/* ── RIGHT: trade thesis (if available) or company info ───────────── */}
+        {/* ── RIGHT: trade thesis + company info (both always shown) ─────────── */}
         <div style={{
           padding: "14px 16px",
-          display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
+          display: "flex", flexDirection: "column", gap: 0, overflowY: "auto",
         }}>
-          {rationale ? (
-            /* Trade Thesis takes over the right column when rationale is available */
-            <TradeThesis rationale={rationale} accentColor={col} />
-          ) : (
-            <>
-              {/* Company name + link */}
-              {info?.name ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, color: "#bbb", fontWeight: 700, letterSpacing: "0.03em" }}>{info.name}</span>
-                  {info.website && (
-                    <a href={info.website} target="_blank" rel="noreferrer"
-                      style={{ color: col, fontSize: 9, textDecoration: "none", opacity: 0.7, marginLeft: "auto" }}>
-                      ↗
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.06em" }}>LOADING INFO...</div>
-              )}
-              {info?.industry && <div style={{ fontSize: 8, color: "#555" }}>{info.industry}</div>}
 
-              {/* Description */}
-              {info?.description && (
-                <div style={{
-                  fontSize: 8, color: "#666", lineHeight: 1.65,
-                  overflowY: "auto", maxHeight: 72,
-                }}>
-                  {info.description}
+          {/* Trade Thesis section — always present */}
+          <div style={{ marginBottom: 10 }}>
+            {rationale ? (
+              <TradeThesis rationale={rationale} accentColor={col} />
+            ) : buyTx ? (
+              /* Fallback: reconstruct from factor scores for pre-feature positions */
+              <>
+                <div style={{ fontSize: 6, color: col, letterSpacing: "0.14em", fontWeight: 700, marginBottom: 5 }}>
+                  TRADE THESIS
                 </div>
-              )}
-
-              {/* Extra metrics */}
-              {info && (
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {info.market_cap != null && (
-                    <div>
-                      <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
-                      <div style={{ fontSize: 9, color: "#888" }}>
-                        {info.market_cap >= 1e9 ? `$${(info.market_cap / 1e9).toFixed(1)}B` : `$${(info.market_cap / 1e6).toFixed(0)}M`}
-                      </div>
-                    </div>
-                  )}
-                  {info.trailing_pe != null && (
-                    <div>
-                      <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>P/E</div>
-                      <div style={{ fontSize: 9, color: "#888" }}>{info.trailing_pe.toFixed(1)}</div>
-                    </div>
-                  )}
-                  {info.week_52_high != null && info.week_52_low != null && (
-                    <div>
-                      <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>52W</div>
-                      <div style={{ fontSize: 9, color: "#888" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
-                    </div>
-                  )}
-                  {info.analyst_rating && (
-                    <div>
-                      <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>ANALYST</div>
-                      <div style={{ fontSize: 9, color: "#888" }}>
-                        {info.analyst_rating}
-                        {info.analyst_count != null && <span style={{ color: "#555" }}> ({info.analyst_count})</span>}
-                      </div>
-                    </div>
-                  )}
-                  {info.dividend_yield != null && info.dividend_yield > 0 && (
-                    <div>
-                      <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DIV</div>
-                      <div style={{ fontSize: 9, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
-                    </div>
-                  )}
+                <div style={{ height: 1, background: `linear-gradient(90deg, ${col}33, transparent)`, marginBottom: 6 }} />
+                <div style={{ fontSize: 7, color: "#555", lineHeight: 1.65 }}>
+                  {tradeExplanation(buyTx)}
                 </div>
-              )}
-            </>
-          )}
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 6, color: "#333", letterSpacing: "0.14em", fontWeight: 700, marginBottom: 5 }}>
+                  TRADE THESIS
+                </div>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.04)", marginBottom: 6 }} />
+                <div style={{ fontSize: 7, color: "#333", lineHeight: 1.65 }}>No rationale captured</div>
+              </>
+            )}
+          </div>
 
-          {/* Social heat — always shown when available */}
+          {/* Divider */}
+          <div style={{ height: 1, background: `linear-gradient(90deg, ${col}18, transparent)`, marginBottom: 10, flexShrink: 0 }} />
+
+          {/* Company info section — always present */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {/* Company name + link */}
+            {info?.name ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 10, color: "#bbb", fontWeight: 700, letterSpacing: "0.03em" }}>{info.name}</span>
+                {info.website && (
+                  <a href={info.website} target="_blank" rel="noreferrer"
+                    style={{ color: col, fontSize: 9, textDecoration: "none", opacity: 0.7, marginLeft: "auto" }}>
+                    ↗
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.06em" }}>LOADING INFO...</div>
+            )}
+            {info?.industry && <div style={{ fontSize: 8, color: "#555" }}>{info.industry}</div>}
+            {info?.description && (
+              <div style={{ fontSize: 8, color: "#666", lineHeight: 1.65 }}>
+                {info.description}
+              </div>
+            )}
+            {info && (
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {info.market_cap != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>
+                      {info.market_cap >= 1e9 ? `$${(info.market_cap / 1e9).toFixed(1)}B` : `$${(info.market_cap / 1e6).toFixed(0)}M`}
+                    </div>
+                  </div>
+                )}
+                {info.trailing_pe != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>P/E</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>{info.trailing_pe.toFixed(1)}</div>
+                  </div>
+                )}
+                {info.week_52_high != null && info.week_52_low != null && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>52W</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
+                  </div>
+                )}
+                {info.analyst_rating && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>ANALYST</div>
+                    <div style={{ fontSize: 9, color: "#888" }}>
+                      {info.analyst_rating}
+                      {info.analyst_count != null && <span style={{ color: "#555" }}> ({info.analyst_count})</span>}
+                    </div>
+                  </div>
+                )}
+                {info.dividend_yield != null && info.dividend_yield > 0 && (
+                  <div>
+                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DIV</div>
+                    <div style={{ fontSize: 9, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Social heat */}
           {social?.social_heat && (
             <div style={{
               display: "flex", alignItems: "center", gap: 10,

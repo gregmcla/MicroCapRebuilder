@@ -20,7 +20,8 @@ interface DetailCardProps {
 
 export default function DetailCard({ pos, onClose, portfolioId, watchlistCandidates = [] }: DetailCardProps) {
   const [info, setInfo] = useState<TickerInfo | null>(null);
-  const [rationale, setRationale] = useState<TradeRationale | null>(null);
+  // undefined = loading, null = loaded but no data
+  const [rationale, setRationale] = useState<TradeRationale | null | undefined>(undefined);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -29,7 +30,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
   }, [onClose]);
 
   useEffect(() => {
-    if (!pos) { setInfo(null); setRationale(null); return; }
+    if (!pos) { setInfo(null); setRationale(undefined); return; }
     const pid = portfolioId ?? pos.portfolioId;
     api.getTickerInfo(pid, pos.ticker)
       .then(setInfo)
@@ -157,17 +158,27 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
             </div>
           )}
 
-          {/* Trade Thesis — shown when rationale is available */}
-          {rationale && (
-            <div style={{
-              margin: "4px 0 12px",
-              padding: "10px 12px",
-              background: "rgba(255,255,255,0.015)",
-              border: `1px solid ${col}22`,
-            }}>
+          {/* Trade Thesis — always shown (rich data or empty state) */}
+          <div style={{
+            margin: "4px 0 12px",
+            padding: "10px 12px",
+            background: "rgba(255,255,255,0.015)",
+            border: `1px solid ${col}22`,
+          }}>
+            {rationale ? (
               <TradeThesis rationale={rationale} accentColor={col} />
-            </div>
-          )}
+            ) : (
+              <>
+                <div style={{ fontSize: 6, color: "#333", letterSpacing: "0.14em", fontWeight: 700, marginBottom: 4 }}>
+                  TRADE THESIS
+                </div>
+                <div style={{ height: 1, background: "rgba(255,255,255,0.04)", marginBottom: 6 }} />
+                <div style={{ fontSize: 7, color: "#333" }}>
+                  {rationale === undefined ? "Loading..." : "No rationale captured for this position"}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Company info */}
           {info && (

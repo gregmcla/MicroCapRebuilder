@@ -652,7 +652,14 @@ export default function MatrixGrid({
 
       {/* DETAIL: bottom panel in portfolio view, modal in overview */}
       {showSecondaryTabs
-        ? <BottomPanel pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} rationale={selectedPos ? (positionRationales[selectedPos.ticker] ?? null) : null} />
+        ? <BottomPanel
+            pos={selectedPos}
+            onClose={() => setSelectedPos(null)}
+            portfolioId={portfolios[0]?.id}
+            watchlistCandidates={watchlistCandidates}
+            rationale={selectedPos ? (positionRationales[selectedPos.ticker] ?? null) : null}
+            buyTx={selectedPos ? (transactions.filter(t => t.ticker === selectedPos.ticker && t.action === "BUY").at(-1) ?? null) : null}
+          />
         : <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
       }
     </div>
