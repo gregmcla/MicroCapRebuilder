@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
 import type { ScanResult } from "../lib/types";
 import { api } from "../lib/api";
+import { play } from "../lib/sounds";
 
 // ---------------------------------------------------------------------------
 // Shared styles
@@ -40,6 +41,7 @@ export function UpdateButton() {
   const [result, setResult] = useState<string | null>(null);
 
   const handle = async () => {
+    play("update");
     setUpdating(true);
     setResult(null);
     try {
@@ -121,6 +123,7 @@ export function ScanButton() {
   };
 
   const handle = async () => {
+    play("scan");
     setScanning(true);
     setScanError(null);
     try {
@@ -136,6 +139,7 @@ export function ScanButton() {
         const s = await api.scanStatus(portfolioId);
         if (s.status === "complete" && s.result) {
           stop(); setScanning(false);
+          play("scanComplete");
           refetchStatus();
           queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
           queryClient.invalidateQueries({ queryKey: ["watchlist"] });
@@ -195,7 +199,7 @@ export function AnalyzeExecute() {
   return (
     <div className="flex items-center gap-2">
       <button
-        onClick={runAnalysis}
+        onClick={() => { play("analyze"); runAnalysis(); }}
         disabled={isAnalyzing}
         className={ACCENT_BTN}
         style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
@@ -212,7 +216,7 @@ export function AnalyzeExecute() {
 
       {actionCount > 0 && (
         <button
-          onClick={runExecute}
+          onClick={() => { play("execute"); runExecute(); }}
           disabled={isExecuting}
           className={ACCENT_BTN}
           style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}

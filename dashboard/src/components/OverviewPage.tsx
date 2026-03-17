@@ -13,6 +13,7 @@ import MatrixGrid from "./MatrixGrid";
 import PortfolioStrip from "./MatrixGrid/PortfolioStrip";
 import { buildPortfolioMap, crossMoverToMatrix } from "./MatrixGrid/constants";
 import type { MatrixPortfolio } from "./MatrixGrid/types";
+import { play } from "../lib/sounds";
 
 // ---------------------------------------------------------------------------
 // Scan-all types
@@ -544,8 +545,16 @@ export default function OverviewPage() {
   });
   const scanCancelledRef = useRef(false);
 
+  // Play scanComplete when scan-all finishes
+  const wasScanAllRunning = useRef(false);
+  useEffect(() => {
+    if (wasScanAllRunning.current && !scanAll.running) play("scanComplete");
+    wasScanAllRunning.current = scanAll.running;
+  }, [scanAll.running]);
+
   const doneRef = useRef(0);
   const handleUpdateAll = async () => {
+    play("update");
     const ids = (portfolioList?.portfolios ?? []).filter((p) => p.active).map((p) => p.id);
     if (ids.length === 0) return;
     setUpdatingAll(true);
@@ -572,6 +581,7 @@ export default function OverviewPage() {
   };
 
   const handleScanAll = async () => {
+    play("scan");
     const ids = (portfolioList?.portfolios ?? [])
       .filter((p) => p.active)
       .map((p) => p.id);
@@ -695,7 +705,7 @@ export default function OverviewPage() {
       const base = map.get(p.id);
       if (!base) return null;
       const ec = summaryMap.get(p.id)?.equity_curve ?? [];
-      return ec.length >= 3 ? { ...base, equityCurve: ec } : base;
+      return ec.length >= 2 ? { ...base, equityCurve: ec } : base;
     }).filter(Boolean) as MatrixPortfolio[];
   }, [portfolios, overview?.portfolios]);
 

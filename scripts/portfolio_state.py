@@ -53,6 +53,62 @@ from market_regime import (
 _regime_cache: dict = {}  # benchmark_symbol -> (RegimeAnalysis, fetch_time)
 _REGIME_CACHE_TTL = 3600  # 1 hour
 
+# ─── Live Price Cache ─────────────────────────────────────────────────────────
+# Short TTL cache for position prices so repeated state loads don't hammer the
+# Public.com API. Keyed by portfolio_id.
+
+_price_cache: dict = {}  # portfolio_id -> (fetch_time, prices, failures, prev_closes)
+_PRICE_CACHE_TTL = 60    # seconds
+
+
+def _fetch_current_prices(
+    tickers: list,
+    portfolio_id: str,
+    bypass_cache: bool = False,
+) -> tuple[dict, list, dict]:
+    """
+    Fetch current prices for a list of position tickers.
+
+    Tries Public.com API first (real-time), falls back to yfinance.
+    Results are cached per portfolio for _PRICE_CACHE_TTL seconds to avoid
+    hammering the API on repeated state loads.
+
+    Returns:
+        (price_cache, failures, prev_close_cache)
+    """
+    global _price_cache
+
+    if not tickers:
+        return {}, [], {}
+
+    now = time.time()
+    cached = _price_cache.get(portfolio_id)
+    if not bypass_cache and cached:
+        fetch_time, prices, failures, prev_closes = cached
+        if now - fetch_time < _PRICE_CACHE_TTL:
+            return prices, failures, prev_closes
+
+    try:
+        from public_quotes import fetch_live_quotes, is_configured as public_configured
+        use_public = public_configured()
+    except ImportError:
+        use_public = False
+
+    if use_public:
+        pub_prices, pub_failures = fetch_live_quotes(tickers)
+        if pub_failures:
+            # Fall back to yfinance only for tickers Public couldn't quote
+            yf_prices, yf_failures, prev_closes = fetch_prices_batch(pub_failures)
+            prices = {**pub_prices, **yf_prices}
+            failures = yf_failures
+        else:
+            prices, failures, prev_closes = pub_prices, [], {}
+    else:
+        prices, failures, prev_closes = fetch_prices_batch(tickers)
+
+    _price_cache[portfolio_id] = (now, prices, failures, prev_closes)
+    return prices, failures, prev_closes
+
 
 def _get_cached_regime_analysis(config: dict = None) -> RegimeAnalysis:
     """Get regime analysis with TTL-based per-benchmark caching."""
@@ -154,7 +210,7 @@ def load_portfolio_state(fetch_prices: bool = True, portfolio_id: str | None = N
 
     if fetch_prices and not positions.empty:
         tickers = positions["ticker"].tolist()
-        price_cache, price_failures, prev_close_cache = fetch_prices_batch(tickers)
+        price_cache, price_failures, prev_close_cache = _fetch_current_prices(tickers, portfolio_id)
 
         # Update positions with fetched prices and day change
         positions = _update_positions_with_prices(positions, price_cache, prev_close_cache)
@@ -750,7 +806,9 @@ def refresh_prices(state: PortfolioState) -> PortfolioState:
         return state
 
     tickers = state.positions["ticker"].tolist()
-    price_cache, price_failures, prev_close_cache = fetch_prices_batch(tickers)
+    price_cache, price_failures, prev_close_cache = _fetch_current_prices(
+        tickers, state.portfolio_id, bypass_cache=True
+    )
     positions = _update_positions_with_prices(state.positions, price_cache, prev_close_cache)
     positions_value = float(positions["market_value"].sum())
 

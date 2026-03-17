@@ -3,9 +3,10 @@
  * Tiles are sized proportionally to equity. Click a tile to filter the Matrix.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { PortfolioSummary } from "../../lib/types";
 import type { MatrixPortfolio } from "./types";
+import { play } from "../../lib/sounds";
 
 interface ScanResult {
   status: "running" | "complete" | "error";
@@ -61,6 +62,13 @@ export default function PortfolioStrip({
 }: PortfolioStripProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const colorMap = new Map(matrixPortfolios.map((p) => [p.id, p.color]));
+
+  // Play scanComplete when scanAllRunning transitions from true → false
+  const wasScanAllRunning = useRef(false);
+  useEffect(() => {
+    if (wasScanAllRunning.current && !scanAllRunning) play("scanComplete");
+    wasScanAllRunning.current = scanAllRunning;
+  }, [scanAllRunning]);
   const valid = summaries.filter((s) => !s.error);
 
   return (
@@ -257,13 +265,13 @@ export default function PortfolioStrip({
         borderLeft: "1px solid rgba(74,222,128,0.06)",
       }}>
         <ActionBtn
-          onClick={onUpdateAll}
+          onClick={() => { play("update"); onUpdateAll(); }}
           disabled={updatingAll}
           spinning={updatingAll}
           label={updateResult ?? "Update All"}
         />
         <ActionBtn
-          onClick={onScanAll}
+          onClick={() => { play("scan"); onScanAll(); }}
           disabled={scanAllRunning}
           pulse={scanAllRunning}
           label={scanAllLabel ?? "Scan All"}

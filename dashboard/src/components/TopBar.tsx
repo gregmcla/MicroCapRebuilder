@@ -9,6 +9,7 @@ import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
 import PortfolioSettingsModal from "./PortfolioSettingsModal";
+import GScottLogo from "./GScottLogo";
 
 // ── Shared button style constants ────────────────────────────────────────────
 
@@ -23,10 +24,14 @@ const BTN_H = "h-[32px]";
 
 // ── Market indices (center) ───────────────────────────────────────────────────
 
+function VDivider() {
+  return <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0, opacity: 0.6 }} />;
+}
+
 function IndexTile({ label, value, changePct, sparkline }: {
   label: string; value: number; changePct: number; sparkline: number[];
 }) {
-  const W = 52; const H = 20;
+  const W = 56; const H = 22;
   const up = changePct >= 0;
   const color = up ? "var(--green)" : "var(--red)";
 
@@ -37,40 +42,36 @@ function IndexTile({ label, value, changePct, sparkline }: {
     const range = max - min || 1;
     return sparkline.map((v, i) => {
       const x = (i / (sparkline.length - 1)) * W;
-      const y = H - 1 - ((v - min) / range) * (H - 3);
+      const y = H - 2 - ((v - min) / range) * (H - 4);
       return `${x},${y}`;
     }).join(" ");
   }, [sparkline]);
 
   return (
-    <div className="flex items-center gap-2">
-      <span
-        style={{
-          fontSize: "11px",
+    <div className="flex items-center gap-3 px-5">
+      <div className="flex flex-col gap-0.5">
+        <span style={{
+          fontSize: "9px",
           textTransform: "uppercase",
-          letterSpacing: "0.07em",
+          letterSpacing: "0.1em",
           color: "var(--text-0)",
           fontFamily: "var(--font-sans)",
-        }}
-      >
-        {label}
-      </span>
-      <span className="font-mono tabular-nums" style={{ fontSize: "13.5px", color: "var(--text-3)" }}>
-        {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </span>
-      <span className="font-mono tabular-nums font-semibold" style={{ fontSize: "11.5px", color }}>
-        {up ? "+" : ""}{changePct.toFixed(2)}%
-      </span>
+          lineHeight: 1,
+        }}>
+          {label}
+        </span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono tabular-nums" style={{ fontSize: "14px", color: "var(--text-3)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+            {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          <span className="font-mono tabular-nums font-semibold" style={{ fontSize: "11px", color, lineHeight: 1 }}>
+            {up ? "+" : ""}{changePct.toFixed(2)}%
+          </span>
+        </div>
+      </div>
       {points && (
-        <svg width={W} height={H} style={{ display: "block", flexShrink: 0 }}>
-          <polyline
-            points={points}
-            fill="none"
-            stroke={color}
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
+        <svg width={W} height={H} style={{ display: "block", flexShrink: 0, opacity: 0.85 }}>
+          <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
         </svg>
       )}
     </div>
@@ -87,27 +88,21 @@ function MarketIndices() {
   ];
 
   return (
-    <div className="flex items-center gap-8">
-      {items.map(({ key, label }) => {
+    <div className="flex items-center">
+      {items.map(({ key, label }, i) => {
         const d = data?.[key];
-        if (!d || isError) {
-          return (
-            <div key={key} className="flex items-center gap-2">
-              <span style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--text-0)" }}>
-                {label}
-              </span>
-              <span style={{ fontSize: "13px", color: "var(--text-0)" }}>—</span>
-            </div>
-          );
-        }
         return (
-          <IndexTile
-            key={key}
-            label={label}
-            value={d.value}
-            changePct={d.change_pct}
-            sparkline={d.sparkline}
-          />
+          <div key={key} className="flex items-center">
+            {i > 0 && <VDivider />}
+            {!d || isError ? (
+              <div className="flex flex-col gap-0.5 px-5">
+                <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)" }}>{label}</span>
+                <span style={{ fontSize: "14px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}>—</span>
+              </div>
+            ) : (
+              <IndexTile label={label} value={d.value} changePct={d.change_pct} sparkline={d.sparkline} />
+            )}
+          </div>
         );
       })}
     </div>
@@ -205,9 +200,20 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
       <button
         onClick={() => setShowConfirm(true)}
         disabled={toggling}
-        className={`${ghostBtn} ${BTN_H}`}
-        style={{ color: paperMode ? "var(--text-1)" : "var(--accent)" }}
+        className="inline-flex items-center gap-1.5 px-3 rounded-full transition-all disabled:opacity-40 cursor-pointer"
+        style={{
+          height: "26px",
+          fontSize: "11px",
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          background: paperMode ? "rgba(255,255,255,0.04)" : "rgba(34,197,94,0.10)",
+          border: paperMode ? "1px solid rgba(255,255,255,0.10)" : "1px solid rgba(34,197,94,0.30)",
+          color: paperMode ? "var(--text-1)" : "#22c55e",
+        }}
       >
+        {!paperMode && (
+          <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#22c55e", flexShrink: 0, boxShadow: "0 0 6px #22c55e" }} className="animate-pulse" />
+        )}
         {toggling ? "..." : paperMode ? "PAPER" : "LIVE"}
       </button>
       {showConfirm && (
@@ -245,69 +251,84 @@ export default function TopBar({
 
   return (
     <header
-      className="flex items-center gap-4 px-4 shrink-0 border-b"
+      className="flex items-center shrink-0 overflow-visible"
       style={{
-        height: "52px",
-        background: "var(--surface-0)",
-        borderColor: "var(--border-0)",
+        height: "72px",
+        background: "linear-gradient(180deg, #0e0e1a 0%, #080810 100%)",
+        borderBottom: "1px solid rgba(124,92,252,0.14)",
       }}
     >
-      {/* Left: brand + portfolio switcher */}
-      <div className="flex items-center gap-3 shrink-0">
-        <button
-          onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
-          className="flex items-center gap-1.5 hover:opacity-70 transition-opacity"
-        >
-          <span className="font-semibold tracking-widest uppercase" style={{ fontSize: "13px", color: "var(--accent)", letterSpacing: "0.15em" }}>
-            GScott
-          </span>
-        </button>
-        <span style={{ color: "var(--border-1)", fontSize: "16px", fontWeight: 300 }}>|</span>
-        <PortfolioSwitcher />
+      {/* Left: logo */}
+      <button
+        onClick={() => usePortfolioStore.getState().setPortfolio("overview")}
+        className="flex items-center justify-center hover:opacity-75 transition-opacity shrink-0"
+        style={{ height: "72px", padding: "0 20px 0 16px", cursor: "pointer" }}
+      >
+        <GScottLogo height={52} />
+      </button>
+
+      {/* Divider */}
+      <VDivider />
+
+      {/* Portfolio + freshness */}
+      <div className="flex flex-col justify-center gap-1 shrink-0 px-4">
+        <div className="flex items-center gap-2">
+          <PortfolioSwitcher />
+          {state?.ai_driven && (
+            <button
+              onClick={() => setShowSettings(true)}
+              title="Strategy DNA"
+              className="transition-colors"
+              style={{
+                background: "none",
+                border: "1px solid var(--border-1)",
+                borderRadius: "5px",
+                color: "var(--text-0)",
+                cursor: "pointer",
+                width: "22px",
+                height: "22px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "12px",
+                lineHeight: 1,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-0)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)"; }}
+            >
+              ⚙
+            </button>
+          )}
+        </div>
         <FreshnessIndicator />
-        {state?.ai_driven && (
-          <button
-            onClick={() => setShowSettings(true)}
-            title="Strategy DNA"
-            style={{
-              background: "none",
-              border: "1px solid var(--border-1)",
-              borderRadius: "5px",
-              color: "var(--text-0)",
-              cursor: "pointer",
-              width: "24px",
-              height: "24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              lineHeight: 1,
-              transition: "color 0.15s, border-color 0.15s",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--accent)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-0)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)"; }}
-          >
-            ⚙
-          </button>
-        )}
       </div>
       {showSettings && state?.ai_driven && <PortfolioSettingsModal onClose={() => setShowSettings(false)} />}
 
+      {/* Divider */}
+      <VDivider />
+
       {/* Center: market indices */}
-      <div className="flex-1 flex justify-center min-w-0">
+      <div className="flex-1 flex justify-center items-center min-w-0">
         <MarketIndices />
       </div>
 
-      {/* Right: status + emergency controls */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Divider */}
+      <VDivider />
+
+      {/* Right: alerts + controls */}
+      <div className="flex items-center gap-3 shrink-0 px-4">
         {(state?.stale_alerts.length ?? 0) > 0 && (
-          <span className="text-[10px] text-warning">{state!.stale_alerts.length} stale</span>
+          <span style={{ fontSize: "10px", color: "var(--amber)", letterSpacing: "0.04em" }}>
+            {state!.stale_alerts.length} stale
+          </span>
         )}
         {(state?.price_failures.length ?? 0) > 0 && (
-          <span className="text-[10px] text-loss">{state!.price_failures.length} failed</span>
+          <span style={{ fontSize: "10px", color: "var(--red)", letterSpacing: "0.04em" }}>
+            {state!.price_failures.length} failed
+          </span>
         )}
         {isLoading && (
-          <span className="text-[10px] text-text-muted animate-pulse">Loading...</span>
+          <span className="animate-pulse" style={{ fontSize: "10px", color: "var(--text-0)" }}>syncing</span>
         )}
         {state && <EmergencyClose positions={state.positions} />}
         {state && <ModeToggle paperMode={state.paper_mode} />}

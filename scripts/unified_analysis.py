@@ -48,6 +48,7 @@ from portfolio_state import (
     save_positions,
     fetch_prices_batch,
 )
+from public_quotes import fetch_live_quotes, is_configured as public_api_configured
 from risk_layer import RiskLayer
 from stock_discovery import prewarm_info_for_tickers
 from execution_sequencer import ExecutionSequencer
@@ -833,7 +834,23 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     confirmed_live: set[str] = set()
     all_tickers = [r.original.ticker for r in actions_to_execute]
     if all_tickers:
-        live_prices, _, prev_closes = fetch_prices_batch(all_tickers)
+        # Try Public.com API first — real-time bid/ask data, single batch call.
+        # Fall back to yfinance for any tickers the API couldn't quote.
+        public_tickers: set[str] = set()
+        if public_api_configured():
+            pub_prices, pub_failures = fetch_live_quotes(all_tickers)
+            public_tickers = set(pub_prices.keys())
+            if pub_failures:
+                yf_prices, _, prev_closes = fetch_prices_batch(pub_failures)
+                live_prices = {**pub_prices, **yf_prices}
+            else:
+                live_prices, prev_closes = pub_prices, {}
+            src = "Public.com" if public_tickers else "yfinance"
+            print(f"  📡 Live prices via {src} ({len(public_tickers)} tickers); "
+                  f"yfinance fallback for {len(all_tickers) - len(public_tickers)}")
+        else:
+            live_prices, _, prev_closes = fetch_prices_batch(all_tickers)
+
         for reviewed in actions_to_execute:
             action = reviewed.original
             fresh = live_prices.get(action.ticker)
@@ -842,9 +859,10 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                     print(f"  ⛔ {action.ticker}: no live price — buy skipped (won't use stale data)")
                 continue
             # Sanity-check: price must be within 2× of yesterday's close.
-            # Catches MultiIndex confusion, bad cache entries, and yfinance data glitches.
+            # Only needed for yfinance-sourced prices — Public.com prices are real-time
+            # and trusted, so skip the check for those.
             prev = prev_closes.get(action.ticker)
-            if prev and prev > 0 and action.action_type == "BUY":
+            if prev and prev > 0 and action.action_type == "BUY" and action.ticker not in public_tickers:
                 ratio = fresh / prev
                 if ratio > 2.0 or ratio < 0.5:
                     print(f"  ⛔ {action.ticker}: live price ${fresh:.2f} is {ratio:.2f}× prev_close ${prev:.2f} — bad data, buy skipped")
@@ -981,7 +999,27 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                                     tx["stop_loss"], tx["take_profit"],
                                     sector=ticker_sector)
         elif action.action_type == "SELL":
-            state = remove_position(state, action.ticker)
+            # Check for partial sell — only remove if selling the full position
+            pos_row = state.positions[state.positions["ticker"] == action.ticker]
+            held_shares = int(pos_row["shares"].iloc[0]) if not pos_row.empty else shares
+            if shares < held_shares:
+                # Partial sell: reduce shares, keep avg_cost_basis unchanged
+                df = state.positions.copy()
+                idx = df[df["ticker"] == action.ticker].index[0]
+                remaining = held_shares - shares
+                cost = df.at[idx, "avg_cost_basis"]
+                df.at[idx, "shares"] = remaining
+                df.at[idx, "market_value"] = round(remaining * action.price, 2)
+                df.at[idx, "current_price"] = action.price
+                df.at[idx, "unrealized_pnl"] = round(remaining * (action.price - cost), 2)
+                df.at[idx, "unrealized_pnl_pct"] = round((action.price - cost) / cost * 100 if cost > 0 else 0, 2)
+                positions_value = float(df["market_value"].sum())
+                from dataclasses import replace as _replace
+                state = _replace(state, positions=df, positions_value=positions_value,
+                                 total_equity=positions_value + state.cash,
+                                 num_positions=len(df))
+            else:
+                state = remove_position(state, action.ticker)
 
         mod_note = " (MODIFIED)" if reviewed.decision == ReviewDecision.MODIFY else ""
         print(f"  ✅ {action.action_type} {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")

@@ -1,7 +1,9 @@
 /** Actions tab — ANALYZE results, EXECUTE flow, and pre-flight dashboard. */
 
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAnalysisStore, usePortfolioStore } from "../lib/store";
+import { play } from "../lib/sounds";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import { api } from "../lib/api";
@@ -112,21 +114,23 @@ function ActionCard({ action }: { action: ReviewedAction }) {
         </div>
       )}
 
-      {/* Stops */}
-      <div className="flex gap-3 mb-2 text-xs" style={{ color: "var(--text-1)" }}>
-        <span>
-          Stop:{" "}
-          <span className="font-mono tabular-nums" style={{ color: "var(--red)" }}>
-            ${(action.modified_stop ?? original.stop_loss).toFixed(2)}
+      {/* Stops — only relevant for buys */}
+      {isBuy && (
+        <div className="flex gap-3 mb-2 text-xs" style={{ color: "var(--text-1)" }}>
+          <span>
+            Stop:{" "}
+            <span className="font-mono tabular-nums" style={{ color: "var(--red)" }}>
+              ${(action.modified_stop ?? original.stop_loss).toFixed(2)}
+            </span>
           </span>
-        </span>
-        <span>
-          Target:{" "}
-          <span className="font-mono tabular-nums" style={{ color: "var(--green)" }}>
-            ${(action.modified_target ?? original.take_profit).toFixed(2)}
+          <span>
+            Target:{" "}
+            <span className="font-mono tabular-nums" style={{ color: "var(--green)" }}>
+              ${(action.modified_target ?? original.take_profit).toFixed(2)}
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
+      )}
 
       {/* AI reasoning */}
       <p className="text-xs leading-relaxed italic" style={{ color: "var(--text-2)" }}>
@@ -402,9 +406,19 @@ export default function ActionsTab() {
   const { result, isAnalyzing, isExecuting, error, lastAnalyzedAt, runAnalysis, runExecute } =
     useAnalysisStore();
 
+  // Detect analyze complete → play sound
+  const wasAnalyzing = useRef(false);
+  useEffect(() => {
+    if (wasAnalyzing.current && !isAnalyzing && result) play("analyzeComplete");
+    wasAnalyzing.current = isAnalyzing;
+  }, [isAnalyzing, result]);
+
+  const handleAnalyze = () => { play("analyze"); runAnalysis(); };
+  const handleExecute = () => { play("execute"); runExecute(); };
+
   // No analysis yet → show pre-flight dashboard
   if (!result && !isAnalyzing) {
-    return <PreFlightDashboard onAnalyze={runAnalysis} lastAnalyzedAt={lastAnalyzedAt} error={error} />;
+    return <PreFlightDashboard onAnalyze={handleAnalyze} lastAnalyzedAt={lastAnalyzedAt} error={error} />;
   }
 
   // Analyzing spinner
@@ -445,7 +459,7 @@ export default function ActionsTab() {
           </p>
         )}
         <button
-          onClick={runAnalysis}
+          onClick={handleAnalyze}
           className="px-3 py-1 text-xs font-medium rounded transition-colors"
           style={{
             background: "var(--surface-1)",
@@ -496,7 +510,7 @@ export default function ActionsTab() {
         <div className="flex-1" />
         {summary.can_execute && (
           <button
-            onClick={runExecute}
+            onClick={handleExecute}
             disabled={isExecuting}
             className="px-3 py-1 text-xs font-semibold rounded transition-all disabled:opacity-50"
             style={{
@@ -508,7 +522,7 @@ export default function ActionsTab() {
           </button>
         )}
         <button
-          onClick={runAnalysis}
+          onClick={handleAnalyze}
           className="px-3 py-1 text-xs font-medium rounded transition-colors"
           style={{
             background: "var(--surface-1)",
