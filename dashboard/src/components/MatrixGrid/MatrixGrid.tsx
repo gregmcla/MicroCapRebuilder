@@ -47,7 +47,7 @@ export default function MatrixGrid({
     if (analysisResult && !isAnalyzing) setViewTab("actions");
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"value" | "perf" | "alpha" | "portfolio">("value");
+  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("entry");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
   const [mounted, setMounted] = useState(false);
   const [boot, setBoot] = useState(0);
@@ -116,10 +116,11 @@ export default function MatrixGrid({
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "1") setSortBy("value");
-      if (e.key === "2") setSortBy("perf");
-      if (e.key === "3") setSortBy("alpha");
-      if (e.key === "4") setSortBy("portfolio");
+      if (e.key === "1") setSortBy("entry");
+      if (e.key === "2") setSortBy("value");
+      if (e.key === "3") setSortBy("perf");
+      if (e.key === "4") setSortBy("alpha");
+      if (e.key === "5") setSortBy("portfolio");
       if (e.key === "Escape") { setSelectedPos(null); setFilterP(null); }
     };
     window.addEventListener("keydown", handler);
@@ -157,7 +158,8 @@ export default function MatrixGrid({
   const sorted = useMemo(() => {
     let arr = [...positions];
     if (effectiveFilter) arr = arr.filter((p) => p.portfolioId === effectiveFilter);
-    if (sortBy === "value") arr.sort((a, b) => b.value - a.value);
+    if (sortBy === "entry") arr.sort((a, b) => (b.entryDate ?? "").localeCompare(a.entryDate ?? ""));
+    else if (sortBy === "value") arr.sort((a, b) => b.value - a.value);
     else if (sortBy === "perf") arr.sort((a, b) => b.perf - a.perf);
     else if (sortBy === "alpha") arr.sort((a, b) => a.ticker.localeCompare(b.ticker));
     else if (sortBy === "portfolio") arr.sort((a, b) => a.portfolioId.localeCompare(b.portfolioId) || b.value - a.value);
@@ -328,7 +330,7 @@ export default function MatrixGrid({
               </div>
             </div>
             <span style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
-            {(["value", "perf", "alpha", "portfolio"] as const).map((k, n) => (
+            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k, n) => (
               <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
                 padding: "2px 8px", fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase",
                 fontFamily: MATRIX_FONT,
@@ -396,7 +398,7 @@ export default function MatrixGrid({
           ).map((tab) => {
             const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
-              grid: `GRID [${sorted.length}]`,
+              grid: `ENTRY [${sorted.length}]`,
               actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${[...analysisResult.approved, ...analysisResult.modified].length}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
               activity: `ACTIVITY [${transactions.length}]`,
@@ -600,7 +602,7 @@ export default function MatrixGrid({
             {top && <span>&#9650; <span style={{ color: "#4ade80" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
             {bot && <span>&#9660; <span style={{ color: "#f87171" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
             <span style={{ color: "#555" }}>&#9474;</span>
-            <span>KEYS: [1-4] SORT &middot; [ESC] RESET &middot; CLICK CELL FOR DETAIL</span>
+            <span>KEYS: [1-5] SORT &middot; [ESC] RESET &middot; CLICK CELL FOR DETAIL</span>
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <Waveform width={100} height={12} />
