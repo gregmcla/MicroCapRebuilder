@@ -1,73 +1,53 @@
 #!/usr/bin/env python3
-"""AI strategy generation — GScott generates a portfolio config from a text description."""
+"""Strategy configuration generator — suggests portfolio config from strategy DNA."""
 
 import json
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+try:
+    import anthropic
+except ImportError:
+    anthropic = None
 
-@dataclass
-class GeneratedStrategy:
-    sectors: list[str]
-    sector_weights: dict[str, int]   # maps sector → relative weight
-    trading_style: Optional[str]
-    scoring_weights: dict[str, float]
-    stop_loss_pct: float
-    risk_per_trade_pct: float
-    max_position_pct: float
-    scan_types: dict[str, bool]
-    etf_sources: list[str]
-    strategy_name: str
-    rationale: str
-    prompt: str
+try:
+    from dotenv import load_dotenv
+    for env_path in [
+        Path(__file__).resolve().parent.parent / ".env",
+        Path.cwd() / ".env",
+    ]:
+        if env_path.exists():
+            load_dotenv(env_path, override=True)
+            break
+except ImportError:
+    pass
 
+# Import valid universes from registry to stay in sync
+from portfolio_registry import UNIVERSE_PRESETS
 
-VALID_SECTORS = [
-    "Technology", "Communication", "Healthcare", "Financials",
-    "Consumer Discretionary", "Consumer Staples", "Industrials",
-    "Energy", "Materials", "Utilities", "Real Estate",
-]
+SUGGEST_CONFIG_PROMPT = """You are GScott's portfolio architect. Given a strategy DNA (investment thesis), suggest the optimal portfolio configuration.
 
-STRATEGY_SYSTEM_PROMPT = """You are GScott's strategy architect. Given a user's description of their desired trading strategy, generate a portfolio configuration.
+Return a JSON object with exactly these fields:
+{{
+  "name": "Short descriptive portfolio name (2-5 words)",
+  "universe": "one of: microcap, smallcap, midcap, largecap, allcap",
+  "etfs": ["4-6 real ETF tickers that best source candidates for this thesis"],
+  "stop_loss_pct": <number 5-10>,
+  "risk_per_trade_pct": <number 5-10>,
+  "max_position_pct": <number 5-15>
+}}
 
-You MUST return ONLY valid JSON with these exact fields:
-{
-  "strategy_name": "Short descriptive name for this strategy",
-  "sectors": ["list of GICS sectors to focus on"],
-  "sector_weights": {"SectorName": integer_weight, ...},
-  "trading_style": "aggressive_momentum" | "balanced" | "conservative_value" | "mean_reversion" | null,
-  "scoring_weights": {
-    "price_momentum": 0.0-1.0,
-    "earnings_growth": 0.0-1.0,
-    "quality": 0.0-1.0,
-    "value_timing": 0.0-1.0,
-    "volume": 0.0-1.0,
-    "volatility": 0.0-1.0
-  },
-  "stop_loss_pct": 3.0-10.0,
-  "risk_per_trade_pct": 1.0-8.0,
-  "max_position_pct": 4.0-15.0,
-  "scan_types": {
-    "momentum_breakouts": true/false,
-    "oversold_bounces": true/false,
-    "sector_leaders": true/false,
-    "volume_anomalies": true/false
-  },
-  "etf_sources": ["additional sector ETFs beyond base"],
-  "rationale": "2-3 sentence explanation of why these settings fit the strategy"
-}
+Guidelines:
+- Universe: pick the market cap range that best fits the thesis. Use "allcap" if the thesis spans multiple cap sizes.
+- ETFs: pick ETFs whose holdings overlap with the thesis. Only use real, liquid ETFs. No leveraged/inverse ETFs (no TQQQ, SOXL, etc.).
+- Risk params: aggressive theses get tighter stops (5-6%) and larger positions (10-15%). Conservative theses get wider stops (8-10%) and smaller positions (5-8%).
+- Name: be descriptive but concise. "AI Infrastructure" not "Artificial Intelligence Adjacent Infrastructure Investment Strategy".
 
-Rules:
-- scoring_weights MUST sum to 1.0
-- Valid sectors: """ + json.dumps(VALID_SECTORS) + """
-- If user wants broad market exposure, return all sectors
-- If user mentions specific themes (AI, semiconductors, etc.), map to appropriate sectors
-- Match risk parameters to the aggressiveness implied by the description
-- sector_weights must include every sector listed in "sectors". Use proportional integers (e.g., Technology: 40, Healthcare: 25). Higher = more watchlist slots. If the strategy emphasizes one sector, weight it higher.
-- Return ONLY the JSON object, no markdown, no explanation outside the JSON"""
+Starting capital: ${starting_capital:,.0f}
+
+Return ONLY the JSON object, no other text."""
 
 
 def get_api_key() -> Optional[str]:
@@ -95,109 +75,22 @@ def _clean_json_response(text: str) -> str:
     return text
 
 
-def _validate_weights(weights: dict) -> dict:
-    """Ensure scoring weights sum to 1.0."""
-    total = sum(weights.values())
-    if abs(total - 1.0) > 0.01:
-        for k in weights:
-            weights[k] = round(weights[k] / total, 2)
-        diff = 1.0 - sum(weights.values())
-        first_key = next(iter(weights))
-        weights[first_key] = round(weights[first_key] + diff, 2)
-    return weights
+def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
+    """Use Claude to suggest portfolio config from strategy DNA.
 
-
-def _normalize_sector_weights(raw: dict, sectors: list[str]) -> dict[str, int]:
-    """Ensure every sector has a weight; equal weight for any missing sector.
-
-    Returns integer weights (not normalized to 100 — proportional is fine).
-    """
-    result = {s: int(raw.get(s, 0)) for s in sectors}
-    # Fill zeros with the average of non-zero weights, or 10 as fallback
-    non_zero = [v for v in result.values() if v > 0]
-    default = int(sum(non_zero) / len(non_zero)) if non_zero else 10
-    for s in sectors:
-        if result[s] == 0:
-            result[s] = default
-    return result
-
-
-def suggest_etfs_for_dna(strategy_dna: str) -> list[str]:
-    """Use Haiku to suggest 4-6 ETF tickers that match an AI-driven portfolio's strategy DNA.
-
-    Returns a list of ETF tickers (e.g. ["XLI", "PAVE", "COPX", "SMH"]).
-    Returns empty list on any failure — caller should fall back to preset ETFs.
+    Returns dict with: name, universe, etfs, stop_loss_pct, risk_per_trade_pct, max_position_pct.
+    Raises ValueError if API key is missing or response is unparseable.
     """
     api_key = get_api_key()
     if not api_key:
-        return []
+        raise ValueError("Anthropic API key not configured")
 
-    try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=256,
-            system=(
-                "You are an ETF selection assistant. Given a portfolio strategy description, "
-                "return a JSON array of 4-6 ETF ticker symbols whose holdings best represent "
-                "the strategy's target universe. Prefer sector/thematic ETFs over broad market ETFs. "
-                "Return ONLY a JSON array of strings, e.g. [\"XLI\", \"PAVE\", \"COPX\"]. No explanation."
-            ),
-            messages=[{"role": "user", "content": f"Strategy:\n{strategy_dna}"}],
-        )
-        raw = response.content[0].text.strip()
-        # Strip markdown if present
-        raw = re.sub(r"```json\s*", "", raw)
-        raw = re.sub(r"```\s*", "", raw).strip()
-        start = raw.find("[")
-        end = raw.rfind("]") + 1
-        if start >= 0 and end > start:
-            tickers = json.loads(raw[start:end])
-            if isinstance(tickers, list) and all(isinstance(t, str) for t in tickers):
-                return [t.upper().strip() for t in tickers if t.strip()]
-    except Exception:
-        pass
-    return []
-
-
-def generate_strategy(prompt: str, universe: str, starting_capital: float) -> GeneratedStrategy:
-    """Use AI to generate a portfolio strategy config from a text description.
-
-    Args:
-        prompt: User's strategy description
-        universe: Cap size (microcap/smallcap/midcap/largecap)
-        starting_capital: Portfolio starting capital
-
-    Returns:
-        GeneratedStrategy with all config values
-
-    Raises:
-        ValueError: If API key missing or AI response invalid
-    """
-    api_key = get_api_key()
-    if not api_key:
-        raise ValueError("No Anthropic API key found. Add ANTHROPIC_API_KEY to your .env file.")
-
-    try:
-        import anthropic
-    except ImportError:
-        raise ValueError("anthropic package not installed. Run: pip install anthropic")
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    user_msg = f"""Portfolio context:
-- Universe: {universe} (market cap range)
-- Starting capital: ${starting_capital:,.0f}
-
-User's strategy description:
-{prompt}"""
-
+    client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-opus-4-6",
         max_tokens=1024,
-        system=STRATEGY_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_msg}],
+        system=SUGGEST_CONFIG_PROMPT.format(starting_capital=starting_capital),
+        messages=[{"role": "user", "content": f"Strategy DNA:\n{strategy_dna}"}],
     )
 
     raw = response.content[0].text
@@ -208,40 +101,21 @@ User's strategy description:
     except json.JSONDecodeError as e:
         raise ValueError(f"AI returned invalid JSON: {e}")
 
-    # Validate sectors
-    sectors = [s for s in data.get("sectors", []) if s in VALID_SECTORS]
-    if not sectors:
-        sectors = list(VALID_SECTORS)
+    # Validate universe
+    if data.get("universe") not in UNIVERSE_PRESETS:
+        data["universe"] = "allcap"
 
-    # Extract and normalize sector weights
-    raw_weights = data.get("sector_weights", {})
-    sector_weights = _normalize_sector_weights(raw_weights, sectors)
+    # Ensure required fields
+    required = ["name", "universe", "etfs", "stop_loss_pct", "risk_per_trade_pct", "max_position_pct"]
+    for field in required:
+        if field not in data:
+            raise ValueError(f"AI response missing required field: {field}")
 
-    # Validate and normalize weights
-    weights = data.get("scoring_weights", {})
-    # Migrate any old factor key names to new names
-    from stock_scorer import StockScorer
-    weights = StockScorer._migrate_weight_keys(weights)
-    required_factors = ["price_momentum", "earnings_growth", "quality", "value_timing", "volume", "volatility"]
-    for f in required_factors:
-        if f not in weights:
-            weights[f] = 1.0 / len(required_factors)
-    weights = _validate_weights(weights)
-
-    return GeneratedStrategy(
-        sectors=sectors,
-        sector_weights=sector_weights,
-        trading_style=data.get("trading_style"),
-        scoring_weights=weights,
-        stop_loss_pct=max(3.0, min(10.0, data.get("stop_loss_pct", 7.0))),
-        risk_per_trade_pct=max(1.0, min(8.0, data.get("risk_per_trade_pct", 3.0))),
-        max_position_pct=max(4.0, min(15.0, data.get("max_position_pct", 8.0))),
-        scan_types=data.get("scan_types", {
-            "momentum_breakouts": True, "oversold_bounces": True,
-            "sector_leaders": True, "volume_anomalies": False,
-        }),
-        etf_sources=data.get("etf_sources", []),
-        strategy_name=data.get("strategy_name", "AI Strategy"),
-        rationale=data.get("rationale", ""),
-        prompt=prompt,
-    )
+    return {
+        "name": str(data["name"]),
+        "universe": data["universe"],
+        "etfs": [str(t).upper() for t in data["etfs"]],
+        "stop_loss_pct": float(data["stop_loss_pct"]),
+        "risk_per_trade_pct": float(data["risk_per_trade_pct"]),
+        "max_position_pct": float(data["max_position_pct"]),
+    }
