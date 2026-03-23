@@ -15,9 +15,8 @@ import type {
   OverviewData,
   CreatePortfolioRequest,
   PortfolioMeta,
-  GenerateStrategyRequest,
-  GeneratedStrategy,
-  TradingStyle,
+  SuggestConfigRequest,
+  SuggestConfigResponse,
   TickerInfo,
   TradeRationale,
 } from "./types";
@@ -65,10 +64,8 @@ export const api = {
     post<{ portfolio: PortfolioMeta; message: string }>("/portfolios", req),
   deletePortfolio: (id: string) =>
     del<{ message: string }>(`/portfolios/${id}`),
-  generateStrategy: (req: GenerateStrategyRequest) =>
-    post<GeneratedStrategy>("/portfolios/generate-strategy", req),
-  getTradingStyles: () => get<Record<string, TradingStyle>>("/portfolios/trading-styles"),
-  getSectors: () => get<{ sectors: string[] }>("/portfolios/sectors"),
+  suggestConfig: (req: SuggestConfigRequest) =>
+    post<SuggestConfigResponse>("/portfolios/suggest-config", req),
 
   // --- Portfolio-scoped endpoints ---
   getState: (pid: string) => get<PortfolioState>(`/${pid}/state`),

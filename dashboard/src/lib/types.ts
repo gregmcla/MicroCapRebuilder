@@ -466,28 +466,16 @@ export interface AiConfig {
   prompt?: string;
 }
 
-export interface GenerateStrategyRequest {
-  prompt: string;
-  universe: string;
+export interface SuggestConfigRequest {
+  strategy_dna: string;
   starting_capital: number;
 }
 
-export interface GeneratedStrategy {
-  sectors: string[];
-  sector_weights?: Record<string, number>;
-  trading_style: string | null;
-  scoring_weights: Record<string, number>;
+export interface SuggestConfigResponse {
+  name: string;
+  universe: string;
+  etfs: string[];
   stop_loss_pct: number;
   risk_per_trade_pct: number;
   max_position_pct: number;
-  scan_types: Record<string, boolean>;
-  etf_sources: string[];
-  strategy_name: string;
-  rationale: string;
-  prompt: string;
-}
-
-export interface TradingStyle {
-  label: string;
-  description: string;
 }
