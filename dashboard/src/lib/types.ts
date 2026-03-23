@@ -177,6 +177,12 @@ export interface PortfolioState {
   all_time_pnl: number;
   realized_pnl: number;
   cagr_pct: number;
+  spx_return_pct: number | null;
+  ndx_return_pct: number | null;
+  rut_return_pct: number | null;
+  spx_alpha: number | null;
+  ndx_alpha: number | null;
+  rut_alpha: number | null;
   starting_capital: number;
   timestamp: string;
   position_rationales?: Record<string, TradeRationale>;

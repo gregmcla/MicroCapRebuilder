@@ -411,6 +411,47 @@ export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   );
 }
 
+function BenchmarkChips({ state }: { state: ReturnType<typeof usePortfolioState>["data"] }) {
+  if (!state) return null;
+  const benchmarks = [
+    { label: "SPX", returnPct: state.spx_return_pct, alpha: state.spx_alpha },
+    { label: "NDX", returnPct: state.ndx_return_pct, alpha: state.ndx_alpha },
+    { label: "RUT", returnPct: state.rut_return_pct, alpha: state.rut_alpha },
+  ];
+  // Don't render if none of the values have loaded yet
+  if (benchmarks.every(b => b.returnPct == null)) return null;
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+      {benchmarks.map(({ label, returnPct, alpha }) => (
+        <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1px" }}>
+          <span style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", fontFamily: "var(--font-sans)", lineHeight: 1 }}>
+            {label}
+          </span>
+          {alpha != null ? (
+            <span style={{
+              fontSize: "11px",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 600,
+              color: alpha >= 0 ? "var(--green)" : "var(--red)",
+              lineHeight: 1.1,
+            }}>
+              {alpha >= 0 ? "+" : ""}{alpha.toFixed(1)}%α
+            </span>
+          ) : (
+            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-0)", lineHeight: 1.1 }}>—</span>
+          )}
+          {returnPct != null ? (
+            <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-0)", lineHeight: 1.1 }}>
+              {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(1)}%
+            </span>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PortfolioSummary() {
   const { data: state } = usePortfolioState();
   const { data: risk } = useRisk();
@@ -512,6 +553,12 @@ export default function PortfolioSummary() {
               </div>
               <div style={labelStyle}>Cash</div>
             </div>
+
+            {/* Divider before benchmark chips */}
+            <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
+
+            {/* Benchmark comparison chips */}
+            <BenchmarkChips state={state} />
           </div>
 
           {/* Action buttons */}

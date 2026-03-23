@@ -4,6 +4,7 @@ import threading
 import time
 from datetime import date
 
+import pandas as pd
 from fastapi import APIRouter
 from api.deps import serialize
 
@@ -14,6 +15,75 @@ _ticker_info_cache: dict[str, tuple[dict, float]] = {}
 _TICKER_INFO_TTL = 86400
 
 router = APIRouter(prefix="/api/{portfolio_id}")
+
+
+def _compute_benchmark_comparison(snapshots, total_return_pct: float) -> dict:
+    """Compute since-inception returns for SPX, NDX, RUT and alpha vs portfolio."""
+    try:
+        import pandas as pd
+        from yf_session import cached_download
+    except ImportError:
+        return {}
+
+    if snapshots is None or (hasattr(snapshots, 'empty') and snapshots.empty):
+        return {}
+    if "date" not in snapshots.columns or len(snapshots) < 1:
+        return {}
+
+    inception_date = str(snapshots.iloc[0]["date"])[:10]  # YYYY-MM-DD
+
+    benchmarks = [("spx", "^GSPC"), ("ndx", "^NDX"), ("rut", "^RUT")]
+    result = {}
+
+    for label, symbol in benchmarks:
+        try:
+            df = cached_download(symbol, start=inception_date, progress=False, auto_adjust=True)
+            if df.empty:
+                result[f"{label}_return_pct"] = None
+                result[f"{label}_alpha"] = None
+                continue
+
+            # Extract Close — handle both flat and MultiIndex columns
+            if isinstance(df.columns, pd.MultiIndex):
+                if ("Close", symbol) in df.columns:
+                    closes = df[("Close", symbol)]
+                elif "Close" in df.columns.get_level_values(0):
+                    closes = df["Close"].iloc[:, 0]
+                else:
+                    result[f"{label}_return_pct"] = None
+                    result[f"{label}_alpha"] = None
+                    continue
+            else:
+                if "Close" not in df.columns:
+                    result[f"{label}_return_pct"] = None
+                    result[f"{label}_alpha"] = None
+                    continue
+                closes = df["Close"]
+
+            closes = closes.dropna()
+            if len(closes) < 2:
+                result[f"{label}_return_pct"] = None
+                result[f"{label}_alpha"] = None
+                continue
+
+            inception_price = float(closes.iloc[0])
+            current_price = float(closes.iloc[-1])
+
+            if inception_price <= 0:
+                result[f"{label}_return_pct"] = None
+                result[f"{label}_alpha"] = None
+                continue
+
+            bm_return = (current_price - inception_price) / inception_price * 100
+            alpha = total_return_pct - bm_return
+
+            result[f"{label}_return_pct"] = round(bm_return, 2)
+            result[f"{label}_alpha"] = round(alpha, 2)
+        except Exception:
+            result[f"{label}_return_pct"] = None
+            result[f"{label}_alpha"] = None
+
+    return result
 
 
 def _serialize_state(state):
@@ -54,6 +124,9 @@ def _serialize_state(state):
         if _start_eq > 0 and _days > 0:
             _years = _days / 252
             cagr_pct = round(((_end_eq / _start_eq) ** (1 / _years) - 1) * 100, 2)
+
+    # Benchmark comparison — since-inception returns for SPX, NDX, RUT
+    bm = _compute_benchmark_comparison(snapshots, total_return_pct)
 
     # Realized P&L: replay buy→sell pairs from transaction history.
     # Only counts trades where we have a complete BUY record — excludes
@@ -148,6 +221,12 @@ def _serialize_state(state):
         "all_time_pnl": round(all_time_pnl, 2),
         "realized_pnl": realized_pnl,
         "cagr_pct": cagr_pct,
+        "spx_return_pct": bm.get("spx_return_pct"),
+        "ndx_return_pct": bm.get("ndx_return_pct"),
+        "rut_return_pct": bm.get("rut_return_pct"),
+        "spx_alpha": bm.get("spx_alpha"),
+        "ndx_alpha": bm.get("ndx_alpha"),
+        "rut_alpha": bm.get("rut_alpha"),
         "starting_capital": starting_capital,
         "position_rationales": position_rationales,
         "timestamp": serialize(state.timestamp),
