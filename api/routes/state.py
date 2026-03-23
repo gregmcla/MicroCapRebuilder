@@ -33,55 +33,58 @@ def _compute_benchmark_comparison(snapshots, total_return_pct: float) -> dict:
     inception_date = str(snapshots.iloc[0]["date"])[:10]  # YYYY-MM-DD
 
     benchmarks = [("spx", "^GSPC"), ("ndx", "^NDX"), ("rut", "^RUT")]
-    result = {}
 
-    for label, symbol in benchmarks:
+    import concurrent.futures
+
+    def _fetch_one(label_symbol):
+        label, symbol = label_symbol
+        r = {f"{label}_return_pct": None, f"{label}_alpha": None}
         try:
             df = cached_download(symbol, start=inception_date, progress=False, auto_adjust=True)
             if df.empty:
-                result[f"{label}_return_pct"] = None
-                result[f"{label}_alpha"] = None
-                continue
-
-            # Extract Close — handle both flat and MultiIndex columns
+                return r
             if isinstance(df.columns, pd.MultiIndex):
                 if ("Close", symbol) in df.columns:
                     closes = df[("Close", symbol)]
                 elif "Close" in df.columns.get_level_values(0):
                     closes = df["Close"].iloc[:, 0]
                 else:
-                    result[f"{label}_return_pct"] = None
-                    result[f"{label}_alpha"] = None
-                    continue
+                    return r
             else:
                 if "Close" not in df.columns:
-                    result[f"{label}_return_pct"] = None
-                    result[f"{label}_alpha"] = None
-                    continue
+                    return r
                 closes = df["Close"]
-
             closes = closes.dropna()
             if len(closes) < 2:
-                result[f"{label}_return_pct"] = None
-                result[f"{label}_alpha"] = None
-                continue
-
+                return r
             inception_price = float(closes.iloc[0])
             current_price = float(closes.iloc[-1])
-
             if inception_price <= 0:
-                result[f"{label}_return_pct"] = None
-                result[f"{label}_alpha"] = None
-                continue
-
+                return r
             bm_return = (current_price - inception_price) / inception_price * 100
-            alpha = total_return_pct - bm_return
-
-            result[f"{label}_return_pct"] = round(bm_return, 2)
-            result[f"{label}_alpha"] = round(alpha, 2)
+            r[f"{label}_return_pct"] = round(bm_return, 2)
+            r[f"{label}_alpha"] = round(total_return_pct - bm_return, 2)
         except Exception:
-            result[f"{label}_return_pct"] = None
-            result[f"{label}_alpha"] = None
+            pass
+        return r
+
+    result = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        future_map = {executor.submit(_fetch_one, b): b for b in benchmarks}
+        try:
+            for future in concurrent.futures.as_completed(future_map, timeout=8):
+                try:
+                    result.update(future.result())
+                except Exception:
+                    label = future_map[future][0]
+                    result[f"{label}_return_pct"] = None
+                    result[f"{label}_alpha"] = None
+        except concurrent.futures.TimeoutError:
+            for future, b in future_map.items():
+                label = b[0]
+                if f"{label}_return_pct" not in result:
+                    result[f"{label}_return_pct"] = None
+                    result[f"{label}_alpha"] = None
 
     return result
 

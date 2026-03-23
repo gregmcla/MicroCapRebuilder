@@ -422,7 +422,9 @@ function BenchmarkChips({ state }: { state: ReturnType<typeof usePortfolioState>
   if (benchmarks.every(b => b.returnPct == null)) return null;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+    <>
+      <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
       {benchmarks.map(({ label, returnPct, alpha }) => (
         <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1px" }}>
           <span style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", fontFamily: "var(--font-sans)", lineHeight: 1 }}>
@@ -449,6 +451,7 @@ function BenchmarkChips({ state }: { state: ReturnType<typeof usePortfolioState>
         </div>
       ))}
     </div>
+    </>
   );
 }
 
@@ -554,10 +557,7 @@ export default function PortfolioSummary() {
               <div style={labelStyle}>Cash</div>
             </div>
 
-            {/* Divider before benchmark chips */}
-            <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
-
-            {/* Benchmark comparison chips */}
+            {/* Benchmark comparison chips (includes its own leading divider) */}
             <BenchmarkChips state={state} />
           </div>
 
