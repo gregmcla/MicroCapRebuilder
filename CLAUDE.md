@@ -141,9 +141,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/portfolios` | List all portfolios |
 | POST | `/api/portfolios` | Create portfolio |
 | DELETE | `/api/portfolios/{id}` | Delete portfolio |
-| POST | `/api/portfolios/generate-strategy` | AI strategy generation |
-| GET | `/api/portfolios/trading-styles` | Available trading style presets |
-| GET | `/api/portfolios/sectors` | Available sectors |
+| POST | `/api/portfolios/suggest-config` | AI config suggestion from strategy DNA |
 | GET | `/api/portfolios/overview` | Cross-portfolio overview |
 | GET | `/api/{portfolio_id}/position/{ticker}/info` | Company name + description (yfinance, 24hr in-memory cache) |
 | GET | `/api/{portfolio_id}/state` | Portfolio state (cached prices) |
