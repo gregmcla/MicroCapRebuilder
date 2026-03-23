@@ -7,11 +7,31 @@
 
 ## Current Phase
 
-**Idle — all features complete as of 2026-03-09**
+**Idle — all features complete as of 2026-03-23**
 
 ---
 
-## Recently Completed (2026-03-09)
+## Recently Completed (2026-03-23)
+
+### Portfolio Setup Redesign — AI-Driven Only
+- `CreatePortfolioModal.tsx` rewritten: 954 lines → ~340 lines, 2-step flow (DNA → Claude suggests config → review & create)
+- `StrategyReviewCard.tsx` deleted
+- Wizard mode, AI Strategy mode, mode switcher all deleted
+- New `POST /api/portfolios/suggest-config` endpoint — Opus 4.6 infers name, universe, ETFs, risk params from DNA
+- `strategy_generator.py` replaced: `generate_strategy()`, `suggest_etfs_for_dna()`, `GeneratedStrategy` deleted; new `suggest_config_for_dna()`
+- 3 old endpoints deleted: `generate-strategy`, `trading-styles`, `sectors`
+- Hardened AI-driven creation defaults: `extended_max=3000`, `rotating_3day`, `exchange_listings=false`
+- Existing portfolios fixed: max, defense-tech, adjacent-supporters-of-ai, boomers all reduced from 6000 → 3000/2000
+
+### Bug Fixes (2026-03-17)
+- Sell actions no longer show $0.00 stop/target in ActionsTab (only shown for buys now)
+- AI review sell reasoning enriched with position P&L context instead of generic market commentary
+- Watchlist JSONL corrupt line crash fixed — `_load_watchlist()`, `_load_core_watchlist()`, `portfolio_state.py` all skip bad lines
+- Stocktwits returning 403s across the board — social heat won't populate (external issue)
+
+---
+
+## Previously Completed (2026-03-09)
 
 ### Fundamental Scoring Overhaul (commits: `a0f2791`, `66d06ea`)
 - New 6-factor model: `price_momentum`, `earnings_growth`, `quality`, `volume`, `volatility`, `value_timing`
