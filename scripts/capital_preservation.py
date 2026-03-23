@@ -124,16 +124,8 @@ class CapitalPreservationManager:
                 f"Risk score recovers above {risk_threshold}"
             )
 
-        # Check bear market trigger
-        if triggers.get("regime_bear_auto_enable", True):
-            regime = get_market_regime()
-            if regime == MarketRegime.BEAR:
-                trigger_reasons.append(
-                    "Bear market regime detected"
-                )
-                exit_conditions.append(
-                    "Market regime changes to SIDEWAYS or BULL"
-                )
+        # Bear market regime no longer auto-triggers capital preservation —
+        # Claude handles regime-aware positioning via strategy DNA.
 
         # Determine if active
         is_active = len(trigger_reasons) > 0
