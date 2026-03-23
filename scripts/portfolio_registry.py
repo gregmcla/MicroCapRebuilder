@@ -530,22 +530,17 @@ def create_portfolio(
         "ai_rationale": ai_config.get("rationale") if ai_config else None,
     }
 
-    # AI-driven mode: store flag, strategy DNA, and extend watchlist cap
+    # AI-driven mode: store flag, strategy DNA, harden defaults
     if ai_driven:
         config["ai_driven"] = True
         if strategy_dna:
             config["strategy_dna"] = strategy_dna
-            # Auto-suggest ETFs that match the strategy DNA
-            try:
-                from strategy_generator import suggest_etfs_for_dna
-                suggested_etfs = suggest_etfs_for_dna(strategy_dna)
-                if suggested_etfs:
-                    config["universe"]["sources"]["etf_holdings"]["etfs"] = suggested_etfs
-            except Exception:
-                pass  # Fall back to preset ETFs already in config
+        # Hardened scan defaults — prevent timeout issues
+        config["universe"]["tiers"]["extended"]["max_tickers"] = 3000
+        config["universe"]["tiers"]["extended"]["scan_frequency"] = "rotating_3day"
+        config["universe"]["sources"]["exchange_listings"]["enabled"] = False
         # Larger watchlist gives Claude more candidates to reason across
-        if "watchlist" not in config.get("discovery", {}):
-            config.setdefault("discovery", {})["watchlist"] = {}
+        config.setdefault("discovery", {}).setdefault("watchlist", {})
         config["discovery"]["watchlist"]["total_watchlist_slots"] = 500
 
     # Write config
