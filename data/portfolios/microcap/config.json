@@ -1,4 +1,7 @@
 {
+  "ai_driven": true,
+  "full_watchlist_prompt": true,
+  "strategy_dna": "Focused small-cap momentum and quality strategy. Hunt for micro and small-cap stocks (under $2B market cap) showing strong price momentum, solid fundamentals, and volume confirmation. Universe sourced from Russell 2000 ETF holdings. Run 6-10 concentrated positions max. Tight stops — small caps move fast and punish hesitation. Cut losers quickly, let winners run. Prioritize stocks with high value_timing and price_momentum scores. Avoid crowded sectors.",
   "mode": "live",
   "paper_trading": {
     "enabled": true,
@@ -241,6 +244,7 @@
     },
     "watchlist": {
       "max_tickers": 300,
+      "total_watchlist_slots": 500,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
