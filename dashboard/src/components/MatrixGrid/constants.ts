@@ -116,12 +116,12 @@ export const pc = (p: number): string =>
   p > 5 ? "#4ade80" : p > 0 ? "#86c98e" : p > -5 ? "#c98e86" : "#f87171";
 
 export const pbg = (p: number): string => {
-  if (p > 15) return "#163826";
-  if (p > 5)  return "#0f2a1a";
-  if (p > 0)  return "#0a1c10";
-  if (p > -5) return "#1c0a0a";
-  if (p > -10) return "#2a0f0f";
-  return "#381616";
+  if (p > 15) return "linear-gradient(to bottom, #1d4530 0%, #122d20 100%)";
+  if (p > 5)  return "linear-gradient(to bottom, #163221 0%, #0d2417 100%)";
+  if (p > 0)  return "linear-gradient(to bottom, #0f2216 0%, #08180d 100%)";
+  if (p > -5) return "linear-gradient(to bottom, #22100f 0%, #160909 100%)";
+  if (p > -10) return "linear-gradient(to bottom, #31110f 0%, #210c0c 100%)";
+  return "linear-gradient(to bottom, #3f1414 0%, #2c0f0f 100%)";
 };
 
 export const fv = (v: number): string =>

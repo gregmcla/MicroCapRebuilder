@@ -329,9 +329,7 @@ export default function MatrixGrid({
         }
         @keyframes matrixTermLine { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:translateX(0)} }
         @keyframes matrixBlink { 0%,100%{opacity:1} 50%{opacity:0} }
-        @keyframes matrixBreathe { 0%,100%{opacity:0.72} 50%{opacity:0.92} }
-        .matrix-cell { animation: matrixBreathe var(--breath-dur,4s) ease-in-out infinite; }
-        .matrix-cell:hover { background: #1e4a2e !important; animation: none !important; opacity: 1 !important; }
+        .matrix-cell:hover { background: linear-gradient(to bottom, #1e4a2e, #163826) !important; opacity: 1 !important; }
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
         .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
@@ -560,7 +558,6 @@ export default function MatrixGrid({
               const isGlitch = glitchIdx === i;
               const isAnomaly = anomalies.has(positions.indexOf(pos));
               const barW = (pos.value / maxVal) * 100;
-              const breathDur = 3.5 + (i % 7) * 0.4;
               const tiny = rect.w < 85 || rect.h < 58;
               const micro = rect.w < 48 || rect.h < 36;
 
@@ -581,7 +578,8 @@ export default function MatrixGrid({
                     width: rect.w,
                     height: rect.h,
                     boxSizing: "border-box",
-                    background: `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%), ${pbg(pos.perf)}`,
+                    background: pbg(pos.perf),
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
                     padding: micro ? "3px 4px 2px" : tiny ? "5px 6px 4px" : "9px 9px 6px",
                     cursor: "crosshair",
                     overflow: "hidden",
@@ -590,9 +588,7 @@ export default function MatrixGrid({
                       ? "border-color 0.15s, background 0.15s, left 0.35s ease-out, top 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out"
                       : "opacity 0.3s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
-                    borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "cc" : "40"}`,
-                    ["--breath-dur" as string]: `${breathDur}s`,
-                    animationDelay: `${-(i * 0.3) % breathDur}s`,
+                    borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "cc" : "44"}`,
                     animation: isGlitch
                       ? "matrixGlitch 0.1s ease"
                       : isAnomaly
