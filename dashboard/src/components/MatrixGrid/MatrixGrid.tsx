@@ -118,7 +118,7 @@ export default function MatrixGrid({
     if (analysisResult && !isAnalyzing) setViewTab("actions");
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("value");
+  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("perf");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
   const [mounted, setMounted] = useState(false);
   const [boot, setBoot] = useState(0);
