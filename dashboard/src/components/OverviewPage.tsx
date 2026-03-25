@@ -444,7 +444,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
               background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
             }} />
           </div>
-          <span className="tabular-nums" style={{ color: "var(--text-0)" }}>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          <span style={{ color: "var(--text-0)" }}>cash</span>
+          <span className="font-mono tabular-nums" style={{ color: "var(--text-2)", fontWeight: 600 }}>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
         </div>
       )}
 
