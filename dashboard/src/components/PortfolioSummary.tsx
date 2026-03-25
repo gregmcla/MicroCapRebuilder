@@ -411,188 +411,146 @@ export function EquityCurve({ snapshots }: { snapshots: Snapshot[] }) {
   );
 }
 
-function BenchmarkChips({ state }: { state: ReturnType<typeof usePortfolioState>["data"] }) {
-  if (!state) return null;
-  const benchmarks = [
-    { label: "SPX", returnPct: state.spx_return_pct, alpha: state.spx_alpha },
-    { label: "NDX", returnPct: state.ndx_return_pct, alpha: state.ndx_alpha },
-    { label: "RUT", returnPct: state.rut_return_pct, alpha: state.rut_alpha },
-  ];
-  // Don't render if none of the values have loaded yet
-  if (benchmarks.every(b => b.returnPct == null)) return null;
+// ── Shared sub-components ─────────────────────────────────────────────────────
 
+function StripDivider() {
+  return <div style={{ width: "1px", alignSelf: "stretch", margin: "10px 0", background: "var(--border-1)", flexShrink: 0, opacity: 0.6 }} />;
+}
+
+function Metric({ label, value, colorClass }: { label: string; value: string; colorClass?: string }) {
   return (
-    <>
-      <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-      {benchmarks.map(({ label, returnPct, alpha }) => (
-        <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1px" }}>
-          <span style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", fontFamily: "var(--font-sans)", lineHeight: 1 }}>
-            {label}
-          </span>
-          {alpha != null ? (
-            <span style={{
-              fontSize: "11px",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 600,
-              color: alpha >= 0 ? "var(--green)" : "var(--red)",
-              lineHeight: 1.1,
-            }}>
-              {alpha >= 0 ? "+" : ""}{alpha.toFixed(1)}%α
-            </span>
-          ) : (
-            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-0)", lineHeight: 1.1 }}>—</span>
-          )}
-          {returnPct != null ? (
-            <span style={{ fontSize: "9px", fontFamily: "var(--font-mono)", color: "var(--text-0)", lineHeight: 1.1 }}>
-              {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(1)}%
-            </span>
-          ) : null}
-        </div>
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      <span
+        className={`font-mono tabular-nums font-semibold ${colorClass ?? "text-text-primary"}`}
+        style={{ fontSize: "12px", lineHeight: 1 }}
+      >
+        {value}
+      </span>
+      <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", lineHeight: 1 }}>
+        {label}
+      </span>
     </div>
-    </>
   );
 }
+
+// ── Main export ────────────────────────────────────────────────────────────────
 
 export default function PortfolioSummary() {
   const { data: state } = usePortfolioState();
   const { data: risk } = useRisk();
 
-  const overallPnl = state?.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0) ?? 0;
-  const overallColor = overallPnl >= 0 ? "text-profit" : "text-loss";
+  const openPnl    = state?.positions.reduce((sum, p) => sum + (p.unrealized_pnl ?? 0), 0) ?? 0;
   const allTimePnl = state?.all_time_pnl ?? 0;
-  const allTimeColor = allTimePnl >= 0 ? "text-profit" : "text-loss";
-  const dayColor = (state?.day_pnl ?? 0) >= 0 ? "text-profit" : "text-loss";
-  const returnColor = (state?.total_return_pct ?? 0) >= 0 ? "text-profit" : "text-loss";
-  const realizedPnl = state?.realized_pnl ?? 0;
-  const realizedColor = realizedPnl >= 0 ? "text-profit" : "text-loss";
-  const cagrPct = state?.cagr_pct ?? 0;
-  const cagrColor = cagrPct >= 0 ? "text-profit" : "text-loss";
+  const dayPnl     = state?.day_pnl ?? 0;
+  const returnPct  = state?.total_return_pct ?? 0;
+  const cash       = state?.cash ?? 0;
+
+  const c = (v: number) => v >= 0 ? "text-profit" : "text-loss";
+  const fmt$ = (v: number) => `${v >= 0 ? "+" : ""}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const fmtPct = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
   const animatedEquity = useCountUp(state?.total_equity ?? 0, 1200, 2);
 
-  // Shared label style for metric labels
-  const labelStyle: React.CSSProperties = {
-    fontSize: "9.5px",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    color: "var(--text-0)",
-    fontFamily: "var(--font-sans)",
-    marginTop: "2px",
-  };
+  // Benchmark chips — alpha only, no return% subtext
+  const benchmarks = state ? [
+    { label: "SPX", alpha: state.spx_alpha },
+    { label: "NDX", alpha: state.ndx_alpha },
+    { label: "RUT", alpha: state.rut_alpha },
+  ] : [];
+  const hasBenchmarks = benchmarks.some(b => b.alpha != null);
+
+  const regimeColor = state?.regime === "BULL" ? "var(--green)" : state?.regime === "BEAR" ? "var(--red)" : "var(--amber)";
+  const riskScore   = risk?.overall_score != null ? Math.round(risk.overall_score) : null;
+  const riskColor   = riskScore == null ? "var(--text-1)" : riskScore >= 70 ? "var(--green)" : riskScore >= 40 ? "var(--amber)" : "var(--red)";
 
   return (
     <div
       className="flex-shrink-0 border-b"
       style={{ borderColor: "var(--border-0)", background: "var(--surface-0)" }}
     >
-      <div className="flex items-stretch" style={{ minHeight: "84px" }}>
+      <div style={{ display: "flex", alignItems: "stretch", minHeight: "68px" }}>
 
-        {/* Left: metrics */}
-        <div className="flex-1 flex items-center gap-6 px-4 py-3 min-w-0">
-
-          {/* Hero equity */}
-          <div className="shrink-0 anim d1">
-            <div className="font-mono tabular-nums leading-none" style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)" }}>
-              ${animatedEquity}
-            </div>
-            <div style={labelStyle}>Portfolio Equity</div>
+        {/* ── Group 1: Hero equity ────────────────────────────────────── */}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 20px 0 16px", flexShrink: 0 }}>
+          <div className="font-mono tabular-nums" style={{ fontSize: "22px", fontWeight: 300, color: "var(--text-4)", lineHeight: 1 }}>
+            ${animatedEquity}
           </div>
+          <div style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", marginTop: "4px" }}>
+            Portfolio Equity
+          </div>
+        </div>
 
-          {/* Divider */}
-          <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
+        <StripDivider />
 
-          {/* P&L metrics row */}
-          <div className="flex items-center gap-5 flex-wrap anim d2">
-            {/* All-Time P&L */}
-            <div>
-              <div className={`font-mono text-sm tabular-nums font-semibold ${allTimeColor}`}>
-                {allTimePnl >= 0 ? "+" : ""}${allTimePnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={labelStyle}>All-Time P&L</div>
-            </div>
-            {/* Realized P&L */}
-            <div>
-              <div className={`font-mono text-sm tabular-nums font-semibold ${realizedColor}`}>
-                {realizedPnl >= 0 ? "+" : ""}${realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={labelStyle}>Realized</div>
-            </div>
-            {/* Open P&L */}
-            <div>
-              <div className={`font-mono text-sm tabular-nums font-semibold ${overallColor}`}>
-                {overallPnl >= 0 ? "+" : ""}${overallPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={labelStyle}>Open P&L</div>
-            </div>
-            {/* Today */}
-            <div>
-              <div className={`font-mono text-sm tabular-nums font-semibold ${dayColor}`}>
-                {(state?.day_pnl ?? 0) >= 0 ? "+" : ""}${(state?.day_pnl ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={labelStyle}>Today</div>
-            </div>
-            {/* Return */}
-            <div>
-              <div className={`font-mono text-sm tabular-nums font-semibold ${returnColor}`}>
-                {(state?.total_return_pct ?? 0) >= 0 ? "+" : ""}{(state?.total_return_pct ?? 0).toFixed(1)}%
-              </div>
-              <div style={labelStyle}>Return</div>
-            </div>
-            {/* CAGR */}
-            {cagrPct !== 0 && (
-              <div>
-                <div className={`font-mono text-sm tabular-nums font-semibold ${cagrColor}`}>
-                  {cagrPct >= 0 ? "+" : ""}{cagrPct.toFixed(1)}%
+        {/* ── Group 2: P&L metrics ────────────────────────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", padding: "0 18px", flexShrink: 0 }}>
+          <Metric label="Today"    value={fmt$(dayPnl)}               colorClass={c(dayPnl)} />
+          <Metric label="Open P&L" value={fmt$(openPnl)}              colorClass={c(openPnl)} />
+          <Metric label="All-Time" value={fmt$(allTimePnl)}           colorClass={c(allTimePnl)} />
+          <Metric label="Return"   value={fmtPct(returnPct)}          colorClass={c(returnPct)} />
+          <Metric label="Cash"     value={`$${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+        </div>
+
+        {/* ── Group 3: Benchmarks ────────────────────────────────────── */}
+        {hasBenchmarks && (
+          <>
+            <StripDivider />
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", padding: "0 18px", flexShrink: 0 }}>
+              {benchmarks.map(({ label, alpha }) => (
+                <div key={label} style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <span
+                    className="font-mono tabular-nums font-semibold"
+                    style={{ fontSize: "12px", lineHeight: 1, color: alpha == null ? "var(--text-0)" : alpha >= 0 ? "var(--green)" : "var(--red)" }}
+                  >
+                    {alpha == null ? "—" : `${alpha >= 0 ? "+" : ""}${alpha.toFixed(1)}%α`}
+                  </span>
+                  <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", lineHeight: 1 }}>
+                    {label}
+                  </span>
                 </div>
-                <div style={labelStyle}>CAGR</div>
-              </div>
-            )}
-            {/* Cash */}
-            <div>
-              <div className="font-mono text-sm tabular-nums text-text-primary">
-                ${(state?.cash ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={labelStyle}>Cash</div>
+              ))}
             </div>
+          </>
+        )}
 
-            {/* Benchmark comparison chips (includes its own leading divider) */}
-            <BenchmarkChips state={state} />
-          </div>
+        {/* ── Group 4: Actions ────────────────────────────────────────── */}
+        <StripDivider />
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "0 16px", flexShrink: 0 }}>
+          <UpdateButton />
+          <ScanButton />
+          <AnalyzeExecute />
+        </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 ml-auto shrink-0">
-            <UpdateButton />
-            <ScanButton />
-            <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
-            <AnalyzeExecute />
-          </div>
-
-          {/* Divider */}
-          <div style={{ width: "1px", height: "28px", background: "var(--border-1)", flexShrink: 0 }} />
-
-          {/* Status chips */}
-          <div className="flex items-center gap-2 shrink-0 anim d3" style={{ fontSize: "10px" }}>
-            <span className={state?.regime === "BULL" ? "text-profit" : state?.regime === "BEAR" ? "text-loss" : "text-warning"} style={{ fontWeight: 600 }}>
+        {/* ── Group 5: Status ─────────────────────────────────────────── */}
+        <StripDivider />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "0 16px", flexShrink: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <span className="font-semibold" style={{ fontSize: "11px", color: regimeColor, lineHeight: 1 }}>
               {state?.regime ?? "—"}
             </span>
-            <span style={{ color: "var(--border-2)" }}>·</span>
-            <span style={{ color: "var(--text-1)" }}>
-              Risk{" "}
-              <span className={`font-mono font-semibold ${(risk?.overall_score ?? 0) >= 70 ? "text-profit" : (risk?.overall_score ?? 0) >= 40 ? "text-warning" : "text-loss"}`}>
-                {risk?.overall_score != null ? Math.round(risk.overall_score) : "—"}
-              </span>
+            <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", lineHeight: 1 }}>
+              Regime
             </span>
-            <span style={{ color: "var(--border-2)" }}>·</span>
-            <span style={{ color: "var(--text-1)" }}>
-              <span className="font-mono text-text-primary">{state?.positions.length ?? 0}</span> pos
-            </span>
-            {(state?.stale_alerts.length ?? 0) > 0 && (
-              <span className="text-warning">&#9888; {state!.stale_alerts.length}</span>
-            )}
           </div>
-
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <span className="font-mono font-semibold" style={{ fontSize: "11px", color: riskColor, lineHeight: 1 }}>
+              {riskScore ?? "—"}
+            </span>
+            <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", lineHeight: 1 }}>
+              Risk
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+            <span className="font-mono font-semibold" style={{ fontSize: "11px", color: "var(--text-3)", lineHeight: 1 }}>
+              {state?.positions.length ?? 0}
+            </span>
+            <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", lineHeight: 1 }}>
+              Positions
+            </span>
+          </div>
+          {(state?.stale_alerts.length ?? 0) > 0 && (
+            <span style={{ fontSize: "10px", color: "var(--amber)" }}>⚠ {state!.stale_alerts.length}</span>
+          )}
         </div>
 
       </div>
