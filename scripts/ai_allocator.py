@@ -12,6 +12,8 @@ to Claude as context so it can factor freed cash into its allocation plan.
 import json
 import re
 from typing import Optional
+import pandas as pd
+from datetime import date, timedelta
 
 from enhanced_structures import ProposedAction
 from ai_review import ReviewedAction, ReviewDecision, get_ai_client
@@ -156,10 +158,20 @@ def _build_allocation_prompt(
             sector = sector_map.get(ticker, "Unknown")
             stop = pos.get("stop_loss", 0) or 0
             target = pos.get("take_profit", 0) or 0
+            # Days held
+            days_held = ""
+            try:
+                entry_date_val = pos.get("entry_date")
+                if entry_date_val and str(entry_date_val) not in ("", "nan", "None"):
+                    days = (date.today() - pd.to_datetime(entry_date_val).date()).days
+                    days_held = f" ({days}d held)"
+            except Exception:
+                pass
+
             positions_lines.append(
                 f"  {ticker}: {pos['shares']} shares @ ${pos['current_price']:.2f}, "
                 f"P&L {pnl_pct:+.1f}%, weight {weight:.1f}%, sector: {sector}, "
-                f"stop ${stop:.2f}, target ${target:.2f}"
+                f"stop ${stop:.2f}, target ${target:.2f}{days_held}"
             )
         positions_block = "CURRENT POSITIONS:\n" + "\n".join(positions_lines)
     else:
@@ -284,6 +296,80 @@ def _build_allocation_prompt(
     else:
         regime_block = f"MARKET REGIME: {regime.value}\n"
 
+    # ─── Cash idle time note ────────────────────────────────────────────────────
+    _cash_idle_note = ""
+    if prompt_extras is not None:
+        _days_idle = prompt_extras.get("days_since_last_buy")
+        if _days_idle is None:
+            _cash_idle_note = " (no buys yet — fresh portfolio)"
+        elif _days_idle == 0:
+            _cash_idle_note = " (bought today)"
+        else:
+            _last_buy_str = (date.today() - timedelta(days=_days_idle)).isoformat()
+            _cash_idle_note = f" (idle {_days_idle}d — last buy {_last_buy_str})"
+
+    # ─── New context blocks ──────────────────────────────────────────────────────
+    _perf_block = ""
+    _alerts_block = ""
+    _factor_block = ""
+
+    if prompt_extras:
+        _stats = prompt_extras.get("trade_stats")
+        _metrics = prompt_extras.get("portfolio_metrics")
+        _warnings = prompt_extras.get("warnings") or []
+        _factor_summary = prompt_extras.get("factor_summary")
+
+        # PORTFOLIO PERFORMANCE — only when >= 5 completed trades AND metrics available
+        if _stats and _stats.total_trades >= 5 and _metrics:
+            _rr = round(abs(_stats.avg_win_pct / _stats.avg_loss_pct), 2) if _stats.avg_loss_pct else 0.0
+            _perf_block = (
+                f"PORTFOLIO PERFORMANCE:\n"
+                f"  Total return: {_metrics.total_return_pct:+.1f}% vs benchmark {_metrics.benchmark_return_pct:+.1f}%"
+                f" (alpha {_metrics.alpha_pct:+.1f}%)\n"
+                f"  Current drawdown: {_metrics.current_drawdown_pct:+.1f}% from peak\n"
+                f"  Win rate: {_stats.win_rate_pct:.0f}% over {_stats.total_trades} trades"
+                f" | avg win {_stats.avg_win_pct:+.1f}% / avg loss {_stats.avg_loss_pct:+.1f}%\n"
+                f"  Reward/risk ratio: {_rr:.2f}\n"
+            )
+
+        # ACTIVE ALERTS — only when warnings list is non-empty
+        if _warnings:
+            _high_count = sum(
+                1 for w in _warnings if w.severity.value.upper() in ("HIGH", "CRITICAL")
+            )
+            _hdr = f"ACTIVE ALERTS ({len(_warnings)} total"
+            if _high_count:
+                _hdr += f", {_high_count} HIGH/CRITICAL"
+            _hdr += "):"
+            _alert_lines = [
+                f"  [{w.severity.value.upper()}] {w.title}: {w.description}"
+                for w in _warnings
+            ]
+            _alerts_block = _hdr + "\n" + "\n".join(_alert_lines) + "\n"
+
+        # FACTOR INTELLIGENCE — only when >= 10 completed trades AND factor_summary available
+        if _factor_summary and _stats and _stats.total_trades >= 10:
+            _factors = _factor_summary.get("factors", [])
+            _top3 = _factors[:3]
+            _worst = _factors[-1] if len(_factors) > 3 else None
+            _f_lines = ["  Strongest predictors for this portfolio:"]
+            for _f in _top3:
+                _f_lines.append(
+                    f"    {_f['factor']:<20} — {_f['win_rate']:.0f}% win rate, trend: {_f['trend']}"
+                )
+            if _worst:
+                _f_lines.append(
+                    f"  Weakest: {_worst['factor']} ({_worst['win_rate']:.0f}% win rate,"
+                    f" trend: {_worst['trend']})"
+                )
+            _f_lines.append(
+                "  Note: Weight your decisions toward stocks scoring well on the top factors above."
+            )
+            _factor_block = (
+                f"FACTOR INTELLIGENCE ({_stats.total_trades} completed trades):\n"
+                + "\n".join(_f_lines) + "\n"
+            )
+
     prompt = f"""You are the portfolio manager for this trading portfolio. You have FULL AUTHORITY over stock selection and position sizing.
 
 YOUR MANDATE — STRATEGY DNA:
@@ -291,14 +377,14 @@ YOUR MANDATE — STRATEGY DNA:
 
 PORTFOLIO STATE:
 - Total Equity: ${state.total_equity:,.0f}
-- Current Cash: ${state.cash:,.0f}
+- Current Cash: ${state.cash:,.0f}{_cash_idle_note}
 - Cash After Layer 1 Sells: ${state.cash + freed_cash:,.0f} (available for new buys)
 - Current Positions: {state.num_positions}
 
 {positions_block}
 
 {sector_block}
-{regime_block}
+{_perf_block}{_alerts_block}{_factor_block}{regime_block}
 {l1_block}
 {candidates_block}
 
