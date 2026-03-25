@@ -72,6 +72,7 @@ export interface OverviewData {
   total_day_pnl: number;
   total_unrealized_pnl: number;
   total_all_time_pnl: number;
+  total_return_pct: number;
   total_positions: number;
   top_movers: CrossPortfolioMover[];
   bottom_movers: CrossPortfolioMover[];

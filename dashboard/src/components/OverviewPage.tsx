@@ -114,12 +114,12 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 // ---------------------------------------------------------------------------
 
 function AggregateBar({
-  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalPositions, portfolioCount, onNewPortfolio,
+  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount, onNewPortfolio,
   onUpdateAll, updatingAll, updateResult,
   onScanAll, scanAllRunning, scanAllLabel,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
-  totalUnrealizedPnl: number; totalAllTimePnl: number; totalPositions: number; portfolioCount: number;
+  totalUnrealizedPnl: number; totalAllTimePnl: number; totalReturnPct: number; totalPositions: number; portfolioCount: number;
   onNewPortfolio: () => void;
   onUpdateAll: () => void;
   updatingAll: boolean;
@@ -159,7 +159,13 @@ function AggregateBar({
         </p>
       </div>
       <div className="h-8 w-px shrink-0" style={{ background: "var(--border-1)" }} />
-      <StatChip label="All-Time P&L" value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
+      <div className="shrink-0">
+        <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>All-Time P&L</p>
+        <p className="font-mono tabular-nums" style={{ fontSize: "15px", fontWeight: 600, color: pnlColor(totalAllTimePnl) }}>
+          {fmt$(totalAllTimePnl)}
+          <span style={{ fontSize: "11px", opacity: 0.75, marginLeft: "5px" }}>({fmtPct(totalReturnPct)})</span>
+        </p>
+      </div>
       <StatChip label="Unrealized P&L" value={fmt$(totalUnrealizedPnl)} color={pnlColor(totalUnrealizedPnl)} />
       <StatChip label="Day P&L" value={fmt$(totalDayPnl)} color={pnlColor(totalDayPnl)} />
       <StatChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
@@ -696,6 +702,7 @@ export default function OverviewPage() {
         totalDayPnl={overview?.total_day_pnl ?? 0}
         totalUnrealizedPnl={overview?.total_unrealized_pnl ?? 0}
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
+        totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={enriched.length}
         onNewPortfolio={() => setShowCreate(true)}

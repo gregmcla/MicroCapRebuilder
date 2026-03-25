@@ -157,6 +157,7 @@ def get_overview():
     total_unrealized_pnl = 0.0
     total_positions = 0
     total_all_time_pnl = 0.0
+    total_starting_capital = 0.0
     all_positions = []  # cross-portfolio position list for top/bottom movers
 
     for p in portfolios:
@@ -241,6 +242,7 @@ def get_overview():
             total_day_pnl += day_pnl
             total_unrealized_pnl += unrealized_pnl
             total_all_time_pnl += all_time_pnl
+            total_starting_capital += starting_capital
             total_positions += state.num_positions
             summaries.append(summary)
         except Exception as e:
@@ -257,6 +259,7 @@ def get_overview():
         "total_day_pnl": round(total_day_pnl, 2),
         "total_unrealized_pnl": round(total_unrealized_pnl, 2),
         "total_all_time_pnl": round(total_all_time_pnl, 2),
+        "total_return_pct": round((total_all_time_pnl / total_starting_capital * 100) if total_starting_capital > 0 else 0.0, 2),
         "total_positions": total_positions,
         "top_movers": top_movers,
         "bottom_movers": bottom_movers,
