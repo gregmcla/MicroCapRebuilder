@@ -159,6 +159,7 @@ def _run_ai_driven_analysis(
         warning_severity=warning_severity,
         strategy_dna=strategy_dna,
         info_cache=info_cache,
+        regime_analysis=state.regime_analysis,
     )
 
     # Split by decision (all will be APPROVE in AI-driven mode)

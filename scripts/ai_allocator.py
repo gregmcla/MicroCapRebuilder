@@ -15,7 +15,7 @@ from typing import Optional
 
 from enhanced_structures import ProposedAction
 from ai_review import ReviewedAction, ReviewDecision, get_ai_client
-from market_regime import MarketRegime
+from market_regime import MarketRegime, RegimeAnalysis
 from schema import CLAUDE_MODEL
 
 
@@ -30,6 +30,7 @@ def run_ai_allocation(
     warning_severity: str,
     strategy_dna: str,
     info_cache: Optional[dict] = None,
+    regime_analysis: Optional[RegimeAnalysis] = None,
 ) -> list:
     """
     Run full AI allocation for an AI-driven portfolio.
@@ -87,6 +88,7 @@ def run_ai_allocation(
         available_cash=available_cash,
         info_cache=info_cache,
         full_watchlist=full_watchlist,
+        regime_analysis=regime_analysis,
     )
 
     try:
@@ -137,6 +139,7 @@ def _build_allocation_prompt(
     available_cash: float,
     info_cache: Optional[dict] = None,
     full_watchlist: bool = False,
+    regime_analysis: Optional[RegimeAnalysis] = None,
 ) -> str:
     """Build the full allocation prompt for Claude."""
 
@@ -261,6 +264,23 @@ def _build_allocation_prompt(
 
     candidates_block = header + "".join(cand_lines)
 
+    # Regime context block — rich market data for Claude's judgment
+    if regime_analysis is not None:
+        gap = regime_analysis.sma_200_gap_pct
+        ret_20d = regime_analysis.recent_return_20d
+        gap_dir = "above" if gap >= 0 else "below"
+        regime_block = (
+            f"MARKET REGIME ({regime_analysis.benchmark_symbol}):\n"
+            f"  Regime: {regime_analysis.regime.value} ({regime_analysis.regime_strength})\n"
+            f"  Benchmark price: ${regime_analysis.current_price:.2f} — {gap:+.1f}% {gap_dir} 200d SMA\n"
+            f"  50d SMA: ${regime_analysis.sma_50:.2f} | 200d SMA: ${regime_analysis.sma_200:.2f}\n"
+            f"  20-day benchmark return: {ret_20d:+.1f}%\n"
+            f"  Note: Regime is context for your judgment — not a mechanical constraint.\n"
+            f"        Adjust selectivity and sizing as your mandate demands.\n"
+        )
+    else:
+        regime_block = f"MARKET REGIME: {regime.value}\n"
+
     prompt = f"""You are the portfolio manager for this trading portfolio. You have FULL AUTHORITY over stock selection and position sizing.
 
 YOUR MANDATE — STRATEGY DNA:
@@ -275,6 +295,7 @@ PORTFOLIO STATE:
 {positions_block}
 
 {sector_block}
+{regime_block}
 {l1_block}
 {candidates_block}
 
