@@ -510,7 +510,7 @@ export default function MatrixGrid({
           ).map((tab) => {
             const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
-              grid: `ENTRY [${sorted.length}]`,
+              grid: `PORTFOLIO [${sorted.length}]`,
               actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${[...analysisResult.approved, ...analysisResult.modified].length}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
               activity: `ACTIVITY [${transactions.length}]`,
