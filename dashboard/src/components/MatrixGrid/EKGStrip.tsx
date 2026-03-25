@@ -42,10 +42,15 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
       pts: [] as number[],
       phase: Math.random() * 100,
     }));
-    // Rebuild real buffer when equity curve changes
-    const curve = portfolios[0]?.equityCurve;
-    if (curve && curve.length >= 3) {
-      realRef.current = { pts: buildBuffer(curve), pos: 0, color: portfolios[0]?.color ?? "#4ade80" };
+    // Rebuild real buffer — use whichever portfolio has the most equity curve data
+    const best = portfolios.reduce<typeof portfolios[0] | null>((acc, p) => {
+      const aLen = acc?.equityCurve?.length ?? 0;
+      const pLen = p.equityCurve?.length ?? 0;
+      return pLen > aLen ? p : acc;
+    }, null);
+    const curve = best?.equityCurve;
+    if (curve && curve.length >= 2) {
+      realRef.current = { pts: buildBuffer(curve), pos: 0, color: best?.color ?? "#4ade80" };
     } else {
       realRef.current = null;
     }

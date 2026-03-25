@@ -1,4 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-70541145,2026-02-16,OII,BUY,2714,33.15,89969.1,30.83,39.78,SIGNAL,BULL,78.9,"{""momentum"": 90.0, ""volatility"": 40.4, ""volume"": 49.5, ""relative_strength"": 100, ""mean_reversion"": 57.4, ""rsi"": 90.0, ""composite"": 78.9}",
-11c48742,2026-02-16,TALO,BUY,6859,13.12,89990.08,12.2,15.74,SIGNAL,BULL,76.0,"{""momentum"": 89.9, ""volatility"": 45.4, ""volume"": 38.8, ""relative_strength"": 91.1, ""mean_reversion"": 55.9, ""rsi"": 90.0, ""composite"": 76.0}",
-c2694d91,2026-02-16,TDW,BUY,900,69.93,62937.0,65.03,83.92,SIGNAL,BULL,79.5,"{""momentum"": 96.7, ""volatility"": 38.6, ""volume"": 44.5, ""relative_strength"": 100, ""mean_reversion"": 52.2, ""rsi"": 90.0, ""composite"": 79.5}",

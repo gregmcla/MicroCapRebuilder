@@ -59,25 +59,15 @@ class ReviewedAction:
 
 
 def get_ai_client():
-    """Get the AI client (Anthropic or OpenAI)."""
+    """Get the Anthropic client."""
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
-
     if anthropic_key:
         try:
             import anthropic
-            return ("anthropic", anthropic.Anthropic(api_key=anthropic_key, timeout=120.0))
+            return anthropic.Anthropic(api_key=anthropic_key, timeout=120.0)
         except ImportError:
             pass
-
-    if openai_key:
-        try:
-            import openai
-            return ("openai", openai.OpenAI(api_key=openai_key))
-        except ImportError:
-            pass
-
-    return (None, None)
+    return None
 
 
 def _get_action_attr(action, attr, default=None):
@@ -103,6 +93,11 @@ def _build_review_prompt(
     """
     sector_map = portfolio_context.get("sector_map", {})
 
+    # Build a lookup from portfolio context positions for sell enrichment
+    positions_lookup = {}
+    for pos in portfolio_context.get("positions", []):
+        positions_lookup[pos["ticker"]] = pos
+
     actions_text = ""
     for i, action in enumerate(proposed_actions, 1):
         ticker = _get_action_attr(action, "ticker", "")
@@ -117,10 +112,32 @@ def _build_review_prompt(
         reason = _get_action_attr(action, "reason", "")
 
         sector = sector_map.get(ticker, "Unknown")
-        price_risk = ((price - stop_loss) / price * 100) if price else 0.0
-        price_upside = ((take_profit - price) / price * 100) if price else 0.0
 
-        actions_text += f"""
+        if action_type == "SELL":
+            # Enrich sells with position P&L context
+            pos = positions_lookup.get(ticker, {})
+            pnl_pct = pos.get("pnl_pct", 0)
+            weight = pos.get("weight", 0)
+            market_value = shares * price if price else 0
+
+            actions_text += f"""
+Action {i}:
+  Type: SELL
+  Ticker: {ticker}
+  Sector: {sector}
+  Shares: {shares}
+  Current Price: ${price:.2f}
+  Position Value: ${market_value:,.0f}
+  Unrealized P&L: {pnl_pct:+.1f}%
+  Portfolio Weight: {weight:.1f}%
+  Market Regime: {regime}
+  Sell Reason: {reason}
+"""
+        else:
+            price_risk = ((price - stop_loss) / price * 100) if price else 0.0
+            price_upside = ((take_profit - price) / price * 100) if price else 0.0
+
+            actions_text += f"""
 Action {i}:
   Type: {action_type}
   Ticker: {ticker}
@@ -228,6 +245,7 @@ DECISION GUIDELINES:
 - Use your judgment on sector concentration — there are no hard rules, but use common sense: if 60%+ of proposed capital is going into one sector, critically evaluate whether each pick genuinely earns its spot or if some are just riding the sector wave
 
 - ROTATION SELLS: Sells labeled "ROTATION: Upgrading to {{ticker}}" sell a modestly-performing position to fund a higher-scoring candidate. A 20+ point score gap generally justifies the switch.
+- SELL REASONING: For sell actions, your reasoning MUST address the specific sell reason (stop loss, take profit, rotation, thesis misalignment, etc.) and the position's P&L. Do NOT give generic market commentary — explain why THIS position should be sold NOW.
 - FUNDAMENTALS: Strong quality metrics (positive gross margins, ROE > 5%, low debt) can justify approving a moderate quant score
 - N/A for fundamental data means the data was unavailable from yfinance — it is NOT a red flag
 
@@ -265,7 +283,7 @@ def review_proposed_actions(
     if not proposed_actions:
         return []
 
-    client_type, client = get_ai_client()
+    client = get_ai_client()
 
     if client is None:
         # No AI available - approve based on quant score
@@ -284,18 +302,18 @@ def review_proposed_actions(
         all_reviewed = []
         for i in range(0, len(proposed_actions), batch_size):
             batch = proposed_actions[i:i + batch_size]
-            batch_reviewed = _review_batch(client_type, client, batch, portfolio_context,
+            batch_reviewed = _review_batch(client, batch, portfolio_context,
                                            social_signals=social_signals,
                                            info_cache=info_cache)
             all_reviewed.extend(batch_reviewed)
         return all_reviewed
 
-    return _review_batch(client_type, client, proposed_actions, portfolio_context,
+    return _review_batch(client, proposed_actions, portfolio_context,
                          social_signals=social_signals,
                          info_cache=info_cache)
 
 
-def _review_batch(client_type, client, proposed_actions: list, portfolio_context: dict,
+def _review_batch(client, proposed_actions: list, portfolio_context: dict,
                   social_signals: Optional[dict] = None,
                   info_cache: Optional[dict] = None) -> list:
     """Review a batch of proposed actions."""
@@ -305,20 +323,12 @@ def _review_batch(client_type, client, proposed_actions: list, portfolio_context
                                  info_cache=info_cache)
 
     try:
-        if client_type == "anthropic":
-            response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=4000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            response_text = response.content[0].text if response.content else ""
-        else:  # openai
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                max_tokens=4000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            response_text = response.choices[0].message.content if response.choices else ""
+        response = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=16000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        response_text = response.content[0].text if response.content else ""
 
         # Check for empty response
         if not response_text or not response_text.strip():

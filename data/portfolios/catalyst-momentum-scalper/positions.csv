@@ -1,0 +1,5 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+PR,12075,20.55,20.55,248141.25,0.0,0.0,19.53,22.61,2026-03-24,Energy,20.55,0.0,0.0
+TERN,4800,50.0,50.01,240048.0,48.0,0.02,47.5,56.0,2026-03-24,Healthcare,50.01,48.0,0.02
+MTDR,4032,60.43,60.43,243653.76,0.0,0.0,57.4,66.47,2026-03-24,Energy,60.43,0.0,0.0
+DVN,4222,50.0,50.0,211100.0,0.0,0.0,47.5,55.0,2026-03-24,Energy,50.0,0.0,0.0

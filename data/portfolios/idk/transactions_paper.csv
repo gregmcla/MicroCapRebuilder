@@ -1,7 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-9bcb3a07,2026-03-01,AAT,BUY,409,19.52,7983.68,18.35,23.42,SIGNAL,BULL,70.7,"{""momentum"": 67.0, ""volatility"": 71.3, ""volume"": 47.3, ""relative_strength"": 68.4, ""mean_reversion"": 83.7, ""rsi"": 90.0, ""composite"": 70.7}",
-5ed91969,2026-03-01,DHC,BUY,1183,6.76,7997.08,6.35,8.11,SIGNAL,BULL,77.4,"{""momentum"": 95.4, ""volatility"": 48.7, ""volume"": 53.9, ""relative_strength"": 89.1, ""mean_reversion"": 64.1, ""rsi"": 75.0, ""composite"": 77.4}",
-ec637d1c,2026-03-01,RYAM,BUY,844,9.47,7992.68,8.9,11.36,SIGNAL,BULL,77.5,"{""momentum"": 100, ""volatility"": 0, ""volume"": 100, ""relative_strength"": 100, ""mean_reversion"": 22.2, ""rsi"": 75.0, ""composite"": 77.5}",
-e5332fa1,2026-03-01,XPRO,BUY,447,17.86,7983.42,16.79,21.43,SIGNAL,BULL,72.0,"{""momentum"": 78.6, ""volatility"": 36.8, ""volume"": 59.1, ""relative_strength"": 77.1, ""mean_reversion"": 68.4, ""rsi"": 90.0, ""composite"": 72.0}",
-0909e595,2026-03-01,WTI,BUY,2000,2.65,5300.0,2.49,3.18,SIGNAL,BULL,75.7,"{""momentum"": 95.8, ""volatility"": 11.2, ""volume"": 45.2, ""relative_strength"": 100, ""mean_reversion"": 47.9, ""rsi"": 90.0, ""composite"": 75.7}",
-1776bea5,2026-03-01,BDN,BUY,1000,3.19,3190.0,3.0,3.83,SIGNAL,BULL,67.9,"{""momentum"": 59.4, ""volatility"": 48.4, ""volume"": 38.5, ""relative_strength"": 80.0, ""mean_reversion"": 88.8, ""rsi"": 90.0, ""composite"": 67.9}",

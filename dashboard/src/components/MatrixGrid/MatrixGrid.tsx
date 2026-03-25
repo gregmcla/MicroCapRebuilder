@@ -12,6 +12,77 @@ import EKGStrip from "./EKGStrip";
 import ActionsTab from "../ActionsTab";
 import { useAnalysisStore } from "../../lib/store";
 
+// ─── Squarified Treemap ───────────────────────────────────────────────────────
+function squarifyLayout(
+  values: number[],
+  x: number, y: number, w: number, h: number,
+  gap: number
+): Array<{ x: number; y: number; w: number; h: number }> {
+  const n = values.length;
+  if (n === 0 || w <= 0 || h <= 0) return [];
+  const total = values.reduce((a, b) => a + b, 0);
+  if (total === 0) return values.map(() => ({ x, y, w: 0, h: 0 }));
+
+  const area = w * h;
+  const normed = values.map(v => (v / total) * area);
+
+  const worstAspect = (row: number[], s: number): number => {
+    const sum = row.reduce((a, b) => a + b, 0);
+    const rmax = Math.max(...row), rmin = Math.min(...row);
+    if (sum === 0 || rmin === 0) return Infinity;
+    return Math.max((s * s * rmax) / (sum * sum), (sum * sum) / (s * s * rmin));
+  };
+
+  const result: Array<{ x: number; y: number; w: number; h: number }> =
+    new Array(n).fill(null).map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+  let start = 0, cx = x, cy = y, cw = w, ch = h;
+
+  while (start < n && cw > 0.5 && ch > 0.5) {
+    const s = Math.min(cw, ch);
+    const horizontal = cw >= ch;
+
+    let end = start + 1;
+    while (end < n) {
+      const curr = normed.slice(start, end);
+      const next = normed.slice(start, end + 1);
+      if (worstAspect(next, s) <= worstAspect(curr, s)) end++;
+      else break;
+    }
+
+    const row = normed.slice(start, end);
+    const rowSum = row.reduce((a, b) => a + b, 0);
+
+    if (horizontal) {
+      const rowW = rowSum / ch;
+      let off = cy;
+      for (let i = 0; i < row.length; i++) {
+        const rh = (row[i] / rowSum) * ch;
+        result[start + i] = {
+          x: cx + gap / 2, y: off + gap / 2,
+          w: Math.max(0, rowW - gap), h: Math.max(0, rh - gap),
+        };
+        off += rh;
+      }
+      cx += rowW; cw -= rowW;
+    } else {
+      const rowH = rowSum / cw;
+      let off = cx;
+      for (let i = 0; i < row.length; i++) {
+        const rw = (row[i] / rowSum) * cw;
+        result[start + i] = {
+          x: off + gap / 2, y: cy + gap / 2,
+          w: Math.max(0, rw - gap), h: Math.max(0, rowH - gap),
+        };
+        off += rw;
+      }
+      cy += rowH; ch -= rowH;
+    }
+
+    start = end;
+  }
+  return result;
+}
+
 const BOOT_LINES = [
   "[SYS] MATRIX v3.0 initializing...",
   "[MEM] Allocating position buffers",
@@ -47,7 +118,7 @@ export default function MatrixGrid({
     if (analysisResult && !isAnalyzing) setViewTab("actions");
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("entry");
+  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("value");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
   const [mounted, setMounted] = useState(false);
   const [boot, setBoot] = useState(0);
@@ -59,6 +130,8 @@ export default function MatrixGrid({
   const mouseXRef = useRef(-1000);
   const mouseYRef = useRef(-1000);
   const gridRef = useRef<HTMLDivElement>(null);
+  const treemapRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
   // Boot sequence
   useEffect(() => {
@@ -112,6 +185,18 @@ export default function MatrixGrid({
     }, 5000);
     return () => clearInterval(i);
   }, [positions.length]);
+
+  // Treemap container size
+  useEffect(() => {
+    const el = treemapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (e) setContainerSize({ w: e.contentRect.width, h: e.contentRect.height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -167,6 +252,27 @@ export default function MatrixGrid({
   }, [positions, sortBy, effectiveFilter]);
 
   const maxVal = useMemo(() => Math.max(...positions.map((p) => p.value), 1), [positions]);
+
+  const treemapRects = useMemo(() => {
+    if (containerSize.w < 10 || containerSize.h < 10 || sorted.length === 0) return [];
+    const bottomReserve = selectedPos && showSecondaryTabs ? 296 : 0;
+    const tw = containerSize.w;
+    const th = Math.max(1, containerSize.h - bottomReserve);
+    // Pick sizing metric based on sort tab
+    const sizeOf = (pos: typeof sorted[0]) => {
+      if (sortBy === "perf") return Math.max(Math.abs(pos.perf), 0.5);
+      if (sortBy === "entry" || sortBy === "alpha") return 1; // uniform grid
+      return Math.max(pos.value, 1); // value / portfolio
+    };
+    // Sort by size desc for squarified quality, track original indices
+    const withIdx = sorted.map((pos, i) => ({ i, v: sizeOf(pos) }));
+    withIdx.sort((a, b) => b.v - a.v);
+    const rects = squarifyLayout(withIdx.map(item => item.v), 0, 0, tw, th, 3);
+    const result: Array<{ x: number; y: number; w: number; h: number }> =
+      Array(sorted.length).fill(null).map(() => ({ x: 0, y: 0, w: 0, h: 0 }));
+    withIdx.forEach((item, j) => { result[item.i] = rects[j] ?? { x: 0, y: 0, w: 0, h: 0 }; });
+    return result;
+  }, [sorted, sortBy, containerSize, selectedPos, showSecondaryTabs]);
   const hovered = hovIdx !== null ? sorted[hovIdx] : null;
   const totalVal = positions.reduce((s, p) => s + p.value, 0);
   const avgP = positions.length > 0
@@ -330,20 +436,23 @@ export default function MatrixGrid({
               </div>
             </div>
             <span style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
-            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k, n) => (
-              <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
-                padding: "2px 8px", fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase",
-                fontFamily: MATRIX_FONT,
-                background: sortBy === k ? "rgba(74,222,128,0.07)" : "transparent",
-                color: sortBy === k ? "#4ade80" : "#1e1e1e",
-                border: sortBy === k ? "1px solid rgba(74,222,128,0.12)" : "1px solid transparent",
-                cursor: "pointer", transition: "all 0.15s",
-              }}>
-                {sortBy === k && <span style={{ marginRight: 3 }}>&#9658;</span>}
-                {k}
-                <span style={{ fontSize: 6, color: "#555", marginLeft: 4 }}>[{n + 1}]</span>
-              </button>
-            ))}
+            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k, n) => {
+              const SORT_LABELS: Record<string, string> = { entry: "entry", value: "size", perf: "perf", alpha: "alpha", portfolio: "portfolio" };
+              return (
+                <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
+                  padding: "2px 8px", fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase",
+                  fontFamily: MATRIX_FONT,
+                  background: sortBy === k ? "rgba(74,222,128,0.07)" : "transparent",
+                  color: sortBy === k ? "#4ade80" : "#1e1e1e",
+                  border: sortBy === k ? "1px solid rgba(74,222,128,0.12)" : "1px solid transparent",
+                  cursor: "pointer", transition: "all 0.15s",
+                }}>
+                  {sortBy === k && <span style={{ marginRight: 3 }}>&#9658;</span>}
+                  {SORT_LABELS[k]}
+                  <span style={{ fontSize: 6, color: "#555", marginLeft: 4 }}>[{n + 1}]</span>
+                </button>
+              );
+            })}
           </div>
           <div style={{ display: "flex", gap: 2 }}>
             {onBack && (
@@ -428,23 +537,27 @@ export default function MatrixGrid({
           })}
         </div>
 
-        {/* GRID (with 3D parallax) */}
-        <div style={{ flex: 1, padding: "4px 14px", overflow: "auto", minHeight: 0, display: viewTab === "grid" ? undefined : "none", paddingBottom: selectedPos && showSecondaryTabs ? 296 : undefined }}>
+        {/* GRID (with 3D parallax + treemap) */}
+        <div ref={treemapRef} style={{ flex: 1, padding: "4px 14px", overflow: "hidden", minHeight: 0, display: viewTab === "grid" ? undefined : "none" }}>
           <div
             ref={gridRef}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-              gap: 3, alignContent: "start",
+              position: "relative",
+              width: "100%",
+              height: "100%",
               transition: "transform 0.1s ease-out",
             }}
           >
-            {sorted.map((pos, i) => {
+            {treemapRects.length > 0 && sorted.map((pos, i) => {
+              const rect = treemapRects[i];
+              if (!rect || rect.w < 1 || rect.h < 1) return null;
               const isHov = hovIdx === i;
               const isGlitch = glitchIdx === i;
               const isAnomaly = anomalies.has(positions.indexOf(pos));
               const barW = (pos.value / maxVal) * 100;
               const breathDur = 3.5 + (i % 7) * 0.4;
+              const tiny = rect.w < 85 || rect.h < 58;
+              const micro = rect.w < 48 || rect.h < 36;
 
               return (
                 <div
@@ -457,14 +570,20 @@ export default function MatrixGrid({
                     onPositionClick?.(pos);
                   }}
                   style={{
+                    position: "absolute",
+                    left: rect.x,
+                    top: rect.y,
+                    width: rect.w,
+                    height: rect.h,
+                    boxSizing: "border-box",
                     background: `linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%), ${pbg(pos.perf)}`,
-                    padding: "9px 9px 6px",
+                    padding: micro ? "3px 4px 2px" : tiny ? "5px 6px 4px" : "9px 9px 6px",
                     cursor: "crosshair",
-                    position: "relative",
                     overflow: "hidden",
                     opacity: mounted ? undefined : 0,
-                    transform: mounted ? undefined : "translateY(6px)",
-                    transition: mounted ? "border-color 0.15s, background 0.15s" : "opacity 0.3s, transform 0.4s",
+                    transition: mounted
+                      ? "border-color 0.15s, background 0.15s, left 0.35s ease-out, top 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out"
+                      : "opacity 0.3s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
                     borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "cc" : "40"}`,
                     ["--breath-dur" as string]: `${breathDur}s`,
@@ -521,29 +640,35 @@ export default function MatrixGrid({
 
                   {/* Ticker + all-time perf */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span className="matrix-tk" style={{ fontSize: 13, fontWeight: 700, color: "#ccc", letterSpacing: "0.04em", transition: "all 0.12s" }}>
+                    <span className="matrix-tk" style={{ fontSize: micro ? 9 : tiny ? 11 : 13, fontWeight: 700, color: "#ccc", letterSpacing: "0.04em", transition: "all 0.12s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: pc(pos.perf) }}>
-                      {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
-                    </span>
+                    {!micro && (
+                      <span style={{ fontSize: tiny ? 9 : 11, fontWeight: 600, color: pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
+                        {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Value + sparkline */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                    <span style={{ fontSize: 10, color: "#aaa" }}>{fv(pos.value)}</span>
-                    <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={56} h={18} />
-                  </div>
+                  {/* Value + sparkline — hidden on micro cells */}
+                  {!tiny && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
+                      <span style={{ fontSize: 10, color: "#aaa" }}>{fv(pos.value)}</span>
+                      <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={56} h={18} />
+                    </div>
+                  )}
 
-                  {/* Day change micro bar */}
-                  <div style={{ marginTop: 4, height: 2 }}>
-                    <div style={{
-                      width: `${Math.min(100, Math.abs(pos.day) * 25)}%`,
-                      height: "100%",
-                      background: pos.day >= 0 ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)",
-                      transition: "width 0.3s",
-                    }} />
-                  </div>
+                  {/* Day change micro bar — hidden on tiny cells */}
+                  {!tiny && (
+                    <div style={{ marginTop: 4, height: 2 }}>
+                      <div style={{
+                        width: `${Math.min(100, Math.abs(pos.day) * 25)}%`,
+                        height: "100%",
+                        background: pos.day >= 0 ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)",
+                        transition: "width 0.3s",
+                      }} />
+                    </div>
+                  )}
                 </div>
               );
             })}

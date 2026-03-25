@@ -772,7 +772,7 @@ class StockDiscovery:
         candidates = []
 
         thresholds = self.discovery_config.get("scan_thresholds", {}).get("volume_anomalies", {})
-        min_volume_ratio = thresholds.get("min_volume_ratio", 2.5)
+        min_volume_ratio = thresholds.get("min_volume_ratio", 2.0)
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "3mo")
@@ -796,8 +796,8 @@ class StockDiscovery:
             if vol_ratio < min_volume_ratio:
                 continue
 
-            # Check price action (should be up)
-            price_change = ((close.iloc[-1] - close.iloc[-5]) / close.iloc[-5]) * 100
+            # Check price action (should be up today — catalyst strategy wants today's movers)
+            price_change = ((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2]) * 100
             if price_change < 0:
                 continue  # Distribution, not accumulation
 

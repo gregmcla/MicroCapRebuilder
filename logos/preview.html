@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GScott Logo — Iterations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 2rem;
+    background: #0d0d14;
+    color: #ccc;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  h1 { font-size: 1.4rem; font-weight: 600; color: #e0e0e0; letter-spacing: 0.05em; }
+  .subtitle { font-size: 0.8rem; color: #555; margin-top: 4px; }
+  .toggle {
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(124,92,252,0.4);
+    border-radius: 6px;
+    background: transparent;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.875rem;
+  }
+  .toggle:hover { border-color: #7c5cfc; color: #e0e0e0; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+  .card {
+    border: 1px solid rgba(124,92,252,0.15);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #111118;
+  }
+  .card:hover { border-color: rgba(124,92,252,0.5); }
+  .card-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    background: #0a0a10;
+  }
+  .card-img img { max-width: 100%; }
+  .card-label {
+    padding: 0.75rem 1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-top: 1px solid rgba(124,92,252,0.1);
+    background: #0e0e18;
+    color: #7c5cfc;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .card-desc {
+    padding: 0.4rem 1rem 0.7rem;
+    font-size: 0.78rem;
+    color: #555;
+    background: #0e0e18;
+    line-height: 1.4;
+  }
+  body.light { background: #f0f0f0; color: #333; }
+  body.light .card { background: #fff; border-color: rgba(0,0,0,0.1); }
+  body.light .card-img { background: #e0e0e0; }
+  body.light h1 { color: #111; }
+  body.light .card-label { background: #fafafa; }
+  body.light .card-desc { background: #fafafa; color: #999; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>GScott — Iterations</h1>
+      <div class="subtitle">Based on concepts 1 (terminal) + 3 (outlined) · refresh to see animations</div>
+    </div>
+    <button class="toggle" onclick="document.body.classList.toggle('light'); this.textContent = document.body.classList.contains('light') ? '🌙 Dark' : '☀️ Light';">☀️ Light</button>
+  </div>
+
+  <div class="grid" style="margin-bottom:2rem;">
+    <div class="card" style="border-color:rgba(124,92,252,0.5)">
+      <div class="card-img"><img src="iterations/iteration-5.svg" alt="Iteration 5"></div>
+      <div class="card-label" style="color:#00f5ff;">★ 5 — Expert Polish</div>
+      <div class="card-desc">Larger text · 3-layer depth on > prompt · all-4-corner brackets · full-width dot grid · sharper cursor blink · "ARIA v2 · PAPER" status easter egg</div>
+    </div>
+  </div>
+
+  <div style="font-size:0.72rem;color:#333;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:1rem;">Previous iterations</div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-1.svg" alt="Iteration 1"></div>
+      <div class="card-label">1 — Terminal Refined</div>
+      <div class="card-desc">Concept 1 polished · brighter > prompt · fixed cursor position · corner bracket accents · ghost prompt layer · CRT scan line</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-2.svg" alt="Iteration 2"></div>
+      <div class="card-label">2 — Outlined Refined</div>
+      <div class="card-desc">Concept 3 polished · mixed-case "GScott" · cyan G stroke / violet Scott stroke · color-matched glows · thin underline rule</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-3.svg" alt="Iteration 3"></div>
+      <div class="card-label">3 — Hybrid: Outlined Mono + Cursor</div>
+      <div class="card-desc">Monospace font outlined · cyan G + violet Scott · blinking cursor block at end · dot grid background</div>
+    </div>
+    <div class="card">
+      <div class="card-img"><img src="iterations/iteration-4.svg" alt="Iteration 4"></div>
+      <div class="card-label">4 — Filled G + Outlined Scott</div>
+      <div class="card-desc">Solid filled G as brand anchor · stroke-only Scott extending right · strong/soft glow contrast · thin underline</div>
+    </div>
+  </div>
+</body>
+</html>

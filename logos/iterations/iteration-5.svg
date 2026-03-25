@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <!-- Glow filters -->
+    <filter id="glow-prompt" x="-40%" y="-60%" width="180%" height="220%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-text" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-cursor" x="-120%" y="-100%" width="340%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-scan" x="0%" y="-200%" width="100%" height="500%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="bounds">
+      <rect width="1024" height="256"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="256" fill="#070710"/>
+
+  <!-- Full-width dot grid, very faint -->
+  <g fill="#1e1640" opacity="0.7">
+    <!-- 6 cols x 4 rows, evenly distributed -->
+    <circle cx="72"  cy="44"  r="1.1"/> <circle cx="240" cy="44"  r="1.1"/> <circle cx="408" cy="44"  r="1.1"/> <circle cx="576" cy="44"  r="1.1"/> <circle cx="744" cy="44"  r="1.1"/> <circle cx="912" cy="44"  r="1.1"/>
+    <circle cx="72"  cy="108" r="1.1"/> <circle cx="240" cy="108" r="1.1"/> <circle cx="408" cy="108" r="1.1"/> <circle cx="576" cy="108" r="1.1"/> <circle cx="744" cy="108" r="1.1"/> <circle cx="912" cy="108" r="1.1"/>
+    <circle cx="72"  cy="172" r="1.1"/> <circle cx="240" cy="172" r="1.1"/> <circle cx="408" cy="172" r="1.1"/> <circle cx="576" cy="172" r="1.1"/> <circle cx="744" cy="172" r="1.1"/> <circle cx="912" cy="172" r="1.1"/>
+    <circle cx="72"  cy="220" r="1.1"/> <circle cx="240" cy="220" r="1.1"/> <circle cx="408" cy="220" r="1.1"/> <circle cx="576" cy="220" r="1.1"/> <circle cx="744" cy="220" r="1.1"/> <circle cx="912" cy="220" r="1.1"/>
+  </g>
+
+  <!-- Corner brackets — all four corners -->
+  <g stroke="#2a1f5a" stroke-width="1.2" fill="none" opacity="0.8" stroke-linecap="square">
+    <!-- Top-left -->
+    <polyline points="28,18 28,44 54,44"/>
+    <!-- Top-right -->
+    <polyline points="996,18 996,44 970,44"/>
+    <!-- Bottom-left -->
+    <polyline points="28,238 28,212 54,212"/>
+    <!-- Bottom-right -->
+    <polyline points="996,238 996,212 970,212"/>
+  </g>
+
+  <!-- Horizontal rule — full width, sits below text baseline -->
+  <line x1="28" y1="192" x2="996" y2="192" stroke="#2a1f5a" stroke-width="0.6" opacity="0.7"/>
+
+  <!-- Depth layer: faint >> echo furthest back -->
+  <text x="52" y="168"
+    font-family="'Courier New', Courier, monospace"
+    font-size="82"
+    fill="#1a1050"
+    opacity="0.5">&gt;&gt;</text>
+
+  <!-- Ghost > one step closer -->
+  <text x="68" y="168"
+    font-family="'Courier New', Courier, monospace"
+    font-size="82"
+    fill="#2e1d80"
+    opacity="0.4">&gt;</text>
+
+  <!-- Primary > prompt — bright violet, glowing -->
+  <text x="82" y="168"
+    font-family="'Courier New', Courier, monospace"
+    font-size="82"
+    fill="#8b6fff"
+    filter="url(#glow-prompt)">&gt;</text>
+
+  <!-- GScott logotype -->
+  <text x="168" y="168"
+    font-family="'Courier New', Courier, monospace"
+    font-size="82"
+    font-weight="bold"
+    fill="#eeeeff"
+    letter-spacing="-1"
+    filter="url(#glow-text)">GScott</text>
+
+  <!-- Blinking cursor — Courier New bold 82px: each char ~49px, 6 chars from 168 = ~462 -->
+  <rect x="462" y="96" width="11" height="68" fill="#00f5ff" filter="url(#glow-cursor)">
+    <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.45;0.5;0.95;1" dur="1.2s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Status line bottom-right — dim easter egg -->
+  <text x="980" y="210"
+    font-family="'Courier New', Courier, monospace"
+    font-size="11"
+    fill="#3a2870"
+    text-anchor="end"
+    opacity="0.8">ARIA v2 · PAPER</text>
+
+  <!-- Sweeping scan line -->
+  <g clip-path="url(#bounds)" filter="url(#glow-scan)">
+    <rect width="1024" height="3" fill="#6040d0" opacity="0.12">
+      <animateTransform attributeName="transform" type="translate" from="0,-4" to="0,260" dur="4s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

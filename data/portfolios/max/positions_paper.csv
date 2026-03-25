@@ -1,0 +1,7 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+GLRE,61000,16.24,16.24,990640.0,0.0,0.0,15.3,17.85,2026-03-19,Financial Services,16.24,0.0,0.0
+GLNG,17905,51.23,51.23,917273.15,0.0,0.0,48.66,55.84,2026-03-19,Energy,51.23,0.0,0.0
+GASS,80000,9.45,9.45,756000.0,0.0,0.0,8.85,10.4,2026-03-19,Industrials,9.45,0.0,0.0
+WDS,20056,24.92,24.92,499795.52,0.0,0.0,22.38,28.48,2026-03-19,Energy,24.92,0.0,0.0
+SOBO,18198,33.58,33.58,611088.84,0.0,0.0,31.8,36.55,2026-03-19,Energy,33.58,0.0,0.0
+LXU,34016,14.64,14.64,497994.24,0.0,0.0,13.23,16.76,2026-03-19,Basic Materials,14.64,0.0,0.0

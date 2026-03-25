@@ -1,3 +1,0 @@
-{"ticker": "NTNX", "added_date": "2026-03-02", "source": "VOLUME_ANOMALY", "discovery_score": 82.7, "sector": "Technology", "market_cap_m": 10705.1, "avg_volume": 6215202, "last_checked": "2026-03-02", "status": "ACTIVE", "notes": "Standard candidate"}
-{"ticker": "DTM", "added_date": "2026-03-02", "source": "SECTOR_LEADER", "discovery_score": 79.0, "sector": "Energy", "market_cap_m": 14411.9, "avg_volume": 875517, "last_checked": "2026-03-02", "status": "ACTIVE", "notes": "Near 52wk high, Overbought"}
-{"ticker": "FHN", "added_date": "2026-03-02", "source": "OVERSOLD_BOUNCE", "discovery_score": 73.5, "sector": "Financial Services", "market_cap_m": 11854.4, "avg_volume": 6540092, "last_checked": "2026-03-02", "status": "ACTIVE", "notes": "Standard candidate"}

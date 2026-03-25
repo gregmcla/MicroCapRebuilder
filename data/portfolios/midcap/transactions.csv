@@ -1,3 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-bd2925ea,2026-03-02,DTM,BUY,56,141.2,7907.2,131.32,169.44,SIGNAL,BULL,66.3,"{""momentum"": 87.3, ""volatility"": 78.7, ""volume"": 47.6, ""relative_strength"": 84.8, ""mean_reversion"": 68.6, ""rsi"": 10.0, ""composite"": 66.3}",
-0d82add6,2026-03-02,FHN,BUY,124,24.1,2988.4,22.41,28.92,SIGNAL,BULL,52.1,"{""momentum"": 46.4, ""volatility"": 67.2, ""volume"": 42.5, ""relative_strength"": 43.6, ""mean_reversion"": 82.3, ""rsi"": 55.0, ""composite"": 52.1}",

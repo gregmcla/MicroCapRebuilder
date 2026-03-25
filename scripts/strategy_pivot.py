@@ -386,21 +386,21 @@ class StrategyPivotAnalyzer:
             return {
                 "scoring.default_weights.momentum": 0.28,
                 "scoring.default_weights.volatility": 0.12,
-                "scoring.min_score_threshold.BULL": 40.0,
+                "scoring.min_score_threshold.BULL": 30.0,
             }
         elif regime == MarketRegime.BEAR:
             return {
                 "scoring.default_weights.momentum": 0.12,
                 "scoring.default_weights.volatility": 0.25,
                 "scoring.default_weights.mean_reversion": 0.20,
-                "scoring.min_score_threshold.BEAR": 65.0,
+                "scoring.min_score_threshold.BEAR": 30.0,
             }
         else:  # SIDEWAYS
             return {
                 "scoring.default_weights.momentum": 0.18,
                 "scoring.default_weights.volatility": 0.22,
                 "scoring.default_weights.mean_reversion": 0.15,
-                "scoring.min_score_threshold.SIDEWAYS": 55.0,
+                "scoring.min_score_threshold.SIDEWAYS": 30.0,
             }
 
     def _generate_gscott_narrative(self, health: StrategyHealth, working: List[DiagnosisItem],

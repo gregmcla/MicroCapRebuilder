@@ -117,14 +117,18 @@ class WatchlistManager:
             with open(self._watchlist_file) as f:
                 for line in f:
                     line = line.strip()
-                    if line:
+                    if not line:
+                        continue
+                    try:
                         data = json.loads(line)
-                        # Handle both old format (just ticker) and new format
-                        if isinstance(data, dict):
-                            if "ticker" in data:
-                                entries.append(WatchlistEntry(**data))
-                        elif isinstance(data, str):
-                            entries.append(WatchlistEntry(ticker=data))
+                    except json.JSONDecodeError:
+                        continue  # skip corrupt/truncated lines
+                    # Handle both old format (just ticker) and new format
+                    if isinstance(data, dict):
+                        if "ticker" in data:
+                            entries.append(WatchlistEntry(**data))
+                    elif isinstance(data, str):
+                        entries.append(WatchlistEntry(ticker=data))
         return entries
 
     def _save_watchlist(self, entries: List[WatchlistEntry]):
@@ -155,12 +159,16 @@ class WatchlistManager:
             with open(self._core_watchlist_file) as f:
                 for line in f:
                     line = line.strip()
-                    if line:
+                    if not line:
+                        continue
+                    try:
                         data = json.loads(line)
-                        if isinstance(data, dict) and "ticker" in data:
-                            core_tickers.add(data["ticker"])
-                        elif isinstance(data, str):
-                            core_tickers.add(data)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(data, dict) and "ticker" in data:
+                        core_tickers.add(data["ticker"])
+                    elif isinstance(data, str):
+                        core_tickers.add(data)
 
         # Also include any CORE-sourced entries from main watchlist
         entries = self._load_watchlist()

@@ -1,6 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-c740f2b8,2026-03-06,AM,BUY,391,22.97,8981.27,21.13,27.56,SIGNAL,SIDEWAYS,67.9,"{""momentum"": 94.8, ""volatility"": 75.0, ""volume"": 32.7, ""relative_strength"": 100, ""mean_reversion"": 68.3, ""rsi"": 10.0, ""composite"": 67.9}",
-15049d9d,2026-03-06,AMPY,BUY,1474,6.1,8991.4,5.61,7.32,SIGNAL,SIDEWAYS,69.6,"{""momentum"": 92.9, ""volatility"": 41.0, ""volume"": 76.6, ""relative_strength"": 100, ""mean_reversion"": 47.2, ""rsi"": 55.0, ""composite"": 69.6}",
-b7061310,2026-03-06,AVIR,BUY,1527,5.89,8994.03,5.42,7.07,SIGNAL,SIDEWAYS,55.7,"{""momentum"": 100, ""volatility"": 27.3, ""volume"": 82.2, ""relative_strength"": 100, ""mean_reversion"": 0, ""rsi"": 10.0, ""composite"": 55.7}",
-b3e51055,2026-03-06,ANNA,BUY,1465,4.09,5991.85,3.76,4.91,SIGNAL,SIDEWAYS,62.0,"{""momentum"": 100, ""volatility"": 0, ""volume"": 100, ""relative_strength"": 100, ""mean_reversion"": 0, ""rsi"": 75.0, ""composite"": 62.0}",
-92eb5257,2026-03-06,APA,BUY,180,32.68,5882.4,30.07,39.22,SIGNAL,SIDEWAYS,68.1,"{""momentum"": 97.2, ""volatility"": 45.0, ""volume"": 65.4, ""relative_strength"": 100, ""mean_reversion"": 33.6, ""rsi"": 55.0, ""composite"": 68.1}",

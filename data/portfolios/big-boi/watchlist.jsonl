@@ -1,2 +1,0 @@
-{"ticker": "XOM", "added_date": "2026-02-16", "source": "SECTOR_LEADER", "discovery_score": 100, "sector": "Energy", "market_cap_m": 626038.2, "avg_volume": 21966020, "last_checked": "2026-02-16", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high"}
-{"ticker": "WFC", "added_date": "2026-02-16", "source": "OVERSOLD_BOUNCE", "discovery_score": 74.4, "sector": "Financial Services", "market_cap_m": 273037.6, "avg_volume": 16939560, "last_checked": "2026-02-16", "status": "ACTIVE", "notes": "Standard candidate"}

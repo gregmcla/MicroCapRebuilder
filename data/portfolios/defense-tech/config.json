@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 40.0,
-      "SIDEWAYS": 50.0,
-      "BEAR": 60.0
+      "BULL": 30.0,
+      "SIDEWAYS": 30.0,
+      "BEAR": 30.0
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -93,7 +93,7 @@
       "triggers": {
         "drawdown_threshold_pct": 10.0,
         "risk_score_threshold": 40,
-        "regime_bear_auto_enable": true
+        "regime_bear_auto_enable": false
       },
       "actions": {
         "halt_new_buys": true,
@@ -269,7 +269,7 @@
         ]
       },
       "exchange_listings": {
-        "enabled": true
+        "enabled": false
       }
     },
     "tiers": {
@@ -278,7 +278,7 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 6000,
+        "max_tickers": 2000,
         "scan_frequency": "rotating_3day"
       }
     },

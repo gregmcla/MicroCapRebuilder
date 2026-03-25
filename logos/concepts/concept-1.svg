@@ -1,0 +1,374 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- Neon violet glow -->
+    <filter id="glow-violet" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Neon cyan glow -->
+    <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Hot pink glow -->
+    <filter id="glow-pink" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Soft ambient glow for face region -->
+    <filter id="glow-soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Outer ring glow -->
+    <filter id="glow-ring" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Grid gradient -->
+    <linearGradient id="grad-violet-cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#00f5ff"/>
+    </linearGradient>
+    <!-- Face ambient gradient -->
+    <radialGradient id="face-ambient" cx="50%" cy="45%" r="40%">
+      <stop offset="0%" stop-color="#7c5cfc" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#070710" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Scan line mask -->
+    <pattern id="scanlines" x="0" y="0" width="512" height="4" patternUnits="userSpaceOnUse">
+      <rect x="0" y="0" width="512" height="2" fill="#00f5ff" fill-opacity="0.04"/>
+      <rect x="0" y="2" width="512" height="2" fill="transparent"/>
+    </pattern>
+    <!-- Clip for face region scanlines -->
+    <clipPath id="face-clip">
+      <path d="M256,95 L210,110 L188,140 L178,175 L178,218 L185,248 L195,268 L210,285 L230,298 L256,305 L282,298 L302,285 L317,268 L327,248 L334,218 L334,175 L324,140 L302,110 Z"/>
+    </clipPath>
+    <!-- Clip for entire image -->
+    <clipPath id="full-clip">
+      <rect x="0" y="0" width="512" height="512"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <g id="background">
+    <rect x="0" y="0" width="512" height="512" fill="#070710"/>
+    <!-- Subtle grid floor -->
+    <rect x="0" y="0" width="512" height="512" fill="url(#face-ambient)"/>
+  </g>
+
+  <!-- Background grid lines -->
+  <g id="bg-grid" opacity="0.18" filter="url(#glow-violet)">
+    <!-- Vertical grid -->
+    <line x1="64" y1="0" x2="64" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="128" y1="0" x2="128" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="192" y1="0" x2="192" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="256" y1="0" x2="256" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="320" y1="0" x2="320" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="384" y1="0" x2="384" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="448" y1="0" x2="448" y2="512" stroke="#7c5cfc" stroke-width="0.5"/>
+    <!-- Horizontal grid -->
+    <line x1="0" y1="64" x2="512" y2="64" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="128" x2="512" y2="128" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="192" x2="512" y2="192" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="256" x2="512" y2="256" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="320" x2="512" y2="320" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="384" x2="512" y2="384" stroke="#7c5cfc" stroke-width="0.5"/>
+    <line x1="0" y1="448" x2="512" y2="448" stroke="#7c5cfc" stroke-width="0.5"/>
+  </g>
+
+  <!-- Diagonal circuit trace lines (background) -->
+  <g id="circuit-bg" opacity="0.25">
+    <polyline points="0,400 60,400 80,380 130,380" stroke="#7c5cfc" stroke-width="0.8" fill="none" filter="url(#glow-violet)"/>
+    <polyline points="0,430 40,430 60,410 100,410 120,430 180,430" stroke="#00f5ff" stroke-width="0.8" fill="none" filter="url(#glow-cyan)"/>
+    <polyline points="512,380 450,380 430,360 380,360" stroke="#7c5cfc" stroke-width="0.8" fill="none" filter="url(#glow-violet)"/>
+    <polyline points="512,420 470,420 450,440 400,440" stroke="#00f5ff" stroke-width="0.8" fill="none" filter="url(#glow-cyan)"/>
+    <polyline points="0,120 55,120 75,100 120,100" stroke="#7c5cfc" stroke-width="0.8" fill="none" filter="url(#glow-violet)"/>
+    <polyline points="512,150 460,150 440,130 390,130" stroke="#00f5ff" stroke-width="0.8" fill="none" filter="url(#glow-cyan)"/>
+    <!-- Node dots -->
+    <circle cx="130" cy="380" r="2.5" fill="#7c5cfc" filter="url(#glow-violet)"/>
+    <circle cx="100" cy="410" r="2.5" fill="#00f5ff" filter="url(#glow-cyan)"/>
+    <circle cx="380" cy="360" r="2.5" fill="#7c5cfc" filter="url(#glow-violet)"/>
+    <circle cx="390" cy="130" r="2.5" fill="#00f5ff" filter="url(#glow-cyan)"/>
+  </g>
+
+  <!-- Outer glow rings -->
+  <g id="outer-rings">
+    <circle cx="256" cy="256" r="230" fill="none" stroke="#7c5cfc" stroke-width="0.6" opacity="0.5" filter="url(#glow-violet)"/>
+    <circle cx="256" cy="256" r="240" fill="none" stroke="#00f5ff" stroke-width="0.4" opacity="0.35" filter="url(#glow-cyan)"/>
+    <circle cx="256" cy="256" r="248" fill="none" stroke="#7c5cfc" stroke-width="0.3" opacity="0.2"/>
+    <!-- Corner bracket accents -->
+    <polyline points="30,30 30,70 70,70" fill="none" stroke="#00f5ff" stroke-width="1.5" opacity="0.7" filter="url(#glow-cyan)"/>
+    <polyline points="482,30 482,70 442,70" fill="none" stroke="#00f5ff" stroke-width="1.5" opacity="0.7" filter="url(#glow-cyan)"/>
+    <polyline points="30,482 30,442 70,442" fill="none" stroke="#00f5ff" stroke-width="1.5" opacity="0.7" filter="url(#glow-cyan)"/>
+    <polyline points="482,482 482,442 442,442" fill="none" stroke="#00f5ff" stroke-width="1.5" opacity="0.7" filter="url(#glow-cyan)"/>
+  </g>
+
+  <!-- Female silhouette — neck and shoulders (base layer) -->
+  <g id="silhouette-body">
+    <!-- Shoulders and neck base — filled dark shape -->
+    <path d="M140,512 L140,400 L165,368 L188,345 L205,330 L220,320 L232,315 L244,312 L256,311 L268,312 L280,315 L292,320 L307,330 L324,345 L347,368 L372,400 L372,512 Z" fill="#07080f"/>
+    <!-- Neck -->
+    <path d="M232,315 L232,295 L240,285 L256,282 L272,285 L280,295 L280,315 L256,311 Z" fill="#07080f"/>
+  </g>
+
+  <!-- Wireframe silhouette edges — shoulders & neck -->
+  <g id="wireframe-body" filter="url(#glow-violet)">
+    <path d="M140,512 L140,400 L165,368 L188,345 L205,330 L220,320 L232,315 L232,295" fill="none" stroke="#7c5cfc" stroke-width="1.2" opacity="0.9"/>
+    <path d="M372,512 L372,400 L347,368 L324,345 L307,330 L292,320 L280,315 L280,295" fill="none" stroke="#7c5cfc" stroke-width="1.2" opacity="0.9"/>
+    <!-- Neckline horizontal -->
+    <line x1="220" y1="320" x2="292" y2="320" stroke="#7c5cfc" stroke-width="0.8" opacity="0.6"/>
+    <!-- Shoulder cross lines -->
+    <line x1="165" y1="368" x2="192" y2="345" stroke="#00f5ff" stroke-width="0.6" opacity="0.45" filter="url(#glow-cyan)"/>
+    <line x1="347" y1="368" x2="320" y2="345" stroke="#00f5ff" stroke-width="0.6" opacity="0.45" filter="url(#glow-cyan)"/>
+  </g>
+
+  <!-- Face shape — filled dark base -->
+  <g id="face-base">
+    <path d="M256,95 L210,110 L188,140 L178,175 L178,218 L185,248 L195,268 L210,285 L232,295 L256,300 L280,295 L302,285 L317,268 L327,248 L334,218 L334,175 L324,140 L302,110 Z" fill="#06070e"/>
+  </g>
+
+  <!-- Face wireframe edges — primary structure -->
+  <g id="face-wireframe" filter="url(#glow-violet)">
+    <!-- Left jaw/cheek -->
+    <path d="M210,110 L188,140 L178,175 L178,218 L185,248 L195,268 L210,285 L232,295" fill="none" stroke="#7c5cfc" stroke-width="1.4"/>
+    <!-- Right jaw/cheek -->
+    <path d="M302,110 L324,140 L334,175 L334,218 L327,248 L317,268 L302,285 L280,295" fill="none" stroke="#7c5cfc" stroke-width="1.4"/>
+    <!-- Forehead top -->
+    <path d="M210,110 L256,95 L302,110" fill="none" stroke="#7c5cfc" stroke-width="1.4"/>
+    <!-- Chin base -->
+    <path d="M232,295 L256,300 L280,295" fill="none" stroke="#7c5cfc" stroke-width="1.0"/>
+  </g>
+
+  <!-- Inner face geometry — horizontal structure lines -->
+  <g id="face-structure" filter="url(#glow-cyan)">
+    <!-- Brow line -->
+    <line x1="185" y1="165" x2="327" y2="165" stroke="#00f5ff" stroke-width="0.9" opacity="0.7"/>
+    <!-- Eye level -->
+    <line x1="182" y1="195" x2="330" y2="195" stroke="#00f5ff" stroke-width="1.1" opacity="0.85"/>
+    <!-- Nose level -->
+    <line x1="183" y1="235" x2="329" y2="235" stroke="#00f5ff" stroke-width="0.8" opacity="0.6"/>
+    <!-- Mouth level -->
+    <line x1="188" y1="262" x2="324" y2="262" stroke="#00f5ff" stroke-width="0.7" opacity="0.5"/>
+    <!-- Chin level -->
+    <line x1="205" y1="282" x2="307" y2="282" stroke="#00f5ff" stroke-width="0.6" opacity="0.4"/>
+    <!-- Vertical center line -->
+    <line x1="256" y1="95" x2="256" y2="300" stroke="#00f5ff" stroke-width="0.7" opacity="0.35"/>
+    <!-- Cheekbone diagonals -->
+    <line x1="185" y1="220" x2="220" y2="195" stroke="#7c5cfc" stroke-width="0.6" opacity="0.5"/>
+    <line x1="327" y1="220" x2="292" y2="195" stroke="#7c5cfc" stroke-width="0.6" opacity="0.5"/>
+  </g>
+
+  <!-- Eyes — wireframe geometric -->
+  <g id="eyes" filter="url(#glow-cyan)">
+    <!-- Left eye -->
+    <polygon points="205,188 218,183 234,183 244,188 234,196 218,196" fill="none" stroke="#00f5ff" stroke-width="1.2"/>
+    <line x1="205" y1="188" x2="244" y2="188" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+    <!-- Left iris geometric -->
+    <polygon points="218,186 226,183 234,186 226,194" fill="none" stroke="#00f5ff" stroke-width="1.0"/>
+    <circle cx="226" cy="189" r="2.5" fill="#00f5ff" opacity="0.9"/>
+    <!-- Left eye glow dot -->
+    <circle cx="226" cy="189" r="4" fill="none" stroke="#00f5ff" stroke-width="0.5" opacity="0.5"/>
+
+    <!-- Right eye -->
+    <polygon points="268,188 278,183 294,183 307,188 294,196 278,196" fill="none" stroke="#00f5ff" stroke-width="1.2"/>
+    <line x1="268" y1="188" x2="307" y2="188" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+    <!-- Right iris geometric -->
+    <polygon points="278,186 286,183 294,186 286,194" fill="none" stroke="#00f5ff" stroke-width="1.0"/>
+    <circle cx="286" cy="189" r="2.5" fill="#00f5ff" opacity="0.9"/>
+    <circle cx="286" cy="189" r="4" fill="none" stroke="#00f5ff" stroke-width="0.5" opacity="0.5"/>
+  </g>
+
+  <!-- Nose — geometric lines -->
+  <g id="nose" filter="url(#glow-violet)">
+    <polyline points="248,200 244,228 238,236 256,240 274,236 268,228 264,200" fill="none" stroke="#7c5cfc" stroke-width="0.9" opacity="0.8"/>
+    <line x1="244" y1="228" x2="268" y2="228" stroke="#7c5cfc" stroke-width="0.7" opacity="0.5"/>
+  </g>
+
+  <!-- Mouth — geometric sharp lines -->
+  <g id="mouth" filter="url(#glow-violet)">
+    <polyline points="228,258 238,254 256,257 274,254 284,258" fill="none" stroke="#7c5cfc" stroke-width="1.1"/>
+    <polyline points="234,258 240,265 256,268 272,265 278,258" fill="none" stroke="#7c5cfc" stroke-width="0.9" opacity="0.7"/>
+    <line x1="228" y1="258" x2="284" y2="258" stroke="#00f5ff" stroke-width="0.5" opacity="0.3"/>
+  </g>
+
+  <!-- Hair — geometric sharp wireframe -->
+  <g id="hair">
+    <!-- Hair body fill (dark) -->
+    <path d="M256,95 L210,110 L190,95 L178,70 L174,42 L188,20 L210,10 L256,5 L302,10 L324,20 L338,42 L334,70 L322,95 L302,110 Z" fill="#04040c"/>
+    <!-- Hair right sweep -->
+    <path d="M302,110 L334,70 L350,55 L370,50 L390,58 L395,80 L380,100 L360,115 L340,125 L320,130" fill="#04040c"/>
+
+    <!-- Hair wireframe edges -->
+    <path d="M210,110 L190,95 L178,70 L174,42 L188,20 L210,10 L256,5" fill="none" stroke="#7c5cfc" stroke-width="1.3" filter="url(#glow-violet)" opacity="0.9"/>
+    <path d="M302,110 L322,95 L334,70 L338,42 L324,20 L302,10 L256,5" fill="none" stroke="#7c5cfc" stroke-width="1.3" filter="url(#glow-violet)" opacity="0.9"/>
+    <!-- Right hair sweep lines -->
+    <path d="M302,110 L340,80 L370,50 L395,80 L360,115 L320,130" fill="none" stroke="#7c5cfc" stroke-width="1.1" filter="url(#glow-violet)" opacity="0.8"/>
+    <!-- Hair cross-hatch geometry -->
+    <line x1="210" y1="10" x2="238" y2="50" stroke="#7c5cfc" stroke-width="0.5" opacity="0.4" filter="url(#glow-violet)"/>
+    <line x1="256" y1="5" x2="256" y2="55" stroke="#7c5cfc" stroke-width="0.5" opacity="0.4" filter="url(#glow-violet)"/>
+    <line x1="302" y1="10" x2="274" y2="50" stroke="#7c5cfc" stroke-width="0.5" opacity="0.4" filter="url(#glow-violet)"/>
+    <line x1="178" y1="70" x2="215" y2="80" stroke="#00f5ff" stroke-width="0.5" opacity="0.35" filter="url(#glow-cyan)"/>
+    <line x1="338" y1="70" x2="297" y2="80" stroke="#00f5ff" stroke-width="0.5" opacity="0.35" filter="url(#glow-cyan)"/>
+    <!-- Hair highlight accent -->
+    <path d="M200,25 L220,45 L240,38 L256,42" fill="none" stroke="#ff0080" stroke-width="0.8" opacity="0.6" filter="url(#glow-pink)"/>
+    <path d="M335,55 L355,72 L372,65" fill="none" stroke="#ff0080" stroke-width="0.8" opacity="0.5" filter="url(#glow-pink)"/>
+  </g>
+
+  <!-- Horizontal scan lines across face -->
+  <g id="scanlines-face" clip-path="url(#face-clip)" opacity="0.55">
+    <rect x="0" y="0" width="512" height="512" fill="url(#scanlines)"/>
+  </g>
+
+  <!-- Extra bright scan lines across face — accent ones -->
+  <g id="scan-accents" opacity="0.6" filter="url(#glow-cyan)">
+    <line x1="178" y1="175" x2="334" y2="175" stroke="#00f5ff" stroke-width="0.4" opacity="0.5"/>
+    <line x1="178" y1="185" x2="334" y2="185" stroke="#00f5ff" stroke-width="0.4" opacity="0.4"/>
+    <line x1="178" y1="210" x2="334" y2="210" stroke="#00f5ff" stroke-width="0.4" opacity="0.4"/>
+    <line x1="180" y1="220" x2="332" y2="220" stroke="#00f5ff" stroke-width="0.4" opacity="0.35"/>
+    <line x1="183" y1="245" x2="329" y2="245" stroke="#00f5ff" stroke-width="0.4" opacity="0.3"/>
+    <line x1="185" y1="270" x2="327" y2="270" stroke="#00f5ff" stroke-width="0.4" opacity="0.25"/>
+    <line x1="192" y1="285" x2="320" y2="285" stroke="#00f5ff" stroke-width="0.4" opacity="0.2"/>
+    <!-- Moving scan line (brighter) -->
+    <line x1="178" y1="200" x2="334" y2="200" stroke="#00f5ff" stroke-width="1.2" opacity="0.85"/>
+  </g>
+
+  <!-- Circuit trace lines extending from face/head -->
+  <g id="circuit-traces">
+    <!-- Left side traces -->
+    <polyline points="178,175 148,175 132,160 100,160" fill="none" stroke="#7c5cfc" stroke-width="0.8" filter="url(#glow-violet)" opacity="0.7"/>
+    <polyline points="178,218 150,218 130,200 90,200" fill="none" stroke="#00f5ff" stroke-width="0.8" filter="url(#glow-cyan)" opacity="0.7"/>
+    <polyline points="185,248 155,248 135,265 95,265" fill="none" stroke="#7c5cfc" stroke-width="0.7" filter="url(#glow-violet)" opacity="0.6"/>
+    <!-- Left node dots -->
+    <circle cx="100" cy="160" r="2" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.9"/>
+    <circle cx="90" cy="200" r="2" fill="#00f5ff" filter="url(#glow-cyan)" opacity="0.9"/>
+    <circle cx="95" cy="265" r="2" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.9"/>
+    <!-- Left small branches -->
+    <line x1="132" y1="160" x2="132" y2="180" stroke="#7c5cfc" stroke-width="0.5" opacity="0.4" filter="url(#glow-violet)"/>
+    <line x1="130" y1="200" x2="118" y2="215" stroke="#00f5ff" stroke-width="0.5" opacity="0.4" filter="url(#glow-cyan)"/>
+
+    <!-- Right side traces -->
+    <polyline points="334,175 364,175 380,160 412,160" fill="none" stroke="#7c5cfc" stroke-width="0.8" filter="url(#glow-violet)" opacity="0.7"/>
+    <polyline points="334,218 362,218 382,200 422,200" fill="none" stroke="#00f5ff" stroke-width="0.8" filter="url(#glow-cyan)" opacity="0.7"/>
+    <polyline points="327,248 357,248 377,265 417,265" fill="none" stroke="#7c5cfc" stroke-width="0.7" filter="url(#glow-violet)" opacity="0.6"/>
+    <!-- Right node dots -->
+    <circle cx="412" cy="160" r="2" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.9"/>
+    <circle cx="422" cy="200" r="2" fill="#00f5ff" filter="url(#glow-cyan)" opacity="0.9"/>
+    <circle cx="417" cy="265" r="2" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.9"/>
+    <!-- Right small branches -->
+    <line x1="380" y1="160" x2="380" y2="180" stroke="#7c5cfc" stroke-width="0.5" opacity="0.4" filter="url(#glow-violet)"/>
+    <line x1="382" y1="200" x2="394" y2="215" stroke="#00f5ff" stroke-width="0.5" opacity="0.4" filter="url(#glow-cyan)"/>
+
+    <!-- Top traces from forehead -->
+    <polyline points="220,110 200,90 185,70 160,70 145,55" fill="none" stroke="#7c5cfc" stroke-width="0.7" filter="url(#glow-violet)" opacity="0.6"/>
+    <polyline points="292,110 312,90 327,70 352,70 367,55" fill="none" stroke="#00f5ff" stroke-width="0.7" filter="url(#glow-cyan)" opacity="0.6"/>
+    <circle cx="145" cy="55" r="2" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.9"/>
+    <circle cx="367" cy="55" r="2" fill="#00f5ff" filter="url(#glow-cyan)" opacity="0.9"/>
+  </g>
+
+  <!-- Binary data fragments — decorative -->
+  <g id="binary-data" font-family="monospace" font-size="7" fill-opacity="0.5">
+    <text x="22" y="175" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.6">10110100</text>
+    <text x="22" y="186" fill="#7c5cfc" opacity="0.4">01001101</text>
+    <text x="22" y="197" fill="#00f5ff" filter="url(#glow-cyan)" opacity="0.5">11010011</text>
+    <text x="22" y="208" fill="#7c5cfc" opacity="0.35">00110101</text>
+    <text x="22" y="219" fill="#00f5ff" opacity="0.4">10101110</text>
+    <text x="22" y="230" fill="#7c5cfc" opacity="0.3">01101001</text>
+    <text x="22" y="241" fill="#00f5ff" opacity="0.35">11001010</text>
+
+    <text x="415" y="175" fill="#7c5cfc" filter="url(#glow-violet)" opacity="0.6">01001011</text>
+    <text x="415" y="186" fill="#00f5ff" opacity="0.4">10110010</text>
+    <text x="415" y="197" fill="#7c5cfc" opacity="0.5">00101101</text>
+    <text x="415" y="208" fill="#00f5ff" filter="url(#glow-cyan)" opacity="0.4">11010110</text>
+    <text x="415" y="219" fill="#7c5cfc" opacity="0.35">01011001</text>
+    <text x="415" y="230" fill="#00f5ff" opacity="0.3">10100101</text>
+    <text x="415" y="241" fill="#7c5cfc" opacity="0.35">00011010</text>
+
+    <!-- Top binary fragments -->
+    <text x="60" y="52" fill="#00f5ff" opacity="0.4">1010</text>
+    <text x="60" y="62" fill="#7c5cfc" opacity="0.35">0110</text>
+    <text x="390" y="52" fill="#7c5cfc" opacity="0.4">1101</text>
+    <text x="390" y="62" fill="#00f5ff" opacity="0.35">0011</text>
+
+    <!-- Bottom data stream -->
+    <text x="60" y="470" fill="#7c5cfc" opacity="0.3">0xA4F2 :: ARIA.v3 :: SCAN_ACTIVE</text>
+    <text x="60" y="482" fill="#00f5ff" opacity="0.25">MKT_REGIME::BULL :: CONFIDENCE:0.87</text>
+
+    <!-- Hex address fragments near circuit nodes -->
+    <text x="60" y="157" fill="#00f5ff" opacity="0.55" font-size="6">0xFC2A</text>
+    <text x="60" y="197" fill="#7c5cfc" opacity="0.5" font-size="6">0xA18E</text>
+    <text x="60" y="262" fill="#00f5ff" opacity="0.45" font-size="6">0x37B1</text>
+    <text x="420" y="157" fill="#00f5ff" opacity="0.55" font-size="6">0xBD4C</text>
+    <text x="420" y="197" fill="#7c5cfc" opacity="0.5" font-size="6">0xE29F</text>
+    <text x="420" y="262" fill="#00f5ff" opacity="0.45" font-size="6">0x91DA</text>
+  </g>
+
+  <!-- Pink accent sparks — hot pink sparingly -->
+  <g id="pink-accents" filter="url(#glow-pink)">
+    <!-- Eye reflection sparks -->
+    <circle cx="222" cy="186" r="1.2" fill="#ff0080" opacity="0.9"/>
+    <circle cx="282" cy="186" r="1.2" fill="#ff0080" opacity="0.9"/>
+    <!-- Forehead mark -->
+    <polygon points="256,118 260,126 256,122 252,126" fill="none" stroke="#ff0080" stroke-width="0.9" opacity="0.8"/>
+    <!-- Corner accent sparks -->
+    <circle cx="50" cy="50" r="1.5" fill="#ff0080" opacity="0.7"/>
+    <circle cx="462" cy="50" r="1.5" fill="#ff0080" opacity="0.7"/>
+  </g>
+
+  <!-- Outer ring decorative arcs -->
+  <g id="outer-arcs" filter="url(#glow-ring)">
+    <!-- Outer violet arc -->
+    <path d="M 256,26 A 230,230 0 0 1 468,356" fill="none" stroke="#7c5cfc" stroke-width="1.0" opacity="0.45"/>
+    <!-- Outer cyan arc opposing -->
+    <path d="M 256,486 A 230,230 0 0 1 44,156" fill="none" stroke="#00f5ff" stroke-width="1.0" opacity="0.45"/>
+    <!-- Small tick marks on outer ring -->
+    <line x1="256" y1="22" x2="256" y2="32" stroke="#7c5cfc" stroke-width="1.5" opacity="0.8" filter="url(#glow-violet)"/>
+    <line x1="256" y1="480" x2="256" y2="490" stroke="#00f5ff" stroke-width="1.5" opacity="0.8" filter="url(#glow-cyan)"/>
+    <line x1="22" y1="256" x2="32" y2="256" stroke="#7c5cfc" stroke-width="1.5" opacity="0.8" filter="url(#glow-violet)"/>
+    <line x1="480" y1="256" x2="490" y2="256" stroke="#00f5ff" stroke-width="1.5" opacity="0.8" filter="url(#glow-cyan)"/>
+    <!-- Diagonal ticks -->
+    <line x1="93" y1="93" x2="100" y2="100" stroke="#7c5cfc" stroke-width="1.2" opacity="0.6"/>
+    <line x1="412" y1="412" x2="419" y2="419" stroke="#00f5ff" stroke-width="1.2" opacity="0.6"/>
+    <line x1="412" y1="93" x2="419" y2="100" stroke="#7c5cfc" stroke-width="1.2" opacity="0.6"/>
+    <line x1="93" y1="412" x2="100" y2="419" stroke="#00f5ff" stroke-width="1.2" opacity="0.6"/>
+  </g>
+
+  <!-- Full overlay scanlines (very subtle, entire image) -->
+  <g id="full-scanlines" opacity="0.08">
+    <rect x="0" y="0" width="512" height="512" fill="url(#scanlines)"/>
+  </g>
+
+  <!-- Highlight — bright neon edge re-draw on top for crispness -->
+  <g id="face-highlight-top">
+    <!-- Top face edge re-glow -->
+    <path d="M210,110 L188,140 L178,175" fill="none" stroke="#00f5ff" stroke-width="0.5" filter="url(#glow-cyan)" opacity="0.6"/>
+    <path d="M302,110 L324,140 L334,175" fill="none" stroke="#00f5ff" stroke-width="0.5" filter="url(#glow-cyan)" opacity="0.6"/>
+    <path d="M210,110 L256,95 L302,110" fill="none" stroke="#00f5ff" stroke-width="0.7" filter="url(#glow-cyan)" opacity="0.8"/>
+    <!-- Eyes top edge re-glow -->
+    <line x1="205" y1="188" x2="244" y2="188" stroke="#00f5ff" stroke-width="1.8" filter="url(#glow-cyan)" opacity="0.95"/>
+    <line x1="268" y1="188" x2="307" y2="188" stroke="#00f5ff" stroke-width="1.8" filter="url(#glow-cyan)" opacity="0.95"/>
+  </g>
+</svg>

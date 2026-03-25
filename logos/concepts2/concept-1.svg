@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-cursor" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="scanline-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7b5cff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#7b5cff" stop-opacity="0.07"/>
+      <stop offset="100%" stop-color="#7b5cff" stop-opacity="0"/>
+    </linearGradient>
+    <animate id="scan-anim"/>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="256" fill="#070710"/>
+
+  <!-- Subtle dot grid -->
+  <g fill="#2a1f5a" opacity="0.35">
+    <!-- Row 1 -->
+    <circle cx="64"  cy="42"  r="1.2"/>
+    <circle cx="256" cy="42"  r="1.2"/>
+    <circle cx="448" cy="42"  r="1.2"/>
+    <circle cx="640" cy="42"  r="1.2"/>
+    <circle cx="832" cy="42"  r="1.2"/>
+    <circle cx="960" cy="42"  r="1.2"/>
+    <!-- Row 2 -->
+    <circle cx="64"  cy="128" r="1.2"/>
+    <circle cx="256" cy="128" r="1.2"/>
+    <circle cx="448" cy="128" r="1.2"/>
+    <circle cx="640" cy="128" r="1.2"/>
+    <circle cx="832" cy="128" r="1.2"/>
+    <circle cx="960" cy="128" r="1.2"/>
+    <!-- Row 3 -->
+    <circle cx="64"  cy="214" r="1.2"/>
+    <circle cx="256" cy="214" r="1.2"/>
+    <circle cx="448" cy="214" r="1.2"/>
+    <circle cx="640" cy="214" r="1.2"/>
+    <circle cx="832" cy="214" r="1.2"/>
+    <circle cx="960" cy="214" r="1.2"/>
+  </g>
+
+  <!-- Sweeping scan line -->
+  <rect x="0" y="0" width="1024" height="36" fill="url(#scanline-grad)" opacity="1">
+    <animateTransform attributeName="transform" type="translate" from="0,-36" to="0,256" dur="4s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Prompt ">" -->
+  <text
+    x="80"
+    y="160"
+    font-family="'Courier New', Courier, monospace"
+    font-size="72"
+    fill="#5a3fc0"
+    filter="url(#glow)"
+  >&gt;</text>
+
+  <!-- "GScott" -->
+  <text
+    x="140"
+    y="160"
+    font-family="'Courier New', Courier, monospace"
+    font-size="72"
+    font-weight="bold"
+    fill="#f0f0ff"
+    letter-spacing="-1"
+    filter="url(#glow)"
+  >GScott</text>
+
+  <!-- Cursor block (after "GScott" — approximate x offset: 140 + ~6ch * ~43px = ~400) -->
+  <rect
+    x="608"
+    y="108"
+    width="12"
+    height="56"
+    fill="#00f5ff"
+    opacity="0.9"
+    filter="url(#glow-cursor)"
+  >
+    <animate attributeName="opacity" values="0.9;0;0.9" dur="1.1s" repeatCount="indefinite"/>
+  </rect>
+</svg>

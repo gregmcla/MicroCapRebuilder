@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <filter id="glow-prompt" x="-30%" y="-50%" width="160%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-text" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-cursor" x="-100%" y="-80%" width="300%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-scan" x="0%" y="-200%" width="100%" height="500%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="bounds">
+      <rect width="1024" height="256"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="256" fill="#070710"/>
+
+  <!-- Dot grid: 5 cols x 4 rows, evenly spaced, right side -->
+  <g fill="#2a1f5a" opacity="0.55">
+    <!-- Row 1 y=52 -->
+    <circle cx="820" cy="52" r="1.3"/>
+    <circle cx="858" cy="52" r="1.3"/>
+    <circle cx="896" cy="52" r="1.3"/>
+    <circle cx="934" cy="52" r="1.3"/>
+    <circle cx="972" cy="52" r="1.3"/>
+    <!-- Row 2 y=96 -->
+    <circle cx="820" cy="96" r="1.3"/>
+    <circle cx="858" cy="96" r="1.3"/>
+    <circle cx="896" cy="96" r="1.3"/>
+    <circle cx="934" cy="96" r="1.3"/>
+    <circle cx="972" cy="96" r="1.3"/>
+    <!-- Row 3 y=140 -->
+    <circle cx="820" cy="140" r="1.3"/>
+    <circle cx="858" cy="140" r="1.3"/>
+    <circle cx="896" cy="140" r="1.3"/>
+    <circle cx="934" cy="140" r="1.3"/>
+    <circle cx="972" cy="140" r="1.3"/>
+    <!-- Row 4 y=184 -->
+    <circle cx="820" cy="184" r="1.3"/>
+    <circle cx="858" cy="184" r="1.3"/>
+    <circle cx="896" cy="184" r="1.3"/>
+    <circle cx="934" cy="184" r="1.3"/>
+    <circle cx="972" cy="184" r="1.3"/>
+  </g>
+
+  <!-- Corner bracket: top-left -->
+  <g stroke="#2a1f5a" stroke-width="1" fill="none" opacity="0.75">
+    <polyline points="36,20 36,40 56,40"/>
+  </g>
+
+  <!-- Corner bracket: bottom-right -->
+  <g stroke="#2a1f5a" stroke-width="1" fill="none" opacity="0.75">
+    <polyline points="988,236 988,216 968,216"/>
+  </g>
+
+  <!-- Subtle horizontal rule -->
+  <line x1="0" y1="185" x2="1024" y2="185" stroke="#2a1f5a" stroke-width="0.5" opacity="0.6"/>
+
+  <!-- Depth ">" ghost at x=46 -->
+  <text x="46" y="160"
+    font-family="'Courier New', Courier, monospace"
+    font-size="72"
+    fill="#2a1860"
+    opacity="0.45">&#x3E;</text>
+
+  <!-- Primary ">" prompt -->
+  <text x="82" y="160"
+    font-family="'Courier New', Courier, monospace"
+    font-size="72"
+    fill="#7c5cfc"
+    filter="url(#glow-prompt)">&#x3E;</text>
+
+  <!-- "GScott" logotype -->
+  <text x="140" y="160"
+    font-family="'Courier New', Courier, monospace"
+    font-size="72"
+    font-weight="bold"
+    fill="#f0f0ff"
+    letter-spacing="-1"
+    filter="url(#glow-text)">GScott</text>
+
+  <!-- Blinking cursor — corrected position after "GScott" -->
+  <rect x="400" y="104" width="10" height="60" fill="#00f5ff" opacity="0.9" filter="url(#glow-cursor)">
+    <animate attributeName="opacity" values="0.9;0;0;0.9" dur="1.1s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Sweeping scan line -->
+  <g clip-path="url(#bounds)" filter="url(#glow-scan)">
+    <rect width="1024" height="2" fill="#5a3fc0" opacity="0.18">
+      <animateTransform attributeName="transform" type="translate" from="0,-4" to="0,260" dur="3.8s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

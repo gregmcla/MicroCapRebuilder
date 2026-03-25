@@ -162,6 +162,13 @@ def _serialize_state(state):
                         trade_pnl[_tid] = (round(_pnl, 2), round(_pnl_pct, 2), round(_avg, 2))
     realized_pnl = round(realized_pnl, 2)
 
+    # Re-compute total return from actual P&L to exclude accounting artifacts
+    # (equity-minus-starting-capital can be inflated by reconciliation entries).
+    if starting_capital > 0:
+        _unrealized = float(positions["unrealized_pnl"].sum()) if not positions.empty and "unrealized_pnl" in positions.columns else 0.0
+        total_return_pct = round(((realized_pnl + _unrealized) / starting_capital) * 100, 2)
+        all_time_pnl = round(realized_pnl + _unrealized, 2)
+
     # Build position_rationales: ticker -> parsed trade_rationale JSON for active positions.
     # Allows the UI to display "why was this trade opened" when clicking a position.
     import json as _json

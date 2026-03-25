@@ -36,10 +36,10 @@ def get_today_transactions(df: pd.DataFrame) -> pd.DataFrame:
     return df[df["date"] == today] if not df.empty and "date" in df.columns else pd.DataFrame()
 
 
-def generate_report() -> str:
+def generate_report(portfolio_id: str | None = None) -> str:
     """Generate the daily report text."""
     # Load portfolio state
-    state = load_portfolio_state(fetch_prices=False)
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
 
     # Extract what we need
     config = state.config

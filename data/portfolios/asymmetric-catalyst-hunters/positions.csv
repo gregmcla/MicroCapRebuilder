@@ -1,0 +1,5 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+NEXT,335,7.12,7.12,2385.2,0.0,0.0,6.62,35.6,2026-03-24,Energy,7.12,0.0,0.0
+NUVB,464,4.29,4.29,1990.56,0.0,0.0,3.98,21.45,2026-03-24,Healthcare,4.29,0.0,0.0
+RCKT,553,4.3201,4.32,2389.02,0.0,0.0,4.02,21.6,2026-03-24,Healthcare,4.32,0.0,0.0
+CEVA,116,19.0,19.0,2204.0,0.0,0.0,17.64,95.0,2026-03-24,Technology,19.0,0.0,0.0

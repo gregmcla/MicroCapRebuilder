@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-violet" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="256" fill="#060610"/>
+
+  <!-- Subtle dot grid: 4 rows x 8 columns -->
+  <!-- Row 1 (y=36) -->
+  <circle cx="85"  cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="213" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="341" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="469" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="597" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="725" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="853" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="981" cy="36" r="1" fill="#1a1540" opacity="0.5"/>
+  <!-- Row 2 (y=97) -->
+  <circle cx="85"  cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="213" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="341" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="469" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="597" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="725" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="853" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="981" cy="97" r="1" fill="#1a1540" opacity="0.5"/>
+  <!-- Row 3 (y=158) -->
+  <circle cx="85"  cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="213" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="341" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="469" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="597" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="725" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="853" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="981" cy="158" r="1" fill="#1a1540" opacity="0.5"/>
+  <!-- Row 4 (y=219) -->
+  <circle cx="85"  cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="213" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="341" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="469" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="597" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="725" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="853" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+  <circle cx="981" cy="219" r="1" fill="#1a1540" opacity="0.5"/>
+
+  <!-- "G" — cyan outlined, monospace, glow -->
+  <text
+    x="80"
+    y="175"
+    font-family="'Courier New', Courier, monospace"
+    font-size="120"
+    font-weight="bold"
+    fill="none"
+    stroke="#00f5ff"
+    stroke-width="2"
+    filter="url(#glow-cyan)"
+  >G</text>
+
+  <!-- "Scott" — violet outlined, monospace, glow -->
+  <text
+    x="155"
+    y="175"
+    font-family="'Courier New', Courier, monospace"
+    font-size="120"
+    font-weight="bold"
+    fill="none"
+    stroke="#7c5cfc"
+    stroke-width="1.8"
+    filter="url(#glow-violet)"
+  >Scott</text>
+
+  <!-- Cursor block — blinking cyan rect after "GScott" -->
+  <!-- 6 chars * ~72px/char + x=80 = ~512; cursor starts ~520 -->
+  <rect x="519" y="115" width="14" height="72" fill="#00f5ff">
+    <animate
+      attributeName="opacity"
+      values="1;1;0;0;1"
+      keyTimes="0;0.45;0.5;0.95;1"
+      dur="1.1s"
+      repeatCount="indefinite"
+    />
+  </rect>
+</svg>

@@ -7,6 +7,7 @@ from strategy_health import get_strategy_health
 from attribution import get_daily_attribution
 from analytics import PortfolioAnalytics
 from factor_learning import FactorLearner, get_weight_suggestions
+from generate_report import generate_report
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -23,6 +24,13 @@ def performance(portfolio_id: str):
         "attribution": serialize(attribution),
         "metrics": serialize(metrics),
     }
+
+
+@router.get("/report")
+def daily_report(portfolio_id: str):
+    """Generate and return the daily text report."""
+    text = generate_report(portfolio_id=portfolio_id)
+    return {"text": text}
 
 
 @router.get("/learning")

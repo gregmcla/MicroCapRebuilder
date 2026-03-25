@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 320">
+  <defs>
+    <linearGradient id="linegrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#00e676"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="320" fill="#07070e"/>
+  <text
+    x="512"
+    y="165"
+    text-anchor="middle"
+    font-size="120"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-weight="700"
+    fill="#f0f0ff"
+    letter-spacing="-2"
+  >GScott</text>
+  <polyline
+    points="
+      80,235
+      110,230
+      140,232
+      165,225
+      190,228
+      215,220
+      240,222
+      265,215
+      285,218
+      305,210
+      325,213
+      345,205
+      365,208
+      385,200
+      405,204
+      425,196
+      448,199
+      468,190
+      488,194
+      508,185
+      528,188
+      548,180
+      568,184
+      590,174
+      612,178
+      632,168
+      655,172
+      675,162
+      698,166
+      718,156
+      738,160
+      758,150
+      778,154
+      798,143
+      820,147
+      842,136
+      862,140
+      882,130
+      904,134
+      924,122
+      944,118
+    "
+    stroke="url(#linegrad)"
+    stroke-width="2.5"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <text
+    x="512"
+    y="285"
+    text-anchor="middle"
+    font-size="16"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-weight="400"
+    fill="#444466"
+    letter-spacing="6"
+  >ADAPTIVE RISK &amp; INTELLIGENCE</text>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <filter id="glow-g" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glow-scott" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="256" fill="#050508"/>
+
+  <!-- G -->
+  <text
+    x="60"
+    y="185"
+    font-size="160"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-weight="700"
+    fill="none"
+    stroke="#00f5ff"
+    stroke-width="2.5"
+    letter-spacing="-2"
+    filter="url(#glow-g)"
+  >G</text>
+
+  <!-- Separator dot -->
+  <circle cx="243" cy="128" r="3" fill="#7c5cfc" opacity="0.7"/>
+
+  <!-- SCOTT -->
+  <text
+    x="260"
+    y="185"
+    font-size="160"
+    font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+    font-weight="700"
+    fill="none"
+    stroke="#7c5cfc"
+    stroke-width="2"
+    letter-spacing="-2"
+    filter="url(#glow-scott)"
+  >SCOTT</text>
+</svg>

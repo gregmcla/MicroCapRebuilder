@@ -28,7 +28,7 @@ interface AnalysisStore {
   clear: () => void;
 }
 
-export type RightTab = "actions" | "risk" | "performance";
+export type RightTab = "actions" | "risk" | "performance" | "report";
 
 interface UIStore {
   rightTab: RightTab;

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 256">
+  <defs>
+    <linearGradient id="ggrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="256" fill="#08080f"/>
+  <text x="80" y="190" font-size="200" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="900" fill="url(#ggrad)">G</text>
+  <line x1="60" y1="210" x2="964" y2="210" stroke="#7c5cfc" stroke-width="1" opacity="0.4"/>
+  <text x="330" y="168" font-size="52" letter-spacing="18" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-weight="300" fill="#c0c0d0" text-anchor="start">SCOTT</text>
+</svg>

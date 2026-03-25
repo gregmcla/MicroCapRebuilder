@@ -1,1 +1,8 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+VISN,5630,17.76,18.39,103535.7,3546.9,3.55,13.5,26.5,2026-03-11,Technology,18.39,1407.5,1.42
+AEIS,317,314.84,362.0,114754.0,14949.72,14.98,250.86,436.89,2026-03-11,Industrials,362.0,2380.67,2.49
+FORM,1088,91.82,109.0,118592.0,18691.84,18.71,70.12,123.75,2026-03-11,Technology,109.0,2426.24,2.48
+VICR,258,190.0,183.61,47371.38,-1648.62,-3.36,150.85,271.53,2026-03-17,Technology,191.0,,
+STRL,69,422.0,452.82,31244.58,2126.58,7.3,342.1,563.46,2026-03-17,Industrials,452.82,,
+ONTO,347,211.0,224.0,77728.0,4511.0,6.16,171.25,292.13,2026-03-19,Technology,224.0,343.53,0.47
+AIR,400,109.21,110.0,44000.0,316.0,0.72,88.0,148.0,2026-03-19,Industrials,110.0,0.0,0.0

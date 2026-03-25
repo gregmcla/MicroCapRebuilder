@@ -1,3 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-e41689cc,2026-02-24,MPC,BUY,409,195.29,79873.61,175.76,234.35,SIGNAL,BULL,73.7,"{""momentum"": 68.5, ""volatility"": 58.4, ""volume"": 40.7, ""relative_strength"": 87.0, ""mean_reversion"": 91.5, ""rsi"": 90.0, ""composite"": 73.7}",
-d647ff91,2026-02-24,ETR,BUY,760,105.2,79952.0,94.68,126.24,SIGNAL,BULL,67.8,"{""momentum"": 75.7, ""volatility"": 75.7, ""volume"": 42.1, ""relative_strength"": 75.5, ""mean_reversion"": 72.2, ""rsi"": 55.0, ""composite"": 67.8}",

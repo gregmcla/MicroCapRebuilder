@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 40,
-      "SIDEWAYS": 50,
-      "BEAR": 60
+      "BULL": 30.0,
+      "SIDEWAYS": 30.0,
+      "BEAR": 30.0
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -93,7 +93,7 @@
       "triggers": {
         "drawdown_threshold_pct": 10,
         "risk_score_threshold": 40,
-        "regime_bear_auto_enable": true
+        "regime_bear_auto_enable": false
       },
       "actions": {
         "halt_new_buys": true,
@@ -270,7 +270,7 @@
         ]
       },
       "exchange_listings": {
-        "enabled": true
+        "enabled": false
       }
     },
     "tiers": {
@@ -279,7 +279,7 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 6000,
+        "max_tickers": 3000,
         "scan_frequency": "rotating_3day"
       }
     },
@@ -301,5 +301,5 @@
     "universe": "allcap"
   },
   "ai_driven": true,
-  "strategy_dna": "AI Infrastructure & Ancillary Picks-and-Shovels\n                                                                                                                        \n  The AI buildout is a multi-decade infrastructure supercycle. I don't want to own the AI companies \u2014 I want to own\n  everything they desperately need to exist and scale. The real money in a gold rush is selling shovels, not mining\n  gold.\n\n  Target the physical and industrial layer: power generation and grid infrastructure that feeds data centers (utilities\n  pivoting to AI load, natural gas peakers, nuclear operators), electrical components and switchgear manufacturers,\n  cooling systems (liquid cooling, precision HVAC), and the construction and engineering firms building the facilities\n  themselves. Layer in raw materials that are being consumed at accelerating rates: copper (wiring and busbars), rare\n  earth elements (magnets in motors and drives), and specialty gases used in semiconductor fabrication.\n\n  Add the semiconductor supply chain below the chip level \u2014 wafer manufacturers, substrate makers, PCB fabricators,\n  chemical suppliers, and precision equipment companies that enable chip production without being chip designers\n  themselves. Include networking infrastructure: fiber optic cable manufacturers, optical transceiver companies, and\n  high-speed interconnect suppliers that handle the data movement between GPUs and storage.\n\n  Avoid: AI software companies, LLM API providers, AI chip designers (Nvidia, AMD, Intel), and cloud hyperscalers (AWS,\n  Azure, GCP). These are the picks-and-shovels customers, not the suppliers. Also avoid consumer tech with incidental AI\n   features \u2014 I want pure industrial exposure.\n\n  Buy names that are already seeing order book acceleration, capex tailwinds from hyperscaler spending, or explicit\n  mentions of data center demand in earnings calls. Momentum confirmation matters \u2014 I want the market to already be\n  pricing in the demand, not waiting for it. Hold as long as AI infrastructure capex spending remains on an upward\n  trajectory."
+  "strategy_dna": "Target the physical and industrial layer: power generation and grid infrastructure that feeds data centers (utilities\n  pivoting to AI load, natural gas peakers, nuclear operators), electrical components and switchgear manufacturers,\n  cooling systems (liquid cooling, precision HVAC), and the construction and engineering firms building the facilities\n  themselves. Layer in raw materials that are being consumed at accelerating rates: copper (wiring and busbars), rare\n  earth elements (magnets in motors and drives), and specialty gases used in semiconductor fabrication.\n\n  Add the semiconductor supply chain below the chip level \u2014 wafer manufacturers, substrate makers, PCB fabricators,\n  chemical suppliers, and precision equipment companies that enable chip production without being chip designers\n  themselves. Include networking infrastructure: fiber optic cable manufacturers, optical transceiver companies, and\n  high-speed interconnect suppliers that handle the data movement between GPUs and storage.\n\n  Avoid: AI software companies, LLM API providers, AI chip designers (Nvidia, AMD, Intel), and cloud hyperscalers (AWS,\n  Azure, GCP). These are the picks-and-shovels customers, not the suppliers. Also avoid consumer tech with incidental AI\n   features \u2014 I want pure industrial exposure.\n\n  Buy names that are already seeing order book acceleration, capex tailwinds from hyperscaler spending, or explicit\n  mentions of data center demand in earnings calls. Momentum confirmation matters \u2014 I want the market to already be\n  pricing in the demand, not waiting for it. "
 }

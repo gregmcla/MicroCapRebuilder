@@ -1,0 +1,6 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+FDX,550,362.19,362.12,199163.25,-41.25,-0.02,345.0,390.0,2026-03-23,Industrials,362.19,-41.25,-0.02
+CB,611,327.72,327.72,200236.92,0.0,0.0,313.26,349.18,2026-03-23,Financial Services,327.72,0.0,0.0
+WMT,690,120.86,120.81,83355.45,-37.95,-0.05,115.5,128.0,2026-03-23,Consumer Defensive,120.86,-37.95,-0.05
+DUK,600,127.84,127.88,76728.0,24.0,0.03,122.5,134.0,2026-03-23,Utilities,127.88,24.0,0.03
+TT,250,428.24,428.21,107052.5,-7.5,-0.01,410.0,455.0,2026-03-23,Industrials,428.24,-7.5,-0.01

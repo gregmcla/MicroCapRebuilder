@@ -831,8 +831,16 @@ def load_watchlist(portfolio_id: str = "") -> list:
     if not watchlist_path.exists():
         return []
 
+    watchlist = []
     with open(watchlist_path, "r") as f:
-        watchlist = [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                watchlist.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
 
     return [item["ticker"] for item in watchlist]
 

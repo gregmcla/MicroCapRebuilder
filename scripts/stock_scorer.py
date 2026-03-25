@@ -241,7 +241,7 @@ class StockScorer:
                 return thresholds[regime_key]
 
         # Default threshold
-        return 40.0
+        return 30.0
 
     def _fetch_price_data(self, ticker: str, period: str = "1mo") -> Optional[pd.DataFrame]:
         """Fetch historical price data for a ticker."""

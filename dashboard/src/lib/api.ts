@@ -105,6 +105,8 @@ export const api = {
   updatePortfolioConfig: (pid: string, changes: Record<string, unknown>) =>
     put<{ success: boolean; message: string }>(`/portfolios/${pid}/config`, { changes }),
 
+  getDailyReport: (pid: string) => get<{ text: string }>(`/${pid}/report`),
+
   getTickerInfo: (pid: string, ticker: string) =>
     get<TickerInfo>(`/${pid}/position/${ticker}/info`),
   getPositionRationale: (pid: string, ticker: string) =>

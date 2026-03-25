@@ -15,7 +15,7 @@
       "universe": "allcap",
       "created": "2026-03-10T01:13:40",
       "starting_capital": 1000000.0,
-      "active": true
+      "active": false
     },
     "boomers": {
       "id": "boomers",
@@ -23,7 +23,7 @@
       "universe": "allcap",
       "created": "2026-03-10T01:22:49",
       "starting_capital": 500000.0,
-      "active": true
+      "active": false
     },
     "max": {
       "id": "max",
@@ -38,6 +38,30 @@
       "name": "Defense Tech",
       "universe": "midcap",
       "created": "2026-03-11T14:16:25",
+      "starting_capital": 1000000.0,
+      "active": true
+    },
+    "cash-cow-compounders": {
+      "id": "cash-cow-compounders",
+      "name": "Cash Cow Compounders",
+      "universe": "largecap",
+      "created": "2026-03-23T13:54:30",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "asymmetric-catalyst-hunters": {
+      "id": "asymmetric-catalyst-hunters",
+      "name": "Asymmetric Catalyst Hunters",
+      "universe": "microcap",
+      "created": "2026-03-23T16:52:36",
+      "starting_capital": 10000.0,
+      "active": true
+    },
+    "catalyst-momentum-scalper": {
+      "id": "catalyst-momentum-scalper",
+      "name": "Catalyst Momentum Scalper",
+      "universe": "allcap",
+      "created": "2026-03-23T16:59:14",
       "starting_capital": 1000000.0,
       "active": true
     }

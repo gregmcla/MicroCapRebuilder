@@ -1,3 +1,0 @@
-{"ticker": "XPRO", "added_date": "2026-02-25", "source": "MOMENTUM_BREAKOUT", "discovery_score": 100, "sector": "Energy", "market_cap_m": 1987.0, "avg_volume": 1101487, "last_checked": "2026-02-25", "status": "ACTIVE", "notes": "Standard candidate"}
-{"ticker": "OII", "added_date": "2026-02-25", "source": "SECTOR_LEADER", "discovery_score": 100, "sector": "Energy", "market_cap_m": 3790.9, "avg_volume": 1479997, "last_checked": "2026-02-25", "status": "ACTIVE", "notes": "Strong momentum, Near 52wk high"}
-{"ticker": "PTEN", "added_date": "2026-02-25", "source": "SECTOR_LEADER", "discovery_score": 100, "sector": "Energy", "market_cap_m": 3160.2, "avg_volume": 10647970, "last_checked": "2026-02-25", "status": "ACTIVE", "notes": "Near 52wk high"}

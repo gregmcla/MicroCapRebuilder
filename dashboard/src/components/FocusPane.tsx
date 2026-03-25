@@ -5,6 +5,7 @@ import type { RightTab } from "../lib/store";
 import ActionsTab from "./ActionsTab";
 import RiskTab from "./RiskTab";
 import PerformanceTab from "./PerformanceTab";
+import ReportTab from "./ReportTab";
 
 interface FocusPaneProps {
   className?: string;
@@ -14,6 +15,7 @@ const TABS: { tab: RightTab; label: string }[] = [
   { tab: "actions", label: "Actions" },
   { tab: "risk", label: "Risk" },
   { tab: "performance", label: "Performance" },
+  { tab: "report", label: "Report" },
 ];
 
 function TabBar() {
@@ -63,6 +65,7 @@ export default function FocusPane({ className = "" }: FocusPaneProps) {
         {rightTab === "actions" && <ActionsTab />}
         {rightTab === "risk" && <RiskTab />}
         {rightTab === "performance" && <PerformanceTab />}
+        {rightTab === "report" && <ReportTab />}
       </div>
     </div>
   );

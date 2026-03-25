@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="55%" fx="50%" fy="45%">
+      <stop offset="0%" stop-color="#4FD1C5" stop-opacity="0.18"/>
+      <stop offset="35%" stop-color="#7c5cfc" stop-opacity="0.22"/>
+      <stop offset="70%" stop-color="#a855f7" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#08080f" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRing" cx="50%" cy="42%" r="48%" fx="50%" fy="42%">
+      <stop offset="0%" stop-color="#c026d3" stop-opacity="0.0"/>
+      <stop offset="55%" stop-color="#7c5cfc" stop-opacity="0.28"/>
+      <stop offset="80%" stop-color="#5b8df5" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#08080f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" fill="#08080f"/>
+
+  <!-- Radial glow layers -->
+  <g id="background-glow">
+    <ellipse cx="256" cy="230" rx="230" ry="260" fill="url(#bgGlow)"/>
+    <ellipse cx="256" cy="220" rx="200" ry="240" fill="url(#glowRing)"/>
+  </g>
+
+  <!-- Face facets — forehead / top of skull -->
+  <g id="skull-top">
+    <polygon points="190,72 256,58 230,120" fill="#7c5cfc" opacity="0.92"/>
+    <polygon points="256,58 322,72 282,118" fill="#a855f7" opacity="0.85"/>
+    <polygon points="230,120 256,58 282,118" fill="#5b8df5" opacity="0.78"/>
+    <polygon points="155,110 190,72 230,120" fill="#c026d3" opacity="0.70"/>
+    <polygon points="322,72 358,108 282,118" fill="#4FD1C5" opacity="0.72"/>
+  </g>
+
+  <!-- Forehead band -->
+  <g id="forehead">
+    <polygon points="155,110 230,120 200,160" fill="#a855f7" opacity="0.80"/>
+    <polygon points="230,120 282,118 256,162" fill="#7c5cfc" opacity="0.88"/>
+    <polygon points="282,118 358,108 312,158" fill="#5b8df5" opacity="0.75"/>
+    <polygon points="200,160 230,120 256,162" fill="#4FD1C5" opacity="0.60"/>
+    <polygon points="256,162 282,118 312,158" fill="#c026d3" opacity="0.65"/>
+  </g>
+
+  <!-- Brow / eye zone -->
+  <g id="brow-zone">
+    <polygon points="148,148 155,110 200,160" fill="#5b8df5" opacity="0.72"/>
+    <polygon points="358,108 368,150 312,158" fill="#7c5cfc" opacity="0.68"/>
+    <polygon points="148,148 200,160 176,200" fill="#4FD1C5" opacity="0.82"/>
+    <polygon points="200,160 256,162 222,202" fill="#a855f7" opacity="0.55"/>
+    <polygon points="256,162 312,158 290,204" fill="#7c5cfc" opacity="0.62"/>
+    <polygon points="312,158 368,150 338,200" fill="#c026d3" opacity="0.78"/>
+  </g>
+
+  <!-- Eyes / nose bridge -->
+  <g id="eye-nose-bridge">
+    <polygon points="176,200 222,202 196,240" fill="#5b8df5" opacity="0.90"/>
+    <polygon points="222,202 256,196 240,238" fill="#a855f7" opacity="0.45"/>
+    <polygon points="256,196 290,204 272,238" fill="#4FD1C5" opacity="0.50"/>
+    <polygon points="290,204 338,200 316,242" fill="#7c5cfc" opacity="0.88"/>
+    <polygon points="196,240 222,202 240,238" fill="#c026d3" opacity="0.38"/>
+    <polygon points="240,238 256,196 272,238" fill="#5b8df5" opacity="0.30"/>
+    <polygon points="272,238 290,204 316,242" fill="#a855f7" opacity="0.40"/>
+  </g>
+
+  <!-- Cheekbones / mid face -->
+  <g id="cheeks-midface">
+    <polygon points="148,148 176,200 140,228" fill="#a855f7" opacity="0.70"/>
+    <polygon points="368,150 338,200 372,228" fill="#4FD1C5" opacity="0.74"/>
+    <polygon points="140,228 176,200 160,260" fill="#7c5cfc" opacity="0.82"/>
+    <polygon points="372,228 338,200 352,260" fill="#5b8df5" opacity="0.80"/>
+    <polygon points="196,240 240,238 216,278" fill="#4FD1C5" opacity="0.68"/>
+    <polygon points="272,238 316,242 296,278" fill="#c026d3" opacity="0.62"/>
+    <polygon points="240,238 272,238 256,282" fill="#a855f7" opacity="0.55"/>
+  </g>
+
+  <!-- Nose / philtrum -->
+  <g id="nose-philtrum">
+    <polygon points="216,278 256,282 236,316" fill="#7c5cfc" opacity="0.72"/>
+    <polygon points="256,282 296,278 276,316" fill="#5b8df5" opacity="0.68"/>
+    <polygon points="236,316 256,282 276,316" fill="#4FD1C5" opacity="0.58"/>
+  </g>
+
+  <!-- Mouth / lips zone -->
+  <g id="mouth-zone">
+    <polygon points="196,300 236,316 214,346" fill="#c026d3" opacity="0.80"/>
+    <polygon points="236,316 276,316 256,352" fill="#a855f7" opacity="0.90"/>
+    <polygon points="276,316 316,300 298,346" fill="#7c5cfc" opacity="0.78"/>
+    <polygon points="214,346 256,352 234,376" fill="#5b8df5" opacity="0.60"/>
+    <polygon points="256,352 298,346 278,376" fill="#4FD1C5" opacity="0.65"/>
+    <polygon points="234,376 256,352 278,376" fill="#c026d3" opacity="0.50"/>
+  </g>
+
+  <!-- Jaw / lower face -->
+  <g id="jaw">
+    <polygon points="160,260 196,300 148,308" fill="#5b8df5" opacity="0.75"/>
+    <polygon points="352,260 316,300 364,308" fill="#7c5cfc" opacity="0.72"/>
+    <polygon points="148,308 196,300 170,352" fill="#4FD1C5" opacity="0.68"/>
+    <polygon points="364,308 316,300 342,352" fill="#a855f7" opacity="0.65"/>
+    <polygon points="170,352 214,346 192,390" fill="#c026d3" opacity="0.58"/>
+    <polygon points="342,352 298,346 322,388" fill="#5b8df5" opacity="0.62"/>
+    <polygon points="192,390 234,376 256,408" fill="#7c5cfc" opacity="0.55"/>
+    <polygon points="278,376 322,388 256,408" fill="#a855f7" opacity="0.52"/>
+    <polygon points="234,376 278,376 256,408" fill="#4FD1C5" opacity="0.48"/>
+  </g>
+
+  <!-- Neck / bust top -->
+  <g id="neck-bust">
+    <polygon points="214,404 256,408 236,444" fill="#5b8df5" opacity="0.60"/>
+    <polygon points="256,408 298,404 276,444" fill="#7c5cfc" opacity="0.58"/>
+    <polygon points="236,444 256,408 276,444" fill="#a855f7" opacity="0.45"/>
+    <polygon points="170,420 214,404 190,460" fill="#4FD1C5" opacity="0.55"/>
+    <polygon points="342,420 298,404 322,460" fill="#c026d3" opacity="0.52"/>
+    <polygon points="190,460 236,444 210,490" fill="#7c5cfc" opacity="0.48"/>
+    <polygon points="276,444 322,460 302,490" fill="#5b8df5" opacity="0.45"/>
+    <polygon points="210,490 236,444 276,444 302,490" fill="#a855f7" opacity="0.38"/>
+  </g>
+
+  <!-- Floating shattered shards — atmosphere -->
+  <g id="shards-atmosphere" opacity="0.6">
+    <polygon points="88,160 108,140 96,178" fill="#4FD1C5" opacity="0.55"/>
+    <polygon points="406,180 426,158 418,198" fill="#c026d3" opacity="0.48"/>
+    <polygon points="72,300 96,284 86,318" fill="#7c5cfc" opacity="0.42"/>
+    <polygon points="418,310 440,294 432,328" fill="#5b8df5" opacity="0.40"/>
+    <polygon points="120,430 140,414 128,448" fill="#a855f7" opacity="0.38"/>
+    <polygon points="380,440 402,420 392,454" fill="#4FD1C5" opacity="0.35"/>
+    <polygon points="100,82 120,66 108,98" fill="#c026d3" opacity="0.45"/>
+    <polygon points="392,90 412,72 402,106" fill="#7c5cfc" opacity="0.42"/>
+  </g>
+</svg>

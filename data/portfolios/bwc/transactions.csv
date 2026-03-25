@@ -1,3 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank
-763eec70,2026-02-24,ETR,BUY,950,105.2,99940.0,99.94,126.24,SIGNAL,BULL,67.5,"{""momentum"": 75.7, ""volatility"": 75.7, ""volume"": 39.7, ""relative_strength"": 75.5, ""mean_reversion"": 72.2, ""rsi"": 55.0, ""composite"": 67.5}",
-a1be460f,2026-02-24,NEE,BUY,732,95.68,70037.76,90.9,114.82,SIGNAL,BULL,65.8,"{""momentum"": 78.6, ""volatility"": 75.5, ""volume"": 47.3, ""relative_strength"": 75.8, ""mean_reversion"": 71.2, ""rsi"": 35.0, ""composite"": 65.8}",

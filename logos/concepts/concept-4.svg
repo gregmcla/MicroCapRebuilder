@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <!-- G gradient: deep violet to electric blue -->
+    <linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#5b8df5"/>
+    </linearGradient>
+
+    <!-- Glow filter for market wave -->
+    <filter id="greenGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Subtle outer ring gradient -->
+    <radialGradient id="ringGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="85%" stop-color="transparent"/>
+      <stop offset="100%" stop-color="#7c5cfc" stop-opacity="0.35"/>
+    </radialGradient>
+
+    <!-- Inner glow for background -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0e0c20"/>
+      <stop offset="100%" stop-color="#080810"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Dark background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring accent -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="#7c5cfc" stroke-width="1.5" opacity="0.45"/>
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#5b8df5" stroke-width="0.5" opacity="0.2"/>
+
+  <!--
+    G LETTERFORM — constructed from paths
+    Center: (256, 256), outer radius ~130, inner radius ~90
+    G arc: large arc from ~50deg to ~310deg (leaving opening on right)
+    Crossbar: horizontal bar at mid-height pointing inward from right
+    Stroke-based approach with thick rounded caps for clean logo feel
+  -->
+
+  <!-- G outer arc: from top-right opening (~320deg) sweeping CCW (large arc) to bottom-right (~40deg) -->
+  <!-- We build the G as a filled path for scalability -->
+  <!-- Outer arc radius: 130, inner arc radius: 88, stroke width = 42 -->
+  <!-- Opening: right side, roughly -50deg to +50deg from center-right -->
+
+  <!-- G shape as filled path:
+       Outer radius = 130, inner = 88
+       Center = (256, 256)
+       Opening angle: from -40deg to +40deg on right side (leaving gap for market chart)
+       Crossbar extends from right edge inward to center at mid-height
+  -->
+
+  <path d="
+    M 356.6,222.7
+    A 130,130 0 1 0 356.6,289.3
+    L 356.6,289.3
+    L 316.6,289.3
+    L 316.6,256
+    L 270,256
+    L 270,230
+    L 316.6,230
+    L 316.6,222.7
+    Z
+    M 344.4,230
+    A 88,88 0 1 1 344.4,282
+    L 316.6,282
+    L 316.6,263
+    L 262,263
+    L 262,249
+    L 316.6,249
+    L 316.6,230
+    Z
+  " fill="none"/>
+
+  <!-- Cleaner approach: G as a single compound filled path -->
+  <!-- Outer path (clockwise), inner path (counter-clockwise) = donut with opening -->
+  <!--
+    Outer circle points at angles (0=right, measured from positive x-axis):
+    Opening: from -42deg to +42deg (right side)
+    Start (top of opening): angle=-42deg from center => x=256+130*cos(-42), y=256+130*sin(-42)
+    cos(-42deg)=0.7431, sin(-42deg)=-0.6691
+    => (352.6, 169.0)
+    End (bottom of opening): angle=+42deg
+    cos(42deg)=0.7431, sin(42deg)=0.6691
+    => (352.6, 343.0)
+
+    Inner circle (r=88):
+    Start at -42deg: (256+88*0.7431, 256-88*0.6691) = (321.4, 197.1)
+    End at +42deg: (321.4, 314.9)
+  -->
+
+  <g filter="none">
+    <!-- G outer shape -->
+    <path d="
+      M 352.6,169.0
+      A 130,130 0 1 0 352.6,343.0
+      L 321.4,314.9
+      A 88,88 0 1 1 321.4,197.1
+      Z
+    " fill="url(#gGrad)"/>
+
+    <!-- G crossbar: horizontal bar extending from right edge inward -->
+    <!-- At mid-height (y=256), from x=321 inward to x=256 -->
+    <!-- Bar height: 36px, so y from 238 to 274 -->
+    <!-- Left edge of crossbar at x=252 (stops at inner circle edge) -->
+    <rect x="252" y="238" width="112" height="36" rx="4" fill="url(#gGrad)"/>
+  </g>
+
+  <!--
+    MARKET WAVE inside the G's opening (right side of G)
+    The opening is on the right, roughly x: 322 to 400, y: 170 to 342
+    We place 5 candlestick bars in a rising pattern
+    Each candle: thin wick line + thicker body rect
+    Colors: #00ff88 with glow
+  -->
+  <g filter="url(#greenGlow)" opacity="0.92">
+
+    <!-- Candle 1 (leftmost, shortest) -->
+    <!-- wick -->
+    <line x1="334" y1="295" x2="334" y2="270" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- body -->
+    <rect x="330" y="281" width="8" height="16" rx="1.5" fill="#00ff88"/>
+
+    <!-- Candle 2 -->
+    <line x1="350" y1="288" x2="350" y2="260" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="346" y="273" width="8" height="17" rx="1.5" fill="#00ff88"/>
+
+    <!-- Candle 3 -->
+    <line x1="366" y1="278" x2="366" y2="248" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="362" y="263" width="8" height="17" rx="1.5" fill="#00ff88"/>
+
+    <!-- Candle 4 (bearish, slightly shorter body for visual rhythm) -->
+    <line x1="382" y1="268" x2="382" y2="238" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="378" y="252" width="8" height="14" rx="1.5" fill="#00cc66"/>
+
+    <!-- Candle 5 (tallest, rightmost) -->
+    <line x1="398" y1="258" x2="398" y2="222" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+    <rect x="394" y="240" width="8" height="20" rx="1.5" fill="#00ff88"/>
+
+    <!-- Subtle baseline for the chart -->
+    <line x1="326" y1="302" x2="410" y2="302" stroke="#00ff88" stroke-width="0.75" stroke-linecap="round" opacity="0.3"/>
+  </g>
+
+  <!-- Subtle inner highlight on G arc (top-left) for dimension -->
+  <path d="
+    M 210,142
+    A 130,130 0 0 1 320,148
+  " fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.08"/>
+
+</svg>

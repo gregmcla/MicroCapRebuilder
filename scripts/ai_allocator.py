@@ -48,7 +48,7 @@ def run_ai_allocation(
         strategy_dna: free-text strategy mandate from portfolio config
         info_cache: yfinance .info dict per ticker (fundamentals)
     """
-    client_type, client = get_ai_client()
+    client = get_ai_client()
 
     # Build set of held tickers for sell validation
     held_tickers: set = set()
@@ -89,20 +89,12 @@ def run_ai_allocation(
     )
 
     try:
-        if client_type == "anthropic":
-            response = client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=6000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            response_text = response.content[0].text if response.content else ""
-        else:  # openai
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                max_tokens=6000,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            response_text = response.choices[0].message.content if response.choices else ""
+        response = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=16000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        response_text = response.content[0].text if response.content else ""
 
         if not response_text or not response_text.strip():
             raise ValueError("Empty response from AI allocator")
