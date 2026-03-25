@@ -113,9 +113,11 @@ export default function MatrixGrid({
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
 
-  // Auto-switch to ACTIONS tab when analysis finishes
+  // Auto-switch to ACTIONS tab only when analysis transitions from running → done
+  const wasAnalyzing = useRef(false);
   useEffect(() => {
-    if (analysisResult && !isAnalyzing) setViewTab("actions");
+    if (wasAnalyzing.current && !isAnalyzing && analysisResult) setViewTab("actions");
+    wasAnalyzing.current = isAnalyzing;
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("perf");
