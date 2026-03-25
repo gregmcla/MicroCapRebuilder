@@ -69,3 +69,21 @@ def test_portfolio_analytics_benchmark_uses_config():
             # First call should use ^GSPC (from config), not ^RUT
             first_ticker = mock_dl.call_args_list[0][0][0]
             assert first_ticker == "^GSPC", f"Expected ^GSPC, got {first_ticker}"
+
+
+# ─── Task 3: prompt_extras threading ───────────────────────────────────────────
+
+def test_run_ai_allocation_accepts_prompt_extras():
+    """run_ai_allocation must accept a prompt_extras optional kwarg."""
+    from ai_allocator import run_ai_allocation
+    sig = inspect.signature(run_ai_allocation)
+    assert "prompt_extras" in sig.parameters
+    assert sig.parameters["prompt_extras"].default is None
+
+
+def test_build_allocation_prompt_accepts_prompt_extras():
+    """_build_allocation_prompt must accept a prompt_extras optional kwarg."""
+    from ai_allocator import _build_allocation_prompt
+    sig = inspect.signature(_build_allocation_prompt)
+    assert "prompt_extras" in sig.parameters
+    assert sig.parameters["prompt_extras"].default is None

@@ -31,6 +31,7 @@ def run_ai_allocation(
     strategy_dna: str,
     info_cache: Optional[dict] = None,
     regime_analysis: Optional[RegimeAnalysis] = None,
+    prompt_extras: Optional[dict] = None,
 ) -> list:
     """
     Run full AI allocation for an AI-driven portfolio.
@@ -89,6 +90,7 @@ def run_ai_allocation(
         info_cache=info_cache,
         full_watchlist=full_watchlist,
         regime_analysis=regime_analysis,
+        prompt_extras=prompt_extras,
     )
 
     try:
@@ -140,6 +142,7 @@ def _build_allocation_prompt(
     info_cache: Optional[dict] = None,
     full_watchlist: bool = False,
     regime_analysis: Optional[RegimeAnalysis] = None,
+    prompt_extras: Optional[dict] = None,
 ) -> str:
     """Build the full allocation prompt for Claude."""
 

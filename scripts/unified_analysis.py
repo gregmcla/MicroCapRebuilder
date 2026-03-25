@@ -30,14 +30,15 @@ from risk_manager import RiskManager
 from opportunity_layer import OpportunityLayer
 from composition_layer import CompositionLayer
 from capital_preservation import get_preservation_status
-from early_warning import get_warning_severity
+from early_warning import get_warning_severity, get_warnings
 from enhanced_structures import ProposedAction
+from analytics import PortfolioAnalytics
 from ai_review import (
     ReviewedAction, ReviewDecision,
     review_proposed_actions, format_review_summary
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem
-from factor_learning import apply_weight_adjustments as _apply_weight_adjustments
+from factor_learning import apply_weight_adjustments as _apply_weight_adjustments, FactorLearner
 from data_files import get_mode_indicator
 from portfolio_state import (
     load_portfolio_state,
@@ -145,6 +146,49 @@ def _run_ai_driven_analysis(
         scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
         print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
 
+    # ─── Gather rich context for AI prompt ─────────────────────────────────────
+    prompt_extras: dict = {
+        "trade_stats": None,
+        "portfolio_metrics": None,
+        "warnings": [],
+        "days_since_last_buy": None,
+        "factor_summary": None,
+    }
+    _portfolio_id = state.portfolio_id
+
+    try:
+        prompt_extras["warnings"] = get_warnings(portfolio_id=_portfolio_id)
+    except Exception as e:
+        print(f"  [AI-Driven] Warnings fetch failed (non-fatal): {e}")
+
+    try:
+        trade_stats = TradeAnalyzer(portfolio_id=_portfolio_id).calculate_trade_stats()
+        prompt_extras["trade_stats"] = trade_stats
+    except Exception as e:
+        print(f"  [AI-Driven] TradeAnalyzer failed (non-fatal): {e}")
+
+    try:
+        prompt_extras["portfolio_metrics"] = PortfolioAnalytics(portfolio_id=_portfolio_id).calculate_all_metrics()
+    except Exception as e:
+        print(f"  [AI-Driven] PortfolioAnalytics failed (non-fatal): {e}")
+
+    try:
+        import pandas as _pd
+        if not state.transactions.empty:
+            buys = state.transactions[state.transactions["action"] == "BUY"]
+            if not buys.empty:
+                last_buy_date = _pd.to_datetime(buys["date"]).max().date()
+                prompt_extras["days_since_last_buy"] = (date.today() - last_buy_date).days
+    except Exception as e:
+        print(f"  [AI-Driven] Cash idle time failed (non-fatal): {e}")
+
+    try:
+        summary = FactorLearner(portfolio_id=_portfolio_id).get_factor_summary()
+        if summary.get("status") == "ok":
+            prompt_extras["factor_summary"] = summary
+    except Exception as e:
+        print(f"  [AI-Driven] FactorLearner failed (non-fatal): {e}")
+
     # Build sector map from positions + watchlist
     sector_map = _build_sector_map(state)
 
@@ -160,6 +204,7 @@ def _run_ai_driven_analysis(
         strategy_dna=strategy_dna,
         info_cache=info_cache,
         regime_analysis=state.regime_analysis,
+        prompt_extras=prompt_extras,
     )
 
     # Split by decision (all will be APPROVE in AI-driven mode)
