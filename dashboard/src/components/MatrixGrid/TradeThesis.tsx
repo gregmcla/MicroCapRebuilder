@@ -23,7 +23,9 @@ interface TradeThesisProps {
 
 export default function TradeThesis({ rationale, accentColor = "#4ade80" }: TradeThesisProps) {
   const decisionColor = DECISION_COLOR[rationale.ai_decision] ?? "#888";
-  const topLine = rationale.quant_reason?.split(" | ")[0] ?? "";
+  const _rawTopLine = rationale.quant_reason?.split(" | ")[0] ?? "";
+  // Don't show quant_reason if it's a duplicate of ai_reasoning (AI-driven portfolios)
+  const topLine = _rawTopLine && _rawTopLine !== rationale.ai_reasoning ? _rawTopLine : "";
 
   return (
     <div style={{ fontFamily: MATRIX_FONT, display: "flex", flexDirection: "column", gap: 7 }}>

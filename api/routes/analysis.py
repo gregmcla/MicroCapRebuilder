@@ -23,9 +23,10 @@ def analyze(portfolio_id: str):
     try:
         result = run_unified_analysis(dry_run=True, portfolio_id=portfolio_id)
         analysis_file = _analysis_file(portfolio_id)
+        serialized = serialize(result)
         with open(analysis_file, "w") as f:
-            json.dump(result, f, default=str)
-        return serialize(result)
+            json.dump(serialized, f)
+        return serialized
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

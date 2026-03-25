@@ -147,6 +147,11 @@ function FeedItem({
             {badge.label}
           </span>
         )}
+        {tx.date.length > 10 && (
+          <span style={{ color: "var(--text-0)", fontSize: "9px", fontFamily: "var(--font-mono)" }}>
+            {tx.date.slice(11, 16)}
+          </span>
+        )}
         <span
           className="shrink-0"
           style={{

@@ -233,11 +233,11 @@
       "volume_anomalies": false
     },
     "filters": {
-      "min_market_cap_m": 2000,
-      "max_market_cap_m": 15000,
-      "min_avg_volume": 300000,
-      "min_price": 10.0,
-      "max_price": 1000.0
+      "min_market_cap_m": 500,
+      "max_market_cap_m": null,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 2000.0
     },
     "watchlist": {
       "max_tickers": 250,
@@ -283,11 +283,11 @@
       }
     },
     "filters": {
-      "min_market_cap_m": 2000,
-      "max_market_cap_m": 15000,
-      "min_avg_volume": 300000,
-      "min_price": 10.0,
-      "max_price": 1000.0
+      "min_market_cap_m": 500,
+      "max_market_cap_m": null,
+      "min_avg_volume": 200000,
+      "min_price": 5.0,
+      "max_price": 2000.0
     }
   },
   "strategy": {
@@ -299,5 +299,5 @@
     "ai_rationale": null
   },
   "ai_driven": true,
-  "strategy_dna": "Defense tech and autonomous systems \u2014 the convergence of AI with\n  next-generation military hardware (drones, electronic warfare, space-based\n  ISR) is getting a decade of compressed investment in 3-5 years as NATO members\n   race to hit 3% GDP spending targets. The traditional primes (LMT, RTX, NOC)\n  are fine, but the real asymmetry is in the mid-cap pure-plays building the    \n  software stacks and sensor fusion layers that make all that hardware actually\n  work. The tailwind isn't cyclical \u2014 it's structural, geopolitically mandated, \n  and the contracts are long-duration, which means predictable revenue in an    \n  uncertain macro environment."
+  "strategy_dna": "Defense tech and autonomous systems \u2014 the convergence of AI with\n  next-generation military hardware (drones, electronic warfare, space-based\n  ISR) is getting a decade of compressed investment in 3-5 years as NATO members\n   race to hit 3% GDP spending targets. The traditional primes (LMT, RTX, NOC)\n  are fine, but the real asymmetry is in the mid-cap pure-plays building the    \n  software stacks and sensor fusion layers that make all that hardware actually\n  work. The tailwind isn't cyclical \u2014 it's structural, geopolitically mandated, \n  and the contracts are long-duration, which means predictable revenue in an    \n  uncertain macro environment.\n\n  DEPLOYMENT POSTURE: This portfolio is thesis-driven, not momentum-chasing.\n  Weak short-term price momentum in defense names is often a buying opportunity,\n  not a reason to stay in cash. When the sector sells off due to macro\n  uncertainty or risk-off sentiment, the underlying contract pipeline and\n  geopolitical spending mandates are unchanged. Use dips in momentum to build\n  positions at better entry prices. With significant cash available, prioritize\n  deploying into high-conviction names rather than sitting idle. A SIDEWAYS or\n  weak-momentum reading on quant scores should not prevent buying \u2014 treat it\n  as a better entry point for the same long-duration structural thesis."
 }

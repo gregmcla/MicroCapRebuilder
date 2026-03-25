@@ -472,7 +472,7 @@ def _convert_to_reviewed_actions(
             quant_score=0,  # AI-driven — no single quant score
             factor_scores={},
             regime=regime.value,
-            reason=buy["reasoning"],
+            reason="AI allocation",
         )
         result.append(ReviewedAction(
             original=action,
@@ -492,7 +492,7 @@ def _convert_to_reviewed_actions(
             quant_score=0,
             factor_scores={},
             regime=regime.value,
-            reason=sell["reasoning"],
+            reason="AI allocation",
         )
         result.append(ReviewedAction(
             original=action,

@@ -1,7 +1,7 @@
 """Control endpoints for mode toggling and emergency actions."""
 
 from fastapi import APIRouter, HTTPException
-from datetime import date
+from datetime import date, datetime
 
 from data_files import is_paper_mode, set_paper_mode
 from portfolio_state import (
@@ -53,7 +53,7 @@ def sell_position(portfolio_id: str, ticker: str):
 
     transaction = {
         "transaction_id": f"SELL_{ticker}_{date.today().isoformat()}",
-        "date": date.today().isoformat(),
+        "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "ticker": ticker,
         "action": "SELL",
         "shares": shares,

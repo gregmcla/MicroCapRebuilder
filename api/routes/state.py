@@ -89,6 +89,75 @@ def _compute_benchmark_comparison(snapshots, total_return_pct: float) -> dict:
     return result
 
 
+def _compute_position_alphas(positions_df, config) -> dict:
+    """Return {ticker: alpha_pct} where alpha = position_return - benchmark_return since entry."""
+    if positions_df.empty:
+        return {}
+    if "entry_date" not in positions_df.columns or "unrealized_pnl_pct" not in positions_df.columns:
+        return {}
+    try:
+        import pandas as pd
+        from datetime import date as _date
+        from yf_session import cached_download
+
+        benchmark = str(config.get("benchmark_symbol", "^GSPC"))
+        fallback = str(config.get("fallback_benchmark", "SPY"))
+
+        dates = [str(d)[:10] for d in positions_df["entry_date"] if d and str(d)[:10] not in ("", "nan")]
+        if not dates:
+            return {}
+        earliest = min(dates)
+
+        df = cached_download(benchmark, start=earliest, progress=False, auto_adjust=True)
+        if df is None or (hasattr(df, "empty") and df.empty):
+            df = cached_download(fallback, start=earliest, progress=False, auto_adjust=True)
+        if df is None or (hasattr(df, "empty") and df.empty):
+            return {}
+
+        if isinstance(df.columns, pd.MultiIndex):
+            sym = benchmark if ("Close", benchmark) in df.columns else fallback
+            if ("Close", sym) in df.columns:
+                closes = df[("Close", sym)]
+            elif "Close" in df.columns.get_level_values(0):
+                closes = df["Close"].iloc[:, 0]
+            else:
+                return {}
+        else:
+            if "Close" not in df.columns:
+                return {}
+            closes = df["Close"]
+
+        closes = closes.dropna()
+        if closes.empty:
+            return {}
+
+        closes.index = pd.to_datetime(closes.index)
+        current_bm = float(closes.iloc[-1])
+
+        alphas: dict = {}
+        for _, row in positions_df.iterrows():
+            ticker = str(row.get("ticker", ""))
+            entry_str = str(row.get("entry_date", ""))[:10]
+            pos_return = float(row.get("unrealized_pnl_pct", 0) or 0)
+            if not entry_str or entry_str == "nan":
+                alphas[ticker] = 0.0
+                continue
+            try:
+                entry_ts = pd.Timestamp(entry_str)
+                avail = closes.index[closes.index >= entry_ts]
+                entry_bm = float(closes.loc[avail[0]]) if len(avail) > 0 else float(closes.iloc[0])
+                if entry_bm <= 0:
+                    alphas[ticker] = 0.0
+                    continue
+                bm_return = (current_bm - entry_bm) / entry_bm * 100
+                alphas[ticker] = round(pos_return - bm_return, 2)
+            except Exception:
+                alphas[ticker] = 0.0
+        return alphas
+    except Exception:
+        return {}
+
+
 def _serialize_state(state):
     """Convert PortfolioState to a JSON-safe dict."""
     positions = state.positions
@@ -101,7 +170,17 @@ def _serialize_state(state):
     day_pnl = 0.0
     day_pnl_pct = 0.0
     today = date.today()
-    market_open_today = today.weekday() < 5  # Mon=0 … Fri=4
+    # Market is open Mon–Fri 9:30–16:00 ET; outside those hours zero out stale day P&L
+    try:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime as _dt, time as _time
+        _now_et = _dt.now(ZoneInfo("America/New_York"))
+        market_open_today = (
+            _now_et.weekday() < 5 and
+            _time(9, 30) <= _now_et.time() <= _time(16, 0)
+        )
+    except Exception:
+        market_open_today = today.weekday() < 5  # fallback: weekday only
     if market_open_today and len(snapshots) >= 1:
         last = snapshots.iloc[-1]
         snapshot_date = str(last.get("date", ""))
@@ -209,6 +288,13 @@ def _serialize_state(state):
         positions = positions.copy()
         positions["day_change"] = 0.0
         positions["day_change_pct"] = 0.0
+
+    # Per-position alpha = position return minus benchmark return since entry_date
+    if not positions.empty:
+        _alphas = _compute_position_alphas(positions, state.config)
+        if _alphas:
+            positions = positions.copy()
+            positions["alpha"] = positions["ticker"].map(_alphas).fillna(0.0)
 
     return {
         "cash": state.cash,

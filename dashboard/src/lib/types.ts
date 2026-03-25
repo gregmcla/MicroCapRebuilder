@@ -107,6 +107,7 @@ export interface Position {
   entry_date: string;
   day_change?: number;
   day_change_pct?: number;
+  alpha?: number;
 }
 
 export interface TradeRationale {

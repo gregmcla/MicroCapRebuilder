@@ -33,6 +33,7 @@ export interface MatrixPosition {
   takeProfit?: number;
   entryDate?: string;
   dayChangeDollar?: number;
+  alpha?: number;
 }
 
 export interface MatrixGridProps {
