@@ -311,6 +311,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
         boxShadow: glow,
         transition: "box-shadow 0.3s ease, border-color 0.3s ease",
         overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Delete */}
@@ -321,8 +323,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
           else setConfirmDelete(true);
         }}
         style={{
-          position: "absolute", top: "8px", right: "8px", zIndex: 10,
-          fontSize: "10px", padding: "2px 6px", background: "none", border: "none",
+          position: "absolute", top: "6px", right: "6px", zIndex: 10,
+          fontSize: "10px", padding: "2px 5px", background: "none", border: "none",
           color: confirmDelete ? "var(--red)" : "transparent",
           fontWeight: confirmDelete ? 600 : 400, cursor: "pointer",
         }}
@@ -335,37 +337,37 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       {/* Clickable body */}
       <button
         onClick={() => setPortfolio(summary.id)}
-        style={{ width: "100%", textAlign: "left", padding: "14px 14px 0", background: "none", border: "none", cursor: "pointer" }}
+        style={{ width: "100%", textAlign: "left", padding: "10px 10px 0", background: "none", border: "none", cursor: "pointer" }}
       >
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px", paddingRight: "16px" }}>
-          <h3 style={{ flex: 1, fontSize: "13px", fontWeight: 700, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px", paddingRight: "14px" }}>
+          <h3 style={{ flex: 1, fontSize: "12px", fontWeight: 700, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {summary.name}
           </h3>
-          <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-0)" }}>
+          <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-0)" }}>
             {summary.universe}
           </span>
-          <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: summary.paper_mode ? "var(--amber)" : "var(--accent)" }}>
+          <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: summary.paper_mode ? "var(--amber)" : "var(--accent)" }}>
             {summary.paper_mode ? "Paper" : "Live"}
           </span>
         </div>
 
         {summary.error ? (
-          <div style={{ fontSize: "12px", color: "var(--red)", paddingBottom: "14px" }}>{summary.error}</div>
+          <div style={{ fontSize: "11px", color: "var(--red)", paddingBottom: "10px" }}>{summary.error}</div>
         ) : (
           <>
             {/* Equity + return */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "6px" }}>
-              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "20px", color: "var(--text-3)" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "7px", marginBottom: "4px" }}>
+              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: "var(--text-3)" }}>
                 ${summary.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
-              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "12px", color: pnlColor(summary.total_return_pct) }}>
+              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "11px", color: pnlColor(summary.total_return_pct) }}>
                 {fmtPct(summary.total_return_pct)}
               </span>
             </div>
 
             {/* P&L row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", fontSize: "11px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px", fontSize: "10px" }}>
               <span style={{ color: "var(--text-0)" }}>All-time</span>
               <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.all_time_pnl ?? 0), fontWeight: 600 }}>{fmt$(summary.all_time_pnl ?? 0)}</span>
               <span style={{ color: "var(--border-1)" }}>·</span>
@@ -379,13 +381,13 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
         )}
       </button>
 
-      {/* Sparkline strip — full-width, below the P&L row */}
+      {/* Sparkline strip — grows to fill remaining vertical space */}
       {!summary.error && hasSparkline && (
         <div style={{
           borderTop: "1px solid var(--border-0)",
-          borderBottom: "1px solid var(--border-0)",
           background: "var(--surface-0)",
-          height: "40px",
+          flex: 1,
+          minHeight: "24px",
           overflow: "hidden",
         }}>
           <EquitySparkline values={summary.sparkline!} returnPct={summary.total_return_pct ?? 0} />
@@ -394,11 +396,11 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
 
       {/* Top holdings */}
       {!summary.error && topHoldings.length > 0 && (
-        <div style={{ padding: "0 14px 10px" }} onClick={() => setPortfolio(summary.id)}>
-          <div style={{ borderTop: "1px solid var(--border-0)", paddingTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ padding: "6px 10px 0" }} onClick={() => setPortfolio(summary.id)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             {topHoldings.map((h) => (
-              <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-3)", width: "44px", flexShrink: 0 }}>
+              <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-3)", width: "40px", flexShrink: 0 }}>
                   {h.ticker}
                 </span>
                 <div style={{ flex: 1, height: "2px", background: "var(--surface-3)", borderRadius: "1px", overflow: "hidden" }}>
@@ -409,7 +411,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
                     opacity: 0.55,
                   }} />
                 </div>
-                <span className="font-mono tabular-nums" style={{ color: pnlColor(h.pnl_pct), fontSize: "10.5px", width: "44px", textAlign: "right", flexShrink: 0 }}>
+                <span className="font-mono tabular-nums" style={{ color: pnlColor(h.pnl_pct), width: "40px", textAlign: "right", flexShrink: 0 }}>
                   {fmtPct(h.pnl_pct)}
                 </span>
               </div>
@@ -421,22 +423,22 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       {/* Bottom stats */}
       {!summary.error && (
         <div
-          style={{ padding: "6px 14px 10px", display: "flex", alignItems: "center", gap: "6px", fontSize: "10.5px", color: "var(--text-1)", borderTop: "1px solid var(--border-0)" }}
+          style={{ padding: "5px 10px 7px", display: "flex", alignItems: "center", gap: "5px", fontSize: "9.5px", color: "var(--text-1)", borderTop: "1px solid var(--border-0)", marginTop: "6px" }}
           onClick={() => setPortfolio(summary.id)}
         >
           <span className="tabular-nums" style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime ?? "—"}</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.num_positions} pos</span>
+          <span className="tabular-nums">{summary.num_positions}p</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}% dep</span>
-          <div style={{ flex: 1, height: "2px", borderRadius: "1px", background: "var(--surface-3)", overflow: "hidden", margin: "0 4px" }}>
+          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}%</span>
+          <div style={{ flex: 1, height: "2px", borderRadius: "1px", background: "var(--surface-3)", overflow: "hidden", margin: "0 3px" }}>
             <div style={{
               height: "100%", borderRadius: "1px",
               width: `${Math.min(100, summary.deployed_pct)}%`,
               background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
             }} />
           </div>
-          <span className="tabular-nums" style={{ color: "var(--text-0)" }}>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })} cash</span>
+          <span className="tabular-nums" style={{ color: "var(--text-0)" }}>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
         </div>
       )}
 
@@ -714,12 +716,13 @@ export default function OverviewPage() {
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+        <div style={{ flex: 1, overflow: "hidden", padding: "14px 20px" }}>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: "16px",
-            alignContent: "start",
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            gridAutoRows: "1fr",
+            gap: "12px",
+            height: "100%",
           }}>
             {enriched.map((s) => (
               <PortfolioCard
