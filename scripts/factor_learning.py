@@ -105,7 +105,7 @@ class FactorLearner:
             return pd.DataFrame()
         df = pd.read_csv(self._transactions_file)
         if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
+            df["date"] = pd.to_datetime(df["date"], format="mixed")
         return df
 
     def _load_post_mortems(self) -> pd.DataFrame:
