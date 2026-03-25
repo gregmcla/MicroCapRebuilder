@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
+from schema import CLAUDE_MODEL
+
 # Import ProposedAction from centralized data structures
 from enhanced_structures import ProposedAction
 
@@ -324,7 +326,7 @@ def _review_batch(client, proposed_actions: list, portfolio_context: dict,
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model=CLAUDE_MODEL,
             max_tokens=16000,
             messages=[{"role": "user", "content": prompt}]
         )

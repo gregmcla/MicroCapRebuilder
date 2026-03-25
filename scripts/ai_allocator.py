@@ -16,6 +16,7 @@ from typing import Optional
 from enhanced_structures import ProposedAction
 from ai_review import ReviewedAction, ReviewDecision, get_ai_client
 from market_regime import MarketRegime
+from schema import CLAUDE_MODEL
 
 
 # ─── Main Entry Point ─────────────────────────────────────────────────────────
@@ -90,7 +91,7 @@ def run_ai_allocation(
 
     try:
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model=CLAUDE_MODEL,
             max_tokens=16000,
             messages=[{"role": "user", "content": prompt}]
         )

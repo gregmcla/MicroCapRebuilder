@@ -6,7 +6,7 @@ import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
-import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
+import type { PortfolioSummary, CrossPortfolioMover, PortfolioMeta } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import MatrixGrid from "./MatrixGrid";
@@ -698,7 +698,7 @@ export default function OverviewPage() {
 
   const matrixPortfolios = useMemo<MatrixPortfolio[]>(() => {
     if (!portfolios?.length) return [];
-    const ids = portfolios.map((p: any) => ({ id: p.id, name: p.name }));
+    const ids = portfolios.map((p: PortfolioMeta) => ({ id: p.id, name: p.name }));
     const map = buildPortfolioMap(ids);
     const summaryMap = new Map((overview?.portfolios ?? []).map((s) => [s.id, s]));
     return ids.map((p: { id: string; name: string }) => {

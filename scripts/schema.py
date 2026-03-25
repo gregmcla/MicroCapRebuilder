@@ -91,3 +91,7 @@ class Reason:
     REBALANCE = "REBALANCE"        # Portfolio rebalancing
     LIQUIDITY_DROP = "LIQUIDITY_DROP"  # Volume collapsed vs 3-month avg
     STAGNATION = "STAGNATION"          # Held >45 days with <±5% movement
+
+
+# ─── AI Model ─────────────────────────────────────────────────────────────────
+CLAUDE_MODEL = "claude-opus-4-6"

@@ -135,12 +135,14 @@ export default function MatrixGrid({
 
   // Boot sequence
   useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
     BOOT_LINES.forEach((line, i) => {
-      setTimeout(() => setBootLines((prev) => [...prev, line]), i * 120);
+      timers.push(setTimeout(() => setBootLines((prev) => [...prev, line]), i * 120));
     });
-    setTimeout(() => setBoot(1), 300);
-    setTimeout(() => setBoot(2), 700);
-    setTimeout(() => { setBoot(3); setMounted(true); }, 1100);
+    timers.push(setTimeout(() => setBoot(1), 300));
+    timers.push(setTimeout(() => setBoot(2), 700));
+    timers.push(setTimeout(() => { setBoot(3); setMounted(true); }, 1100));
+    return () => timers.forEach(clearTimeout);
   }, []);
 
   // Clock
@@ -246,7 +248,7 @@ export default function MatrixGrid({
     if (sortBy === "entry") arr.sort((a, b) => (b.entryDate ?? "").localeCompare(a.entryDate ?? ""));
     else if (sortBy === "value") arr.sort((a, b) => b.value - a.value);
     else if (sortBy === "perf") arr.sort((a, b) => b.perf - a.perf);
-    else if (sortBy === "alpha") arr.sort((a, b) => a.ticker.localeCompare(b.ticker));
+    else if (sortBy === "alpha") arr.sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
     else if (sortBy === "portfolio") arr.sort((a, b) => a.portfolioId.localeCompare(b.portfolioId) || b.value - a.value);
     return arr;
   }, [positions, sortBy, effectiveFilter]);
@@ -261,7 +263,8 @@ export default function MatrixGrid({
     // Pick sizing metric based on sort tab
     const sizeOf = (pos: typeof sorted[0]) => {
       if (sortBy === "perf") return Math.max(Math.abs(pos.perf), 0.5);
-      if (sortBy === "entry" || sortBy === "alpha") return 1; // uniform grid
+      if (sortBy === "alpha") return Math.max(Math.abs(pos.alpha ?? 0), 0.5);
+      if (sortBy === "entry") return 1; // uniform grid
       return Math.max(pos.value, 1); // value / portfolio
     };
     // Sort by size desc for squarified quality, track original indices
@@ -903,7 +906,14 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
             borderBottom: "1px solid rgba(255,255,255,0.02)",
             fontSize: 9, fontFamily: MATRIX_FONT, alignItems: "center",
           }}>
-            <span style={{ color: "#555", fontSize: 8 }}>{tx.date.slice(0, 10)}</span>
+            <span style={{ color: "#555", fontSize: 8 }}>
+              {tx.date.slice(0, 10)}
+              {tx.date.length > 10 && (
+                <span style={{ color: "#3a3a3a", display: "block", fontSize: 7 }}>
+                  {tx.date.slice(11, 16)}
+                </span>
+              )}
+            </span>
             <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
             <span onClick={() => onTickerClick(tx.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{tx.ticker}</span>
             {/* Entry price (sells) or qty (buys) */}

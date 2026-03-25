@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from schema import CLAUDE_MODEL
+
 try:
     import anthropic
 except ImportError:
@@ -87,7 +89,7 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
 
     client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model=CLAUDE_MODEL,
         max_tokens=1024,
         system=SUGGEST_CONFIG_PROMPT.format(starting_capital=starting_capital),
         messages=[{"role": "user", "content": f"Strategy DNA:\n{strategy_dna}"}],

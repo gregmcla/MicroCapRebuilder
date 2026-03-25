@@ -14,14 +14,14 @@ Usage:
     price = get_price("AAPL")
 
     # Use specific provider
-    provider = DataProvider(source="alpha_vantage", api_key="YOUR_KEY")
+    provider = DataProvider(source="alpha_vantage", api_key="<your_key>")
     data = provider.get_historical("AAPL", days=30)
 
 Configuration in config.json:
     "data_provider": {
         "primary": "yfinance",
         "fallback": "alpha_vantage",
-        "alpha_vantage_api_key": "YOUR_KEY",
+        "alpha_vantage_api_key": "<your_key>",
         "cache_minutes": 15,
         "retry_count": 3
     }

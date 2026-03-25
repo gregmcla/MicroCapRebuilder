@@ -57,6 +57,30 @@ from trade_analyzer import TradeAnalyzer
 from ai_allocator import run_ai_allocation
 
 
+# ─── Shared Helpers ───────────────────────────────────────────────────────────
+
+def _build_sector_map(state) -> dict:
+    """Build a ticker→sector dict from positions CSV then watchlist (positions win)."""
+    sector_map: dict = {}
+    if not state.positions.empty and "sector" in state.positions.columns:
+        for _, pos in state.positions.iterrows():
+            s = str(pos.get("sector", "")).strip()
+            if s and s not in ("", "nan", "Unknown"):
+                sector_map[pos["ticker"]] = s
+    try:
+        watchlist_file = get_watchlist_file(state.portfolio_id)
+        if watchlist_file.exists():
+            with open(watchlist_file) as f:
+                for line in f:
+                    if line.strip():
+                        entry = json.loads(line)
+                        if entry.get("sector") and entry["ticker"] not in sector_map:
+                            sector_map[entry["ticker"]] = entry["sector"]
+    except Exception as e:
+        print(f"Warning: failed to build sector map from watchlist: {e}")
+    return sector_map
+
+
 # ─── AI-Driven Analysis Helper ────────────────────────────────────────────────
 
 def _run_ai_driven_analysis(
@@ -122,23 +146,7 @@ def _run_ai_driven_analysis(
         print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
 
     # Build sector map from positions + watchlist
-    sector_map = {}
-    if not state.positions.empty and "sector" in state.positions.columns:
-        for _, pos in state.positions.iterrows():
-            s = str(pos.get("sector", "")).strip()
-            if s and s not in ("", "nan", "Unknown"):
-                sector_map[pos["ticker"]] = s
-    try:
-        watchlist_file = get_watchlist_file(state.portfolio_id)
-        if watchlist_file.exists():
-            with open(watchlist_file) as _wf:
-                for _line in _wf:
-                    if _line.strip():
-                        _entry = json.loads(_line)
-                        if _entry.get("sector") and _entry["ticker"] not in sector_map:
-                            sector_map[_entry["ticker"]] = _entry["sector"]
-    except Exception as e:
-        print(f"Warning: failed to build sector map from watchlist: {e}")
+    sector_map = _build_sector_map(state)
 
     # Run AI allocation
     print("\n  🤖 AI-DRIVEN MODE — Claude is the portfolio manager")
@@ -393,18 +401,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
 
         # Build sector_map from watchlist so Layer 3 can resolve sectors for
         # proposed buys (watchlist candidates won't be in the static file yet).
-        l3_sector_map: dict = {}
-        try:
-            watchlist_file = get_watchlist_file(state.portfolio_id)
-            if watchlist_file.exists():
-                with open(watchlist_file) as _wf:
-                    for _line in _wf:
-                        if _line.strip():
-                            _entry = json.loads(_line)
-                            if _entry.get("sector"):
-                                l3_sector_map[_entry["ticker"]] = _entry["sector"]
-        except Exception as e:
-            print(f"Warning: failed to build L3 sector map from watchlist: {e}")
+        l3_sector_map = _build_sector_map(state)
 
         # Run Layer 3: Portfolio Composition
         print("\nRunning Layer 3: Portfolio Composition...")
@@ -659,25 +656,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     print("AI reviewing proposed actions...")
 
     # Build sector map: positions.csv sector column (most reliable) + watchlist
-    sector_map = {}
-    # 1. Seed from positions.csv sector column (set at buy time)
-    if not state.positions.empty and "sector" in state.positions.columns:
-        for _, pos in state.positions.iterrows():
-            s = str(pos.get("sector", "")).strip()
-            if s and s not in ("", "nan", "Unknown"):
-                sector_map[pos["ticker"]] = s
-    # 2. Fill in missing from watchlist
-    try:
-        watchlist_file = get_watchlist_file(state.portfolio_id)
-        if watchlist_file.exists():
-            with open(watchlist_file) as f:
-                for line in f:
-                    if line.strip():
-                        entry = json.loads(line)
-                        if entry.get("sector") and entry["ticker"] not in sector_map:
-                            sector_map[entry["ticker"]] = entry["sector"]
-    except Exception as e:
-        print(f"Warning: failed to build sector map from watchlist: {e}")
+    sector_map = _build_sector_map(state)
 
     # Compute projected sector breakdown after proposed buys
     projected_sectors: dict = {}
@@ -810,6 +789,44 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     return result
 
 
+def _normalize_reviewed_action(r):
+    """
+    Normalize a ReviewedAction to a consistent object regardless of whether
+    it came from an in-memory analysis (Python dataclass) or was round-tripped
+    through JSON (plain dict). Returns a SimpleNamespace with .original,
+    .decision, .modified_shares, .modified_stop, .modified_target.
+    """
+    from types import SimpleNamespace
+
+    if isinstance(r, dict):
+        orig_dict = r.get("original", {}) or {}
+        if isinstance(orig_dict, dict):
+            original = SimpleNamespace(
+                action_type=orig_dict.get("action_type", ""),
+                ticker=orig_dict.get("ticker", ""),
+                shares=orig_dict.get("shares", 0),
+                price=orig_dict.get("price", 0.0),
+                stop_loss=orig_dict.get("stop_loss", 0.0),
+                take_profit=orig_dict.get("take_profit", 0.0),
+                quant_score=orig_dict.get("quant_score", 0.0),
+                factor_scores=orig_dict.get("factor_scores", {}),
+                regime=orig_dict.get("regime", ""),
+                reason=orig_dict.get("reason", ""),
+            )
+        else:
+            original = orig_dict  # already an object
+        return SimpleNamespace(
+            original=original,
+            decision=r.get("decision", "APPROVE"),
+            ai_reasoning=r.get("ai_reasoning", ""),
+            confidence=r.get("confidence", 0.9),
+            modified_shares=r.get("modified_shares"),
+            modified_stop=r.get("modified_stop"),
+            modified_target=r.get("modified_target"),
+        )
+    return r  # already a ReviewedAction dataclass
+
+
 def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) -> dict:
     """
     Execute the approved and modified actions from unified analysis.
@@ -817,8 +834,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     Returns:
         dict with execution results
     """
-    approved = analysis_result.get("approved", [])
-    modified = analysis_result.get("modified", [])
+    approved = [_normalize_reviewed_action(r) for r in analysis_result.get("approved", [])]
+    modified = [_normalize_reviewed_action(r) for r in analysis_result.get("modified", [])]
 
     actions_to_execute = approved + modified
     if not actions_to_execute:

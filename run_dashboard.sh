@@ -25,9 +25,9 @@ echo -e "${CYAN}Starting GScott Trading Cockpit${NC}"
 echo ""
 
 # Start FastAPI
-echo -e "  API:       ${GREEN}http://localhost:8000${NC}"
+echo -e "  API:       ${GREEN}http://localhost:8001${NC}"
 source .venv/bin/activate
-uvicorn api.main:app --port 8000 &
+uvicorn api.main:app --port 8001 &
 API_PID=$!
 
 # Start Vite dev server

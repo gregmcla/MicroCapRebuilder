@@ -60,6 +60,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `etf_holdings_provider.py` — ETF holdings provider (23 DEFAULT_ETFS)
 - `portfolio_registry.py` — portfolio creation, SECTOR_ETF_MAP, TRADING_STYLES, universe presets
 - `strategy_generator.py` — AI strategy generation via Anthropic API
+- `ai_allocator.py` — AI-driven allocation (replaces Layers 2-4 for AI-driven portfolios; calls Claude, validates stop/take_profit, returns ReviewedAction)
 - `market_regime.py` — bull/bear/sideways detection
 - `risk_layer.py` — trailing stops, volatility stops, regime-adjusted stops
 - `risk_manager.py` — position sizing, concentration limits
@@ -74,7 +75,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `strategy_pivot.py` — PIVOT recommendations
 - `capital_preservation.py` — capital preservation system
 - `yf_session.py` — DataFrame-level disk cache for yfinance (4hr TTL, curl_cffi compat)
-- `portfolio_chat.py` — GScott chat interface
+- `public_quotes.py` — real-time price wrapper around publicdotcom-py SDK; primary price source in execute + load_portfolio_state; falls back to yfinance (`PUBLIC_API_KEY` env var required)
 - `schema.py` — column constants and enums
 - `execute_sells.py`, `update_positions.py`, `pick_from_watchlist.py` — daily pipeline scripts
 
@@ -88,7 +89,7 @@ Thin REST layer. No business logic here.
 - `api/routes/analysis.py` — analyze + execute (`/api/{portfolio_id}/analyze`)
 - `api/routes/risk.py` — risk + warnings (`/api/{portfolio_id}/risk`)
 - `api/routes/performance.py` — performance + learning (`/api/{portfolio_id}/performance`)
-- `api/routes/chat.py` — chat + gscott insight (`/api/{portfolio_id}/chat`)
+- `api/routes/chat.py` — ~~deleted~~ (chat feature removed 2026-03-10)
 - `api/routes/controls.py` — mode toggle, sell, close-all (`/api/{portfolio_id}/...`)
 - `api/routes/discovery.py` — scan (`/api/{portfolio_id}/scan`)
 - `api/routes/market.py` — market indices + charts (`/api/market/...`)
@@ -124,11 +125,11 @@ MicroCapRebuilder/
 │   ├── portfolios.json             # Registry of all portfolios
 │   └── yf_cache/                   # yfinance disk cache (4hr TTL, gitignored)
 ├── docs/plans/                     # Design documents and implementation plans
-├── run_dashboard.sh                # Launches API (8000) + React dev (5173)
+├── run_dashboard.sh                # Launches API (8001) + React dev (5173)
 └── run_daily.sh                    # Daily trading pipeline
 ```
 
-**Active portfolios:** microcap, ai, new, largeboi (plus many orphan test dirs — ignore those)
+**Active portfolios:** microcap, adjacent-supporters-of-ai, boomers, max, defense-tech (trimmed to 5 as of 2026-03-23)
 
 ---
 
@@ -168,7 +169,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 
 ## React Dashboard
 
-**Launch:** `./run_dashboard.sh` (API on 8000, React on 5173)
+**Launch:** `./run_dashboard.sh` (API on 8001, React on 5173)
 
 **Layout:** Resizable two-panel split via `react-resizable-panels` v4.
 - **Left panel** (default 55%): PositionsPanel + PositionDetailInfo (slides in below when position selected)
@@ -294,7 +295,7 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 - `run_dashboard.sh` uses `wait` not `wait -n` (macOS bash lacks `wait -n`)
 - `day_change` in positions CSV is **total position dollar change** (not per-share). Per-share = `day_change / shares`
 - **Scan timeout:** cold cache scan can take 5-6 min and crash API from memory pressure. Keep `rotating_3day` on extended tier. 4hr cache TTL reduces cold scan frequency.
-- API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8000`
+- API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8001`
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
 - **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.
 - **Stale buy prices**: `execute_approved_actions()` now fetches live prices via `fetch_prices_batch()` at execute time before recording transactions. Corrects cases where yfinance cache had prev-close prices. Stop/target % distances are preserved and rescaled.
