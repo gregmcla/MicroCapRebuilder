@@ -56,7 +56,8 @@ def get_sector(ticker: str, mapping: Optional[Dict[str, str]] = None) -> str:
         save_sector_mapping(mapping)
 
         return sector
-    except Exception:
+    except Exception as e:
+        print(f"Warning: sector lookup failed for ticker: {e}")
         return "Unknown"
 
 

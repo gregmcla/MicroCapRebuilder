@@ -165,8 +165,8 @@ def show_status():
                     print(f"   - Positions: {len(positions_df)}")
                     total_value = positions_df["market_value"].sum()
                     print(f"   - Total value: ${total_value:,.2f}")
-            except:
-                pass
+            except Exception as e:
+                print(f"Warning: failed to read paper positions: {e}")
     else:
         print("   Mode: 🔴 LIVE TRADING")
         print("   Status: Real trades will be recorded")

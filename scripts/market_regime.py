@@ -67,7 +67,8 @@ def fetch_benchmark_data(symbol: str, period: str = "1y") -> Optional[pd.DataFra
         if df.empty:
             return None
         return df
-    except Exception:
+    except Exception as e:
+        print(f"Warning: benchmark data fetch failed for {symbol}: {e}")
         return None
 
 

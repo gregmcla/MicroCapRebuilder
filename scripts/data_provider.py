@@ -141,7 +141,8 @@ class CacheManager:
                 return None
 
             return cached["data"]
-        except:
+        except Exception as e:
+            print(f"Warning: cache read failed: {e}")
             return None
 
     def set(self, key: str, data: dict):
@@ -154,8 +155,8 @@ class CacheManager:
                     "timestamp": datetime.now().isoformat(),
                     "data": data
                 }, f)
-        except:
-            pass  # Cache write failures are not critical
+        except Exception as e:
+            print(f"Warning: cache write failed: {e}")  # Cache write failures are not critical
 
     def clear(self):
         """Clear all cached data."""

@@ -443,7 +443,8 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                         failures.append(ticker)
                 else:
                     failures.append(ticker)
-            except Exception:
+            except Exception as e:
+                print(f"Warning: price fetch failed for {ticker}: {e}")
                 failures.append(ticker)
 
     return prices, failures, prev_closes
@@ -508,7 +509,8 @@ def fetch_benchmark_value(config: dict) -> Optional[float]:
             if not df.empty:
                 close_col = flatten_yf_close(df)
                 return round(float(close_col.iloc[-1]), 2)
-        except Exception:
+        except Exception as e:
+            print(f"Warning: benchmark fetch failed for {symbol}: {e}")
             continue
     return None
 
@@ -602,8 +604,14 @@ def save_transactions_batch(state: PortfolioState, transactions: list) -> Portfo
     else:
         df_combined = df_new
 
-    # Persist to disk
-    df_combined.to_csv(tx_file, index=False)
+    # Persist to disk (atomic write — prevents corruption on crash)
+    tmp_file = tx_file.with_name(tx_file.name + ".tmp")
+    try:
+        df_combined.to_csv(tmp_file, index=False)
+        tmp_file.replace(tx_file)
+    except Exception:
+        tmp_file.unlink(missing_ok=True)
+        raise
 
     # Recalculate cash
     new_cash = calculate_cash(df_combined, state.config["starting_capital"])
@@ -732,7 +740,13 @@ def remove_position(state: PortfolioState, ticker: str) -> PortfolioState:
 def save_positions(state: PortfolioState) -> None:
     """Persist current positions to CSV."""
     positions_file = get_positions_file(state.portfolio_id)
-    state.positions.to_csv(positions_file, index=False)
+    tmp_file = positions_file.with_name(positions_file.name + ".tmp")
+    try:
+        state.positions.to_csv(tmp_file, index=False)
+        tmp_file.replace(positions_file)
+    except Exception:
+        tmp_file.unlink(missing_ok=True)
+        raise
 
 
 # ─── Snapshot Operations ─────────────────────────────────────────────────────
@@ -785,7 +799,13 @@ def save_snapshot(state: PortfolioState, benchmark_value: Optional[float] = None
         df = pd.DataFrame(columns=DAILY_SNAPSHOT_COLUMNS)
 
     df = pd.concat([df, pd.DataFrame([snapshot])], ignore_index=True)
-    df.to_csv(snapshots_file, index=False)
+    tmp_file = snapshots_file.with_name(snapshots_file.name + ".tmp")
+    try:
+        df.to_csv(tmp_file, index=False)
+        tmp_file.replace(snapshots_file)
+    except Exception:
+        tmp_file.unlink(missing_ok=True)
+        raise
 
     return state.total_equity, day_pnl
 

@@ -226,8 +226,8 @@ class PatternDetector:
                 try:
                     tags = json.loads(tags_str)
                     all_tags.extend(tags)
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Warning: failed to parse pattern tags: {e}")
 
             # Count momentum reversals
             momentum_reversals = all_tags.count("momentum_reversal")
@@ -261,8 +261,8 @@ class PatternDetector:
                     tags = json.loads(tags_str)
                     if "regime_change" in tags:
                         regime_changes += 1
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Warning: failed to parse regime tags: {e}")
 
             if regime_changes >= self.THRESHOLDS["regime_mismatch"]["count"]:
                 alerts.append(PatternAlert(
@@ -325,8 +325,8 @@ def load_active_alerts() -> List[PatternAlert]:
         details = {}
         try:
             details = json.loads(row.get("details", "{}"))
-        except:
-            pass
+        except Exception as e:
+            print(f"Warning: failed to parse alert details: {e}")
 
         alerts.append(PatternAlert(
             pattern_type=row["pattern_type"],

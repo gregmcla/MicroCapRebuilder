@@ -165,7 +165,8 @@ class OpportunityLayer:
                     for _, row in tx_df.iterrows():
                         try:
                             tx_date = date.fromisoformat(str(row["date"])[:10])
-                        except Exception:
+                        except Exception as e:
+                            print(f"Warning: failed to parse transaction date: {e}")
                             continue
                         if tx_date >= cutoff and str(row.get("reason", "")).upper() == "STOP_LOSS":
                             ticker = str(row.get("ticker", "")).strip().upper()
@@ -563,7 +564,8 @@ class OpportunityLayer:
             try:
                 entry_date = date.fromisoformat(str(pos["entry_date"])[:10])
                 days_held = (today - entry_date).days
-            except Exception:
+            except Exception as e:
+                print(f"Warning: failed to parse entry date: {e}")
                 days_held = 0
             if days_held < min_held_days:
                 continue

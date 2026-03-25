@@ -208,8 +208,8 @@ def show_status():
                             print(f"\n   Last log entries:")
                             for line in lines[-5:]:
                                 print(f"   {line.rstrip()}")
-                except:
-                    pass
+                except Exception as e:
+                    print(f"Warning: failed to read log file: {e}")
     else:
         print("❌ No scheduled job found")
         print("   Run 'python scripts/setup_schedule.py --install' to set up")
@@ -287,7 +287,7 @@ def main():
         hour, minute = map(int, args.time.split(":"))
         if not (0 <= hour <= 23 and 0 <= minute <= 59):
             raise ValueError()
-    except:
+    except Exception:
         print(f"❌ Invalid time format: {args.time}")
         print("   Use HH:MM format (e.g., 16:30)")
         sys.exit(1)

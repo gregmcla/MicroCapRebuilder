@@ -144,8 +144,8 @@ class UniverseProvider:
                 universe = registry.get("portfolios", {}).get(self.portfolio_id, {}).get("universe", "microcap")
                 if universe not in ("microcap", "smallcap"):
                     return  # Skip curated file for mid/large-cap portfolios
-            except Exception:
-                pass  # If we can't determine universe, load curated as fallback
+            except Exception as e:
+                print(f"Warning: failed to determine universe, loading curated as fallback: {e}")
 
         curated = load_curated_universe()
 

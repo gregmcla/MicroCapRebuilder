@@ -150,6 +150,6 @@ class ExchangeUniverseProvider:
                     "tickers": tickers,
                 }, f)
             tmp.replace(self._cache_file)
-        except Exception:
+        except Exception as e:
             tmp.unlink(missing_ok=True)
             raise

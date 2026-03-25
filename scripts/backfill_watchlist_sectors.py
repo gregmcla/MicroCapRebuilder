@@ -28,8 +28,8 @@ def fetch_sector(ticker: str) -> str | None:
         try:
             info = yf.Ticker(ticker).info
             result[0] = info.get("sector") or info.get("sectorDisp") or ""
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: sector fetch failed for {ticker}: {e}")
 
     t = threading.Thread(target=_fetch, daemon=True)
     t.start()

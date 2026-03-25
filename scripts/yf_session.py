@@ -72,13 +72,15 @@ def cached_download(
                 try:
                     with open(cache_file, "rb") as f:
                         return pickle.load(f)
-                except Exception:
+                except Exception as e:
+                    print(f"Warning: corrupt cache file, removing: {e}")
                     cache_file.unlink(missing_ok=True)
 
         # Cache miss — download (no custom session; yfinance handles curl_cffi)
         try:
             df = yf.download(tickers, period=period, **kwargs)
-        except Exception:
+        except Exception as e:
+            print(f"Warning: yf.download failed for {tickers}: {e}")
             df = pd.DataFrame()
 
         # Persist non-empty results
@@ -86,8 +88,8 @@ def cached_download(
             try:
                 with open(cache_file, "wb") as f:
                     pickle.dump(df, f)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: failed to write cache file: {e}")
 
         return df
 

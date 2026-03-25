@@ -259,7 +259,8 @@ class StockScorer:
                 if col in df.columns and hasattr(df[col], "ndim") and df[col].ndim > 1:
                     df[col] = df[col].iloc[:, 0]
             return df
-        except Exception:
+        except Exception as e:
+            print(f"Warning: price data fetch failed: {e}")
             return None
 
     def _get_benchmark_data(self) -> Optional[pd.DataFrame]:

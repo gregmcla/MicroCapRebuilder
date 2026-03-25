@@ -146,7 +146,7 @@ class WatchlistManager:
                 for entry in entries:
                     f.write(json.dumps(asdict(entry)) + "\n")
             tmp_path.replace(self._watchlist_file)
-        except Exception:
+        except Exception as e:
             tmp_path.unlink(missing_ok=True)
             raise
 
@@ -356,8 +356,8 @@ class WatchlistManager:
             try:
                 info = yf.Ticker(ticker).info
                 result[0] = info.get("sector", "")
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: sector fetch failed for {ticker}: {e}")
 
         t = threading.Thread(target=_fetch, daemon=True)
         t.start()

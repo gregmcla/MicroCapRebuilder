@@ -379,8 +379,8 @@ class RiskManager:
             max_mult = learning_config.get("confidence_max", 1.5)
 
             return max(min_mult, min(max_mult, multiplier))
-        except Exception:
-            # If factor learning fails, use default
+        except Exception as e:
+            print(f"Warning: factor learning multiplier failed, using default: {e}")
             return 1.0
 
     def calculate_position_size_with_confidence(

@@ -34,7 +34,7 @@ def record_sell_transaction(signal: SellSignal) -> dict:
     """Create a transaction record for a sell."""
     return {
         "transaction_id": str(uuid.uuid4())[:8],
-        "date": date.today().isoformat(),
+        "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "ticker": signal.ticker,
         "action": Action.SELL,
         "shares": signal.shares,
@@ -154,7 +154,8 @@ def check_stagnation_signals(positions_df: pd.DataFrame, price_cache: dict) -> l
                 entry_date = raw_entry.date()
             else:
                 entry_date = raw_entry
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to parse entry date, skipping position: {e}")
             continue
 
         days_held = (today - entry_date).days

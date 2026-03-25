@@ -83,7 +83,8 @@ class RiskLayer:
         # Check capital preservation once for all positions (Bug #13)
         try:
             preservation = get_preservation_status()
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to get preservation status: {e}")
             preservation = None
         preservation_active = preservation is not None and preservation.active
 
@@ -263,7 +264,8 @@ class RiskLayer:
         # Check capital preservation status once for the sell-proposal loop (Bug #13)
         try:
             pres_status = get_preservation_status()
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to get preservation status: {e}")
             pres_status = None
         pres_active = pres_status is not None and pres_status.active
 

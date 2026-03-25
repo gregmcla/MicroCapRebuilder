@@ -272,7 +272,8 @@ class PortfolioAnalytics:
                     data = yf.download(ticker, start=start_date, end=end_date, progress=False)
                     if not data.empty and "Close" in data.columns:
                         return data["Close"].pct_change().dropna()
-                except Exception:
+                except Exception as e:
+                    print(f"Warning: benchmark download failed for {ticker}: {e}")
                     continue
 
             return pd.Series()

@@ -137,8 +137,8 @@ def _run_ai_driven_analysis(
                         _entry = json.loads(_line)
                         if _entry.get("sector") and _entry["ticker"] not in sector_map:
                             sector_map[_entry["ticker"]] = _entry["sector"]
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: failed to build sector map from watchlist: {e}")
 
     # Run AI allocation
     print("\n  🤖 AI-DRIVEN MODE — Claude is the portfolio manager")
@@ -403,8 +403,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                             _entry = json.loads(_line)
                             if _entry.get("sector"):
                                 l3_sector_map[_entry["ticker"]] = _entry["sector"]
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: failed to build L3 sector map from watchlist: {e}")
 
         # Run Layer 3: Portfolio Composition
         print("\nRunning Layer 3: Portfolio Composition...")
@@ -676,8 +676,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                         entry = json.loads(line)
                         if entry.get("sector") and entry["ticker"] not in sector_map:
                             sector_map[entry["ticker"]] = entry["sector"]
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Warning: failed to build sector map from watchlist: {e}")
 
     # Compute projected sector breakdown after proposed buys
     projected_sectors: dict = {}
@@ -953,7 +953,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
         tx = {
             "transaction_id": str(uuid.uuid4())[:8],
-            "date": date.today().isoformat(),
+            "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "ticker": action.ticker,
             "action": action.action_type,
             "shares": shares,

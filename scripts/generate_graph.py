@@ -31,13 +31,13 @@ bench_symbol = args.bench
 bench = None
 try:
     bench = fetch_benchmark(bench_symbol)
-except Exception:
+except Exception as e:
     print(f"⚠️ Failed to download {bench_symbol}, trying fallback {args.fallback}")
     bench_symbol = args.fallback
     try:
         bench = fetch_benchmark(bench_symbol)
         print(f"⚠️ Falling back to {bench_symbol}")
-    except Exception:
+    except Exception as e:
         print(f"⚠️ Failed to download fallback benchmark {bench_symbol}. Proceeding without benchmark")
 
 fig, ax = plt.subplots()

@@ -26,7 +26,8 @@ def fetch_sector_yf(ticker: str, timeout: int = 5) -> str:
         try:
             info = yf.Ticker(ticker).info
             result[0] = info.get("sector", "Unknown")
-        except Exception:
+        except Exception as e:
+            print(f"Warning: sector fetch failed for {ticker}: {e}")
             result[0] = "Unknown"
 
     t = threading.Thread(target=_fetch, daemon=True)

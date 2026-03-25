@@ -177,7 +177,8 @@ class CapitalPreservationManager:
                 if c.name == "Drawdown":
                     return c.value  # This is the drawdown percentage
             return 0.0
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to get drawdown from scoreboard: {e}")
             return 0.0
 
     def _get_risk_score(self) -> Optional[float]:
@@ -185,7 +186,8 @@ class CapitalPreservationManager:
         try:
             scoreboard = get_risk_scoreboard()
             return scoreboard.overall_score
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to get risk score from scoreboard: {e}")
             return None
 
     def get_adjusted_stop_loss(self, current_price: float, original_stop: float) -> float:

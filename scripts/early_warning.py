@@ -240,8 +240,8 @@ class EarlyWarningSystem:
                         threshold=self.THRESHOLDS["win_rate_low"],
                         action_suggestion="Review entry criteria and consider factor weight adjustments",
                     ))
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: performance check failed: {e}")
 
         return warnings
 
@@ -362,7 +362,8 @@ def get_warning_severity(portfolio_id: str = None) -> str:
     """
     try:
         warnings = get_warnings(portfolio_id=portfolio_id)
-    except Exception:
+    except Exception as e:
+        print(f"Warning: failed to get warnings: {e}")
         return "NORMAL"
 
     severities = {w.severity for w in warnings}

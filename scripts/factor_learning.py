@@ -258,8 +258,8 @@ class FactorLearner:
                         return PerformanceTrend.IMPROVING.value
                     elif diff < -5:
                         return PerformanceTrend.DECLINING.value
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: performance trend calculation failed: {e}")
 
         return PerformanceTrend.STABLE.value
 

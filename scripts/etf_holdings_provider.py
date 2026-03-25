@@ -196,8 +196,8 @@ class ETFHoldingsProvider:
                         top_holdings = funds_data.top_holdings
                         if top_holdings is not None and not top_holdings.empty:
                             holdings = top_holdings.index.tolist()
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Warning: funds_data holdings fetch failed for {etf_symbol}: {e}")
 
             # Fallback: try the older API
             if not holdings:
@@ -205,8 +205,8 @@ class ETFHoldingsProvider:
                     info = ticker.info
                     if 'holdings' in info:
                         holdings = [h.get('symbol', '') for h in info['holdings'] if h.get('symbol')]
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Warning: info holdings fetch failed for {etf_symbol}: {e}")
 
             # If we got holdings, cache them
             if holdings:
@@ -308,8 +308,8 @@ class ETFHoldingsProvider:
                             min_price <= price <= max_price):
                             filtered.append(ticker_symbol)
 
-                    except Exception:
-                        # Skip tickers that fail
+                    except Exception as e:
+                        print(f"Warning: filter failed for {ticker_symbol}: {e}")
                         continue
 
             except Exception as e:
@@ -342,7 +342,8 @@ class ETFHoldingsProvider:
 
                 sectors.setdefault(sector, []).append(ticker_symbol)
 
-            except Exception:
+            except Exception as e:
+                print(f"Warning: sector lookup failed for {ticker_symbol}: {e}")
                 sectors.setdefault("Unknown", []).append(ticker_symbol)
 
         return sectors

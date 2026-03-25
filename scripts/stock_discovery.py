@@ -138,8 +138,8 @@ def prewarm_info_for_tickers(
         def _do_fetch() -> None:
             try:
                 result[0] = yf.Ticker(ticker).info
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: info fetch failed for {ticker}: {e}")
 
         t = threading.Thread(target=_do_fetch, daemon=True)
         t.start()
@@ -153,8 +153,9 @@ def prewarm_info_for_tickers(
             try:
                 ticker, info = future.result(timeout=8)
                 info_cache[ticker] = info
-            except Exception:
+            except Exception as e:
                 ticker = futures[future]
+                print(f"Warning: prewarm future failed for {ticker}: {e}")
                 info_cache[ticker] = {}
 
     elapsed = time.time() - t0
@@ -252,7 +253,8 @@ class StockDiscovery:
                     df[col] = df[col].iloc[:, 0]
             self._price_cache[cache_key] = df
             return df
-        except Exception:
+        except Exception as e:
+            print(f"Warning: price data fetch failed for {cache_key}: {e}")
             return None
 
     # Disk cache for .info data — persists across scan instances (4hr TTL)
@@ -276,7 +278,8 @@ class StockDiscovery:
                 if cls._INFO_DISK_CACHE_FILE.exists():
                     with open(cls._INFO_DISK_CACHE_FILE, "rb") as f:
                         cls._disk_info_cache = pickle.load(f)
-            except Exception:
+            except Exception as e:
+                print(f"Warning: failed to load disk info cache: {e}")
                 cls._disk_info_cache = {}
             cls._disk_cache_loaded = True
 
@@ -287,8 +290,8 @@ class StockDiscovery:
             cls._INFO_DISK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
             with open(cls._INFO_DISK_CACHE_FILE, "wb") as f:
                 pickle.dump(cls._disk_info_cache, f)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Warning: failed to save disk info cache: {e}")
 
     def _get_stock_info(self, ticker: str, timeout: float = 5.0) -> dict:
         """Fetch and cache stock info with a hard per-ticker timeout."""
@@ -310,8 +313,8 @@ class StockDiscovery:
         def _fetch() -> None:
             try:
                 result[0] = yf.Ticker(ticker).info
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Warning: info fetch failed for {ticker}: {e}")
 
         t = threading.Thread(target=_fetch, daemon=True)
         t.start()
@@ -334,10 +337,12 @@ class StockDiscovery:
         # Price filter
         try:
             current_price = float(df["Close"].iloc[-1])
-        except Exception:
+        except Exception as e:
+            print(f"Warning: failed to read price for filter: {e}")
             return False
-        min_price = filters.get("min_price", 5.0)
-        max_price = filters.get("max_price", 500.0)
+        min_price = filters.get("min_price") or 5.0
+        _max_price = filters.get("max_price")
+        max_price = _max_price if _max_price is not None else float("inf")
         if current_price < min_price or current_price > max_price:
             return False
 
@@ -345,7 +350,7 @@ class StockDiscovery:
         if "Volume" in df.columns:
             _vol_mean = df["Volume"].iloc[-20:].mean()
             avg_vol = int(_vol_mean) if pd.notna(_vol_mean) else 0
-            min_vol = filters.get("min_avg_volume", 200000)
+            min_vol = filters.get("min_avg_volume") or 200000
             if avg_vol < min_vol:
                 # Escape hatch: let through stocks whose recent 5-day average
                 # volume is at least 2× the minimum — catches emerging momentum
@@ -367,8 +372,10 @@ class StockDiscovery:
 
         # Market cap filter — requires info (pre-cached for survivors)
         market_cap = info.get("marketCap", 0)
-        min_cap = filters.get("min_market_cap_m", 300) * 1e6
-        max_cap = filters.get("max_market_cap_m", 5000) * 1e6
+        _min_cap_m = filters.get("min_market_cap_m") or 0
+        min_cap = _min_cap_m * 1e6
+        _max_cap_m = filters.get("max_market_cap_m")
+        max_cap = (_max_cap_m * 1e6) if _max_cap_m is not None else float("inf")
         if market_cap < min_cap or market_cap > max_cap:
             return False
 
@@ -846,8 +853,8 @@ class StockDiscovery:
                                     df[col] = df[col].iloc[:, 0]
                             if not df.empty:
                                 self._price_cache[f"{ticker}_{period}"] = df
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"Warning: failed to cache price data for {ticker}: {e}")
                 except Exception as e:
                     print(f"  Chunk {chunk_idx+1} failed ({period}): {e}")
 
