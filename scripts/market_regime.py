@@ -47,6 +47,8 @@ class RegimeAnalysis:
     above_50: bool
     above_200: bool
     regime_strength: str  # "strong", "weak"
+    sma_200_gap_pct: float = 0.0   # (price - sma_200) / sma_200 * 100, signed
+    recent_return_20d: float = 0.0  # benchmark % return over last 20 trading days
 
 
 def load_config() -> dict:
@@ -131,6 +133,16 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
         regime = MarketRegime.SIDEWAYS
         strength = "weak"
 
+    # SMA 200 gap: signed percentage distance from 200d SMA
+    sma_200_gap_pct = round((current_price - sma_200) / sma_200 * 100, 2) if sma_200 > 0 else 0.0
+
+    # 20-day benchmark return
+    if len(close_col) >= 21:
+        price_20d_ago = float(close_col.iloc[-21])
+        recent_return_20d = round((current_price - price_20d_ago) / price_20d_ago * 100, 2) if price_20d_ago > 0 else 0.0
+    else:
+        recent_return_20d = 0.0
+
     return RegimeAnalysis(
         regime=regime,
         benchmark_symbol=symbol,
@@ -140,6 +152,8 @@ def analyze_regime(df: pd.DataFrame, symbol: str) -> RegimeAnalysis:
         above_50=above_50,
         above_200=above_200,
         regime_strength=strength,
+        sma_200_gap_pct=sma_200_gap_pct,
+        recent_return_20d=recent_return_20d,
     )
 
 
