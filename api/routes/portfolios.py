@@ -174,20 +174,38 @@ def get_overview():
                 if snapshot_date.startswith(date.today().isoformat()):
                     day_pnl = float(today_row.get("day_pnl", 0) or 0)
 
-            # Total return % + all-time P&L from starting capital
+            # Total return — same transaction-replay method as state.py
+            # to avoid equity-minus-starting-capital accounting artifacts.
             starting_capital = float(state.config.get("starting_capital", 50000))
-            total_return_pct = 0.0
-            all_time_pnl = 0.0
-            if starting_capital > 0:
-                total_return_pct = ((state.total_equity - starting_capital) / starting_capital) * 100
-                all_time_pnl = state.total_equity - starting_capital
-
-            # Unrealized P&L and deployment
             positions = state.positions
             unrealized_pnl = 0.0
-            deployed_pct = 0.0
             if len(positions) > 0 and "unrealized_pnl" in positions.columns:
                 unrealized_pnl = float(positions["unrealized_pnl"].sum())
+
+            realized_pnl = 0.0
+            txns = state.transactions
+            if not txns.empty and "action" in txns.columns:
+                _holdings: dict = {}
+                for _, tx in txns.sort_values("date").iterrows():
+                    _ticker = str(tx.get("ticker", ""))
+                    _action = str(tx.get("action", ""))
+                    _shares = float(tx.get("shares", 0) or 0)
+                    _total = float(tx.get("total_value", 0) or 0)
+                    if _action == "BUY" and _shares > 0:
+                        _ps, _pc = _holdings.get(_ticker, (0.0, 0.0))
+                        _holdings[_ticker] = (_ps + _shares, _pc + _total)
+                    elif _action == "SELL" and _shares > 0:
+                        if _ticker in _holdings and _holdings[_ticker][0] > 0:
+                            _hs, _hc = _holdings[_ticker]
+                            _avg = _hc / _hs
+                            _cost = _avg * _shares
+                            realized_pnl += _total - _cost
+                            _holdings[_ticker] = (max(0.0, _hs - _shares), max(0.0, _hc - _cost))
+
+            all_time_pnl = round(realized_pnl + unrealized_pnl, 2)
+            total_return_pct = round((all_time_pnl / starting_capital) * 100, 2) if starting_capital > 0 else 0.0
+
+            deployed_pct = 0.0
             if state.total_equity > 0:
                 deployed_pct = round(state.positions_value / state.total_equity * 100, 1)
 
