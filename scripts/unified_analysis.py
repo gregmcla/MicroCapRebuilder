@@ -157,7 +157,7 @@ def _run_ai_driven_analysis(
     _portfolio_id = state.portfolio_id
 
     try:
-        prompt_extras["warnings"] = get_warnings(portfolio_id=_portfolio_id)
+        prompt_extras["warnings"] = get_warnings(portfolio_id=_portfolio_id) or []
     except Exception as e:
         print(f"  [AI-Driven] Warnings fetch failed (non-fatal): {e}")
 
