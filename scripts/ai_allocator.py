@@ -165,8 +165,8 @@ def _build_allocation_prompt(
                 if entry_date_val and str(entry_date_val) not in ("", "nan", "None"):
                     days = (date.today() - pd.to_datetime(entry_date_val).date()).days
                     days_held = f" ({days}d held)"
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [days_held] {ticker}: {e}")
 
             positions_lines.append(
                 f"  {ticker}: {pos['shares']} shares @ ${pos['current_price']:.2f}, "
@@ -321,7 +321,7 @@ def _build_allocation_prompt(
 
         # PORTFOLIO PERFORMANCE — only when >= 5 completed trades AND metrics available
         if _stats and _stats.total_trades >= 5 and _metrics:
-            _rr = round(abs(_stats.avg_win_pct / _stats.avg_loss_pct), 2) if _stats.avg_loss_pct else 0.0
+            _rr = round(abs(_stats.avg_win_pct / _stats.avg_loss_pct), 2) if _stats.avg_loss_pct != 0.0 else float("inf")
             _perf_block = (
                 f"PORTFOLIO PERFORMANCE:\n"
                 f"  Total return: {_metrics.total_return_pct:+.1f}% vs benchmark {_metrics.benchmark_return_pct:+.1f}%"
@@ -329,7 +329,7 @@ def _build_allocation_prompt(
                 f"  Current drawdown: {_metrics.current_drawdown_pct:+.1f}% from peak\n"
                 f"  Win rate: {_stats.win_rate_pct:.0f}% over {_stats.total_trades} trades"
                 f" | avg win {_stats.avg_win_pct:+.1f}% / avg loss {_stats.avg_loss_pct:+.1f}%\n"
-                f"  Reward/risk ratio: {_rr:.2f}\n"
+                f"  Reward/risk ratio: {'∞ (no losing trades)' if _rr == float('inf') else f'{_rr:.2f}'}\n"
             )
 
         # ACTIVE ALERTS — only when warnings list is non-empty
