@@ -433,8 +433,9 @@ class WatchlistManager:
             "total_active": 0,
         }
 
-        # Remove consistent losers first
+        # Remove consistent losers and zero-score dead weight first
         stats["poor_performers_removed"] = self.remove_poor_performers()
+        stats["poor_performers_removed"] += self._remove_zero_score_tickers()
 
         if run_discovery:
             try:
@@ -457,7 +458,7 @@ class WatchlistManager:
             print(f"Sector backfill error: {e}")
 
         stats["marked_stale"] = self.mark_stale_tickers()
-        stats["removed"] = self.remove_stale_tickers()
+        stats["removed"] = self.remove_stale_tickers(older_than_days=30)
 
         # Balance sectors — skip in bucketed mode (bucket sizes already enforce distribution)
         if not self._is_bucketed_mode():
@@ -511,6 +512,31 @@ class WatchlistManager:
             "by_source": by_source,
             "by_sector": by_sector,
         }
+
+    def _remove_zero_score_tickers(self, min_days_old: int = 7) -> int:
+        """Remove non-core ACTIVE tickers with discovery_score=0 that are at least
+        min_days_old (gives newly-added tickers time to get a real score on next scan).
+        """
+        entries = self._load_watchlist()
+        core_tickers = self._load_core_watchlist()
+        cutoff = date.today() - timedelta(days=min_days_old)
+
+        new_entries = []
+        removed = 0
+        for entry in entries:
+            if (
+                entry.status == "ACTIVE"
+                and entry.ticker not in core_tickers
+                and entry.discovery_score == 0.0
+                and datetime.fromisoformat(entry.added_date).date() <= cutoff
+            ):
+                removed += 1
+                continue
+            new_entries.append(entry)
+
+        if removed:
+            self._save_watchlist(new_entries)
+        return removed
 
     def remove_poor_performers(self, min_trades: int = 3, max_loss_rate: float = 0.75) -> int:
         """
