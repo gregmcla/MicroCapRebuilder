@@ -253,21 +253,13 @@ class PortfolioAnalytics:
         return round((positions_value / total_equity) * 100, 1)
 
     def fetch_benchmark_data(self, start_date: str, end_date: str) -> pd.Series:
-        """
-        Fetch benchmark (Russell 2000) returns.
-
-        Args:
-            start_date: Start date string
-            end_date: End date string
-
-        Returns:
-            Series of daily benchmark returns
-        """
+        """Fetch benchmark returns using portfolio's configured benchmark."""
         try:
             import yfinance as yf
 
-            # Try Russell 2000, fall back to IWM ETF
-            for ticker in ["^RUT", "IWM"]:
+            primary = self.config.get("benchmark_symbol", "^RUT")
+            fallback = self.config.get("fallback_benchmark", "IWM")
+            for ticker in [primary, fallback]:
                 try:
                     data = yf.download(ticker, start=start_date, end=end_date, progress=False)
                     if not data.empty and "Close" in data.columns:

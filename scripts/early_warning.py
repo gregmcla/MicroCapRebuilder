@@ -71,7 +71,7 @@ class EarlyWarningSystem:
 
     def __init__(self, portfolio_id: str = None):
         self.state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
-        self.trade_analyzer = TradeAnalyzer()
+        self.trade_analyzer = TradeAnalyzer(portfolio_id=portfolio_id)
 
     def check_all(self) -> List[Warning]:
         """Run all warning checks and return active warnings."""

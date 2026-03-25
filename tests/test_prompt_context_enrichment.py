@@ -31,3 +31,41 @@ def test_trade_analyzer_load_transactions_uses_portfolio_id():
         ta = TradeAnalyzer(portfolio_id="my-portfolio")
         ta.load_transactions()
         mock_load.assert_called_once_with(fetch_prices=False, portfolio_id="my-portfolio")
+
+
+# ─── Task 2: EarlyWarningSystem Bug B ──────────────────────────────────────────
+
+def test_early_warning_passes_portfolio_id_to_trade_analyzer():
+    """EarlyWarningSystem must pass portfolio_id to TradeAnalyzer."""
+    from early_warning import EarlyWarningSystem
+    with patch("early_warning.load_portfolio_state") as mock_lps, \
+         patch("early_warning.TradeAnalyzer") as mock_ta:
+        mock_lps.return_value = MagicMock(positions=MagicMock(empty=True),
+                                           snapshots=MagicMock(empty=True),
+                                           transactions=MagicMock(empty=True))
+        EarlyWarningSystem(portfolio_id="my-portfolio")
+        mock_ta.assert_called_once_with(portfolio_id="my-portfolio")
+
+
+# ─── Task 2: PortfolioAnalytics Bug C ──────────────────────────────────────────
+
+def test_portfolio_analytics_benchmark_uses_config():
+    """fetch_benchmark_data must use config benchmark_symbol, not hardcoded ^RUT."""
+    from analytics import PortfolioAnalytics
+    with patch("analytics.load_portfolio_state") as mock_lps:
+        mock_state = MagicMock()
+        mock_state.config = {
+            "benchmark_symbol": "^GSPC",
+            "fallback_benchmark": "SPY",
+        }
+        mock_state.snapshots = MagicMock(empty=True)
+        mock_lps.return_value = mock_state
+
+        pa = PortfolioAnalytics(portfolio_id="adjacent-supporters-of-ai")
+
+        import yfinance as yf
+        with patch("yfinance.download", return_value=MagicMock(empty=True)) as mock_dl:
+            pa.fetch_benchmark_data("2026-01-01", "2026-03-25")
+            # First call should use ^GSPC (from config), not ^RUT
+            first_ticker = mock_dl.call_args_list[0][0][0]
+            assert first_ticker == "^GSPC", f"Expected ^GSPC, got {first_ticker}"
