@@ -6,13 +6,9 @@ import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
-import type { PortfolioSummary, CrossPortfolioMover, PortfolioMeta } from "../lib/types";
+import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
-import MatrixGrid from "./MatrixGrid";
-import PortfolioStrip from "./MatrixGrid/PortfolioStrip";
-import { buildPortfolioMap, crossMoverToMatrix } from "./MatrixGrid/constants";
-import type { MatrixPortfolio } from "./MatrixGrid/types";
 import { play } from "../lib/sounds";
 
 // ---------------------------------------------------------------------------
@@ -277,10 +273,11 @@ function AggregateBar({
 // Portfolio card
 // ---------------------------------------------------------------------------
 
-function PortfolioCard({ summary, totalEquity, scanResult }: {
+function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
   summary: PortfolioSummary;
   totalEquity: number;
   scanResult?: ScanAllPortfolioResult;
+  topHoldings: CrossPortfolioMover[];
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
@@ -395,31 +392,51 @@ function PortfolioCard({ summary, totalEquity, scanResult }: {
         </div>
       )}
 
+      {/* Top holdings */}
+      {!summary.error && topHoldings.length > 0 && (
+        <div style={{ padding: "0 14px 10px" }} onClick={() => setPortfolio(summary.id)}>
+          <div style={{ borderTop: "1px solid var(--border-0)", paddingTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+            {topHoldings.map((h) => (
+              <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-3)", width: "44px", flexShrink: 0 }}>
+                  {h.ticker}
+                </span>
+                <div style={{ flex: 1, height: "2px", background: "var(--surface-3)", borderRadius: "1px", overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: "1px",
+                    width: `${Math.min(100, Math.abs(h.pnl_pct) * 2)}%`,
+                    background: h.pnl_pct >= 0 ? "var(--green)" : "var(--red)",
+                    opacity: 0.55,
+                  }} />
+                </div>
+                <span className="font-mono tabular-nums" style={{ color: pnlColor(h.pnl_pct), fontSize: "10.5px", width: "44px", textAlign: "right", flexShrink: 0 }}>
+                  {fmtPct(h.pnl_pct)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Bottom stats */}
       {!summary.error && (
         <div
-          style={{ padding: "8px 14px 10px", display: "flex", alignItems: "center", gap: "8px", fontSize: "10.5px", color: "var(--text-1)" }}
+          style={{ padding: "6px 14px 10px", display: "flex", alignItems: "center", gap: "6px", fontSize: "10.5px", color: "var(--text-1)", borderTop: "1px solid var(--border-0)" }}
           onClick={() => setPortfolio(summary.id)}
         >
-          {/* Deployment bar */}
-          <div style={{ flex: 1, height: "3px", borderRadius: "2px", background: "var(--surface-3)", overflow: "hidden" }}>
+          <span className="tabular-nums" style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime ?? "—"}</span>
+          <span style={{ color: "var(--border-2)" }}>·</span>
+          <span className="tabular-nums">{summary.num_positions} pos</span>
+          <span style={{ color: "var(--border-2)" }}>·</span>
+          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}% dep</span>
+          <div style={{ flex: 1, height: "2px", borderRadius: "1px", background: "var(--surface-3)", overflow: "hidden", margin: "0 4px" }}>
             <div style={{
-              height: "100%", borderRadius: "2px",
-              width: `${Math.min(100, sharePct)}%`,
+              height: "100%", borderRadius: "1px",
+              width: `${Math.min(100, summary.deployed_pct)}%`,
               background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
             }} />
           </div>
-          <span className="tabular-nums">{summary.num_positions}p</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}% dep</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          {summary.regime && (
-            <>
-              <span style={{ color: "var(--border-2)" }}>·</span>
-              <span style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime}</span>
-            </>
-          )}
+          <span className="tabular-nums" style={{ color: "var(--text-0)" }}>${summary.cash.toLocaleString(undefined, { maximumFractionDigits: 0 })} cash</span>
         </div>
       )}
 
@@ -465,66 +482,13 @@ function PortfolioCard({ summary, totalEquity, scanResult }: {
 }
 
 // ---------------------------------------------------------------------------
-// Movers list
-// ---------------------------------------------------------------------------
-
-function MoverRow({ mover }: { mover: CrossPortfolioMover }) {
-  const color = pnlColor(mover.pnl_pct);
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", padding: "5px 0", borderBottom: "1px solid var(--border-0)" }}>
-      <span style={{ fontWeight: 700, width: "38px", flexShrink: 0, color: "var(--text-4)", fontFamily: "var(--font-mono)" }}>
-        {mover.ticker}
-      </span>
-      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-1)" }}>
-        {mover.portfolio_name}
-      </span>
-      <span className="font-mono tabular-nums" style={{ color, fontWeight: 600 }}>
-        {fmtPct(mover.pnl_pct)}
-      </span>
-      <span className="font-mono tabular-nums" style={{ color, width: "56px", textAlign: "right" }}>
-        {fmt$(mover.pnl)}
-      </span>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Capital allocation bar
-// ---------------------------------------------------------------------------
-
-function AllocationBar({ name, equity, totalEquity }: { name: string; equity: number; totalEquity: number }) {
-  const pct = totalEquity > 0 ? (equity / totalEquity) * 100 : 0;
-  return (
-    <div style={{ marginBottom: "10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "10.5px" }}>
-        <span style={{ color: "var(--text-2)" }}>{name}</span>
-        <span className="font-mono tabular-nums" style={{ color: "var(--text-1)" }}>{pct.toFixed(1)}%</span>
-      </div>
-      <div style={{ height: "4px", borderRadius: "2px", background: "var(--surface-3)", overflow: "hidden" }}>
-        <div style={{
-          height: "100%", borderRadius: "2px",
-          width: `${Math.min(100, pct)}%`,
-          background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
-        }} />
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
-
-const sectionLabel: React.CSSProperties = {
-  fontSize: "9.5px", fontWeight: 600, textTransform: "uppercase",
-  letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "8px",
-};
 
 export default function OverviewPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
@@ -694,26 +658,20 @@ export default function OverviewPage() {
     return null;
   }, [scanAll, names]);
 
-  const portfolios = portfolioList?.portfolios ?? [];
-
-  const matrixPortfolios = useMemo<MatrixPortfolio[]>(() => {
-    if (!portfolios?.length) return [];
-    const ids = portfolios.map((p: PortfolioMeta) => ({ id: p.id, name: p.name }));
-    const map = buildPortfolioMap(ids);
-    const summaryMap = new Map((overview?.portfolios ?? []).map((s) => [s.id, s]));
-    return ids.map((p: { id: string; name: string }) => {
-      const base = map.get(p.id);
-      if (!base) return null;
-      const ec = summaryMap.get(p.id)?.equity_curve ?? [];
-      return ec.length >= 2 ? { ...base, equityCurve: ec } : base;
-    }).filter(Boolean) as MatrixPortfolio[];
-  }, [portfolios, overview?.portfolios]);
-
-  const matrixPositions = useMemo(() => {
-    if (!overview?.all_positions?.length || !matrixPortfolios.length) return [];
-    const map = buildPortfolioMap(matrixPortfolios.map((p) => ({ id: p.id, name: p.name })));
-    return overview.all_positions.map((m) => crossMoverToMatrix(m, map));
-  }, [overview?.all_positions, matrixPortfolios]);
+  // Build per-portfolio top-3 holdings map from all_positions (sorted by market_value desc)
+  const holdingsMap = useMemo(() => {
+    const map = new Map<string, CrossPortfolioMover[]>();
+    const all = overview?.all_positions ?? [];
+    for (const pos of all) {
+      const arr = map.get(pos.portfolio_id) ?? [];
+      arr.push(pos);
+      map.set(pos.portfolio_id, arr);
+    }
+    map.forEach((arr, id) => {
+      map.set(id, [...arr].sort((a, b) => (b.market_value ?? 0) - (a.market_value ?? 0)).slice(0, 3));
+    });
+    return map;
+  }, [overview?.all_positions]);
 
   if (isLoading) {
     return (
@@ -725,10 +683,7 @@ export default function OverviewPage() {
 
   const summaries = overview?.portfolios ?? [];
   const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
-  const validSummaries = enriched.filter((s) => !s.error);
   const totalEquity = overview?.total_equity ?? 0;
-  const topMovers = overview?.top_movers ?? [];
-  const bottomMovers = overview?.bottom_movers ?? [];
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
@@ -750,28 +705,7 @@ export default function OverviewPage() {
         scanAllLabel={scanAllLabel}
       />
 
-      {/* Portfolio strip — proportional tiles, acts as filter control */}
-      {enriched.length > 0 && (
-        <PortfolioStrip
-          summaries={enriched}
-          matrixPortfolios={matrixPortfolios}
-          totalEquity={totalEquity}
-          activeFilter={activeFilter}
-          onFilter={setActiveFilter}
-          onNavigate={(id) => setPortfolio(id)}
-          scanResults={scanAll.results}
-          onUpdateAll={handleUpdateAll}
-          updatingAll={updatingAll}
-          updateResult={updateResult}
-          onScanAll={handleScanAll}
-          scanAllRunning={scanAll.running}
-          scanAllLabel={scanAllLabel}
-          onNewPortfolio={() => setShowCreate(true)}
-          onDelete={(id) => deleteMutation.mutate(id)}
-        />
-      )}
-
-      {/* Matrix grid fills all remaining space */}
+      {/* Portfolio module grid */}
       {enriched.length === 0 ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}>
           <div style={{ textAlign: "center" }}>
@@ -780,14 +714,23 @@ export default function OverviewPage() {
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          <MatrixGrid
-            positions={matrixPositions}
-            portfolios={matrixPortfolios}
-            onPositionClick={(pos) => setPortfolio(pos.portfolioId)}
-            showSecondaryTabs={false}
-            filterOverride={activeFilter}
-          />
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gap: "16px",
+            alignContent: "start",
+          }}>
+            {enriched.map((s) => (
+              <PortfolioCard
+                key={s.id}
+                summary={s}
+                totalEquity={totalEquity}
+                scanResult={scanAll.results[s.id]}
+                topHoldings={holdingsMap.get(s.id) ?? []}
+              />
+            ))}
+          </div>
         </div>
       )}
 
