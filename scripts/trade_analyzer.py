@@ -60,9 +60,12 @@ class CompletedTrade:
 class TradeAnalyzer:
     """Analyze trade performance."""
 
+    def __init__(self, portfolio_id: str = None):
+        self.portfolio_id = portfolio_id
+
     def load_transactions(self) -> pd.DataFrame:
         """Load all transactions."""
-        state = load_portfolio_state(fetch_prices=False)
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=self.portfolio_id)
         return state.transactions
 
     def match_trades(self) -> List[CompletedTrade]:
