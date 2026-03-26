@@ -1,0 +1,4 @@
+transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,factor_scores,regime_at_entry,composite_score,signal_rank,trade_rationale
+abc123,2026-03-26T09:37:00,AAPL,BUY,10,150.00,1500.00,135.00,180.00,SIGNAL,,,,,
+def456,2026-03-26T09:37:01,MSFT,SELL,5,300.00,1500.00,,,TAKE_PROFIT,,,,,
+ghi789,2026-03-25T09:37:00,GOOG,BUY,2,200.00,400.00,,,SIGNAL,,,,,
