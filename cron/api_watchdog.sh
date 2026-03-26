@@ -8,7 +8,7 @@ mkdir -p "$(dirname "$LOG")"
 
 HEALTH=$(curl -s --max-time 5 http://localhost:8001/api/health 2>/dev/null || echo "")
 
-if [ "$HEALTH" = '{"status":"ok"}' ]; then
+if [[ "$HEALTH" == *'"status":"ok"'* ]]; then
     exit 0
 fi
 
@@ -29,7 +29,7 @@ DISABLE_SOCIAL=true nohup uvicorn api.main:app --host 0.0.0.0 --port 8001 \
 
 sleep 8
 HEALTH=$(curl -s --max-time 5 http://localhost:8001/api/health 2>/dev/null || echo "")
-if [ "$HEALTH" = '{"status":"ok"}' ]; then
+if [[ "$HEALTH" == *'"status":"ok"'* ]]; then
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] API restarted OK" >> "$LOG"
 else
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] API restart FAILED" >> "$LOG"
