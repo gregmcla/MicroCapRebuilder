@@ -1,17 +1,15 @@
 """System health and logs endpoints."""
 import csv
 import logging
-import sys
 from datetime import date as _date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 from log_parser import build_day_summary
 
-router = APIRouter()
+router = APIRouter(prefix="/api/system")
 
 CRON_LOGS_DIR = Path(__file__).parent.parent.parent / "cron" / "logs"
 PORTFOLIOS_DIR = Path(__file__).parent.parent.parent / "data" / "portfolios"
@@ -32,7 +30,7 @@ def _empty_day(date_str: str) -> dict:
     }
 
 
-@router.get("/api/system/logs")
+@router.get("/logs")
 def get_system_logs():
     """Return last 30 days of pipeline activity, newest first."""
     if not CRON_LOGS_DIR.exists():
@@ -177,7 +175,7 @@ Be concise — 3–5 short paragraphs. Use plain text (no markdown headers). Wri
 """.strip()
 
 
-@router.get("/api/system/narrative")
+@router.get("/narrative")
 def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
     """Generate (or return cached) Claude narrative for a given date.
 

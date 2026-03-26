@@ -7,8 +7,6 @@ FIXTURES = Path(__file__).parent / "fixtures" / "cron_logs"
 PORTFOLIOS_FIXTURES = Path(__file__).parent / "fixtures" / "portfolios"
 
 # Import from scripts/
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from log_parser import (
     parse_scan_execute_log,
     parse_update_log,
