@@ -11,7 +11,19 @@
 
 ---
 
-## Recently Completed (2026-03-26)
+## Recently Completed (2026-03-26) — System Logs Page
+
+### System Logs Page (`/logs` route)
+- New `LOGS` button in TopBar (between VIX/regime area and CLOSE ALL) — toggles back to overview on re-click
+- `LogsPage.tsx` — 3 sections: Today's Briefing (Claude narrative), Pipeline Grid (14-day), Event Timeline (collapsible per day)
+- `api/routes/system.py` — `GET /api/system/logs` (30-day summaries) + `GET /api/system/narrative` (Claude daily briefing, 10-min cache, `?regenerate=true` bypass)
+- `scripts/log_parser.py` — parses `cron/logs/` files: scan/execute (regex summary line), update (line counting), watchdog (restart events), + trade counts from `transactions.csv`
+- 10 tests in `tests/test_log_parser.py` all passing
+- All portfolio hooks (`usePortfolioState`, `useRisk`, `usePerformance`) gated to skip when `activePortfolioId === "logs"`
+
+---
+
+## Previously Completed (2026-03-26)
 
 ### Prompt Context Enrichment
 5 new context blocks now sent to Claude during the execute/allocate phase:
