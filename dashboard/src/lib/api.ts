@@ -121,13 +121,13 @@ export const api = {
 
   // System logs
   getSystemLogs: (): Promise<SystemLogsResponse> =>
-    get<SystemLogsResponse>("/api/system/logs"),
+    get<SystemLogsResponse>("/system/logs"),
 
   generateNarrative: (logDate?: string, regenerate?: boolean): Promise<NarrativeResponse> => {
     const params = new URLSearchParams();
     if (logDate) params.set("date", logDate);
     if (regenerate) params.set("regenerate", "true");
     const qs = params.toString();
-    return get<NarrativeResponse>(`/api/system/narrative${qs ? `?${qs}` : ""}`);
+    return get<NarrativeResponse>(`/system/narrative${qs ? `?${qs}` : ""}`);
   },
 };
