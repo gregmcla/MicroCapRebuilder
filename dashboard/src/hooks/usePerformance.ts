@@ -12,7 +12,7 @@ export function usePerformance() {
     queryKey: ["performance", portfolioId],
     queryFn: () => api.getPerformance(portfolioId),
     refetchInterval: 120_000,
-    enabled: portfolioId !== "overview",
+    enabled: portfolioId !== "overview" && portfolioId !== "logs",
   });
 }
 
@@ -23,6 +23,6 @@ export function useLearning() {
     queryKey: ["learning", portfolioId],
     queryFn: () => api.getLearning(portfolioId),
     refetchInterval: 300_000,
-    enabled: portfolioId !== "overview",
+    enabled: portfolioId !== "overview" && portfolioId !== "logs",
   });
 }

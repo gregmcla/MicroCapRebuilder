@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import api.deps  # noqa: F401
 
 from api.routes import state, risk, performance, analysis, market, controls, discovery, portfolios
+from api.routes import system as system_routes
 
 app = FastAPI(title="GScott Trading Cockpit", version="0.1.0")
 
@@ -28,6 +29,7 @@ app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(controls.router)
 app.include_router(discovery.router)
+app.include_router(system_routes.router)
 
 
 @app.get("/api/health")
