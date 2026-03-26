@@ -19,6 +19,8 @@ import type {
   SuggestConfigResponse,
   TickerInfo,
   TradeRationale,
+  SystemLogsResponse,
+  NarrativeResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -116,4 +118,16 @@ export const api = {
   getMarketIndices: () => get<MarketIndices>("/market/indices"),
   getChartData: (ticker: string, range: string = "1M") =>
     get<ChartData>(`/market/chart/${ticker}?range=${range}`),
+
+  // System logs
+  getSystemLogs: (): Promise<SystemLogsResponse> =>
+    get<SystemLogsResponse>("/api/system/logs"),
+
+  generateNarrative: (logDate?: string, regenerate?: boolean): Promise<NarrativeResponse> => {
+    const params = new URLSearchParams();
+    if (logDate) params.set("date", logDate);
+    if (regenerate) params.set("regenerate", "true");
+    const qs = params.toString();
+    return get<NarrativeResponse>(`/api/system/narrative${qs ? `?${qs}` : ""}`);
+  },
 };

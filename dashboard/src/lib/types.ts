@@ -489,3 +489,43 @@ export interface SuggestConfigResponse {
   max_position_pct: number;
   max_positions: number;
 }
+
+// ── System Logs ──────────────────────────────────────────────────────────────
+
+export interface PipelineJob {
+  status: "ok" | "failed" | "missing";
+  ok: number;
+  failed: number;
+  ran_at: string | null;   // "HH:MM" or null if missing
+  trades?: number;         // execute job only
+}
+
+export interface LogEvent {
+  time: string;            // "HH:MM"
+  type: "scan" | "execute" | "update" | "api_restart" | "failed";
+  detail: string;
+}
+
+export interface DayLog {
+  date: string;            // "YYYY-MM-DD"
+  pipeline: {
+    scan: PipelineJob;
+    execute: PipelineJob;
+    update_midday: PipelineJob;
+    update_close: PipelineJob;
+  };
+  watchdog_restarts: number;
+  events: LogEvent[];
+}
+
+export interface SystemLogsResponse {
+  days: DayLog[];
+}
+
+export interface NarrativeResponse {
+  date: string;
+  narrative: string | null;
+  generated_at: string;
+  cached: boolean;
+  error?: string;
+}
