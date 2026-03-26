@@ -1,5 +1,6 @@
 """Parse cron log files into structured dicts for the system logs API."""
 import csv
+import logging
 import re
 from pathlib import Path
 
@@ -84,7 +85,7 @@ def count_trades_for_date(portfolios_dir: Path, date_str: str) -> int:
                 for row in csv.DictReader(f):
                     if row.get("date", "").startswith(date_str):
                         total += 1
-        except Exception:
+        except Exception as e:
             continue
     return total
 
@@ -103,13 +104,15 @@ def build_day_summary(cron_logs_dir: Path, portfolios_dir: Path, date_str: str) 
             return _missing_job()
         try:
             return parse_scan_execute_log(files[-1])
-        except Exception:
+        except Exception as e:
+            logging.warning("Failed to parse log %s: %s", cron_logs_dir / pattern, e)
             return {"status": "failed", "ok": 0, "failed": 0, "ran_at": None}
 
     def _parse_update(log_path: Path) -> dict:
         try:
             return parse_update_log(log_path)
-        except Exception:
+        except Exception as e:
+            logging.warning("Failed to parse update log %s: %s", log_path, e)
             return {"status": "failed", "ok": 0, "failed": 0, "ran_at": None}
 
     scan = _parse_scan_execute(f"scan_{date_compact}_*.log")
