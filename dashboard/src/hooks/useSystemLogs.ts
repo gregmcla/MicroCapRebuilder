@@ -1,6 +1,6 @@
 /** TanStack Query hooks for system logs and Claude narrative. */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import type { SystemLogsResponse, NarrativeResponse } from "../lib/types";
 
@@ -22,12 +22,15 @@ export function useSystemNarrative(logDate?: string) {
   });
 }
 
-export function useRegenerateNarrative() {
+export function useRegenerateNarrative(logDate?: string) {
   const queryClient = useQueryClient();
+  // useMutation gives callers isPending for the Regenerate button spinner.
   // Calls with regenerate=true so the server bypasses its 10-min cache,
   // then writes the result directly into the query cache.
-  return async (logDate?: string) => {
-    const result = await api.generateNarrative(logDate, true);
-    queryClient.setQueryData(["system-narrative", logDate], result);
-  };
+  return useMutation({
+    mutationFn: () => api.generateNarrative(logDate, true),
+    onSuccess: (result) => {
+      queryClient.setQueryData(["system-narrative", logDate], result);
+    },
+  });
 }
