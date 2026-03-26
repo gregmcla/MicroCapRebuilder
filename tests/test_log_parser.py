@@ -97,3 +97,29 @@ def test_build_day_summary_missing_logs(tmp_path):
     assert result["pipeline"]["update_close"]["status"] == "missing"
     assert result["watchdog_restarts"] == 0
     assert result["events"] == []
+
+
+def test_api_system_logs_endpoint(monkeypatch):
+    """GET /api/system/logs returns a list of day objects."""
+    from fastapi.testclient import TestClient
+    import api.main as main_module
+
+    # Point the route at our fixture directories
+    import api.routes.system as system_module
+    monkeypatch.setattr(system_module, "CRON_LOGS_DIR", FIXTURES)
+    monkeypatch.setattr(system_module, "PORTFOLIOS_DIR", PORTFOLIOS_FIXTURES)
+
+    client = TestClient(main_module.app)
+    response = client.get("/api/system/logs")
+    assert response.status_code == 200
+    data = response.json()
+    assert "days" in data
+    assert isinstance(data["days"], list)
+    assert len(data["days"]) == 30
+    # Today or recent date should have real data from fixtures if date matches
+    # But regardless, every entry must have the required shape
+    for day in data["days"]:
+        assert "date" in day
+        assert "pipeline" in day
+        assert "watchdog_restarts" in day
+        assert "events" in day
