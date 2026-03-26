@@ -5,7 +5,7 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="$DIR/cron/logs"
-LOG="$LOG_DIR/execute_$(date +%Y%m%d).log"
+LOG="$LOG_DIR/execute_$(date +%Y%m%d)_$$.log"
 mkdir -p "$LOG_DIR"
 
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
@@ -30,6 +30,10 @@ if [ -f .env ]; then
 fi
 
 PORTFOLIOS=$(python3 scripts/list_portfolios.py 2>>"$LOG")
+if [ -z "$PORTFOLIOS" ]; then
+    log "ERROR: list_portfolios.py returned no portfolios -- aborting"
+    exit 1
+fi
 COUNT=0
 FAILED=0
 

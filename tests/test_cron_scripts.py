@@ -57,10 +57,12 @@ def test_all_scripts_have_shebang():
 
 def test_watchdog_exits_cleanly_when_api_healthy():
     """
-    Watchdog must exit 0 without modifying logs when API is up.
+    Watchdog must exit 0 AND not touch the log when API is up.
     Assumes the API is running (integration test — skip if port 8001 not listening).
     """
     import socket
+    import time
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     api_up = sock.connect_ex(("localhost", 8001)) == 0
     sock.close()
@@ -74,12 +76,21 @@ def test_watchdog_exits_cleanly_when_api_healthy():
         import pytest
         pytest.skip("api_watchdog.sh not yet created")
 
+    log_path = CRON_DIR / "logs" / "api_watchdog.log"
+    log_size_before = log_path.stat().st_size if log_path.exists() else 0
+
     result = subprocess.run(
         ["bash", str(watchdog)],
         capture_output=True,
         text=True,
         cwd=str(CRON_DIR.parent),
     )
+
     assert result.returncode == 0, (
         f"Watchdog exited non-zero when API was healthy:\n{result.stderr}"
+    )
+
+    log_size_after = log_path.stat().st_size if log_path.exists() else 0
+    assert log_size_after == log_size_before, (
+        "Watchdog wrote to log when API was healthy — it may have restarted the API"
     )
