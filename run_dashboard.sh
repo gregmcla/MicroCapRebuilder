@@ -27,7 +27,7 @@ echo ""
 # Start FastAPI
 echo -e "  API:       ${GREEN}http://localhost:8001${NC}"
 source .venv/bin/activate
-uvicorn api.main:app --port 8001 &
+DISABLE_SOCIAL=true uvicorn api.main:app --port 8001 &
 API_PID=$!
 
 # Start Vite dev server
