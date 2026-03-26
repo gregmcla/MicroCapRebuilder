@@ -169,4 +169,3 @@
 1. **Post-trade review** — user requested, not yet designed
 2. Configure strategy DNA for `vcx-ai-concentration`
 3. Initial scans for `asymmetric-microcap-compounder` and `vcx-ai-concentration`
-4. **Per-portfolio `reentry_guard` config** — manually add `enhanced_trading.reentry_guard` block to each existing portfolio's `config.json` per the suggested values table in `docs/superpowers/specs/2026-03-26-reentry-guard-design.md`
