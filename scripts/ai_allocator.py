@@ -10,6 +10,7 @@ to Claude as context so it can factor freed cash into its allocation plan.
 """
 
 import json
+import logging
 import re
 from typing import Optional
 import pandas as pd
@@ -19,6 +20,7 @@ from enhanced_structures import ProposedAction
 from ai_review import ReviewedAction, ReviewDecision, get_ai_client
 from market_regime import MarketRegime, RegimeAnalysis
 from schema import CLAUDE_MODEL
+from reentry_guard import _format_reentry_block
 
 
 # ─── Main Entry Point ─────────────────────────────────────────────────────────
@@ -245,6 +247,16 @@ def _build_allocation_prompt(
                 f"\n  {ticker} | {score:.0f} | ${price:.2f} | {sector} | {factor_part}{fund_part}"
             )
 
+            rc = c.get("reentry_context")
+            if rc is not None:
+                try:
+                    cand_lines.append(_format_reentry_block(rc).rstrip())
+                except Exception as e:
+                    logging.warning(
+                        "ai_allocator: failed to format reentry block for %s: %s",
+                        c.get("ticker"), e
+                    )
+
         header = f"ALL {len(candidates_to_show)} WATCHLIST CANDIDATES (sorted highest to lowest quant score — advisory data; you may pick any):"
 
     else:
@@ -273,6 +285,16 @@ def _build_allocation_prompt(
                         f"    fundamentals: rev_growth={_pct(rev_growth)}, "
                         f"gross_margin={_pct(gross_margin)}, P/E={_num(t_pe)}, "
                         f"ROE={_pct(roe)}, D/E={_num(d2e)}"
+                    )
+
+            rc = c.get("reentry_context")
+            if rc is not None:
+                try:
+                    cand_lines.append(_format_reentry_block(rc).rstrip())
+                except Exception as e:
+                    logging.warning(
+                        "ai_allocator: failed to format reentry block for %s: %s",
+                        c.get("ticker"), e
                     )
 
         header = f"WATCHLIST CANDIDATES (top {len(candidates_to_show)} by quant score — advisory data for your reasoning, sorted highest to lowest):"
