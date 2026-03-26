@@ -11,6 +11,19 @@
 
 ---
 
+## Recently Completed (2026-03-26) — VCX Same-Run Reentry Veto + Stop Floor
+
+### Same-Run Reentry Veto
+- **`scripts/unified_analysis.py`** — after Layer 4 sequencing, vetoes any BUY where the ticker is also being SOLD in the same run AND `buy_price >= avg_cost_basis`. Cost-basis-lowering rebuys (buy below current avg) are still allowed through.
+- Prevents the `SELL VCX @ $X / BUY VCX @ $X` no-op trade cycle on high-volatility concentrated positions.
+
+### min_stop_loss_pct Floor
+- **`scripts/risk_layer.py`** — added `min_stop_loss_pct` floor: if `config["enhanced_trading"]["min_stop_loss_pct"]` is set, the recommended stop can never exceed `entry_price * (1 + min_stop_loss_pct)`. Prevents stops from being set unreasonably tight for high-volatility strategies.
+- **`data/portfolios/vcx-ai-concentration/config.json`** — `"min_stop_loss_pct": -0.35` (-35% floor). VCX DNA says not to sell on volatility; -35% floor gives room for normal pre-IPO swings while still protecting against genuine breakdown.
+- All 91 tests passing.
+
+---
+
 ## Recently Completed (2026-03-26) — Reentry Guard
 
 ### Reentry Guard
@@ -115,7 +128,7 @@
 ## Open Bugs / Known Issues
 
 - `ALE`, `JBT` tickers delisted — fail price fetch consistently (ignore)
-- `vcx-ai-concentration` — needs strategy DNA configured before it will scan/execute properly
+- `vcx-ai-concentration` — strategy DNA configured; has min_stop_loss_pct=-0.35 and reentry_guard set. Needs initial scan to populate watchlist.
 - New portfolios (asymmetric-microcap-compounder, vcx-ai-concentration) need initial scans to populate watchlists
 - Stocktwits returning 403s broadly — social heat won't populate (external issue, DISABLE_SOCIAL workaround in place)
 - No tests for `_validate_allocation()` / `_parse_json()` in `ai_allocator.py`
@@ -167,5 +180,5 @@
 ## Pending Features (backlog)
 
 1. **Post-trade review** — user requested, not yet designed
-2. Configure strategy DNA for `vcx-ai-concentration`
+2. ~~Configure strategy DNA for `vcx-ai-concentration`~~ — DONE
 3. Initial scans for `asymmetric-microcap-compounder` and `vcx-ai-concentration`
