@@ -2,13 +2,28 @@
 
 ## Rules for AI Assistants
 
+### Session Start (do this before anything else)
+1. **Read `PROJECT_STATE.md`** — it has current phase, open bugs, recent completions, and backlog. Don't skip this.
+2. Check if the API is running: `curl -s http://localhost:8001/api/health`
+
+### Session End (do this before closing)
+1. **Update `PROJECT_STATE.md`** — current phase, what was completed, any new bugs found, backlog changes.
+2. **Capture memories** — save any feedback corrections, confirmed approaches, or architectural decisions with a "why" to `~/.claude/projects/-Users-gregmclaughlin/memory/`. See memory types: feedback (corrections + confirmations), project (decisions with motivation), reference (where to find things).
+3. **Push to GitHub** if meaningful changes were made — automatically, no need to ask.
+
+### Proactive Memory Capture (mid-session)
+Don't wait for session end. Capture immediately when:
+- The user corrects my approach → feedback memory
+- A significant design/architecture decision is made with a clear reason → project memory
+- An unusual approach is confirmed by the user accepting it → feedback memory
+- A non-obvious bug is fixed that reveals a recurring pattern → project memory
+
 ### Workflow Rules
 - **Plan before coding.** For anything beyond a trivial fix, enter plan mode first. Outline the approach, get approval, then implement.
 - **Verify before claiming success.** After making changes, run the dev server or relevant script and check output for errors. Do NOT claim something works without proof.
 - **Preserve existing functionality.** When rewriting or refactoring, enumerate what currently works and confirm with the user what should be kept. Never silently remove features.
 - **Don't deploy unless explicitly asked.** Don't push, deploy, or change scope without explicit approval. "Figure it out" is not explicit approval to push to GitHub.
 - **Update this file.** After completing a major feature or phase, update this CLAUDE.md to reflect the current state of the project.
-- **Push to GitHub at end of every session** where meaningful changes were made — do it automatically.
 - **Use python3**, not python, on this machine.
 - **Always `except Exception as e:`** — never bare `except:`. It hides real bugs.
 
