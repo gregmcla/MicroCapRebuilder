@@ -3,9 +3,9 @@
  * Activated when activePortfolioId === "logs".
  */
 
+import { useState } from "react";
 import { useSystemLogs, useSystemNarrative, useRegenerateNarrative } from "../hooks/useSystemLogs";
 import type { DayLog, PipelineJob, LogEvent } from "../lib/types";
-import { useState } from "react";
 
 // ── Badge colours ─────────────────────────────────────────────────────────────
 
