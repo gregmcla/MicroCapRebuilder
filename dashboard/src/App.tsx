@@ -104,7 +104,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-bg-primary overflow-hidden">
-      <TopBar state={isOverview ? undefined : state} isLoading={isOverview ? false : isLoading} />
+      <TopBar state={isOverview || isLogs ? undefined : state} isLoading={isOverview || isLogs ? false : isLoading} />
 
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">
