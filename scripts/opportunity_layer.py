@@ -41,6 +41,7 @@ from stock_scorer import StockScorer, StockScore
 from portfolio_state import PortfolioState, load_watchlist
 from market_regime import MarketRegime, get_position_size_multiplier
 from data_files import get_transactions_file
+from reentry_guard import get_reentry_context
 
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
@@ -129,6 +130,12 @@ class OpportunityLayer:
                 - conviction_scores: Dict[ticker, ConvictionScore]
                 - buy_proposals: List[BuyProposal]
         """
+        rg_config = self.config.get("enhanced_trading", {}).get("reentry_guard", {})
+        reentry_guard_enabled = bool(rg_config.get("enabled", True))
+        stop_loss_cooldown_days = int(rg_config.get("stop_loss_cooldown_days", 7))
+        lookback_days = int(rg_config.get("lookback_days", 30))
+        meaningful_change_threshold_pts = float(rg_config.get("meaningful_change_threshold_pts", 10))
+
         # Score all watchlist candidates (exclude tickers we already hold)
         watchlist = load_watchlist(portfolio_id=state.portfolio_id)
         if not watchlist:
@@ -153,38 +160,40 @@ class OpportunityLayer:
             return {"conviction_scores": {}, "buy_proposals": []}
 
         # ── Bug #7 fix: Cooldown after stop-out ──────────────────────────────
-        # Exclude tickers that were stopped out in the last 7 days to prevent
+        # Exclude tickers that were stopped out in the last N days to prevent
         # immediately re-entering a position that just triggered a stop loss.
-        cooled_down_tickers: set = set()
-        try:
-            tx_file = get_transactions_file(state.portfolio_id)
-            if tx_file.exists():
-                tx_df = pd.read_csv(tx_file, dtype=str)
-                if not tx_df.empty and "date" in tx_df.columns and "reason" in tx_df.columns:
-                    cutoff = date.today() - timedelta(days=7)
-                    for _, row in tx_df.iterrows():
-                        try:
-                            tx_date = date.fromisoformat(str(row["date"])[:10])
-                        except Exception as e:
-                            print(f"Warning: failed to parse transaction date: {e}")
-                            continue
-                        if tx_date >= cutoff and str(row.get("reason", "")).upper() == "STOP_LOSS":
-                            ticker = str(row.get("ticker", "")).strip().upper()
-                            if ticker:
-                                cooled_down_tickers.add(ticker)
-        except Exception as e:
-            logging.warning("OpportunityLayer: failed to load cooldown tickers: %s", e)
+        tx_file = get_transactions_file(state.portfolio_id)
+        if reentry_guard_enabled:
+            cooled_down_tickers: set = set()
+            try:
+                if tx_file.exists():
+                    tx_df = pd.read_csv(tx_file, dtype=str)
+                    if not tx_df.empty and "date" in tx_df.columns and "reason" in tx_df.columns:
+                        cutoff = date.today() - timedelta(days=stop_loss_cooldown_days)
+                        for _, row in tx_df.iterrows():
+                            try:
+                                tx_date = date.fromisoformat(str(row["date"])[:10])
+                            except Exception as e:
+                                print(f"Warning: failed to parse transaction date: {e}")
+                                continue
+                            if tx_date >= cutoff and str(row.get("reason", "")).upper() == "STOP_LOSS":
+                                ticker = str(row.get("ticker", "")).strip().upper()
+                                if ticker:
+                                    cooled_down_tickers.add(ticker)
+            except Exception as e:
+                logging.warning("OpportunityLayer: failed to load cooldown tickers: %s", e)
 
-        if cooled_down_tickers:
-            before = len(candidates)
-            candidates = [t for t in candidates if t not in cooled_down_tickers]
-            excluded = before - len(candidates)
-            if excluded:
-                logging.info(
-                    "OpportunityLayer: excluded %d candidate(s) due to 7-day stop-loss cooldown: %s",
-                    excluded,
-                    sorted(cooled_down_tickers & set([t for t in watchlist if t not in current_tickers])),
-                )
+            if cooled_down_tickers:
+                before = len(candidates)
+                candidates = [t for t in candidates if t not in cooled_down_tickers]
+                excluded = before - len(candidates)
+                if excluded:
+                    logging.info(
+                        "OpportunityLayer: excluded %d candidate(s) due to %d-day stop-loss cooldown: %s",
+                        excluded,
+                        stop_loss_cooldown_days,
+                        sorted(cooled_down_tickers & set([t for t in watchlist if t not in current_tickers])),
+                    )
         # ─────────────────────────────────────────────────────────────────────
 
         # Use StockScorer to get base composite scores
@@ -205,6 +214,27 @@ class OpportunityLayer:
         # Generate buy proposals from high-conviction candidates
         buy_proposals = self._generate_buy_proposals(conviction_scores, state, price_map,
                                                      social_signals=social_signals)
+
+        if reentry_guard_enabled:
+            # Attach reentry context to each buy proposal so AI review can see
+            # whether the ticker has been traded before and how scores have changed.
+            for proposal in buy_proposals:
+                try:
+                    current_scores = {
+                        k: v for k, v in proposal.conviction_score.factors.items()
+                        if k != "composite"
+                    }
+                    proposal.reentry_context = get_reentry_context(
+                        ticker=proposal.ticker,
+                        transactions_path=tx_file,
+                        current_scores=current_scores,
+                        lookback_days=lookback_days,
+                        meaningful_change_threshold_pts=meaningful_change_threshold_pts,
+                    )
+                except Exception as e:
+                    logging.warning(
+                        "OpportunityLayer: reentry_guard failed for %s: %s", proposal.ticker, e
+                    )
 
         # ── Bug #6 fix: Rotation trigger ─────────────────────────────────────
         # Trigger rotation when:
