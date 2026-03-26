@@ -86,6 +86,7 @@ def count_trades_for_date(portfolios_dir: Path, date_str: str) -> int:
                     if row.get("date", "").startswith(date_str):
                         total += 1
         except Exception as e:
+            logging.warning("Failed to read transactions for %s: %s", portfolio_dir.name, e)
             continue
     return total
 

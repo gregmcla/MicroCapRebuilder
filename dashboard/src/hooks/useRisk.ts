@@ -12,7 +12,7 @@ export function useRisk() {
     queryKey: ["risk", portfolioId],
     queryFn: () => api.getRisk(portfolioId),
     refetchInterval: 60_000,
-    enabled: portfolioId !== "overview",
+    enabled: portfolioId !== "overview" && portfolioId !== "logs",
   });
 }
 
@@ -23,6 +23,6 @@ export function useWarnings() {
     queryKey: ["warnings", portfolioId],
     queryFn: () => api.getWarnings(portfolioId),
     refetchInterval: 60_000,
-    enabled: portfolioId !== "overview",
+    enabled: portfolioId !== "overview" && portfolioId !== "logs",
   });
 }
