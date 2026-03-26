@@ -12,7 +12,7 @@ export function usePortfolioState() {
     queryKey: ["portfolioState", portfolioId],
     queryFn: () => api.getState(portfolioId),
     refetchInterval: 30_000,
-    enabled: portfolioId !== "overview",
+    enabled: portfolioId !== "overview" && portfolioId !== "logs",
   });
 }
 
