@@ -220,7 +220,8 @@
       "stop_loss_cooldown_days": 7,
       "lookback_days": 30,
       "meaningful_change_threshold_pts": 10
-    }
+    },
+    "min_stop_loss_pct": -0.35
   },
   "data_provider": {
     "primary": "yfinance",

@@ -136,6 +136,15 @@ class RiskLayer:
             if preservation_active and trailing_stop and abs(trailing_stop - recommended_stop) < 0.01:
                 stop_type = "trailing[preservation-tightened]"
 
+            # Apply min_stop_loss_pct floor — prevents stop from being set tighter than N% below entry.
+            # E.g. -0.35 means stop can never be higher than entry * 0.65 (at most -35% from entry).
+            min_stop_loss_pct = self.config.get("enhanced_trading", {}).get("min_stop_loss_pct", None)
+            if min_stop_loss_pct is not None:
+                floor_stop = entry_price * (1 + float(min_stop_loss_pct))
+                if recommended_stop > floor_stop:
+                    recommended_stop = floor_stop
+                    stop_type = f"min_stop_pct[{min_stop_loss_pct:.0%}]"
+
             stops[ticker] = StopLevels(
                 ticker=ticker,
                 current_price=current_price,

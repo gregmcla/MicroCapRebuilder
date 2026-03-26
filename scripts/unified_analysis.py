@@ -725,6 +725,35 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         except Exception as e:
             print(f"  ⚠️  Price refresh failed (using scorer prices): {e}")
 
+    # ─── Same-run reentry veto ────────────────────────────────────────────────
+    # If a ticker appears as both SELL and BUY in the same run, veto the BUY
+    # when buy_price >= avg_cost_basis of the position being sold. Buying at or
+    # above cost basis in the same run is a no-op trade cycle. Buying below cost
+    # basis (lowering avg cost on a dip) is legitimate and allowed.
+    if not state.positions.empty:
+        sell_cost_basis = {}
+        for action in proposed_actions:
+            if action.action_type == "SELL":
+                matching = state.positions[state.positions["ticker"] == action.ticker]
+                if not matching.empty:
+                    sell_cost_basis[action.ticker] = float(matching.iloc[0]["avg_cost_basis"])
+        if sell_cost_basis:
+            vetoed, kept = [], []
+            for action in proposed_actions:
+                if (action.action_type == "BUY"
+                        and action.ticker in sell_cost_basis
+                        and action.price >= sell_cost_basis[action.ticker]):
+                    logging.info(
+                        "Same-run reentry veto: %s buy@%.2f >= avg_cost_basis %.2f",
+                        action.ticker, action.price, sell_cost_basis[action.ticker],
+                    )
+                    vetoed.append(action.ticker)
+                else:
+                    kept.append(action)
+            if vetoed:
+                print(f"  🚫 Same-run reentry vetoed for {vetoed}: buy price >= avg cost basis")
+            proposed_actions = kept
+
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
 
