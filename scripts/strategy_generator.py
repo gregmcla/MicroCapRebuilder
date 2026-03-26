@@ -36,15 +36,20 @@ Return a JSON object with exactly these fields:
   "name": "Short descriptive portfolio name (2-5 words)",
   "universe": "one of: microcap, smallcap, midcap, largecap, allcap",
   "etfs": ["4-6 real ETF tickers that best source candidates for this thesis"],
-  "stop_loss_pct": <number 5-10>,
-  "risk_per_trade_pct": <number 5-10>,
-  "max_position_pct": <number 5-15>
+  "stop_loss_pct": <number 5-15>,
+  "take_profit_pct": <number 15-300>,
+  "risk_per_trade_pct": <number 5-50>,
+  "max_position_pct": <number 5-95>,
+  "max_positions": <integer 1-20>
 }}
 
 Guidelines:
 - Universe: pick the market cap range that best fits the thesis. Use "allcap" if the thesis spans multiple cap sizes.
 - ETFs: pick ETFs whose holdings overlap with the thesis. Only use real, liquid ETFs. No leveraged/inverse ETFs (no TQQQ, SOXL, etc.).
-- Risk params: aggressive theses get tighter stops (5-6%) and larger positions (10-15%). Conservative theses get wider stops (8-10%) and smaller positions (5-8%).
+- Risk params: read the DNA carefully and use the exact values it specifies. If the DNA says "risk_per_trade_pct MUST be 45", use 45. If it says "max_positions: 2", use 2.
+- Concentrated strategies (1-3 positions) should have high risk_per_trade_pct (30-50) and high max_position_pct (50-95).
+- Diversified strategies (10+ positions) should have low risk_per_trade_pct (3-10) and low max_position_pct (5-15).
+- take_profit_pct: aggressive momentum strategies targeting 2-5x moves should use 100-200. Conservative strategies use 15-30.
 - Name: be descriptive but concise. "AI Infrastructure" not "Artificial Intelligence Adjacent Infrastructure Investment Strategy".
 
 Starting capital: ${starting_capital:,.0f}
@@ -118,6 +123,8 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         "universe": data["universe"],
         "etfs": [str(t).upper() for t in data["etfs"]],
         "stop_loss_pct": float(data["stop_loss_pct"]),
+        "take_profit_pct": float(data.get("take_profit_pct", 20.0)),
         "risk_per_trade_pct": float(data["risk_per_trade_pct"]),
         "max_position_pct": float(data["max_position_pct"]),
+        "max_positions": int(data.get("max_positions", 10)),
     }

@@ -484,6 +484,8 @@ export interface SuggestConfigResponse {
   universe: string;
   etfs: string[];
   stop_loss_pct: number;
+  take_profit_pct: number;
   risk_per_trade_pct: number;
   max_position_pct: number;
+  max_positions: number;
 }

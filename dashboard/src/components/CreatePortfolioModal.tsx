@@ -52,8 +52,10 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
         strategy_dna: dna,
         ai_config: {
           stop_loss_pct: suggestion.stop_loss_pct,
+          take_profit_pct: suggestion.take_profit_pct,
           risk_per_trade_pct: suggestion.risk_per_trade_pct,
           max_position_pct: suggestion.max_position_pct,
+          max_positions: suggestion.max_positions,
           etf_sources: suggestion.etfs,
         },
       });
@@ -262,7 +264,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
               <div>
                 <p style={labelStyle}>Risk</p>
                 <p style={{ fontSize: "11px", color: "var(--text-2)", margin: 0, fontFamily: "var(--font-mono)" }}>
-                  {suggestion.stop_loss_pct}% stop · {suggestion.risk_per_trade_pct}% risk/trade · {suggestion.max_position_pct}% max position
+                  {suggestion.stop_loss_pct}% stop · {suggestion.take_profit_pct}% target · {suggestion.risk_per_trade_pct}% risk/trade · {suggestion.max_position_pct}% max pos · {suggestion.max_positions} max positions
                 </p>
               </div>
             </div>

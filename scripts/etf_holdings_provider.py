@@ -126,12 +126,8 @@ class ETFHoldingsProvider:
             if sym not in self.etf_configs:
                 self.etf_configs[sym] = ETFConfig(sym, f"{sym} ETF", "unknown", 100)
 
-        # Portfolio-scoped cache file
-        if portfolio_id:
-            from data_files import _resolve_data_dir
-            self._cache_file = _resolve_data_dir(portfolio_id) / "etf_holdings_cache.json"
-        else:
-            self._cache_file = CACHE_FILE
+        # Global shared cache — all portfolios share ETF holdings data
+        self._cache_file = CACHE_FILE
 
         self._cache = self._load_cache()
 

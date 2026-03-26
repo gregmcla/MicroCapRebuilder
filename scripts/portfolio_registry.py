@@ -490,10 +490,14 @@ def create_portfolio(
             config["scoring"]["default_weights"] = StockScorer._migrate_weight_keys(ai_config["scoring_weights"])
         if "stop_loss_pct" in ai_config:
             config["default_stop_loss_pct"] = ai_config["stop_loss_pct"]
+        if "take_profit_pct" in ai_config:
+            config["default_take_profit_pct"] = ai_config["take_profit_pct"]
         if "risk_per_trade_pct" in ai_config:
             config["risk_per_trade_pct"] = ai_config["risk_per_trade_pct"]
         if "max_position_pct" in ai_config:
             config["max_position_pct"] = ai_config["max_position_pct"]
+        if "max_positions" in ai_config:
+            config["max_positions"] = ai_config["max_positions"]
         if "scan_types" in ai_config:
             config["discovery"]["scan_types"] = ai_config["scan_types"]
         if "sectors" in ai_config:

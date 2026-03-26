@@ -61,7 +61,7 @@ def get_portfolios():
 
 
 @router.post("")
-def create_new_portfolio(req: CreatePortfolioRequest):
+def create_new_portfolio(req: CreatePortfolioRequest, background_tasks: BackgroundTasks):
     try:
         meta = create_portfolio(
             portfolio_id=req.id, name=req.name,
@@ -72,6 +72,7 @@ def create_new_portfolio(req: CreatePortfolioRequest):
             ai_driven=req.ai_driven,
             strategy_dna=req.strategy_dna,
         )
+        background_tasks.add_task(_trigger_scan, req.id)
         return {"portfolio": asdict(meta), "message": f"Created portfolio '{req.name}'"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
