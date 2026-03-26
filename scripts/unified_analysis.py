@@ -20,9 +20,11 @@ Usage:
 """
 
 import json
+import logging
 import os
 import uuid
 from datetime import date, datetime
+from pathlib import Path
 
 from schema import Action, Reason
 from stock_scorer import StockScorer
@@ -57,6 +59,7 @@ from execution_sequencer import ExecutionSequencer
 from data_files import get_watchlist_file
 from trade_analyzer import TradeAnalyzer
 from ai_allocator import run_ai_allocation
+from reentry_guard import get_reentry_context
 
 
 # ─── Shared Helpers ───────────────────────────────────────────────────────────
@@ -102,6 +105,12 @@ def _run_ai_driven_analysis(
     config = state.config
     strategy_dna = config.get("strategy_dna") or config.get("strategy", {}).get("strategy_dna", "")
 
+    rg_config = config.get("enhanced_trading", {}).get("reentry_guard", {})
+    rg_enabled = bool(rg_config.get("enabled", True))
+    rg_lookback = int(rg_config.get("lookback_days", 30))
+    rg_threshold = float(rg_config.get("meaningful_change_threshold_pts", 10))
+    tx_file = Path(__file__).parent.parent / "data" / "portfolios" / state.portfolio_id / "transactions.csv"
+
     # Load watchlist and filter already-held tickers
     try:
         from watchlist_manager import WatchlistManager
@@ -131,19 +140,33 @@ def _run_ai_driven_analysis(
         scored_results = scorer.score_watchlist(candidates)
         for s in scored_results:
             if s:
-                scored_candidates.append({
+                current_scores = {
+                    "price_momentum": s.price_momentum_score,
+                    "earnings_growth": s.earnings_growth_score,
+                    "quality": s.quality_score,
+                    "value_timing": s.value_timing_score,
+                    "volume": s.volume_score,
+                    "volatility": s.volatility_score,
+                }
+                candidate = {
                     "ticker": s.ticker,
                     "composite_score": s.composite_score,
                     "current_price": s.current_price,
-                    "factor_scores": {
-                        "price_momentum": s.price_momentum_score,
-                        "earnings_growth": s.earnings_growth_score,
-                        "quality": s.quality_score,
-                        "value_timing": s.value_timing_score,
-                        "volume": s.volume_score,
-                        "volatility": s.volatility_score,
-                    },
-                })
+                    "factor_scores": current_scores,
+                    "reentry_context": None,
+                }
+                if rg_enabled:
+                    try:
+                        candidate["reentry_context"] = get_reentry_context(
+                            ticker=s.ticker,
+                            transactions_path=tx_file,
+                            current_scores=current_scores,
+                            lookback_days=rg_lookback,
+                            meaningful_change_threshold_pts=rg_threshold,
+                        )
+                    except Exception as e:
+                        logging.warning("reentry_guard: AI path failed for %s: %s", s.ticker, e)
+                scored_candidates.append(candidate)
         scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
         print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
 
@@ -427,7 +450,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                 quant_score=conviction.composite_score,
                 factor_scores=conviction.factors,
                 regime=regime.value,
-                reason=buy_proposal.rationale
+                reason=buy_proposal.rationale,
+                reentry_context=buy_proposal.reentry_context,
             ))
 
             # Enhanced display with conviction info
@@ -476,7 +500,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                 quant_score=conviction.composite_score,
                 factor_scores=conviction.factors,
                 regime=regime.value,
-                reason=buy_proposal.rationale
+                reason=buy_proposal.rationale,
+                reentry_context=buy_proposal.reentry_context,
             ))
 
         # Add rebalancing sells
