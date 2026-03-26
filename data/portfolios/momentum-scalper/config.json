@@ -6,12 +6,12 @@
     "simulated_slippage_pct": 0.05,
     "paper_data_suffix": "_paper"
   },
-  "starting_capital": 500000.0,
+  "starting_capital": 100000.0,
   "initial_deployment_target_pct": 90.0,
   "risk_per_trade_pct": 8.0,
   "max_position_pct": 12.0,
   "max_positions": 999,
-  "default_stop_loss_pct": 7.0,
+  "default_stop_loss_pct": 5.0,
   "default_take_profit_pct": 20.0,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^GSPC",
@@ -53,9 +53,9 @@
       }
     },
     "min_score_threshold": {
-      "BULL": 30.0,
-      "SIDEWAYS": 30.0,
-      "BEAR": 30.0
+      "BULL": 40.0,
+      "SIDEWAYS": 50.0,
+      "BEAR": 60.0
     },
     "momentum": {
       "multi_timeframe_enabled": true,
@@ -93,7 +93,7 @@
       "triggers": {
         "drawdown_threshold_pct": 10.0,
         "risk_score_threshold": 40,
-        "regime_bear_auto_enable": false
+        "regime_bear_auto_enable": true
       },
       "actions": {
         "halt_new_buys": true,
@@ -217,9 +217,9 @@
     },
     "reentry_guard": {
       "enabled": true,
-      "stop_loss_cooldown_days": 7,
-      "lookback_days": 30,
-      "meaningful_change_threshold_pts": 10
+      "stop_loss_cooldown_days": 1,
+      "lookback_days": 7,
+      "meaningful_change_threshold_pts": 5
     }
   },
   "data_provider": {
@@ -246,7 +246,7 @@
       "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 250,
+      "max_tickers": 150,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
@@ -266,10 +266,16 @@
       },
       "etf_holdings": {
         "enabled": true,
-        "etfs": []
+        "etfs": [
+          "SPY",
+          "QQQ",
+          "IWM",
+          "MDY",
+          "MTUM"
+        ]
       },
       "exchange_listings": {
-        "enabled": true
+        "enabled": false
       }
     },
     "tiers": {
@@ -291,7 +297,7 @@
     }
   },
   "strategy": {
-    "name": "Default",
+    "name": "Custom",
     "sectors": [],
     "trading_style": null,
     "created_via": "ai_driven",
@@ -299,5 +305,5 @@
     "ai_rationale": null
   },
   "ai_driven": true,
-  "strategy_dna": "companies that directly profit from aging baby boomers \u2014 think Medicare Advantage insurers, assisted living and memory care REITs, hearing aid manufacturers, wealth management firms that serve retirees, cruise lines and RV companies that cater to active seniors, and pharmaceutical companies with strong pipelines in age-related conditions like Alzheimer's, macular degeneration, and joint replacement. Weight more heavily toward companies with recurring revenue from this demographic \u2014 monthly premiums, facility fees, subscription-based services \u2014 rather than one-time purchases."
+  "strategy_dna": "Pure technical momentum scalper \u2014 no fundamental thesis, no narrative. Buy stocks breaking out of consolidation with volume confirmation and strong multi-timeframe momentum alignment. Tight 5% stops, 10-15% targets, high turnover. Positions that do not move within 5-7 days get cut regardless. This is a direct stress test of whether the price_momentum and value_timing factors have real timing edge. The answer should be visible within 2-3 weeks."
 }

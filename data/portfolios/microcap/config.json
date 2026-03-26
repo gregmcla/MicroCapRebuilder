@@ -217,6 +217,12 @@
       "max_rotations_per_cycle": 3,
       "min_held_days_before_rotation": 3,
       "max_unrealized_loss_pct_for_rotation": -15
+    },
+    "reentry_guard": {
+      "enabled": true,
+      "stop_loss_cooldown_days": 7,
+      "lookback_days": 30,
+      "meaningful_change_threshold_pts": 10
     }
   },
   "data_provider": {
