@@ -238,6 +238,25 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
   );
 }
 
+function LogsButton() {
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
+  const isActive = portfolioId === "logs";
+
+  return (
+    <button
+      onClick={() => setPortfolio(isActive ? "overview" : "logs")}
+      className={`${BTN_H} px-3 rounded font-mono text-xs tracking-wider transition-colors ${
+        isActive
+          ? "bg-zinc-700 text-zinc-200"
+          : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+      }`}
+    >
+      LOGS
+    </button>
+  );
+}
+
 // ── Main TopBar ───────────────────────────────────────────────────────────────
 
 export default function TopBar({
@@ -330,6 +349,7 @@ export default function TopBar({
         {isLoading && (
           <span className="animate-pulse" style={{ fontSize: "10px", color: "var(--text-0)" }}>syncing</span>
         )}
+        <LogsButton />
         {state && <EmergencyClose positions={state.positions} />}
         {state && <ModeToggle paperMode={state.paper_mode} />}
       </div>

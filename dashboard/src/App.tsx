@@ -9,6 +9,7 @@ import { api } from "./lib/api";
 import TopBar from "./components/TopBar";
 import ActivityFeed from "./components/ActivityFeed";
 import OverviewPage from "./components/OverviewPage";
+import LogsPage from "./components/LogsPage";
 import PortfolioSummary from "./components/PortfolioSummary";
 import MatrixGrid from "./components/MatrixGrid";
 import { buildPortfolioMap, positionToMatrix } from "./components/MatrixGrid/constants";
@@ -61,6 +62,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
 export default function App() {
   const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
   const isOverview = portfolioId === "overview";
+  const isLogs = portfolioId === "logs";
   const { data: state, isLoading } = usePortfolioState();
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
@@ -69,7 +71,7 @@ export default function App() {
   const { data: overview } = useOverview();
 
   const activeMatrixPortfolio = useMemo<MatrixPortfolio | null>(() => {
-    if (isOverview || !portfolioId) return null;
+    if (isOverview || isLogs || !portfolioId) return null;
     const summaries = overview?.portfolios ?? [];
     const ids = summaries.length > 0
       ? summaries.map((s) => ({ id: s.id, name: s.name }))
@@ -89,14 +91,14 @@ export default function App() {
   const { data: watchlistData } = useQuery({
     queryKey: ["watchlist", portfolioId],
     queryFn: () => api.getWatchlist(portfolioId!),
-    enabled: !isOverview && !!portfolioId,
+    enabled: !isOverview && !isLogs && !!portfolioId,
     staleTime: 60_000,
   });
 
   const { data: scanStatus } = useQuery({
     queryKey: ["scanStatus", portfolioId],
     queryFn: () => api.scanStatus(portfolioId!),
-    enabled: !isOverview && !!portfolioId,
+    enabled: !isOverview && !isLogs && !!portfolioId,
     refetchInterval: 5000,
   });
 
@@ -107,7 +109,11 @@ export default function App() {
       {/* Body row */}
       <div className="flex-1 flex overflow-hidden">
         <ErrorBoundary>
-        {isOverview ? (
+        {isLogs ? (
+          <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+            <LogsPage />
+          </main>
+        ) : isOverview ? (
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
             <OverviewPage />
           </main>
