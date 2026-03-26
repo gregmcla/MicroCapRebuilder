@@ -42,7 +42,7 @@ from ai_review import (
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem
 from factor_learning import apply_weight_adjustments as _apply_weight_adjustments, FactorLearner
-from data_files import get_mode_indicator
+from data_files import get_mode_indicator, get_transactions_file
 from portfolio_state import (
     load_portfolio_state,
     load_watchlist,
@@ -109,7 +109,7 @@ def _run_ai_driven_analysis(
     rg_enabled = bool(rg_config.get("enabled", True))
     rg_lookback = int(rg_config.get("lookback_days", 30))
     rg_threshold = float(rg_config.get("meaningful_change_threshold_pts", 10))
-    tx_file = Path(__file__).parent.parent / "data" / "portfolios" / state.portfolio_id / "transactions.csv"
+    tx_file = get_transactions_file(state.portfolio_id)
 
     # Load watchlist and filter already-held tickers
     try:
