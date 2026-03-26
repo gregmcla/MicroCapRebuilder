@@ -11,6 +11,20 @@
 
 ---
 
+## Recently Completed (2026-03-26) — Reentry Guard
+
+### Reentry Guard
+- **`scripts/reentry_guard.py`** (new) — `get_reentry_context()` + `_format_reentry_block()`. Zero trading-module imports. Reads `transactions.csv`, finds most recent SELL within configurable lookback window, computes factor delta from most recent BUY entry scores vs current scores.
+- **Configurable stop-loss cooldown** — hardcoded `timedelta(days=7)` in `opportunity_layer.py` now reads `stop_loss_cooldown_days` from `config["enhanced_trading"]["reentry_guard"]`
+- **Mechanical path injection** — `OpportunityLayer` attaches `reentry_context` to each `BuyProposal`; `unified_analysis.py` forwards it to `ProposedAction`; `ai_review.py` injects formatted block into prompt for BUY actions
+- **AI-driven path injection** — `_run_ai_driven_analysis()` in `unified_analysis.py` calls `get_reentry_context()` in the `scored_candidates` loop; `ai_allocator.py` injects block in both `full_watchlist` and standard rendering branches
+- **DNA-driven config for new portfolios** — `strategy_generator.py` extended to infer `reentry_guard` values from portfolio DNA; `portfolio_registry.py` applies them at creation time
+- **Per-portfolio config** under `enhanced_trading.reentry_guard`: `enabled`, `stop_loss_cooldown_days` (default 7), `lookback_days` (default 30), `meaningful_change_threshold_pts` (default 10)
+- 18 tests in `tests/test_reentry_guard.py` all passing
+- Existing portfolios use defaults silently — no config migration needed
+
+---
+
 ## Recently Completed (2026-03-26) — System Logs Page
 
 ### System Logs Page (`/logs` route)
@@ -155,3 +169,4 @@
 1. **Post-trade review** — user requested, not yet designed
 2. Configure strategy DNA for `vcx-ai-concentration`
 3. Initial scans for `asymmetric-microcap-compounder` and `vcx-ai-concentration`
+4. **Per-portfolio `reentry_guard` config** — manually add `enhanced_trading.reentry_guard` block to each existing portfolio's `config.json` per the suggested values table in `docs/superpowers/specs/2026-03-26-reentry-guard-design.md`
