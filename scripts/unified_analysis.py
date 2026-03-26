@@ -20,6 +20,7 @@ Usage:
 """
 
 import json
+import os
 import uuid
 from datetime import date, datetime
 
@@ -396,13 +397,14 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                     info_cache = prewarm_info_for_tickers(_wl_tickers)
                 except Exception as e:
                     print(f"[analysis] Info pre-warm failed (non-fatal): {e}")
-                # Social signals
-                try:
-                    from social_sentiment import SocialSentimentProvider
-                    provider = SocialSentimentProvider(portfolio_id=portfolio_id)
-                    social_signals = provider.get_signals(_wl_tickers)
-                except Exception as e:
-                    print(f"[analysis] Social sentiment fetch failed (non-fatal): {e}")
+                # Social signals (disabled when DISABLE_SOCIAL=true)
+                if not os.environ.get("DISABLE_SOCIAL"):
+                    try:
+                        from social_sentiment import SocialSentimentProvider
+                        provider = SocialSentimentProvider(portfolio_id=portfolio_id)
+                        social_signals = provider.get_signals(_wl_tickers)
+                    except Exception as e:
+                        print(f"[analysis] Social sentiment fetch failed (non-fatal): {e}")
         except Exception as e:
             print(f"[analysis] Watchlist pre-warm failed (non-fatal): {e}")
 
