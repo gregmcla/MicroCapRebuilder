@@ -108,6 +108,7 @@ Thin REST layer. No business logic here.
 - `api/routes/controls.py` — mode toggle, sell, close-all (`/api/{portfolio_id}/...`)
 - `api/routes/discovery.py` — scan (`/api/{portfolio_id}/scan`)
 - `api/routes/market.py` — market indices + charts (`/api/market/...`)
+- `api/routes/system.py` — system logs + narrative (`/api/system/...`)
 
 ### 3. React Dashboard (`dashboard/`)
 Vite + React 19 + Tailwind v4 + TanStack Query + Zustand.
@@ -179,6 +180,8 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/market/indices` | Market indices (SPY, QQQ, etc.) |
 | GET | `/api/market/chart/{ticker}` | OHLCV chart data |
 | GET | `/api/health` | Health check |
+| GET | `/api/system/logs` | 30-day pipeline health summaries (scan/execute/update/watchdog) |
+| GET | `/api/system/narrative` | Claude daily briefing (10-min cache; `?regenerate=true` to bypass) |
 
 ---
 
@@ -190,7 +193,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 - **Left panel** (default 55%): PositionsPanel + PositionDetailInfo (slides in below when position selected)
 - **Right panel** (default 45%): FocusPane (tabs: Summary, Actions, Risk, Performance) + GScottStrip
 
-**TopBar:** M GScott (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | CLOSE ALL | PAPER/LIVE
+**TopBar:** M GScott (clickable nav) | equity | day P&L | % dep | regime | risk score | UPDATE | SCAN | ANALYZE | LOGS | CLOSE ALL | PAPER/LIVE
 
 **Position rows:** ticker | price | day P&L ($/%) | overall P&L ($/%) | range dot
 
@@ -314,6 +317,7 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
 - **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.
 - **Stale buy prices**: `execute_approved_actions()` now fetches live prices via `fetch_prices_batch()` at execute time before recording transactions. Corrects cases where yfinance cache had prev-close prices. Stop/target % distances are preserved and rescaled.
+- **Stale worktree API process**: When a git worktree is removed, any `uvicorn` process running from that worktree directory keeps running and will answer requests — with stale/missing data. Before or after removing a worktree, `kill` the worktree's API process explicitly. Check with `lsof -p <pid> | grep cwd`.
 - **Company info endpoint**: `GET /api/{portfolio_id}/position/{ticker}/info` — uses `yf.Ticker(t).info` with 5s thread timeout, 24hr in-memory cache. Clicking a ticker opens `CompanyInfoModal` (glassmorphic popup with sector/industry, stats grid, analyst rating, description, website).
 - **ErrorBoundary in App.tsx**: wraps the entire body row. Any render crash shows a "Render error / Try again" fallback instead of blanking the whole page. Error message + component stack logged to console. Never remove this.
 
