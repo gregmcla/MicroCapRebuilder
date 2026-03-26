@@ -15,6 +15,7 @@ The AI adds contextual wisdom that rules can't capture:
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -22,6 +23,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 from schema import CLAUDE_MODEL
+from reentry_guard import _format_reentry_block
 
 # Import ProposedAction from centralized data structures
 from enhanced_structures import ProposedAction
@@ -153,6 +155,14 @@ Action {i}:
   Market Regime: {regime}
   Quant Reason: {reason}
 """
+            reentry_ctx = _get_action_attr(action, "reentry_context", None)
+            if action_type == "BUY" and reentry_ctx is not None:
+                try:
+                    actions_text += _format_reentry_block(reentry_ctx)
+                except Exception as e:
+                    logging.warning(
+                        "ai_review: failed to format reentry block for %s: %s", ticker, e
+                    )
 
         # Social heat injection — only for BUY actions
         if action_type == "BUY" and social_signals and ticker:

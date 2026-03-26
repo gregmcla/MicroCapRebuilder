@@ -105,6 +105,7 @@ class BuyProposal:
     position_size_pct: float  # % of portfolio
     rationale: str  # Human-readable explanation
     social_signal: Optional["SocialSignal"] = None  # populated by unified_analysis
+    reentry_context: Optional[dict] = None  # reentry context from OpportunityLayer
 
 
 @dataclass
@@ -159,6 +160,7 @@ class ProposedAction:
     reason: str
     # Optional: Link back to original typed proposal (SellProposal or BuyProposal)
     source_proposal: Optional[object] = None
+    reentry_context: Optional[dict] = None  # reentry context through mechanical trading path
 
 
 @dataclass

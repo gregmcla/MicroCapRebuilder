@@ -521,6 +521,21 @@ def create_portfolio(
             for etf in ai_config["etf_sources"]:
                 if etf not in existing:
                     existing.append(etf)
+        if "reentry_guard" in ai_config:
+            if "enhanced_trading" not in config:
+                config["enhanced_trading"] = {}
+            config["enhanced_trading"]["reentry_guard"] = {
+                "enabled": True,
+                "stop_loss_cooldown_days": int(
+                    ai_config["reentry_guard"].get("stop_loss_cooldown_days", 7)
+                ),
+                "lookback_days": int(
+                    ai_config["reentry_guard"].get("lookback_days", 30)
+                ),
+                "meaningful_change_threshold_pts": float(
+                    ai_config["reentry_guard"].get("meaningful_change_threshold_pts", 10)
+                ),
+            }
 
     # Store strategy metadata
     created_via = "ai_driven" if ai_driven else ("ai" if ai_config else "wizard")
