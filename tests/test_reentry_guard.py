@@ -176,3 +176,44 @@ def test_excludes_composite_from_delta(tmp_path):
     assert result is not None
     assert result["delta"] is not None
     assert "composite" not in result["delta"]
+
+
+def test_format_block_no_exit_scores():
+    """No entry scores → no-delta message."""
+    ctx = {
+        "exit_date": "2026-03-20", "exit_reason": "STOP_LOSS", "days_since_exit": 6,
+        "exit_scores": None, "current_scores": None, "delta": None, "meaningful_change": False,
+    }
+    result = _format_reentry_block(ctx)
+    assert "Sold 6 days ago (STOP_LOSS)" in result
+    assert "No entry scores" in result
+
+
+def test_format_block_meaningful_change():
+    """Meaningful change → ↻ header and 'Significant shifts' footer."""
+    ctx = {
+        "exit_date": "2026-03-12", "exit_reason": "TAKE_PROFIT", "days_since_exit": 14,
+        "exit_scores": {"price_momentum": 60.0, "quality": 70.0},
+        "current_scores": {"price_momentum": 80.0, "quality": 71.0},
+        "delta": {"price_momentum": 20.0, "quality": 1.0},
+        "meaningful_change": True,
+    }
+    result = _format_reentry_block(ctx)
+    assert "↻ Reentry Context" in result
+    assert "Significant shifts" in result
+    assert "price_momentum" in result
+    assert "✓" in result  # +20 should be flagged
+
+
+def test_format_block_no_meaningful_change():
+    """No meaningful change → ⚠ header and 'Critically justify' footer."""
+    ctx = {
+        "exit_date": "2026-03-20", "exit_reason": "SIGNAL", "days_since_exit": 6,
+        "exit_scores": {"price_momentum": 60.0, "quality": 70.0},
+        "current_scores": {"price_momentum": 62.0, "quality": 71.0},
+        "delta": {"price_momentum": 2.0, "quality": 1.0},
+        "meaningful_change": False,
+    }
+    result = _format_reentry_block(ctx)
+    assert "⚠ Reentry Warning" in result
+    assert "Critically justify" in result

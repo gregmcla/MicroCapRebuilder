@@ -75,6 +75,8 @@ def get_reentry_context(
                 for f in exit_scores
                 if f in filtered_current
             }
+            if not delta:  # normalize empty dict to None (no overlapping factors)
+                delta = None
 
         meaningful_change = (
             any(abs(v) >= meaningful_change_threshold_pts for v in delta.values())
