@@ -40,7 +40,12 @@ Return a JSON object with exactly these fields:
   "take_profit_pct": <number 15-300>,
   "risk_per_trade_pct": <number 5-50>,
   "max_position_pct": <number 5-95>,
-  "max_positions": <integer 1-20>
+  "max_positions": <integer 1-20>,
+  "reentry_guard": {{
+    "stop_loss_cooldown_days": <integer 1-14>,
+    "lookback_days": <integer 5-90>,
+    "meaningful_change_threshold_pts": <integer 5-20>
+  }}
 }}
 
 Guidelines:
@@ -51,6 +56,11 @@ Guidelines:
 - Diversified strategies (10+ positions) should have low risk_per_trade_pct (3-10) and low max_position_pct (5-15).
 - take_profit_pct: aggressive momentum strategies targeting 2-5x moves should use 100-200. Conservative strategies use 15-30.
 - Name: be descriptive but concise. "AI Infrastructure" not "Artificial Intelligence Adjacent Infrastructure Investment Strategy".
+- reentry_guard: Set based on rotation speed and universe breadth.
+  - Fast rotation (hold < 3 days, large universe): cooldown 1, lookback 5–7, threshold 5
+  - Standard momentum (7–14 day holds): cooldown 7, lookback 30, threshold 10
+  - High conviction, long holds (1–3 positions, >30 day targets): cooldown 14, lookback 60, threshold 15
+  - Narrow curated universe (<20 tickers): keep cooldown low (1–3) to avoid starving the universe
 
 Starting capital: ${starting_capital:,.0f}
 
@@ -118,6 +128,14 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         if field not in data:
             raise ValueError(f"AI response missing required field: {field}")
 
+    rg = data.get("reentry_guard", {})
+    reentry_guard_config = {
+        "enabled": True,
+        "stop_loss_cooldown_days": int(rg.get("stop_loss_cooldown_days", 7)),
+        "lookback_days": int(rg.get("lookback_days", 30)),
+        "meaningful_change_threshold_pts": float(rg.get("meaningful_change_threshold_pts", 10)),
+    }
+
     return {
         "name": str(data["name"]),
         "universe": data["universe"],
@@ -127,4 +145,5 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         "risk_per_trade_pct": float(data["risk_per_trade_pct"]),
         "max_position_pct": float(data["max_position_pct"]),
         "max_positions": int(data.get("max_positions", 10)),
+        "reentry_guard": reentry_guard_config,
     }
