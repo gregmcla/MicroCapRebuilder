@@ -96,13 +96,27 @@ def _fetch_current_prices(
 
     if use_public:
         pub_prices, pub_failures = fetch_live_quotes(tickers)
-        if pub_failures:
-            # Fall back to yfinance only for tickers Public couldn't quote
-            yf_prices, yf_failures, prev_closes = fetch_prices_batch(pub_failures)
-            prices = {**pub_prices, **yf_prices}
-            failures = yf_failures
-        else:
-            prices, failures, prev_closes = pub_prices, [], {}
+        # Always fetch yfinance for prev_closes (needed for day_change) and
+        # cross-validate public.com prices — divergence >15% means bad data.
+        yf_tickers = list(set(tickers) | set(pub_failures))
+        yf_prices, yf_failures, prev_closes = fetch_prices_batch(yf_tickers)
+        validated: dict = {}
+        for ticker in tickers:
+            pub = pub_prices.get(ticker)
+            yf = yf_prices.get(ticker)
+            if pub is not None and yf is not None and yf > 0:
+                ratio = pub / yf
+                if 0.85 <= ratio <= 1.15:
+                    validated[ticker] = pub
+                else:
+                    print(f"  [price] {ticker}: public.com ${pub:.2f} vs yfinance ${yf:.2f} ({ratio:.2f}x) — using yfinance")
+                    validated[ticker] = yf
+            elif pub is not None:
+                validated[ticker] = pub
+            elif yf is not None:
+                validated[ticker] = yf
+        prices = validated
+        failures = yf_failures
     else:
         prices, failures, prev_closes = fetch_prices_batch(tickers)
 
