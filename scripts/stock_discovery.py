@@ -717,10 +717,11 @@ class StockDiscovery:
 
             # Volume confirmation: recovery should have above-average participation.
             # Thin-air bounces (low volume recovery) are unreliable.
+            min_vol_confirmation = thresholds.get("min_volume_confirmation_ratio", 1.3)
             if "Volume" in df.columns and len(df) >= 20:
                 recent_vol = df["Volume"].iloc[-3:].mean()
                 avg_vol = df["Volume"].iloc[-20:].mean()
-                if avg_vol > 0 and recent_vol < avg_vol * 1.3:
+                if avg_vol > 0 and recent_vol < avg_vol * min_vol_confirmation:
                     continue
 
             discovered = self._analyze_stock(ticker, DiscoverySource.OVERSOLD_BOUNCE)
@@ -1016,7 +1017,8 @@ class StockDiscovery:
             "momentum_breakouts": True,
             "oversold_bounces": True,
             "sector_leaders": True,
-            "volume_anomalies": False,
+            "volume_anomalies": True,
+            "relative_volume_surge": True,
         })
 
         all_candidates = []

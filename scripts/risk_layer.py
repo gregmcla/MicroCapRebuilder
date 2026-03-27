@@ -371,14 +371,15 @@ class RiskLayer:
                 return None
 
             sma5 = close.rolling(5).mean()
-            # Check last 3 bars all below 5-day SMA
-            if len(sma5.dropna()) < 3:
+            # Require all 3 trailing SMA values to be non-NaN before checking.
+            # Using all() with an if-filter guard produces vacuous True when all
+            # filtered values are NaN — check the tail explicitly instead.
+            if pd.isna(sma5.iloc[-3:]).any():
                 return None
 
             three_below = all(
                 float(close.iloc[i]) < float(sma5.iloc[i])
                 for i in [-3, -2, -1]
-                if not pd.isna(sma5.iloc[i])
             )
             if three_below:
                 return SellProposal(
@@ -502,6 +503,7 @@ class RiskLayer:
                     stop_loss=effective_stop,
                     take_profit=take_profit
                 ))
+                continue  # Don't pile on stagnation/liquidity/fade proposals in the same cycle
 
             elif score_drop >= self.min_score_drop_partial:
                 # Bug #4: partial exit (50% of shares) on 15–19 point drop
@@ -527,6 +529,7 @@ class RiskLayer:
                         stop_loss=effective_stop,
                         take_profit=take_profit
                     ))
+                continue  # Don't pile on stagnation/liquidity/fade proposals in the same cycle
 
             elif score_drop >= self.min_score_drop_alert:
                 # Alert only — no sell
