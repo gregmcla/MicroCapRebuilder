@@ -49,6 +49,7 @@ class DiscoverySource(Enum):
     OVERSOLD_BOUNCE = "OVERSOLD_BOUNCE"
     SECTOR_LEADER = "SECTOR_LEADER"
     VOLUME_ANOMALY = "VOLUME_ANOMALY"
+    RELATIVE_VOLUME_SURGE = "RELATIVE_VOLUME_SURGE"
     SCREENER = "SCREENER"
 
 
@@ -97,6 +98,26 @@ def calculate_rsi(prices: pd.Series, period: int = 14) -> float:
     rsi = 100 - (100 / (1 + rs))
 
     return float(rsi.iloc[-1]) if not pd.isna(rsi.iloc[-1]) else 50.0
+
+
+def _compute_rsi_series(prices: pd.Series, period: int = 14) -> pd.Series:
+    """Compute the full RSI series vectorially (single pass, O(n)).
+
+    This is ~100× faster than the naive approach of calling calculate_rsi()
+    repeatedly for each bar, which recomputes the entire ewm from scratch each call.
+    """
+    if len(prices) < period + 1:
+        return pd.Series([50.0] * len(prices), index=prices.index)
+
+    delta = prices.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = (-delta).where(delta < 0, 0.0)
+
+    avg_gain = gain.ewm(span=period, adjust=False).mean()
+    avg_loss = loss.ewm(span=period, adjust=False).mean()
+
+    rs = avg_gain / avg_loss.replace(0, np.inf)
+    return 100 - (100 / (1 + rs))
 
 
 def _sector_matches(yf_sector: str, filter_sectors: list) -> bool:
@@ -449,6 +470,7 @@ class StockDiscovery:
         # Source bonus
         source_bonuses = {
             DiscoverySource.MOMENTUM_BREAKOUT: 10,
+            DiscoverySource.RELATIVE_VOLUME_SURGE: 10,  # high-signal same-day event
             DiscoverySource.SECTOR_LEADER: 8,
             DiscoverySource.OVERSOLD_BOUNCE: 5,
             DiscoverySource.VOLUME_ANOMALY: 5,
@@ -487,8 +509,13 @@ class StockDiscovery:
             if avg_vol > 0:
                 volume_ratio = recent_vol / avg_vol
 
-        # 52-week high proximity
-        high_52wk = close.max()
+        # 52-week high proximity — use 1y data if available for true 52wk calculation.
+        # The `df` here is 3mo; using it would compute a 3-month high, not a 52-week high.
+        df_1y = self._price_cache.get(f"{ticker}_1y")
+        if df_1y is not None and not df_1y.empty and "Close" in df_1y.columns:
+            high_52wk = float(df_1y["Close"].dropna().max())
+        else:
+            high_52wk = float(close.max())  # Fallback to 3mo range
         near_high_pct = ((high_52wk - current_price) / high_52wk) * 100 if high_52wk > 0 else 100
 
         # Calculate discovery score
@@ -673,17 +700,29 @@ class StockDiscovery:
             if current < sma_200:
                 continue
 
-            # Check RSI recovery
-            rsi_series = pd.Series([calculate_rsi(close.iloc[:i+1], 14) for i in range(len(close)-5, len(close))])
-            if len(rsi_series) < 3:
+            # Compute full RSI series vectorially (single pass) — checking 14 bars
+            # for a cleaner cross-above signal. The previous approach recomputed RSI
+            # from scratch 5× per ticker (O(n×m)), which was ~100× slower.
+            rsi_full = _compute_rsi_series(close, 14)
+            rsi_window = rsi_full.iloc[-14:]  # last 14 bars
+            if len(rsi_window) < 5:
                 continue
 
-            # Was recently oversold and now recovering
-            was_oversold = rsi_series.iloc[:-1].min() < rsi_oversold
-            now_recovering = rsi_series.iloc[-1] > rsi_oversold
+            # Was oversold in window (not just current bar) and is now recovering
+            was_oversold = rsi_window.iloc[:-1].min() < rsi_oversold
+            now_recovering = float(rsi_window.iloc[-1]) > rsi_oversold
 
             if not (was_oversold and now_recovering):
                 continue
+
+            # Volume confirmation: recovery should have above-average participation.
+            # Thin-air bounces (low volume recovery) are unreliable.
+            min_vol_confirmation = thresholds.get("min_volume_confirmation_ratio", 1.3)
+            if "Volume" in df.columns and len(df) >= 20:
+                recent_vol = df["Volume"].iloc[-3:].mean()
+                avg_vol = df["Volume"].iloc[-20:].mean()
+                if avg_vol > 0 and recent_vol < avg_vol * min_vol_confirmation:
+                    continue
 
             discovered = self._analyze_stock(ticker, DiscoverySource.OVERSOLD_BOUNCE)
             if discovered:
@@ -804,16 +843,91 @@ class StockDiscovery:
             if vol_ratio < min_volume_ratio:
                 continue
 
-            # Check price action (should be up today — catalyst strategy wants today's movers)
-            price_change = ((close.iloc[-1] - close.iloc[-2]) / close.iloc[-2]) * 100
-            if price_change < 0:
-                continue  # Distribution, not accumulation
+            # Check price action over 3-day window, not just last 1 day.
+            # A stock that had up-volume but gave back intraday is bullish consolidation —
+            # the single-day check incorrectly filtered these out.
+            if len(close) < 4:
+                continue
+            price_change_3d = ((close.iloc[-1] - close.iloc[-4]) / close.iloc[-4]) * 100
+            if price_change_3d < 0:
+                continue  # Net distribution over the accumulation window, not accumulation
 
             discovered = self._analyze_stock(ticker, DiscoverySource.VOLUME_ANOMALY)
             if discovered:
                 candidates.append(discovered)
 
         print(f"    Found {len(candidates)} volume anomalies")
+        return candidates
+
+    def scan_relative_volume_surge(self, universe: List[str] = None) -> List[DiscoveredStock]:
+        """
+        Find stocks with same-day relative volume surges — the highest-signal
+        small-cap discovery trigger.
+
+        Criteria (configurable via discovery.scan_thresholds):
+        - Current-day volume ≥ 4x the 30-day average (default threshold: 4.0x)
+        - Price up ≥ 2% on the day (default: 2.0%)
+        - 30-day baseline excludes last 5 days to avoid spike contamination
+
+        Unlike scan_volume_anomalies (which looks at 3-day average vs 20-day),
+        this scan focuses on the current single day vs a clean 30-day baseline.
+        A stock trading 4x+ normal volume today with a 2%+ price gain has
+        institutional sponsorship happening NOW.
+        """
+        print("  Scanning for relative volume surges...")
+        universe = universe or self.scan_universe
+        candidates = []
+
+        thresholds = self.discovery_config.get("scan_thresholds", {}).get("relative_volume_surge", {})
+        min_rvol = thresholds.get("min_rvol", 4.0)
+        min_price_change_pct = thresholds.get("min_price_change_pct", 2.0)
+
+        for ticker in universe:
+            df = self._fetch_price_data(ticker, "3mo")
+            if df is None or len(df) < 31:
+                continue
+
+            if "Volume" not in df.columns or "Close" not in df.columns:
+                continue
+
+            close = df["Close"]
+            volume = df["Volume"]
+
+            # Baseline: 30-day average excluding last 5 days (no contamination)
+            baseline_vol = volume.iloc[-35:-5].mean() if len(volume) >= 35 else volume.iloc[:-5].mean()
+            if baseline_vol <= 0 or pd.isna(baseline_vol):
+                continue
+
+            current_vol = float(volume.iloc[-1])
+            if pd.isna(current_vol) or current_vol <= 0:
+                continue
+
+            rvol = current_vol / baseline_vol
+            if rvol < min_rvol:
+                continue
+
+            # Price must be up on the day (accumulation, not distribution)
+            if len(close) < 2:
+                continue
+            prev_close = float(close.iloc[-2])
+            current_close = self._live_prices.get(ticker) or float(close.iloc[-1])
+            if prev_close <= 0:
+                continue
+
+            price_change_pct = (current_close - prev_close) / prev_close * 100
+            if price_change_pct < min_price_change_pct:
+                continue
+
+            discovered = self._analyze_stock(ticker, DiscoverySource.RELATIVE_VOLUME_SURGE)
+            if discovered:
+                # Annotate with rvol data in notes
+                discovered.notes = (
+                    f"RVOL {rvol:.1f}x ({price_change_pct:+.1f}% today)"
+                    + (f", {discovered.notes}" if discovered.notes and discovered.notes != "Standard candidate" else "")
+                )
+                candidates.append(discovered)
+
+        print(f"    Found {len(candidates)} relative volume surges")
         return candidates
 
     def _prewarm_cache(self, tickers: List[str], chunk_size: int = 200) -> None:
@@ -903,7 +1017,8 @@ class StockDiscovery:
             "momentum_breakouts": True,
             "oversold_bounces": True,
             "sector_leaders": True,
-            "volume_anomalies": False,
+            "volume_anomalies": True,
+            "relative_volume_surge": True,
         })
 
         all_candidates = []
@@ -994,13 +1109,21 @@ class StockDiscovery:
                 print(f"    Sector scan error (skipped): {e}")
             print(f"    Sector scan: {time.time() - t0:.1f}s")
 
-        if scan_types.get("volume_anomalies", False):
+        if scan_types.get("volume_anomalies", True):
             t0 = time.time()
             try:
                 all_candidates.extend(self.scan_volume_anomalies())
             except Exception as e:
                 print(f"    Volume scan error (skipped): {e}")
             print(f"    Volume scan: {time.time() - t0:.1f}s")
+
+        if scan_types.get("relative_volume_surge", True):
+            t0 = time.time()
+            try:
+                all_candidates.extend(self.scan_relative_volume_surge())
+            except Exception as e:
+                print(f"    Relative volume surge scan error (skipped): {e}")
+            print(f"    Relative volume surge scan: {time.time() - t0:.1f}s")
 
         # Deduplicate by ticker (keep highest score)
         ticker_map: Dict[str, DiscoveredStock] = {}

@@ -7,6 +7,7 @@ manages dynamic stops, proposes sells based on urgency.
 """
 
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
@@ -20,6 +21,7 @@ from stock_scorer import StockScorer
 from portfolio_state import PortfolioState
 from market_regime import MarketRegime
 from capital_preservation import get_preservation_status
+from yf_session import cached_download
 
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -240,6 +242,161 @@ class RiskLayer:
         else:
             return "fixed"
 
+    def _check_stagnation(self, pos: pd.Series, current_price: float) -> Optional[SellProposal]:
+        """Exit positions held >N days with P&L in the flat zone (zombie capital).
+
+        Positions going nowhere for 45+ days have failed their thesis. Capital deployed
+        here has a higher opportunity cost than the return justifies. Ported from
+        execute_sells.py to the active unified-analysis pipeline.
+        """
+        stagnation_days = self.layer1_config.get("stagnation_days", 45)
+        stagnation_window_pct = self.layer1_config.get("stagnation_pnl_window_pct", 5.0)
+
+        raw_entry = pos.get("entry_date")
+        if not raw_entry or pd.isna(raw_entry):
+            return None
+
+        try:
+            if isinstance(raw_entry, str):
+                entry_date = datetime.strptime(raw_entry[:10], "%Y-%m-%d").date()
+            elif hasattr(raw_entry, "date"):
+                entry_date = raw_entry.date()
+            else:
+                entry_date = raw_entry
+        except Exception as e:
+            print(f"Warning: stagnation check failed to parse entry_date for {pos.get('ticker')}: {e}")
+            return None
+
+        days_held = (date.today() - entry_date).days
+        if days_held <= stagnation_days:
+            return None
+
+        avg_cost = float(pos.get("avg_cost_basis") or 0)
+        if avg_cost <= 0:
+            return None
+
+        pnl_pct = (current_price - avg_cost) / avg_cost * 100
+        if -stagnation_window_pct <= pnl_pct <= stagnation_window_pct:
+            ticker = pos.get("ticker", "?")
+            return SellProposal(
+                ticker=ticker,
+                shares=int(pos["shares"]),
+                current_price=current_price,
+                reason=f"STAGNATION: held {days_held}d with flat P&L ({pnl_pct:+.1f}%) — thesis failed",
+                urgency_level=UrgencyLevel.LOW,
+                urgency_score=25,
+                stop_loss=float(pos.get("stop_loss") or 0),
+                take_profit=float(pos.get("take_profit") or 0),
+            )
+        return None
+
+    def _check_liquidity_drop(self, ticker: str, current_price: float, shares: int,
+                               stop_loss: float = 0.0, take_profit: float = 0.0) -> Optional[SellProposal]:
+        """Exit when recent volume has collapsed vs 3-month baseline.
+
+        Volume collapse in small-caps is a leading indicator of price collapse.
+        Market makers widen spreads, institutional interest has left, and exit
+        liquidity narrows. Ported from execute_sells.py to the active pipeline
+        with an improved baseline calculation (excludes last 5 days).
+        """
+        threshold = self.layer1_config.get("liquidity_drop_threshold", 0.30)
+
+        try:
+            data = cached_download(ticker, period="3mo", interval="1d")
+            if data is None or data.empty:
+                return None
+
+            if isinstance(data.columns, pd.MultiIndex):
+                try:
+                    data = data.xs(ticker, axis=1, level=1)
+                except KeyError:
+                    return None
+
+            if "Volume" not in data.columns:
+                return None
+
+            volume = data["Volume"].dropna()
+            if len(volume) < 15:
+                return None
+
+            # Exclude last 5 days from baseline — prevents a recent spike from
+            # inflating the baseline and masking a true collapse.
+            avg_baseline = volume.iloc[:-5].mean()
+            avg_5d = volume.iloc[-5:].mean()
+
+            if avg_baseline <= 0:
+                return None
+
+            ratio = avg_5d / avg_baseline
+            if ratio < threshold:
+                return SellProposal(
+                    ticker=ticker,
+                    shares=shares,
+                    current_price=current_price,
+                    reason=f"LIQUIDITY DROP: 5d avg vol is {ratio:.0%} of 3mo baseline — exit door is narrowing",
+                    urgency_level=UrgencyLevel.MEDIUM,
+                    urgency_score=40,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                )
+        except Exception as e:
+            print(f"Warning: liquidity drop check failed for {ticker}: {e}")
+
+        return None
+
+    def _check_momentum_fade(self, ticker: str, current_price: float, shares: int,
+                              stop_loss: float = 0.0, take_profit: float = 0.0) -> Optional[SellProposal]:
+        """Detect momentum reversal before the stop loss is hit.
+
+        Three consecutive closes below the 5-day SMA indicates momentum has
+        definitively shifted. This catches trend reversals earlier than a fixed stop,
+        particularly useful for small-cap momentum positions where trends are fragile.
+        """
+        try:
+            data = cached_download(ticker, period="3mo", interval="1d")
+            if data is None or data.empty:
+                return None
+
+            if isinstance(data.columns, pd.MultiIndex):
+                try:
+                    data = data.xs(ticker, axis=1, level=1)
+                except KeyError:
+                    return None
+
+            if "Close" not in data.columns or len(data) < 10:
+                return None
+
+            close = data["Close"].dropna()
+            if len(close) < 10:
+                return None
+
+            sma5 = close.rolling(5).mean()
+            # Require all 3 trailing SMA values to be non-NaN before checking.
+            # Using all() with an if-filter guard produces vacuous True when all
+            # filtered values are NaN — check the tail explicitly instead.
+            if pd.isna(sma5.iloc[-3:]).any():
+                return None
+
+            three_below = all(
+                float(close.iloc[i]) < float(sma5.iloc[i])
+                for i in [-3, -2, -1]
+            )
+            if three_below:
+                return SellProposal(
+                    ticker=ticker,
+                    shares=shares,
+                    current_price=current_price,
+                    reason="MOMENTUM FADE: 3 consecutive closes below 5-day SMA — trend reversing",
+                    urgency_level=UrgencyLevel.LOW,
+                    urgency_score=30,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                )
+        except Exception as e:
+            print(f"Warning: momentum fade check failed for {ticker}: {e}")
+
+        return None
+
     def process(self, state: PortfolioState) -> Dict:
         """
         Process Layer 1: Re-evaluate positions, detect deterioration, update stops.
@@ -346,6 +503,7 @@ class RiskLayer:
                     stop_loss=effective_stop,
                     take_profit=take_profit
                 ))
+                continue  # Don't pile on stagnation/liquidity/fade proposals in the same cycle
 
             elif score_drop >= self.min_score_drop_partial:
                 # Bug #4: partial exit (50% of shares) on 15–19 point drop
@@ -371,6 +529,7 @@ class RiskLayer:
                         stop_loss=effective_stop,
                         take_profit=take_profit
                     ))
+                continue  # Don't pile on stagnation/liquidity/fade proposals in the same cycle
 
             elif score_drop >= self.min_score_drop_alert:
                 # Alert only — no sell
@@ -382,6 +541,38 @@ class RiskLayer:
                     urgency_score=min(100, int(20 + score_drop))
                 )
                 deterioration_alerts.append(deterioration)
+
+            # ── New exit checks (ported from legacy + new signals) ─────────────────
+
+            # Stagnation: zombie capital held >45d going nowhere
+            if self.layer1_config.get("enable_stagnation_exit", True):
+                stagnation = self._check_stagnation(pos, current_price)
+                if stagnation:
+                    sell_proposals.append(stagnation)
+                    continue
+
+            # Liquidity drop: volume collapsed vs 3-month baseline
+            if self.layer1_config.get("enable_liquidity_exit", True):
+                effective_stop_val = effective_stop if effective_stop else 0.0
+                effective_tp_val = take_profit if take_profit else 0.0
+                liquidity = self._check_liquidity_drop(
+                    ticker, current_price, int(pos["shares"]),
+                    stop_loss=effective_stop_val, take_profit=float(effective_tp_val)
+                )
+                if liquidity:
+                    sell_proposals.append(liquidity)
+                    continue
+
+            # Momentum fade: 3 consecutive closes below 5-day SMA
+            if self.layer1_config.get("enable_momentum_fade_exit", True):
+                effective_stop_val = effective_stop if effective_stop else 0.0
+                effective_tp_val = take_profit if take_profit else 0.0
+                fade = self._check_momentum_fade(
+                    ticker, current_price, int(pos["shares"]),
+                    stop_loss=effective_stop_val, take_profit=float(effective_tp_val)
+                )
+                if fade:
+                    sell_proposals.append(fade)
 
         return {
             "sell_proposals": sell_proposals,
