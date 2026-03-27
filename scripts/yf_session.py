@@ -76,12 +76,23 @@ def cached_download(
                     print(f"Warning: corrupt cache file, removing: {e}")
                     cache_file.unlink(missing_ok=True)
 
-        # Cache miss — download (no custom session; yfinance handles curl_cffi)
-        try:
-            df = yf.download(tickers, period=period, **kwargs)
-        except Exception as e:
-            print(f"Warning: yf.download failed for {tickers}: {e}")
-            df = pd.DataFrame()
+        # Cache miss — download with hard timeout to prevent indefinite hangs
+        _DOWNLOAD_TIMEOUT = 60  # seconds per batch chunk
+        result = [pd.DataFrame()]
+
+        def _do_download():
+            try:
+                result[0] = yf.download(tickers, period=period, **kwargs)
+            except Exception as e:
+                print(f"Warning: yf.download failed for {tickers}: {e}")
+
+        t = threading.Thread(target=_do_download, daemon=True)
+        t.start()
+        t.join(timeout=_DOWNLOAD_TIMEOUT)
+        if t.is_alive():
+            ticker_label = tickers if isinstance(tickers, str) else f"{len(tickers)} tickers"
+            print(f"Warning: yf.download timed out after {_DOWNLOAD_TIMEOUT}s for {ticker_label}")
+        df = result[0]
 
         # Persist non-empty results
         if not df.empty:
