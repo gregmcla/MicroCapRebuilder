@@ -97,9 +97,13 @@ def run_ai_allocation(
         prompt_extras=prompt_extras,
     )
 
+    # Per-portfolio model override: config key "ai_model" allows smaller portfolios
+    # to use cheaper models (e.g. claude-haiku-4-5-20251001) without changing defaults.
+    model = state.config.get("ai_model", CLAUDE_MODEL)
+
     try:
         response = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=model,
             max_tokens=16000,
             messages=[{"role": "user", "content": prompt}]
         )

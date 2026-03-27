@@ -197,7 +197,7 @@ class OpportunityLayer:
         # ─────────────────────────────────────────────────────────────────────
 
         # Use StockScorer to get base composite scores
-        scorer = StockScorer(regime=state.regime)
+        scorer = StockScorer(regime=state.regime, config=self.config)
         stock_scores = scorer.score_watchlist(candidates, info_cache=info_cache)
 
         # Calculate conviction scores with multipliers

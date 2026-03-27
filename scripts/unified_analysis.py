@@ -29,7 +29,6 @@ from pathlib import Path
 from schema import Action, Reason
 from stock_scorer import StockScorer
 from market_regime import MarketRegime, get_position_size_multiplier
-from risk_manager import RiskManager
 from opportunity_layer import OpportunityLayer
 from composition_layer import CompositionLayer
 from capital_preservation import get_preservation_status
@@ -90,7 +89,6 @@ def _build_sector_map(state) -> dict:
 
 def _run_ai_driven_analysis(
     state,
-    layer1_output: dict,
     regime,
     warning_severity: str,
     stale_positions: dict,
@@ -136,7 +134,7 @@ def _run_ai_driven_analysis(
     scored_candidates = []
     if candidates:
         print(f"  Scoring {len(candidates)} watchlist candidate(s) for AI input...")
-        scorer = StockScorer()
+        scorer = StockScorer(config=state.config)
         scored_results = scorer.score_watchlist(candidates)
         for s in scored_results:
             if s:
@@ -394,7 +392,6 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         print("=" * 60)
         return _run_ai_driven_analysis(
             state=state,
-            layer1_output=layer1_output,
             regime=regime,
             warning_severity=warning_severity,
             stale_positions=state.stale_alerts,
@@ -565,7 +562,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             candidates = [t for t in watchlist if t not in current_tickers]
 
             if candidates:
-                scorer = StockScorer()
+                scorer = StockScorer(config=config)
                 scored_results = scorer.score_watchlist(candidates)
                 # Convert StockScore objects to dicts with factor_scores built from individual attributes
                 scored = []

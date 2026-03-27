@@ -104,15 +104,18 @@ class StockScorer:
         "value_timing": 0.20,
     }
 
-    def __init__(self, regime: Optional[MarketRegime] = None, lookback_days: int = 20):
+    def __init__(self, regime: Optional[MarketRegime] = None, lookback_days: int = 20, config: Optional[Dict] = None):
         """
-        Initialize scorer with optional market regime.
+        Initialize scorer with optional market regime and portfolio config.
 
         Args:
             regime: Current market regime (BULL/SIDEWAYS/BEAR) for weight selection
             lookback_days: Number of days for technical calculations
+            config: Portfolio config dict. If provided, uses portfolio-specific scoring
+                    weights (enabling the factor learning feedback loop). If None,
+                    falls back to global data/config.json.
         """
-        self.config = load_config()
+        self.config = config if config is not None else load_config()
         self.regime = regime
         self.lookback_days = lookback_days
         self._benchmark_data = None

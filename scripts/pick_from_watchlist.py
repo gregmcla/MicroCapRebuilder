@@ -2,6 +2,12 @@
 """
 Intelligent Stock Picker for GScott.
 
+# ── LEGACY PATH ──────────────────────────────────────────────────────────────
+# This script is only used when UNIFIED_MODE=false in run_daily.sh.
+# In production, the cron pipeline always uses unified_analysis.py directly.
+# Kept as a valid fallback for no-API-key environments.
+# ─────────────────────────────────────────────────────────────────────────────
+
 Enhanced picking logic with:
 - Multi-factor scoring with regime-adaptive weights
 - Market regime awareness (reduce/skip buying in bear markets)
@@ -14,7 +20,7 @@ Usage: python scripts/pick_from_watchlist.py
 
 import json
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 
@@ -48,7 +54,7 @@ def record_buy_transaction(
     """Create a BUY transaction record with explainability data."""
     return {
         "transaction_id": str(uuid.uuid4())[:8],
-        "date": date.today().isoformat(),
+        "date": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
         "ticker": ticker,
         "action": Action.BUY,
         "shares": shares,

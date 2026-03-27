@@ -2,6 +2,12 @@
 """
 Execute Sells - Daily script to check and execute stop loss / take profit triggers.
 
+# ── LEGACY PATH ──────────────────────────────────────────────────────────────
+# This script is only used when UNIFIED_MODE=false in run_daily.sh.
+# In production, the cron pipeline always uses unified_analysis.py directly.
+# Kept as a valid fallback for no-API-key environments.
+# ─────────────────────────────────────────────────────────────────────────────
+
 1. Load portfolio state (with current prices)
 2. Check each position against stop_loss and take_profit levels
 3. Execute sells by writing SELL transactions to transactions.csv

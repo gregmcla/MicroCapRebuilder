@@ -25,9 +25,6 @@ TRANSACTION_COLUMNS = [
     "trade_rationale",  # JSON: {ai_decision, ai_confidence, ai_reasoning, quant_reason, regime, top_factors}
 ]
 
-# Columns required for backward compatibility (original transactions without explainability)
-TRANSACTION_COLUMNS_BASIC = TRANSACTION_COLUMNS[:10]  # First 10 columns
-
 # ─── Current Positions Schema ─────────────────────────────────────────────────
 # Derived from transactions - represents current holdings
 POSITION_COLUMNS = [
@@ -54,22 +51,6 @@ DAILY_SNAPSHOT_COLUMNS = [
     "day_pnl_pct",
     "benchmark_value",  # For comparison (e.g., ^RUT)
 ]
-
-# ─── Legacy Column Mappings ───────────────────────────────────────────────────
-# Maps old column names to new standardized names
-LEGACY_COLUMN_MAP = {
-    "Cash Balance": "cash",
-    "Cash": "cash",
-    "Total Equity": "total_equity",
-    "Equity": "total_equity",
-    "Total Value": "market_value",
-    "Value": "market_value",
-    "Shares Bought": "shares",
-    "Buy Price": "price",
-    "Cost Basis": "avg_cost_basis",
-    "Current Price": "current_price",
-    "PnL": "unrealized_pnl",
-}
 
 # ─── Action Types ─────────────────────────────────────────────────────────────
 class Action:
