@@ -11,7 +11,7 @@
 
 ---
 
-## Recently Completed (2026-03-27) — Discovery & Exit Upgrade (branch: discovery-and-exits-upgrade)
+## Recently Completed (2026-03-27) — Discovery & Exit Upgrade ✅ merged to main
 
 ### Discovery Improvements (`scripts/stock_discovery.py`)
 - **Fixed O(n×m) RSI bug**: `scan_oversold_bounces` was computing RSI from scratch 2,500× per scan (500 stocks × 5 bars). Replaced with vectorized `_compute_rsi_series()`. Also expanded window from 5→14 bars and added 1.3x volume confirmation on recovery.

@@ -69,7 +69,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `unified_analysis.py` — ANALYZE → EXECUTE pipeline
 - `ai_review.py` — AI review layer (APPROVE/MODIFY/VETO)
 - `stock_scorer.py` — 6-factor scoring model
-- `stock_discovery.py` — universe scanning and candidate discovery
+- `stock_discovery.py` — universe scanning and candidate discovery. 5 scan types: momentum_breakouts, oversold_bounces, sector_leaders, volume_anomalies, relative_volume_surge (all enabled by default). RSI computed via vectorized `_compute_rsi_series()`. near_52wk_high_pct uses 1y data.
 - `universe_provider.py` — two-tier universe (core + extended), ETF holdings
 - `watchlist_manager.py` — per-portfolio watchlist management
 - `etf_holdings_provider.py` — ETF holdings provider (23 DEFAULT_ETFS)
@@ -77,7 +77,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `strategy_generator.py` — AI strategy generation via Anthropic API
 - `ai_allocator.py` — AI-driven allocation (replaces Layers 2-4 for AI-driven portfolios; calls Claude, validates stop/take_profit, returns ReviewedAction)
 - `market_regime.py` — bull/bear/sideways detection
-- `risk_layer.py` — trailing stops, volatility stops, regime-adjusted stops
+- `risk_layer.py` — trailing stops, volatility stops, regime-adjusted stops, score deterioration exits, stagnation exit (>45d flat P&L), liquidity drop exit (5d vol < 30% baseline), momentum fade exit (3 closes below 5d SMA)
 - `risk_manager.py` — position sizing, concentration limits
 - `risk_scoreboard.py` — overall risk score (5 components)
 - `opportunity_layer.py` — buy proposal generation (filters held tickers, uses scorer price_map)
@@ -145,7 +145,7 @@ MicroCapRebuilder/
 └── run_daily.sh                    # Daily trading pipeline
 ```
 
-**Active portfolios:** microcap, adjacent-supporters-of-ai, boomers, max, defense-tech (trimmed to 5 as of 2026-03-23)
+**Active portfolios (as of 2026-03-27):** microcap, adjacent-supporters-of-ai, boomers, max, defense-tech, asymmetric-catalyst-hunters, catalyst-momentum-scalper, cash-cow-compounders, momentum-scalper, vcx-ai-concentration, yolo-degen-momentum, microcap-momentum-compounder, asymmetric-microcap-compounder (13 active)
 
 ---
 
