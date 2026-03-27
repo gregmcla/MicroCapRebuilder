@@ -62,15 +62,20 @@ def run_ai_allocation(
     if not state.positions.empty:
         held_tickers = set(state.positions["ticker"].tolist())
 
-    # Layer 1 sells are mechanical — always APPROVE them
+    # Layer 1 sells are mechanical — always APPROVE them.
+    # ai_reasoning is populated with the specific trigger text for now; after
+    # Claude runs it will be enriched with contextual reasoning from layer1_sell_reasoning.
     reviewed: list[ReviewedAction] = []
+    layer1_reviewed_map: dict = {}  # ticker → ReviewedAction, for post-Claude enrichment
     for sell_action in layer1_sells:
-        reviewed.append(ReviewedAction(
+        ra = ReviewedAction(
             original=sell_action,
             decision=ReviewDecision.APPROVE,
-            ai_reasoning="Layer 1 mechanical sell — stop/target/quality trigger",
+            ai_reasoning=sell_action.reason,  # specific trigger text as initial fallback
             confidence=1.0,
-        ))
+        )
+        reviewed.append(ra)
+        layer1_reviewed_map[sell_action.ticker] = ra
 
     if client is None:
         print("  [AI Allocator] No AI client available — returning Layer 1 sells only")
@@ -123,6 +128,13 @@ def run_ai_allocation(
             valid_buys, ai_sells, regime
         )
         reviewed.extend(ai_actions)
+
+        # Enrich Layer 1 sell reasoning with Claude's contextual explanations
+        l1_reasoning = allocation_data.get("layer1_sell_reasoning", {})
+        for ticker, reasoning in l1_reasoning.items():
+            ticker = ticker.strip().upper()
+            if ticker in layer1_reviewed_map and reasoning:
+                layer1_reviewed_map[ticker].ai_reasoning = str(reasoning)
 
         thesis = allocation_data.get("portfolio_thesis", "")
         if thesis:
@@ -449,11 +461,15 @@ Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
       "reasoning": "Why selling this improves portfolio alignment"
     }}
   ],
+  "layer1_sell_reasoning": {{
+    "SYMBOL": "1-2 sentence explanation of what the trigger means in portfolio context — e.g. why the stop was hit, what it signals about the position, how it affects the overall strategy"
+  }},
   "portfolio_thesis": "Your overall allocation rationale and market view",
   "cash_after_plan": 5000.00
 }}
 
-"allocation_plan" = new buys. "sells" = AI-initiated sells beyond Layer 1 mechanicals (use sparingly — only when genuinely misaligned with strategy). If no buys, return empty array. If no extra sells, return empty array."""
+"allocation_plan" = new buys. "sells" = AI-initiated sells beyond Layer 1 mechanicals (use sparingly — only when genuinely misaligned with strategy). If no buys, return empty array. If no extra sells, return empty array.
+"layer1_sell_reasoning" = brief contextual explanation for each Layer 1 mechanical sell. Address the specific trigger (stop loss hit, score deterioration, stagnation, liquidity drop, etc.) and what it means for the position. One entry per Layer 1 sell ticker."""
 
     return prompt
 
