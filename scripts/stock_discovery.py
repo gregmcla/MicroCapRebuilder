@@ -199,6 +199,7 @@ class StockDiscovery:
         self.discovery_config = self.config.get("discovery", {})
         self._price_cache: Dict[str, pd.DataFrame] = {}
         self._info_cache: Dict[str, dict] = {}
+        self._live_prices: Dict[str, float] = {}  # Public.com real-time prices
 
         # Get scan universe from provider or use provided list
         if universe is not None:
@@ -468,7 +469,7 @@ class StockDiscovery:
 
         # Calculate metrics
         close = df["Close"]
-        current_price = float(close.iloc[-1])
+        current_price = self._live_prices.get(ticker) or float(close.iloc[-1])
 
         # Momentum
         mom_20d = 0.0
@@ -609,7 +610,7 @@ class StockDiscovery:
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "1y")
-            if df is None or len(df) < 50:
+            if df is None or len(df) < 50 or "Close" not in df.columns:
                 continue
 
             close = df["Close"]
@@ -661,7 +662,7 @@ class StockDiscovery:
 
         for ticker in universe:
             df = self._fetch_price_data(ticker, "1y")
-            if df is None or len(df) < 200:
+            if df is None or len(df) < 200 or "Close" not in df.columns:
                 continue
 
             close = df["Close"]
@@ -928,6 +929,20 @@ class StockDiscovery:
         self._prewarm_cache(self.scan_universe)
         print(f"  Price pre-warm done in {time.time() - t0:.1f}s")
 
+        # Phase 1b: Refresh current prices via Public.com (real-time, single batch call).
+        # Overwrites only the "today's close" data point used in scoring — OHLCV history
+        # from yfinance is still used for all multi-period calculations.
+        try:
+            from public_quotes import fetch_live_quotes, is_configured as public_configured
+            if public_configured():
+                t0 = time.time()
+                live_prices, failures = fetch_live_quotes(self.scan_universe)
+                self._live_prices = live_prices
+                print(f"  Public.com live prices: {len(live_prices)} tickers "
+                      f"({len(failures)} unavailable) in {time.time() - t0:.1f}s")
+        except Exception as e:
+            print(f"  Public.com price refresh skipped: {e}")
+
         # Phase 2: Price/volume pre-filter (no .info calls, just cached price data)
         def _get_cached_df(ticker: str):
             df = self._price_cache.get(f"{ticker}_3mo")
@@ -954,25 +969,37 @@ class StockDiscovery:
         _random.shuffle(shuffled_survivors)
         self._prewarm_info_cache(shuffled_survivors)
 
-        # Phase 4: Run scans
+        # Phase 4: Run scans — each wrapped independently so one crash doesn't kill the rest
         if scan_types.get("momentum_breakouts", True):
             t0 = time.time()
-            all_candidates.extend(self.scan_momentum_breakouts())
+            try:
+                all_candidates.extend(self.scan_momentum_breakouts())
+            except Exception as e:
+                print(f"    Momentum scan error (skipped): {e}")
             print(f"    Momentum scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("oversold_bounces", True):
             t0 = time.time()
-            all_candidates.extend(self.scan_oversold_bounces())
+            try:
+                all_candidates.extend(self.scan_oversold_bounces())
+            except Exception as e:
+                print(f"    Oversold scan error (skipped): {e}")
             print(f"    Oversold scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("sector_leaders", True):
             t0 = time.time()
-            all_candidates.extend(self.scan_sector_leaders())
+            try:
+                all_candidates.extend(self.scan_sector_leaders())
+            except Exception as e:
+                print(f"    Sector scan error (skipped): {e}")
             print(f"    Sector scan: {time.time() - t0:.1f}s")
 
         if scan_types.get("volume_anomalies", False):
             t0 = time.time()
-            all_candidates.extend(self.scan_volume_anomalies())
+            try:
+                all_candidates.extend(self.scan_volume_anomalies())
+            except Exception as e:
+                print(f"    Volume scan error (skipped): {e}")
             print(f"    Volume scan: {time.time() - t0:.1f}s")
 
         # Deduplicate by ticker (keep highest score)
