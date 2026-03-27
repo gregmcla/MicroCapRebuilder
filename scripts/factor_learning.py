@@ -281,14 +281,9 @@ class FactorLearner:
         if not performances:
             return suggestions
 
-        # Get current weights
+        # Get current weights — always use default_weights (regime weights removed)
         scoring_config = self.config.get("scoring", {})
-        if current_regime:
-            current_weights = scoring_config.get("regime_weights", {}).get(
-                current_regime, scoring_config.get("default_weights", {})
-            )
-        else:
-            current_weights = scoring_config.get("default_weights", {})
+        current_weights = scoring_config.get("default_weights", {})
 
         # Learning thresholds from config
         min_trades = self.learning_config.get("min_trades_for_adjustment", 10)

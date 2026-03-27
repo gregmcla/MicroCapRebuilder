@@ -6,16 +6,16 @@
     "simulated_slippage_pct": 0.05,
     "paper_data_suffix": "_paper"
   },
-  "starting_capital": 1000000.0,
+  "starting_capital": 100000.0,
   "initial_deployment_target_pct": 90.0,
-  "risk_per_trade_pct": 7.0,
-  "max_position_pct": 10.0,
-  "max_positions": 999,
-  "default_stop_loss_pct": 6.0,
-  "default_take_profit_pct": 20.0,
+  "risk_per_trade_pct": 50,
+  "max_position_pct": 95,
+  "max_positions": 2,
+  "default_stop_loss_pct": 15,
+  "default_take_profit_pct": 200,
   "volatility_lookback_days": 20,
-  "benchmark_symbol": "^MID",
-  "fallback_benchmark": "MDY",
+  "benchmark_symbol": "^GSPC",
+  "fallback_benchmark": "SPY",
   "chart_days": 30,
   "scoring": {
     "default_weights": {
@@ -63,7 +63,7 @@
       "triggers": {
         "drawdown_threshold_pct": 10.0,
         "risk_score_threshold": 40,
-        "regime_bear_auto_enable": false
+        "regime_bear_auto_enable": true
       },
       "actions": {
         "halt_new_buys": true,
@@ -184,12 +184,6 @@
       "max_rotations_per_cycle": 2,
       "min_held_days_before_rotation": 10,
       "max_unrealized_loss_pct_for_rotation": -15
-    },
-    "reentry_guard": {
-      "enabled": true,
-      "stop_loss_cooldown_days": 3,
-      "lookback_days": 14,
-      "meaningful_change_threshold_pts": 8
     }
   },
   "data_provider": {
@@ -209,14 +203,14 @@
       "volume_anomalies": false
     },
     "filters": {
-      "min_market_cap_m": 500,
-      "max_market_cap_m": null,
-      "min_avg_volume": 200000,
-      "min_price": 5.0,
-      "max_price": 2000.0
+      "min_market_cap_m": 50,
+      "max_market_cap_m": 999999,
+      "min_avg_volume": 100000,
+      "min_price": 2.0,
+      "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 250,
+      "max_tickers": 150,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
@@ -237,11 +231,11 @@
       "etf_holdings": {
         "enabled": true,
         "etfs": [
-          "ITA",
-          "FITE",
-          "ROBO",
-          "CIBR",
-          "AIQ"
+          "ARKK",
+          "XBI",
+          "KWEB",
+          "IGV",
+          "BUZZ"
         ]
       },
       "exchange_listings": {
@@ -254,20 +248,20 @@
         "scan_frequency": "daily"
       },
       "extended": {
-        "max_tickers": 2000,
+        "max_tickers": 3000,
         "scan_frequency": "rotating_3day"
       }
     },
     "filters": {
-      "min_market_cap_m": 500,
-      "max_market_cap_m": null,
-      "min_avg_volume": 200000,
-      "min_price": 5.0,
-      "max_price": 2000.0
+      "min_market_cap_m": 50,
+      "max_market_cap_m": 999999,
+      "min_avg_volume": 100000,
+      "min_price": 2.0,
+      "max_price": 5000.0
     }
   },
   "strategy": {
-    "name": "Default",
+    "name": "Custom",
     "sectors": [],
     "trading_style": null,
     "created_via": "ai_driven",
@@ -275,5 +269,5 @@
     "ai_rationale": null
   },
   "ai_driven": true,
-  "strategy_dna": "Defense tech and autonomous systems \u2014 the convergence of AI with\n  next-generation military hardware (drones, electronic warfare, space-based\n  ISR) is getting a decade of compressed investment in 3-5 years as NATO members\n   race to hit 3% GDP spending targets. The traditional primes (LMT, RTX, NOC)\n  are fine, but the real asymmetry is in the mid-cap pure-plays building the    \n  software stacks and sensor fusion layers that make all that hardware actually\n  work. The tailwind isn't cyclical \u2014 it's structural, geopolitically mandated, \n  and the contracts are long-duration, which means predictable revenue in an    \n  uncertain macro environment.\n\n  DEPLOYMENT POSTURE: This portfolio is thesis-driven, not momentum-chasing.\n  Weak short-term price momentum in defense names is often a buying opportunity,\n  not a reason to stay in cash. When the sector sells off due to macro\n  uncertainty or risk-off sentiment, the underlying contract pipeline and\n  geopolitical spending mandates are unchanged. Use dips in momentum to build\n  positions at better entry prices. With significant cash available, prioritize\n  deploying into high-conviction names rather than sitting idle. A SIDEWAYS or\n  weak-momentum reading on quant scores should not prevent buying \u2014 treat it\n  as a better entry point for the same long-duration structural thesis."
+  "strategy_dna": "fucking crazy shit lmao. in addition to the existing etfs, add the following to the config: MTUM, MOMO, SOXL, TQQQ, IWM"
 }

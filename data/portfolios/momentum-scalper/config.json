@@ -26,37 +26,7 @@
       "volatility": 0.15,
       "value_timing": 0.2
     },
-    "regime_weights": {
-      "BULL": {
-        "price_momentum": 0.3,
-        "earnings_growth": 0.15,
-        "quality": 0.1,
-        "volume": 0.1,
-        "volatility": 0.1,
-        "value_timing": 0.25
-      },
-      "SIDEWAYS": {
-        "price_momentum": 0.15,
-        "earnings_growth": 0.15,
-        "quality": 0.2,
-        "volume": 0.1,
-        "volatility": 0.2,
-        "value_timing": 0.2
-      },
-      "BEAR": {
-        "price_momentum": 0.1,
-        "earnings_growth": 0.1,
-        "quality": 0.25,
-        "volume": 0.1,
-        "volatility": 0.25,
-        "value_timing": 0.2
-      }
-    },
-    "min_score_threshold": {
-      "BULL": 40.0,
-      "SIDEWAYS": 50.0,
-      "BEAR": 60.0
-    },
+    "min_score_threshold": 35.0,
     "momentum": {
       "multi_timeframe_enabled": true,
       "timeframes": {

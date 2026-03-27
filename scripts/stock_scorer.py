@@ -120,56 +120,17 @@ class StockScorer:
 
     def _load_weights(self) -> Dict[str, float]:
         """
-        Load weights from config based on current regime.
+        Load weights from config default_weights.
 
-        When regime weights exist they are blended with the learned default_weights
-        rather than replacing them entirely.  This ensures the learning pipeline's
-        adjustments to default_weights still have influence even in a strong regime.
-
-        Blend formula (per factor):
-            blended = regime_blend * regime_weight + (1 - regime_blend) * default_weight
-
-        The blend ratio is controlled by ``scoring.regime_weight_blend`` in config
-        (default 0.7 → 70% regime, 30% defaults).  Result is normalized to sum 1.0.
+        Regime weights are intentionally ignored — the composite score already
+        reflects market conditions through real-time factors (momentum, volume,
+        volatility). Regime reweighting toward stale fundamental factors (quality,
+        earnings) adds noise, not signal. The learning pipeline owns weight
+        optimization based on actual trade outcomes.
         """
         scoring_config = self.config.get("scoring", {})
-
-        # Resolve the best available default weights (learned > config > hardcoded)
         raw_defaults = scoring_config.get("default_weights") or dict(self.DEFAULT_WEIGHTS)
-        default_weights = self._migrate_weight_keys(raw_defaults)
-
-        # If no regime or no regime weights exist, just use defaults
-        if self.regime is None:
-            return default_weights
-
-        regime_key = self.regime.value.upper()
-        raw_regime = scoring_config.get("regime_weights", {}).get(regime_key)
-        if not raw_regime:
-            return default_weights
-        regime_weights = self._migrate_weight_keys(raw_regime)
-
-        # Blend regime weights with defaults so learned adjustments still have influence
-        blend = float(scoring_config.get("regime_weight_blend", 0.7))
-        blend = max(0.0, min(1.0, blend))  # clamp to [0, 1]
-
-        all_factors = set(regime_weights) | set(default_weights)
-        blended: Dict[str, float] = {}
-        for factor in all_factors:
-            rw = regime_weights.get(factor, default_weights.get(factor, 0.0))
-            dw = default_weights.get(factor, regime_weights.get(factor, 0.0))
-            blended[factor] = blend * rw + (1.0 - blend) * dw
-
-        # Normalize so weights sum to exactly 1.0
-        total = sum(blended.values())
-        if total > 0:
-            blended = {k: round(v / total, 4) for k, v in blended.items()}
-            # Fix floating-point rounding: add remainder to largest weight
-            diff = round(1.0 - sum(blended.values()), 4)
-            if diff != 0:
-                largest = max(blended, key=blended.get)
-                blended[largest] = round(blended[largest] + diff, 4)
-
-        return blended
+        return self._migrate_weight_keys(raw_defaults)
 
     @staticmethod
     def _migrate_weight_keys(weights: Dict[str, float]) -> Dict[str, float]:
@@ -231,17 +192,13 @@ class StockScorer:
         return self._weights.copy()
 
     def get_min_score_threshold(self) -> float:
-        """Get minimum score threshold based on regime."""
+        """Get minimum score threshold (flat, regime-independent)."""
         scoring_config = self.config.get("scoring", {})
-        thresholds = scoring_config.get("min_score_threshold", {})
-
-        if self.regime is not None:
-            regime_key = self.regime.value.upper()
-            if regime_key in thresholds:
-                return thresholds[regime_key]
-
-        # Default threshold
-        return 30.0
+        threshold = scoring_config.get("min_score_threshold", 35.0)
+        # Support legacy dict format — use the most permissive value
+        if isinstance(threshold, dict):
+            return min(threshold.values()) if threshold else 35.0
+        return float(threshold)
 
     def _fetch_price_data(self, ticker: str, period: str = "1mo") -> Optional[pd.DataFrame]:
         """Fetch historical price data for a ticker."""
