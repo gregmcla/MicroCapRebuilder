@@ -11,6 +11,11 @@
 
 ---
 
+## Recently Completed (2026-03-27) — AI-Generated Sell Reasoning
+- **`scripts/ai_allocator.py`** — Layer 1 mechanical sells now get AI-generated reasoning instead of static "Layer 1 mechanical sell — stop/target/quality trigger". Claude generates `layer1_sell_reasoning` as part of its existing allocation JSON response (no extra API call). Falls back to specific `SellProposal.reason` text if Claude omits a ticker.
+
+---
+
 ## Recently Completed (2026-03-27) — Discovery & Exit Upgrade ✅ merged to main
 
 ### Discovery Improvements (`scripts/stock_discovery.py`)
