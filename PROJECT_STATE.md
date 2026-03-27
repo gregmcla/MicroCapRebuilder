@@ -11,6 +11,37 @@
 
 ---
 
+## Recently Completed (2026-03-27) — Scan Reliability + Regime Scoring Removal
+
+### yf.download() Timeout Fix
+- **`scripts/yf_session.py`** — 60-second thread-based timeout on every `yf.download()` call. Hangs now return empty DataFrame instead of blocking entire 200-ticker batch indefinitely. Asymmetric Catalyst Hunters was timing out at 879-1587s before this fix.
+
+### Delisted Ticker Cleanup
+- **`data/curated_universe.json`** — removed 26 dead tickers across two passes (ALE, JBT, DNKN, AMRS, SGEN, USM, MSGN, MSG, LGF.A, ASTR, BPMC, DCPH, KRTX, BHLB, ESGR, EXPR, SKX, BRY, AIMC, AIRC, PGRE, PNM, SJW, GCP, SUM, WOW, SQ). These were causing yfinance error handling stalls that chained into scan timeouts.
+
+### Discovery Scan Isolation
+- **`scripts/stock_discovery.py`** — each scan type (momentum_breakouts, oversold_bounces, sector_leaders, volume_anomalies) is now wrapped in its own try/except. One failing scan no longer kills the others. Added `"Close" not in df.columns` guard in breakout and oversold loops.
+
+### Regime Scoring Removed
+- **`scripts/stock_scorer.py`** — `_load_weights()` always returns `default_weights`; `get_min_score_threshold()` returns flat float. Regime logic entirely removed.
+- **`scripts/factor_learning.py`** — weight lookup uses only `default_weights`; regime branch removed.
+- **All 14 portfolio `config.json` files** — removed `regime_weights` blocks; replaced dict `min_score_threshold` with flat `35.0`.
+- Rationale (first-principles drill): composite score already reflects regime through real-time factors. Regime weights on stale quarterly data (quality/earnings) added noise. Threshold gate was shutting down discovery on single red days.
+
+### ETF Holdings Limits Expanded
+- **`scripts/etf_holdings_provider.py`** — bumped `max_holdings` across all DEFAULT_ETFS to get broader universe: IWM/IJR/VB→200, SPY→500, QQQ→100, sector ETFs→75, XBI→100.
+
+### YOLO Degen Momentum Fixes
+- Switched ETF list to broad market: `[IWM, QQQ, SPY, ARKK, XBI, KWEB, IGV, BUZZ, IJR, VB]`
+- Set scan_frequency to `daily` on extended tier
+- Rewrote strategy DNA with proper maximum-aggression description
+
+### New Portfolios Added
+- `microcap-momentum-compounder` — focused microcap momentum
+- `yolo-degen-momentum` — maximum aggression, 2 positions at 50% each
+
+---
+
 ## Recently Completed (2026-03-26) — VCX Same-Run Reentry Veto + Stop Floor
 
 ### Same-Run Reentry Veto
@@ -150,7 +181,9 @@
 | `catalyst-momentum-scalper` | Intraday momentum on catalysts | AI-driven |
 | `momentum-scalper` | Pure technical breakout scalper | AI-driven |
 | `asymmetric-microcap-compounder` | $1K→$10K microcap compounder | AI-driven, max 2 positions |
-| `vcx-ai-concentration` | TBD | Needs DNA configured |
+| `vcx-ai-concentration` | Pre-IPO / high-conviction concentrated | AI-driven, min_stop_loss_pct=-0.35 |
+| `microcap-momentum-compounder` | Focused microcap momentum | AI-driven |
+| `yolo-degen-momentum` | Max aggression momentum | AI-driven, 2 positions @ 50% each |
 
 ---
 
@@ -164,6 +197,8 @@
 - `accept` conviction multiplier = 1.0 (not 0.75 — 0.75 creates a dead zone)
 - Dashboard API on port 8001 (conflict avoidance with exitwise on 8000)
 - ETF holdings cache is global: `data/etf_holdings_cache.json` (not per-portfolio)
+- **Regime weights removed from scoring** (2026-03-27) — composite score already reflects regime through real-time momentum/RSI/volume. Stale quality/earnings weights were adding noise. Flat default_weights + flat threshold (35.0) for all portfolios.
+- **yf.download() 60s timeout** — thread-based, in `yf_session.py`. Empty DataFrame returned on timeout; scan continues with next batch.
 
 ---
 
