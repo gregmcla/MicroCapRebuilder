@@ -16,6 +16,7 @@ Usage:
 """
 
 import json
+import threading
 import time
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
@@ -345,17 +346,10 @@ def calculate_cash(transactions: pd.DataFrame, starting_capital: float) -> float
     if transactions.empty:
         return starting_capital
 
-    total_spent = 0.0
-    total_received = 0.0
-
-    for _, row in transactions.iterrows():
-        action = row["action"]
-        value = float(row["total_value"])
-
-        if action in (Action.BUY, "BUY", Action.ADD, "ADD"):
-            total_spent += value
-        elif action in (Action.SELL, "SELL", Action.TRIM, "TRIM"):
-            total_received += value
+    buy_mask = transactions["action"].isin([Action.BUY, "BUY", Action.ADD, "ADD"])
+    sell_mask = transactions["action"].isin([Action.SELL, "SELL", Action.TRIM, "TRIM"])
+    total_spent = transactions.loc[buy_mask, "total_value"].astype(float).sum()
+    total_received = transactions.loc[sell_mask, "total_value"].astype(float).sum()
 
     return starting_capital - total_spent + total_received
 
@@ -409,8 +403,24 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
         return current, prev
 
     # Use 5d to ensure we get at least 2 trading days for prev close
+    # Wrap with 60s timeout to prevent API hangs from blocking dashboard responses.
+    _BATCH_TIMEOUT = 60
+    _result = [pd.DataFrame()]
+
+    def _do_download():
+        try:
+            _result[0] = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+        except Exception as e:
+            print(f"  [warn] Batch price fetch failed: {e}")
+
+    _t = threading.Thread(target=_do_download, daemon=True)
+    _t.start()
+    _t.join(timeout=_BATCH_TIMEOUT)
+    if _t.is_alive():
+        print(f"  [warn] fetch_prices_batch timed out after {_BATCH_TIMEOUT}s for {len(tickers)} tickers")
+
     try:
-        df = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+        df = _result[0]
         if not df.empty:
             # Only compute day_change if the market traded today.
             # yfinance returns daily bars; the last bar's date tells us the last

@@ -76,7 +76,7 @@ class RiskLayer:
 
         # Score positions to get real ATR values
         tickers = [pos["ticker"] for _, pos in state.positions.iterrows()]
-        scorer = StockScorer(regime=state.regime)
+        scorer = StockScorer(regime=state.regime, config=self.config)
         scores = scorer.score_watchlist(tickers)
         score_map = {s.ticker: s for s in scores if s}
 
@@ -280,7 +280,7 @@ class RiskLayer:
 
         # Re-score all positions
         tickers = state.positions["ticker"].tolist()
-        scorer = StockScorer(regime=state.regime)
+        scorer = StockScorer(regime=state.regime, config=self.config)
         current_scores = scorer.score_watchlist(tickers)
         score_map = {s.ticker: s for s in current_scores if s}
 
