@@ -11,6 +11,24 @@
 
 ---
 
+## Recently Completed (2026-03-27) — Discovery & Exit Upgrade (branch: discovery-and-exits-upgrade)
+
+### Discovery Improvements (`scripts/stock_discovery.py`)
+- **Fixed O(n×m) RSI bug**: `scan_oversold_bounces` was computing RSI from scratch 2,500× per scan (500 stocks × 5 bars). Replaced with vectorized `_compute_rsi_series()`. Also expanded window from 5→14 bars and added 1.3x volume confirmation on recovery.
+- **Fixed 52wk high mismatch**: `_analyze_stock()` was computing `near_52wk_high_pct` from 3-month data (a 3-month high, not a 52-week high). Now uses 1y cache when available.
+- **Enabled `scan_volume_anomalies`** by default (was `False`). Fixed 1-day price check to 3-day window so bullish consolidation isn't filtered out.
+- **New scan: `scan_relative_volume_surge`** — 4x+ same-day volume vs clean 30-day baseline with 2%+ price gain. Added `RELATIVE_VOLUME_SURGE` to enum with 10pt source bonus.
+
+### Exit Improvements (`scripts/risk_layer.py`)
+- **Ported stagnation exit to active pipeline**: `_check_stagnation()` — position held >45d with ±5% P&L = zombie capital exit. Previously ONLY in legacy `execute_sells.py`. All 13 portfolios were missing this exit.
+- **Ported liquidity drop exit to active pipeline**: `_check_liquidity_drop()` — 5d avg volume < 30% of 3mo baseline. Improved baseline excludes last 5 days (no spike contamination). Previously ONLY in legacy `execute_sells.py`.
+- **New: momentum fade detection** — `_check_momentum_fade()` — 3 consecutive closes below 5-day SMA triggers LOW urgency sell before the stop is hit.
+- All three new exits are toggle-able via layer1 config flags.
+
+All 91 tests pass.
+
+---
+
 ## Recently Completed (2026-03-27) — Scan Reliability + Regime Scoring Removal
 
 ### yf.download() Timeout Fix
