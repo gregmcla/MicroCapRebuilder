@@ -1,0 +1,6 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+SAIC,1573,95.16,94.94,149340.62,-346.06,-0.23,82.34,119.76,2026-03-25,Technology,95.16,-346.06,-0.23
+ESE,518,288.095,287.1,148717.8,-515.41,-0.35,249.76,353.82,2026-03-25,Technology,288.1,-515.41,-0.35
+KEX,728,136.72,136.9,99663.2,131.04,0.13,118.32,168.46,2026-03-25,Industrials,136.9,131.04,0.13
+NATL,1154,43.3,43.3,49968.2,0.0,0.0,36.85,54.77,2026-03-25,Technology,43.3,0.0,0.0
+VIRT,1138,43.77,43.8,49844.4,34.14,0.07,37.88,54.55,2026-03-25,Financial Services,43.8,34.14,0.07

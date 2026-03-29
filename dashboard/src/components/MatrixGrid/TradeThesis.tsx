@@ -19,27 +19,25 @@ const FACTOR_LABEL: Record<string, string> = {
 interface TradeThesisProps {
   rationale: TradeRationale;
   accentColor?: string;
+  sellReasoning?: string;
 }
 
-export default function TradeThesis({ rationale, accentColor = "#4ade80" }: TradeThesisProps) {
+export default function TradeThesis({ rationale, accentColor = "#4ade80", sellReasoning }: TradeThesisProps) {
   const decisionColor = DECISION_COLOR[rationale.ai_decision] ?? "#888";
-  const _rawTopLine = rationale.quant_reason?.split(" | ")[0] ?? "";
-  // Don't show quant_reason if it's a duplicate of ai_reasoning (AI-driven portfolios)
-  const topLine = _rawTopLine && _rawTopLine !== rationale.ai_reasoning ? _rawTopLine : "";
 
   return (
     <div style={{ fontFamily: MATRIX_FONT, display: "flex", flexDirection: "column", gap: 7 }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 6, color: accentColor, letterSpacing: "0.14em", fontWeight: 700 }}>
-          TRADE THESIS
+        <div style={{ fontSize: 9, color: sellReasoning ? "#f87171" : accentColor, letterSpacing: "0.1em", fontWeight: 700 }}>
+          {sellReasoning ? "EXIT THESIS" : "TRADE THESIS"}
         </div>
         {rationale.ai_decision && (
           <div style={{
-            fontSize: 7, fontWeight: 700, letterSpacing: "0.1em",
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.08em",
             color: decisionColor,
-            padding: "1px 5px",
+            padding: "2px 6px",
             border: `1px solid ${decisionColor}44`,
             background: `${decisionColor}0e`,
           }}>
@@ -49,21 +47,26 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80" }: Trad
       </div>
 
       {/* Divider */}
-      <div style={{ height: 1, background: `linear-gradient(90deg, ${accentColor}33, transparent)` }} />
+      <div style={{ height: 1, background: `linear-gradient(90deg, ${sellReasoning ? "#f87171" : accentColor}33, transparent)` }} />
 
-      {/* Quant conviction line */}
-      {topLine && (
-        <div style={{ fontSize: 8, color: "#999", lineHeight: 1.5 }}>
-          {topLine}
+      {/* Pending sell reasoning — shown prominently when there's an active sell proposal */}
+      {sellReasoning && (
+        <div style={{
+          fontSize: 11, color: "#ddd", lineHeight: 1.6,
+          padding: "6px 8px",
+          background: "rgba(248,113,113,0.06)",
+          border: "1px solid rgba(248,113,113,0.18)",
+        }}>
+          {sellReasoning}
         </div>
       )}
 
       {/* Factor bars */}
       {rationale.top_factors?.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {rationale.top_factors.map(f => (
-            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ fontSize: 6, color: "#444", letterSpacing: "0.1em", width: 60, flexShrink: 0 }}>
+            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.06em", width: 64, flexShrink: 0 }}>
                 {FACTOR_LABEL[f.name] ?? f.name.toUpperCase().slice(0, 8)}
               </div>
               <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.05)", position: "relative" }}>
@@ -74,7 +77,7 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80" }: Trad
                   opacity: 0.4 + (f.score / 100) * 0.5,
                 }} />
               </div>
-              <div style={{ fontSize: 8, color: "#666", width: 20, textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontSize: 10, color: "#777", width: 22, textAlign: "right", flexShrink: 0 }}>
                 {f.score.toFixed(0)}
               </div>
             </div>
@@ -87,25 +90,32 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80" }: Trad
         <div style={{ display: "flex", gap: 14 }}>
           {rationale.regime && (
             <div>
-              <div style={{ fontSize: 6, color: "#444", letterSpacing: "0.12em", marginBottom: 1 }}>REGIME</div>
-              <div style={{ fontSize: 8, color: "#777" }}>{rationale.regime}</div>
+              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 2 }}>REGIME</div>
+              <div style={{ fontSize: 10, color: "#888" }}>{rationale.regime}</div>
             </div>
           )}
           {rationale.ai_confidence > 0 && (
             <div>
-              <div style={{ fontSize: 6, color: "#444", letterSpacing: "0.12em", marginBottom: 1 }}>AI CONF</div>
-              <div style={{ fontSize: 8, color: "#777" }}>{(rationale.ai_confidence * 100).toFixed(0)}%</div>
+              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 2 }}>AI CONF</div>
+              <div style={{ fontSize: 10, color: "#888" }}>{(rationale.ai_confidence * 100).toFixed(0)}%</div>
             </div>
           )}
         </div>
       )}
 
-      {/* AI reasoning text */}
-      {rationale.ai_reasoning && (
+      {/* AI reasoning — primary display when no sell pending */}
+      {!sellReasoning && rationale.ai_reasoning && (
         <div style={{
-          fontSize: 7, color: "#555", lineHeight: 1.65,
-          overflowY: "auto", maxHeight: 52,
+          fontSize: 11, color: "#aaa", lineHeight: 1.6,
+          overflowY: "auto",
         }}>
+          {rationale.ai_reasoning}
+        </div>
+      )}
+      {/* De-emphasized buy entry context when sell reasoning is showing */}
+      {sellReasoning && rationale.ai_reasoning && (
+        <div style={{ fontSize: 9, color: "#383838", lineHeight: 1.6, marginTop: 2 }}>
+          <span style={{ letterSpacing: "0.08em", fontSize: 9 }}>ENTRY: </span>
           {rationale.ai_reasoning}
         </div>
       )}

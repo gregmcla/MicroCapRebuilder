@@ -64,6 +64,78 @@
       "created": "2026-03-23T16:59:14",
       "starting_capital": 1000000.0,
       "active": true
+    },
+    "momentum-scalper": {
+      "id": "momentum-scalper",
+      "name": "Momentum Scalper",
+      "universe": "allcap",
+      "created": "2026-03-25T09:12:47",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "vcx-ai-concentration": {
+      "id": "vcx-ai-concentration",
+      "name": "VCX AI Concentration",
+      "universe": "allcap",
+      "created": "2026-03-25T12:14:04",
+      "starting_capital": 500000.0,
+      "active": true
+    },
+    "asymmetric-microcap-compounder": {
+      "id": "asymmetric-microcap-compounder",
+      "name": "Asymmetric Microcap Compounder",
+      "universe": "microcap",
+      "created": "2026-03-26T00:54:37",
+      "starting_capital": 1000.0,
+      "active": true
+    },
+    "microcap-momentum-compounder": {
+      "id": "microcap-momentum-compounder",
+      "name": "Microcap Momentum Compounder",
+      "universe": "microcap",
+      "created": "2026-03-26T00:50:12",
+      "starting_capital": 1000.0,
+      "active": false
+    },
+    "test-auto-scan-delete-me": {
+      "id": "test-auto-scan-delete-me",
+      "name": "Test Auto Scan",
+      "universe": "microcap",
+      "created": "2026-03-26T00:52:30",
+      "starting_capital": 1000.0,
+      "active": false
+    },
+    "yolo-degen-momentum": {
+      "id": "yolo-degen-momentum",
+      "name": "YOLO Degen Momentum",
+      "universe": "allcap",
+      "created": "2026-03-26T19:36:46",
+      "starting_capital": 100000.0,
+      "active": true
+    },
+    "tariff-moat-industrials": {
+      "id": "tariff-moat-industrials",
+      "name": "Tariff Moat Industrials",
+      "universe": "smallcap",
+      "created": "2026-03-29T14:35:06",
+      "starting_capital": 100000.0,
+      "active": true
+    },
+    "pre-earnings-momentum": {
+      "id": "pre-earnings-momentum",
+      "name": "Pre-Earnings Momentum",
+      "universe": "allcap",
+      "created": "2026-03-29T15:25:37",
+      "starting_capital": 250000.0,
+      "active": true
+    },
+    "ai-pickaxe-infrastructure": {
+      "id": "ai-pickaxe-infrastructure",
+      "name": "AI Pickaxe Infrastructure",
+      "universe": "allcap",
+      "created": "2026-03-29T15:26:39",
+      "starting_capital": 2000000.0,
+      "active": true
     }
   }
 }

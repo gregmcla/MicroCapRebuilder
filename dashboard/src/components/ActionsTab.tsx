@@ -54,6 +54,17 @@ function DecisionBadge({ decision }: { decision: string }) {
 function ActionCard({ action }: { action: ReviewedAction }) {
   const { original, decision, ai_reasoning, confidence } = action;
   const isBuy = original.action_type === "BUY";
+  const { data: state } = usePortfolioState();
+
+  // For sell proposals: look up position to compute P/L and days held
+  const position = !isBuy ? (state?.positions.find(p => p.ticker === original.ticker) ?? null) : null;
+  const pnlPct = position != null
+    ? (original.price - position.avg_cost_basis) / position.avg_cost_basis * 100
+    : null;
+  const isProfit = pnlPct != null ? pnlPct >= 0 : null;
+  const daysHeld = position?.entry_date
+    ? Math.floor((Date.now() - new Date(position.entry_date).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
   return (
     <div
@@ -79,6 +90,24 @@ function ActionCard({ action }: { action: ReviewedAction }) {
         <span className="font-semibold" style={{ color: "var(--text-4)" }}>
           {original.ticker}
         </span>
+        {/* P/L badge + days held for sells */}
+        {!isBuy && isProfit != null && (
+          <span
+            className="font-bold px-1.5 py-0.5 rounded"
+            style={{
+              fontSize: "10px",
+              background: isProfit ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)",
+              color: isProfit ? "var(--green)" : "var(--red)",
+            }}
+          >
+            {isProfit ? "P" : "L"} {pnlPct != null ? `${pnlPct > 0 ? "+" : ""}${pnlPct.toFixed(1)}%` : ""}
+          </span>
+        )}
+        {!isBuy && daysHeld != null && (
+          <span className="text-xs" style={{ color: "var(--text-0)" }}>
+            {daysHeld}d held
+          </span>
+        )}
         <span className="font-mono text-xs" style={{ color: "var(--text-1)" }}>
           {action.modified_shares ?? original.shares} shares @
           ${original.price.toFixed(2)}
@@ -133,7 +162,7 @@ function ActionCard({ action }: { action: ReviewedAction }) {
       )}
 
       {/* AI reasoning */}
-      <p className="text-xs leading-relaxed italic" style={{ color: "var(--text-2)" }}>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--text-2)", lineHeight: 1.65 }}>
         {ai_reasoning}
       </p>
     </div>

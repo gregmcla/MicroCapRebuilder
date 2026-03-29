@@ -4,28 +4,29 @@ import type { PortfolioSummary } from "../lib/types";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CHART_PALETTE = [
-  "#00ffcc", // electric cyan-green
-  "#bf7fff", // vivid violet
-  "#ffb340", // hot amber
-  "#00cfff", // neon sky blue
-  "#ff5fa0", // hot pink
-  "#40ff80", // acid green
-  "#ff6060", // plasma red
-  "#ffe040", // electric yellow
+  "#38bdf8", // sky blue
+  "#a78bfa", // violet
+  "#fb923c", // orange
+  "#34d399", // emerald
+  "#f472b6", // pink
+  "#facc15", // yellow
+  "#2dd4bf", // teal
+  "#fb7185", // rose
+  "#a3e635", // lime
+  "#60a5fa", // blue
+  "#c084fc", // purple
+  "#4ade80", // green
+  "#f97316", // orange-red
+  "#22d3ee", // cyan
+  "#e879f9", // fuchsia
 ];
-
-const ECHO_DEFS = [
-  { offset: 0.06, opacity: 0.60, blur: "2px",  width: 4.5  },
-  { offset: 0.12, opacity: 0.38, blur: "4px",  width: 7.0  },
-  { offset: 0.22, opacity: 0.20, blur: "7px",  width: 12.0 },
-] as const;
 
 const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
 
 const PULSE_DURATION_MS = 1800; // ms for one pulse to travel endpoint → origin
 
 const PAD_TOP    = 28;
-const PAD_RIGHT  = 112;
+const PAD_RIGHT  = 172;
 const PAD_BOTTOM = 24;
 const PAD_LEFT   = 40;
 
@@ -211,12 +212,13 @@ interface SeriesData {
 
 interface PerformanceChartProps {
   portfolios: PortfolioSummary[];
+  height?: number;
 }
 
-export default function PerformanceChart({ portfolios }: PerformanceChartProps) {
+export default function PerformanceChart({ portfolios, height = 340 }: PerformanceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const [dims, setDims] = useState({ width: 600, height: 340 });
+  const [dims, setDims] = useState({ width: 600, height });
 
   const series: SeriesData[] = useMemo(() => {
     return portfolios
@@ -414,34 +416,33 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       const { toPixelY: fieldPixelY,  guides: fieldGuides  } = fieldScale;
 
       // Fill background
-      ctx.fillStyle = "#010107";
+      ctx.fillStyle = "#08090d";
       ctx.fillRect(0, 0, dims.width, dims.height);
 
       ctx.save();
       // ── Chromatic background zones (only when zero line is in range) ──────
+      // Very subtle — just a whisper of tone, not a colored region
       if (scale.yMin < 0 && scale.yMax > 0) {
         const zeroY = scale.toPixelY(0);
 
-        // Green zone above zero
+        // Green zone above zero — barely perceptible
         const greenGrad = ctx.createLinearGradient(0, PAD_TOP, 0, zeroY);
-        greenGrad.addColorStop(0, "rgba(0,255,140,0.22)");
-        greenGrad.addColorStop(0.5, "rgba(0,255,140,0.08)");
+        greenGrad.addColorStop(0, "rgba(0,255,140,0.05)");
         greenGrad.addColorStop(1, "rgba(0,255,140,0)");
         ctx.fillStyle = greenGrad;
         ctx.fillRect(PAD_LEFT, PAD_TOP, chartW, zeroY - PAD_TOP);
 
-        // Red zone below zero
+        // Red zone below zero — barely perceptible
         const redGrad = ctx.createLinearGradient(0, zeroY, 0, PAD_TOP + chartH);
         redGrad.addColorStop(0, "rgba(255,50,80,0)");
-        redGrad.addColorStop(0.5, "rgba(255,50,80,0.10)");
-        redGrad.addColorStop(1, "rgba(255,50,80,0.26)");
+        redGrad.addColorStop(1, "rgba(255,50,80,0.02)");
         ctx.fillStyle = redGrad;
         ctx.fillRect(PAD_LEFT, zeroY, chartW, PAD_TOP + chartH - zeroY);
       }
       ctx.restore();
 
       ctx.save();
-      ctx.font = "600 8px/1 monospace";
+      ctx.font = "600 10px/1 'JetBrains Mono', 'Courier New', monospace";
       ctx.textAlign = "right";
       ctx.textBaseline = "middle";
 
@@ -452,12 +453,12 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.beginPath();
         ctx.moveTo(PAD_LEFT - 6, py);
         ctx.lineTo(dims.width - PAD_RIGHT + 8, py);
-        ctx.strokeStyle = isZero ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)";
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = isZero ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)";
+        ctx.lineWidth   = isZero ? 1 : 1;
         ctx.stroke();
         const decimals = Math.abs(g) < 1 ? 1 : 0;
         const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(decimals)}%`;
-        ctx.fillStyle = isZero ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.18)";
+        ctx.fillStyle = isZero ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.28)";
         ctx.fillText(label, PAD_LEFT - 8, py);
       }
 
@@ -496,12 +497,12 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
           ctx.beginPath();
           ctx.moveTo(PAD_LEFT - 6, py);
           ctx.lineTo(dims.width - PAD_RIGHT + 8, py);
-          ctx.strokeStyle = isZero ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)";
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = isZero ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)";
+          ctx.lineWidth   = 1;
           ctx.stroke();
           const decimals = Math.abs(g) < 1 ? 1 : 0;
           const label = g === 0 ? "0%" : `${g > 0 ? "+" : ""}${g.toFixed(decimals)}%`;
-          ctx.fillStyle = isZero ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.18)";
+          ctx.fillStyle = isZero ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.28)";
           ctx.fillText(label, PAD_LEFT - 8, py);
         }
       }
@@ -512,10 +513,10 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       if (maxLen > 1) {
         const stepSize = Math.max(1, Math.round(maxLen / 5));
         ctx.save();
-        ctx.font        = "600 7px/1 monospace";
-        ctx.fillStyle   = "rgba(255,255,255,0.14)";
+        ctx.font        = "600 10px/1 'JetBrains Mono', 'Courier New', monospace";
+        ctx.fillStyle   = "rgba(255,255,255,0.40)";
         ctx.textAlign   = "center";
-        ctx.strokeStyle = "rgba(255,255,255,0.14)";
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
         ctx.lineWidth   = 1;
 
         for (let d = stepSize; d < maxLen - 1 - stepSize / 2; d += stepSize) {
@@ -562,103 +563,95 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.setLineDash([]);
       ctx.restore();
 
-      // "NOW" label
+      // "NOW" label — right-aligned to nowX so it stays within the chart clip
       ctx.save();
-      ctx.font         = "700 7px/1 monospace";
-      ctx.fillStyle    = "rgba(255,255,255,0.20)";
-      ctx.textAlign    = "center";
+      ctx.beginPath();
+      ctx.rect(PAD_LEFT, PAD_TOP, chartW, chartH);
+      ctx.clip();
+      ctx.font         = "700 9px/1 'JetBrains Mono', 'Courier New', monospace";
+      ctx.fillStyle    = "rgba(255,255,255,0.30)";
+      ctx.textAlign    = "right";
       ctx.textBaseline = "top";
-      ctx.fillText("NOW", nowX, PAD_TOP + 4);
+      ctx.fillText("NOW", nowX - 2, PAD_TOP + 4);
       ctx.restore();
     },
     [scale, dims, chartW, chartH, maxLen, fieldScale, separatorY]
   );
 
-  const drawScars = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      for (let si = 0; si < series.length; si++) {
-        const s = series[si];
-        const { toPixelY } = (leaderIdx >= 0 && si !== leaderIdx) ? fieldScale : scale;
-        if (s.cum.length < 4) continue;
-        const runMax = computeRunningMax(s.cum);
+  // drawScars: disabled — filled maroon blocks destroyed the visual; no-op.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const drawScars = useCallback((_ctx: CanvasRenderingContext2D) => { /* no-op */ }, []);
 
-        let i = 0;
-        while (i < s.cum.length) {
-          const dd = runMax[i] - s.cum[i];
-          if (dd <= DD_SCAR_THRESHOLD) { i++; continue; }
+  /** Right-side vertical legend sorted by return descending. */
+  const drawLegend = useCallback(
+    (ctx: CanvasRenderingContext2D, alpha: number) => {
+      if (alpha <= 0 || series.length === 0) return;
 
-          // Scar segment starts here
-          const segStart = i;
-          let maxDd = dd;
-          // Inner loop guaranteed to execute at least once (dd > DD_SCAR_THRESHOLD on entry),
-          // so i is always advanced before segEnd is computed — no infinite-loop risk.
-          while (i < s.cum.length && runMax[i] - s.cum[i] > DD_SCAR_THRESHOLD) {
-            maxDd = Math.max(maxDd, runMax[i] - s.cum[i]);
-            i++;
-          }
-          const segEnd = i - 1;
-          if (segEnd <= segStart) continue;
+      // Legend column is exactly PAD_RIGHT - 14px wide, fully within canvas
+      // Layout: [8px left margin] [dot 3px] [4px gap] [name truncated] [return right-aligned]
+      // Total column: dims.width - PAD_RIGHT + 12 → dims.width - 6
+      const DOT_R       = 3;
+      const LEGEND_L    = dims.width - PAD_RIGHT + 12; // left edge of legend column
+      const LEGEND_R    = dims.width - 6;               // right edge (6px from canvas edge)
+      const LEGEND_W    = LEGEND_R - LEGEND_L;          // total usable width
+      const START_Y     = PAD_TOP + 4;
+      const AVAIL_H     = dims.height - PAD_TOP - PAD_BOTTOM;
+      // Compress row height when many entries so all fit
+      const ENTRY_H     = series.length > 13
+        ? Math.max(11, Math.floor(AVAIL_H / series.length))
+        : 15;
+      const MAX_ENTRIES = Math.min(series.length, Math.floor(AVAIL_H / ENTRY_H));
+      // Smaller font when >13 entries
+      const FONT_SIZE   = series.length > 13 ? 9 : 10;
 
-          // Opacity: sqrt scaling so shallow scars are subtle, deep scars visible
-          // 3% dd → ~0.05 opacity, 15% → ~0.14, 40% → ~0.22 (capped)
-          const opacity = Math.min(Math.sqrt(maxDd / 40) * 0.9, 0.22);
-
-          // Build polygon: peak line top-edge → actual line bottom-edge (reversed)
-          ctx.save();
-          ctx.globalCompositeOperation = "source-over";
-          ctx.globalAlpha = opacity;
-          ctx.fillStyle = "rgb(190, 35, 55)";
-          ctx.beginPath();
-          ctx.moveTo(toPixelX(segStart, maxLen, chartW), toPixelY(runMax[segStart]));
-          for (let j = segStart + 1; j <= segEnd; j++) {
-            ctx.lineTo(toPixelX(j, maxLen, chartW), toPixelY(runMax[j]));
-          }
-          for (let j = segEnd; j >= segStart; j--) {
-            ctx.lineTo(toPixelX(j, maxLen, chartW), toPixelY(s.cum[j]));
-          }
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-      }
-    },
-    [series, scale, fieldScale, leaderIdx, chartW, maxLen],
-  );
-
-  const drawRankStrip = useCallback(
-    (ctx: CanvasRenderingContext2D) => {
-      if (series.length < 2) return; // strip not meaningful with one series
-      const leaders = computeDailyLeaders(series, maxLen);
-      const stripY  = dims.height - PAD_BOTTOM + 3; // just inside bottom padding zone
-      const stripH  = 14;
-      const colW    = chartW / maxLen;
-
-      // Background track — faint defined boundary
       ctx.save();
-      ctx.fillStyle = "rgba(255,255,255,0.03)";
-      ctx.fillRect(PAD_LEFT, stripY, chartW, stripH);
+      ctx.globalAlpha  = alpha;
+      ctx.font         = `600 ${FONT_SIZE}px/1 'JetBrains Mono', 'Courier New', monospace`;
+      ctx.textBaseline = "middle";
 
-      // Color columns: one per day
-      for (let d = 0; d < maxLen; d++) {
-        const si = leaders[d];
-        if (si < 0) continue;
-        ctx.globalAlpha = 0.85;
-        ctx.fillStyle   = series[si].color;
-        // Math.max(1, colW) prevents sub-pixel gaps at high data density
-        ctx.fillRect(PAD_LEFT + (d / maxLen) * chartW, stripY, Math.max(1, colW), stripH);
+      for (let i = 0; i < MAX_ENTRIES; i++) {
+        const s   = series[i];
+        const y   = START_Y + i * ENTRY_H + ENTRY_H / 2;
+        const ret = s.finalReturn;
+        const sign = ret >= 0 ? "+" : "";
+
+        // Colored dot
+        ctx.beginPath();
+        ctx.arc(LEGEND_L + DOT_R, y, DOT_R, 0, Math.PI * 2);
+        ctx.fillStyle = s.color;
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur  = 3;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Return % — right-aligned first (fixed-width, always fits)
+        const retLabel = `${sign}${ret.toFixed(1)}%`;
+        ctx.fillStyle  = ret >= 0 ? "rgba(160,240,200,0.85)" : "rgba(240,160,160,0.85)";
+        ctx.textAlign  = "right";
+        ctx.fillText(retLabel, LEGEND_R, y);
+
+        // Portfolio name — truncated to 14 chars, left of return column
+        // Measure return label width to know how much name space we have
+        const retW  = ctx.measureText(retLabel).width;
+        const nameX = LEGEND_L + DOT_R * 2 + 5;
+        const nameMaxW = LEGEND_W - retW - DOT_R * 2 - 5 - 4; // 4px gap between name and return
+
+        const raw = (s.name ?? s.id).toUpperCase();
+        const truncated = raw.length > 13 ? raw.slice(0, 12) + "\u2026" : raw;
+        // Clip to available width before drawing (hard guard against overflow)
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(nameX, y - ENTRY_H / 2, Math.max(nameMaxW, 0), ENTRY_H);
+        ctx.clip();
+        ctx.fillStyle = "rgba(255,255,255,0.70)";
+        ctx.textAlign = "left";
+        ctx.fillText(truncated, nameX, y);
+        ctx.restore();
       }
-      ctx.restore();
 
-      // "RANK" label in left gutter
-      ctx.save();
-      ctx.font          = "600 6px/1 monospace";
-      ctx.fillStyle     = "rgba(255,255,255,0.15)";
-      ctx.textAlign     = "right";
-      ctx.textBaseline  = "middle";
-      ctx.fillText("RANK", PAD_LEFT - 6, stripY + stripH / 2);
       ctx.restore();
     },
-    [series, dims, chartW, maxLen],
+    [series, dims],
   );
 
   const drawEndpoints = useCallback(
@@ -677,35 +670,16 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       });
       const sorted = items.slice().sort((a, b) => a.lastY - b.lastY);
 
-      // Assign vertical positions with collision avoidance
-      const MIN_GAP = 12; // px minimum vertical gap between labels
-      const assignedY: number[] = [];
+      // Draw only the endpoint dot at the actual line terminus — no label text here.
+      // Labels are rendered by drawLegend as a clean sorted list.
       for (const item of sorted) {
-        let y = item.lastY;
-        for (const used of assignedY) {
-          if (Math.abs(y - used) < MIN_GAP) {
-            y = used + MIN_GAP;
-          }
-        }
-        assignedY.push(y);
-
-        // Dot at actual line endpoint Y
         ctx.beginPath();
         ctx.arc(item.lastX, item.lastY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = item.s.color;
+        ctx.fillStyle   = item.s.color;
+        ctx.shadowColor = item.s.color;
+        ctx.shadowBlur  = 4;
         ctx.fill();
-
-        // Label: "ID  +XX.X%" in the right zone
-        const ret   = item.s.finalReturn;
-        const sign  = ret >= 0 ? "+" : "";
-        const label = `${item.s.id.toUpperCase()}  ${sign}${ret.toFixed(1)}%`;
-        const labelX = dims.width - PAD_RIGHT + 14;
-
-        ctx.font         = "700 8.5px/1 monospace";
-        ctx.fillStyle    = item.s.color;
-        ctx.textAlign    = "left";
-        ctx.textBaseline = "middle";
-        ctx.fillText(label, labelX, y);
+        ctx.shadowBlur = 0;
       }
 
       ctx.restore();
@@ -741,48 +715,15 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
         if (pts.length < 2) { ctx.restore(); continue; }
 
-        // Dimming: if something is hovered and this isn't it, reduce alpha
-        const baseAlpha = hoveredIdx !== null && hoveredIdx !== si ? 0.35 : 1.0;
+        // Dimming: hovered line = full opacity + 2px; all others drop to 0.25
+        const isHovered = hoveredIdx !== null && hoveredIdx === si;
+        const baseAlpha = hoveredIdx !== null && !isHovered ? 0.25 : 1.0;
+        const lineWidth = isHovered ? 2.0 : 1.5;
 
-        // ── Performance rank modulates glow ──────────────────────────────────
-        // si=0 = best performer (series is sorted by finalReturn desc).
-        // rankFactor: 1.0 for best, tapering to 0.50 for last.
-        const rankN         = series.length;
-        const rankFactor    = rankN <= 1 ? 1.0 : 1.0 - (si / (rankN - 1)) * 0.50;
-        const glowAlpha     = baseAlpha * rankFactor;
-        // Core line width tapers slightly by rank: 1.5px best → 1.0px worst
-        const coreLineWidth = rankN <= 1 ? 1.5 : 1.5 - (si / (rankN - 1)) * 0.5;
-
-        // ── Temporal echo trails (drawn before area fill, furthest back) ──────
-        for (const echo of ECHO_DEFS) {
-          const echoProgress = progress - echo.offset;
-          if (echoProgress <= 0) continue;
-          // Slice pts to echo's progress position — shorter line = lags behind main
-          const echoMaxDataIdx = Math.min(
-            Math.floor(echoProgress * (maxLen - 1)),
-            s.cum.length - 1,
-          );
-          const echoPts = pts.slice(0, echoMaxDataIdx + 1);
-          if (echoPts.length < 2) continue;
-
-          ctx.save();
-          ctx.globalCompositeOperation = "screen";
-          ctx.globalAlpha = glowAlpha * echo.opacity;
-          ctx.filter = `blur(${echo.blur})`;
-          ctx.strokeStyle = s.color;
-          ctx.lineWidth = echo.width;
-          ctx.lineJoin = "round";
-          ctx.lineCap  = "round";
-          ctx.beginPath();
-          catmullRomPath(ctx, echoPts);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // ── Area fill (draw first, source-over, below the glowing lines) ─────
+        // ── Area fill — barely-there whisper of color beneath each line ───────
         ctx.save();
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = glowAlpha * 0.26;
+        ctx.globalAlpha = baseAlpha * 0.04;
         const grad = ctx.createLinearGradient(0, toPixelY(zoneYMax), 0, toPixelY(zoneYMin));
         grad.addColorStop(0, s.color);
         grad.addColorStop(1, "transparent");
@@ -798,50 +739,22 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
         ctx.fill();
         ctx.restore();
 
-        // ── Three-pass glow (screen blending) ───────────────────────────────
+        // ── Line — glow only on hovered series; others are clean 1.5px ───────
         ctx.save();
-        ctx.globalCompositeOperation = "screen";
-
-        // Pass 1: wide blurred halo
-        ctx.save();
-        ctx.filter = "blur(10px)";
-        ctx.globalAlpha = glowAlpha * 0.55;
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = 22;
-        ctx.lineJoin = "round";
-        ctx.lineCap  = "round";
+        ctx.globalAlpha    = baseAlpha;
+        ctx.strokeStyle    = s.color;
+        ctx.lineWidth      = lineWidth;
+        ctx.lineJoin       = "round";
+        ctx.lineCap        = "round";
+        if (isHovered) {
+          ctx.shadowColor  = s.color;
+          ctx.shadowBlur   = 10;
+        }
         ctx.beginPath();
         catmullRomPath(ctx, pts);
         ctx.stroke();
+        ctx.shadowBlur = 0;
         ctx.restore();
-
-        // Pass 2: inner glow
-        ctx.save();
-        ctx.filter = "blur(2px)";
-        ctx.globalAlpha = glowAlpha * 0.85;
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = 3.5;
-        ctx.lineJoin = "round";
-        ctx.lineCap  = "round";
-        ctx.beginPath();
-        catmullRomPath(ctx, pts);
-        ctx.stroke();
-        ctx.filter = "none";
-        ctx.restore();
-
-        // Pass 3: crisp core
-        ctx.save();
-        ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = glowAlpha * 1.0;
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth   = coreLineWidth + 0.5;
-        ctx.lineJoin = "round";
-        ctx.lineCap  = "round";
-        ctx.beginPath();
-        catmullRomPath(ctx, pts);
-        ctx.stroke();
-        ctx.restore();
-        ctx.restore(); // end screen blending wrapper
         ctx.restore(); // end per-series clip
       }
     },
@@ -893,7 +806,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
 
       // Card background
       ctx.save();
-      ctx.fillStyle   = "rgba(4,4,12,0.94)";
+      ctx.fillStyle   = "rgba(8,9,13,0.95)";
       ctx.strokeStyle = "rgba(255,255,255,0.08)";
       ctx.lineWidth   = 1;
       ctx.beginPath();
@@ -906,7 +819,7 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
       ctx.stroke();
 
       // Rows
-      ctx.font         = "600 8.5px/1 monospace";
+      ctx.font         = "600 9px/1 'JetBrains Mono', 'Courier New', monospace";
       ctx.textBaseline = "middle";
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -1039,16 +952,16 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     drawGrid(ctx);
     drawScars(ctx);
     drawLines(ctx, animProgress, hoverX !== null ? hoveredIdx : null);
-    drawRankStrip(ctx);
     drawEndpoints(ctx, endpointsAlpha);
+    drawLegend(ctx, endpointsAlpha);
     drawPulse(ctx);
     if (hoverX !== null && animProgress >= 1) drawHover(ctx, hoverX);
-  }, [drawGrid, drawScars, drawLines, drawRankStrip, drawEndpoints, drawPulse, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx, pulseTick]);
+  }, [drawGrid, drawScars, drawLines, drawLegend, drawEndpoints, drawPulse, drawHover, dims, animProgress, endpointsAlpha, hoverX, hoveredIdx, pulseTick]);
 
   if (series.length === 0) {
     return (
-      <div style={{ height: "340px", display: "flex", alignItems: "center", justifyContent: "center", background: "#010107", borderRadius: "7px" }}>
-        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.2)", fontFamily: "monospace" }}>
+      <div style={{ height: `${height}px`, display: "flex", alignItems: "center", justifyContent: "center", background: "#08090d", borderRadius: "7px" }}>
+        <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.2)", fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
           No portfolio history
         </p>
       </div>
@@ -1059,8 +972,8 @@ export default function PerformanceChart({ portfolios }: PerformanceChartProps) 
     <div
       ref={containerRef}
       style={{
-        height: "340px",
-        background: "#010107",
+        height: `${height}px`,
+        background: "#08090d",
         borderRadius: "7px",
         overflow: "hidden",
         position: "relative",

@@ -19,9 +19,10 @@ interface BottomPanelProps {
   watchlistCandidates?: WatchlistCandidate[];
   rationale?: TradeRationale | null;
   buyTx?: Transaction | null;
+  sellReasoning?: string | null;
 }
 
-export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [], rationale = null, buyTx = null }: BottomPanelProps) {
+export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [], rationale = null, buyTx = null, sellReasoning = null }: BottomPanelProps) {
   const [info,      setInfo]      = useState<TickerInfo | null>(null);
   const [chartPts,  setChartPts]  = useState<ChartDataPoint[]>([]);
 
@@ -84,9 +85,9 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
         ✕
       </button>
 
-      {/* 3-column body */}
+      {/* 3-column body — right col gets more space for trade thesis text */}
       <div style={{
-        flex: 1, display: "grid", gridTemplateColumns: "1fr 1.6fr 0.85fr",
+        flex: 1, display: "grid", gridTemplateColumns: "0.85fr 1.4fr 1fr",
         gap: 0, overflow: "hidden", position: "relative", zIndex: 2,
       }}>
 
@@ -105,14 +106,14 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           </div>
 
           {/* Portfolio + sector */}
-          <div style={{ fontSize: 9, color: col, letterSpacing: "0.08em", marginLeft: 6 }}>
+          <div style={{ fontSize: 10, color: col, letterSpacing: "0.06em", marginLeft: 6 }}>
             ● {pos.portfolioName}
             {pos.sector && pos.sector !== "N/A" && pos.sector !== "" && ` · ${pos.sector}`}
             {pos.mktCap && pos.mktCap !== "N/A" && pos.mktCap !== "" && ` · ${pos.mktCap}`}
           </div>
 
           {pos.entryDate && (
-            <div style={{ fontSize: 7, color: "#555", marginLeft: 6, letterSpacing: "0.08em" }}>
+            <div style={{ fontSize: 9, color: "#666", marginLeft: 6, letterSpacing: "0.06em" }}>
               ENTERED {pos.entryDate.slice(0, 10)}
             </div>
           )}
@@ -138,30 +139,30 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               {pos.day !== 0 && (
                 <div>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DAY %</div>
-                  <div style={{ fontSize: 11, color: pc(pos.day), fontWeight: 600 }}>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>DAY %</div>
+                  <div style={{ fontSize: 12, color: pc(pos.day), fontWeight: 600 }}>
                     {pos.day > 0 ? "+" : ""}{pos.day.toFixed(2)}%
                   </div>
                 </div>
               )}
               {pos.dayChangeDollar != null && (
                 <div>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DAY $</div>
-                  <div style={{ fontSize: 11, color: pc(pos.dayChangeDollar), fontWeight: 600 }}>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>DAY $</div>
+                  <div style={{ fontSize: 12, color: pc(pos.dayChangeDollar), fontWeight: 600 }}>
                     {pos.dayChangeDollar >= 0 ? "+" : ""}${Math.abs(pos.dayChangeDollar).toFixed(0)}
                   </div>
                 </div>
               )}
               {pos.vol != null && (
                 <div>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>VOL</div>
-                  <div style={{ fontSize: 11, color: "#888" }}>{pos.vol}%</div>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>VOL</div>
+                  <div style={{ fontSize: 12, color: "#888" }}>{pos.vol}%</div>
                 </div>
               )}
               {pos.beta != null && (
                 <div>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>BETA</div>
-                  <div style={{ fontSize: 11, color: "#888" }}>{pos.beta}</div>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>BETA</div>
+                  <div style={{ fontSize: 12, color: "#888" }}>{pos.beta}</div>
                 </div>
               )}
             </div>
@@ -202,8 +203,8 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
                 {items.map((s) => (
                   <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "6px 8px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 3 }}>{s.label}</div>
-                    <div style={{ fontSize: 11, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 3 }}>{s.label}</div>
+                    <div style={{ fontSize: 12, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
                   </div>
                 ))}
               </div>
@@ -213,41 +214,27 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           {/* Stop / take-profit inline with signal bars */}
           <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
             {pos.stopLoss != null && (
-              <div style={{ background: "rgba(248,113,113,0.04)", padding: "6px 8px", border: "1px solid rgba(248,113,113,0.14)", minWidth: 80 }}>
-                <div style={{ fontSize: 6, color: "#f87171", letterSpacing: "0.14em", marginBottom: 3 }}>STOP</div>
-                <div style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
+              <div style={{ background: "rgba(248,113,113,0.04)", padding: "6px 8px", border: "1px solid rgba(248,113,113,0.18)", minWidth: 80 }}>
+                <div style={{ fontSize: 9, color: "#f87171", letterSpacing: "0.08em", marginBottom: 3 }}>STOP</div>
+                <div style={{ fontSize: 12, color: "#f87171", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
                 {pos.currentPrice != null && (
-                  <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
+                  <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>
                     {((pos.stopLoss - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
                   </div>
                 )}
               </div>
             )}
             {pos.takeProfit != null && (
-              <div style={{ background: "rgba(74,222,128,0.04)", padding: "6px 8px", border: "1px solid rgba(74,222,128,0.14)", minWidth: 80 }}>
-                <div style={{ fontSize: 6, color: "#4ade80", letterSpacing: "0.14em", marginBottom: 3 }}>TARGET</div>
-                <div style={{ fontSize: 11, color: "#4ade80", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
+              <div style={{ background: "rgba(74,222,128,0.04)", padding: "6px 8px", border: "1px solid rgba(74,222,128,0.18)", minWidth: 80 }}>
+                <div style={{ fontSize: 9, color: "#4ade80", letterSpacing: "0.08em", marginBottom: 3 }}>TARGET</div>
+                <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
                 {pos.currentPrice != null && (
-                  <div style={{ fontSize: 7, color: "#666", marginTop: 1 }}>
+                  <div style={{ fontSize: 9, color: "#666", marginTop: 2 }}>
                     {((pos.takeProfit - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}%
                   </div>
                 )}
               </div>
             )}
-            {/* Signal bars fill remaining space */}
-            <div style={{ flex: 1, display: "flex", gap: 1, alignItems: "flex-end", height: 28 }}>
-              {Array.from({ length: 60 }, (_, i) => {
-                const h = 2 + Math.abs(Math.sin(i * 0.3 + pos.perf) * Math.cos(i * 0.17)) * 26;
-                return (
-                  <div key={i} style={{
-                    flex: 1, height: h,
-                    background: pos.perf >= 0
-                      ? `rgba(74,222,128,${0.10 + (h / 28) * 0.38})`
-                      : `rgba(248,113,113,${0.10 + (h / 28) * 0.38})`,
-                  }} />
-                );
-              })}
-            </div>
           </div>
         </div>
 
@@ -260,7 +247,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           {/* Trade Thesis section — always present */}
           <div style={{ marginBottom: 10 }}>
             {rationale ? (
-              <TradeThesis rationale={rationale} accentColor={col} />
+              <TradeThesis rationale={rationale} accentColor={col} sellReasoning={sellReasoning ?? undefined} />
             ) : buyTx ? (
               /* Fallback: reconstruct from factor scores for pre-feature positions */
               <>
@@ -291,20 +278,20 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
             {/* Company name + link */}
             {info?.name ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 10, color: "#bbb", fontWeight: 700, letterSpacing: "0.03em" }}>{info.name}</span>
+                <span style={{ fontSize: 12, color: "#ccc", fontWeight: 700, letterSpacing: "0.02em" }}>{info.name}</span>
                 {info.website && (
                   <a href={info.website} target="_blank" rel="noreferrer"
-                    style={{ color: col, fontSize: 9, textDecoration: "none", opacity: 0.7, marginLeft: "auto" }}>
+                    style={{ color: col, fontSize: 10, textDecoration: "none", opacity: 0.7, marginLeft: "auto" }}>
                     ↗
                   </a>
                 )}
               </div>
             ) : (
-              <div style={{ fontSize: 9, color: "#444", letterSpacing: "0.06em" }}>LOADING INFO...</div>
+              <div style={{ fontSize: 10, color: "#444", letterSpacing: "0.06em" }}>LOADING INFO...</div>
             )}
-            {info?.industry && <div style={{ fontSize: 8, color: "#555" }}>{info.industry}</div>}
+            {info?.industry && <div style={{ fontSize: 10, color: "#666" }}>{info.industry}</div>}
             {info?.description && (
-              <div style={{ fontSize: 8, color: "#666", lineHeight: 1.65 }}>
+              <div style={{ fontSize: 11, color: "#777", lineHeight: 1.6 }}>
                 {info.description}
               </div>
             )}
@@ -312,28 +299,28 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {info.market_cap != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>MKT CAP</div>
+                    <div style={{ fontSize: 11, color: "#999" }}>
                       {info.market_cap >= 1e9 ? `$${(info.market_cap / 1e9).toFixed(1)}B` : `$${(info.market_cap / 1e6).toFixed(0)}M`}
                     </div>
                   </div>
                 )}
                 {info.trailing_pe != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>P/E</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>{info.trailing_pe.toFixed(1)}</div>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>P/E</div>
+                    <div style={{ fontSize: 11, color: "#999" }}>{info.trailing_pe.toFixed(1)}</div>
                   </div>
                 )}
                 {info.week_52_high != null && info.week_52_low != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>52W</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>52W</div>
+                    <div style={{ fontSize: 11, color: "#999" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
                   </div>
                 )}
                 {info.analyst_rating && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>ANALYST</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>ANALYST</div>
+                    <div style={{ fontSize: 11, color: "#999" }}>
                       {info.analyst_rating}
                       {info.analyst_count != null && <span style={{ color: "#555" }}> ({info.analyst_count})</span>}
                     </div>
@@ -341,8 +328,8 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
                 )}
                 {info.dividend_yield != null && info.dividend_yield > 0 && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DIV</div>
-                    <div style={{ fontSize: 9, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>DIV</div>
+                    <div style={{ fontSize: 11, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
                   </div>
                 )}
               </div>
@@ -353,14 +340,14 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
           {social?.social_heat && (
             <div style={{
               display: "flex", alignItems: "center", gap: 10,
-              padding: "5px 8px", marginTop: "auto",
+              padding: "6px 8px", marginTop: "auto",
               background: `${HEAT_COLOR[social.social_heat] ?? "#555"}0e`,
               border: `1px solid ${HEAT_COLOR[social.social_heat] ?? "#555"}22`,
             }}>
               <div>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL</div>
+                <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 3 }}>SOCIAL</div>
                 <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+                  fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
                   color: HEAT_COLOR[social.social_heat] ?? "#555",
                   textShadow: `0 0 8px ${HEAT_COLOR[social.social_heat] ?? "#555"}55`,
                 }}>
@@ -369,7 +356,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               </div>
               {social.social_bullish_pct != null && (
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.06em", marginBottom: 4 }}>
                     BULL {social.social_bullish_pct.toFixed(0)}%
                   </div>
                   <div style={{ height: 3, background: "rgba(255,255,255,0.06)", position: "relative" }}>
@@ -389,7 +376,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
       {/* Bottom hint */}
       <div style={{
         height: 18, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 7, color: "#2a2a2a", letterSpacing: "0.14em",
+        fontSize: 8, color: "#2e2e2e", letterSpacing: "0.1em",
         borderTop: "1px solid rgba(255,255,255,0.02)",
       }}>
         ESC OR ✕ TO CLOSE

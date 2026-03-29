@@ -1,0 +1,3 @@
+ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high,day_change,day_change_pct
+CORT,329,37.93,37.17,12228.93,-250.04,-2.0,34.55,44.57,2026-03-27,Healthcare,38.29,-250.04,-2.0
+DOCN,148,83.98,80.17,11865.9,-563.14,-4.53,75.74,98.66,2026-03-27,Technology,83.98,-563.14,-4.53

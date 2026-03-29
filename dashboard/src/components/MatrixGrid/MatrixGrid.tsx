@@ -4,13 +4,13 @@ import { pc, pbg, fv, MATRIX_FONT } from "./constants";
 import Sparkline from "./Sparkline";
 import Waveform from "./Waveform";
 import Reticle from "./Reticle";
-import TickerTape from "./TickerTape";
 import DetailCard from "./DetailCard";
 import BottomPanel from "./BottomPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
-import EKGStrip from "./EKGStrip";
+import PositionPulse from "./PositionPulse";
 import ActionsTab from "../ActionsTab";
 import { useAnalysisStore } from "../../lib/store";
+import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 
 // ─── Squarified Treemap ───────────────────────────────────────────────────────
 function squarifyLayout(
@@ -113,6 +113,18 @@ export default function MatrixGrid({
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
 
+  // Build a map of pending sell reasoning from analysis result (ticker → ai_reasoning)
+  const pendingSellReasoningMap = useMemo(() => {
+    if (!analysisResult) return {} as Record<string, string>;
+    const map: Record<string, string> = {};
+    [...analysisResult.approved, ...analysisResult.modified].forEach(a => {
+      if (a.original.action_type === "SELL" && a.ai_reasoning) {
+        map[a.original.ticker] = a.ai_reasoning;
+      }
+    });
+    return map;
+  }, [analysisResult]);
+
   // Auto-switch to ACTIONS tab only when analysis transitions from running → done
   const wasAnalyzing = useRef(false);
   useEffect(() => {
@@ -125,8 +137,6 @@ export default function MatrixGrid({
   const [mounted, setMounted] = useState(false);
   const [boot, setBoot] = useState(0);
   const [clock, setClock] = useState("");
-  const [glitchIdx, setGlitchIdx] = useState(-1);
-  const [anomalies, setAnomalies] = useState(new Set<number>());
   const [selectedPos, setSelectedPos] = useState<MatrixPosition | null>(null);
   const [bootLines, setBootLines] = useState<string[]>([]);
   const mouseXRef = useRef(-1000);
@@ -147,48 +157,13 @@ export default function MatrixGrid({
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // Clock
+  // Clock — seconds only; millisecond precision was high-frequency noise
   useEffect(() => {
-    const tick = () => {
-      const d = new Date();
-      setClock(
-        d.toLocaleTimeString("en-US", { hour12: false }) +
-        "." + String(d.getMilliseconds()).padStart(3, "0")
-      );
-    };
+    const tick = () => setClock(new Date().toLocaleTimeString("en-US", { hour12: false }));
     tick();
-    const i = setInterval(tick, 47);
+    const i = setInterval(tick, 1000);
     return () => clearInterval(i);
   }, []);
-
-  // Glitch effect
-  useEffect(() => {
-    if (positions.length === 0) return;
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const schedule = () => {
-      const delay = 2500 + Math.random() * 4000;
-      timeoutId = setTimeout(() => {
-        setGlitchIdx(Math.floor(Math.random() * positions.length));
-        setTimeout(() => setGlitchIdx(-1), 100);
-        schedule();
-      }, delay);
-    };
-    schedule();
-    return () => clearTimeout(timeoutId);
-  }, [positions.length]);
-
-  // Anomaly scanner
-  useEffect(() => {
-    if (positions.length === 0) return;
-    const i = setInterval(() => {
-      const newA = new Set<number>();
-      const count = Math.min(3, positions.length);
-      for (let j = 0; j < count; j++) newA.add(Math.floor(Math.random() * positions.length));
-      setAnomalies(newA);
-      setTimeout(() => setAnomalies(new Set()), 2000);
-    }, 5000);
-    return () => clearInterval(i);
-  }, [positions.length]);
 
   // Treemap container size
   useEffect(() => {
@@ -257,6 +232,30 @@ export default function MatrixGrid({
 
   const maxVal = useMemo(() => Math.max(...positions.map((p) => p.value), 1), [positions]);
 
+  // Weighted avg P&L — weighted by position value, not simple mean
+  const weightedAvgP = useMemo(() => {
+    if (positions.length === 0) return "0.0";
+    const totalV = positions.reduce((s, p) => s + Math.max(p.value, 0), 0);
+    if (totalV === 0) return (positions.reduce((s, p) => s + p.perf, 0) / positions.length).toFixed(1);
+    return (positions.reduce((s, p) => s + p.perf * (p.value / totalV), 0)).toFixed(1);
+  }, [positions]);
+
+  // Real at-risk detection: positions within 30% of stop-loss range (uses sorted indices)
+  const atRiskSet = useMemo(() => {
+    const s = new Set<number>();
+    sorted.forEach((pos, i) => {
+      if (pos.stopLoss != null && pos.takeProfit != null && pos.currentPrice != null) {
+        const range = pos.takeProfit - pos.stopLoss;
+        if (range > 0) {
+          const progress = ((pos.currentPrice - pos.stopLoss) / range) * 100;
+          if (progress < 30) s.add(i);
+        }
+      }
+    });
+    return s;
+  }, [sorted]);
+
+
   const treemapRects = useMemo(() => {
     if (containerSize.w < 10 || containerSize.h < 10 || sorted.length === 0) return [];
     const bottomReserve = selectedPos && showSecondaryTabs ? 296 : 0;
@@ -280,9 +279,6 @@ export default function MatrixGrid({
   }, [sorted, sortBy, containerSize, selectedPos, showSecondaryTabs]);
   const hovered = hovIdx !== null ? sorted[hovIdx] : null;
   const totalVal = positions.reduce((s, p) => s + p.value, 0);
-  const avgP = positions.length > 0
-    ? (positions.reduce((s, p) => s + p.perf, 0) / positions.length).toFixed(1)
-    : "0.0";
   const wins = positions.filter((p) => p.perf > 0).length;
   const top = positions.length > 0 ? [...positions].sort((a, b) => b.perf - a.perf)[0] : null;
   const bot = positions.length > 0 ? [...positions].sort((a, b) => a.perf - b.perf)[0] : null;
@@ -381,27 +377,9 @@ export default function MatrixGrid({
         opacity: boot >= 3 ? 1 : 0, transition: "opacity 0.6s",
       }}>
 
-        {/* EKG VITALS */}
-        {showEKG && (
-          <div style={{
-            height: 48, margin: "4px 20px 0",
-            border: "1px solid rgba(74,222,128,0.04)",
-            position: "relative", overflow: "hidden", background: "rgba(0,0,0,0.2)",
-            flexShrink: 0,
-          }}>
-            <EKGStrip portfolios={portfolios} />
-            <div style={{ position: "absolute", top: 2, right: 6, fontSize: 7, color: "#555", letterSpacing: "0.12em" }}>
-              PORTFOLIO VITALS
-            </div>
-          </div>
-        )}
 
-        {/* TICKER TAPE */}
-        {showTickerTape && positions.length > 0 && (
-          <div style={{ margin: "4px 20px 0", flexShrink: 0 }}>
-            <TickerTape positions={positions} />
-          </div>
-        )}
+        {/* POSITION PULSE */}
+        <PositionPulse positions={positions} />
 
         {/* CONTROLS */}
         <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
@@ -422,37 +400,42 @@ export default function MatrixGrid({
               {[
                 { l: "POS", v: String(sorted.length), c: "#e8ffe8" },
                 { l: "INVESTED", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
-                { l: "AVG P&L", v: `${avgP}%`, c: pc(parseFloat(avgP)) },
+                { l: "AVG P&L", v: `${weightedAvgP}%`, c: pc(parseFloat(weightedAvgP)) },
               ].map((s) => (
                 <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span style={{ fontSize: 6, color: "#666", letterSpacing: "0.12em" }}>{s.l}</span>
-                  <span style={{ fontSize: 11, color: s.c, fontWeight: 600 }}>{s.v}</span>
+                  <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>{s.l}</span>
+                  <span style={{ fontSize: 12, color: s.c, fontWeight: 600 }}>{s.v}</span>
                 </div>
               ))}
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 6, color: "#666", letterSpacing: "0.12em" }}>W/L</span>
-                <span style={{ fontSize: 11, fontWeight: 600 }}>
+                <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>W/L</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
                   <span style={{ color: "#4ade80" }}>{wins}</span>
                   <span style={{ color: "#444" }}>/</span>
                   <span style={{ color: "#f87171" }}>{positions.length - wins}</span>
                 </span>
               </div>
+              {atRiskSet.size > 0 && (
+                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                  <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>AT RISK</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171" }}>{atRiskSet.size}</span>
+                </div>
+              )}
             </div>
-            <span style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginRight: 8 }}>SORT</span>
-            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k, n) => {
+            <span style={{ fontSize: 9, color: "#444", letterSpacing: "0.1em", marginRight: 8 }}>SORT</span>
+            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k) => {
               const SORT_LABELS: Record<string, string> = { entry: "entry", value: "size", perf: "perf", alpha: "alpha", portfolio: "portfolio" };
               return (
                 <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
-                  padding: "2px 8px", fontSize: 8, letterSpacing: "0.08em", textTransform: "uppercase",
+                  padding: "3px 8px", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase",
                   fontFamily: MATRIX_FONT,
                   background: sortBy === k ? "rgba(74,222,128,0.07)" : "transparent",
-                  color: sortBy === k ? "#4ade80" : "#1e1e1e",
-                  border: sortBy === k ? "1px solid rgba(74,222,128,0.12)" : "1px solid transparent",
+                  color: sortBy === k ? "#4ade80" : "#333",
+                  border: sortBy === k ? "1px solid rgba(74,222,128,0.15)" : "1px solid transparent",
                   cursor: "pointer", transition: "all 0.15s",
                 }}>
                   {sortBy === k && <span style={{ marginRight: 3 }}>&#9658;</span>}
                   {SORT_LABELS[k]}
-                  <span style={{ fontSize: 6, color: "#555", marginLeft: 4 }}>[{n + 1}]</span>
                 </button>
               );
             })}
@@ -517,18 +500,39 @@ export default function MatrixGrid({
               logs: "LOGS",
             };
             const active = viewTab === tab;
+            // Color per tab: grid=green (matrix), actions=violet (AI), watchlist=amber, activity=violet, logs=muted
+            const TAB_ACTIVE_COLOR: Record<string, string> = {
+              grid:      "#4ade80",
+              actions:   "#917aff",
+              watchlist: "#fbbf24",
+              activity:  "#917aff",
+              logs:      "#888",
+            };
+            const TAB_ACTIVE_BORDER: Record<string, string> = {
+              grid:      "#4ade80",
+              actions:   "#7c5cfc",
+              watchlist: "#fbbf2466",
+              activity:  "#7c5cfc",
+              logs:      "#555",
+            };
+            const activeColor  = TAB_ACTIVE_COLOR[tab]  ?? "#4ade80";
+            const activeBorder = TAB_ACTIVE_BORDER[tab] ?? "#4ade80";
+            // ACTIONS tab: amber pulse when analysis pending, violet when active
+            const pendingColor  = tab === "actions" && hasActions && !active ? "#fbbf24" : null;
+            const displayColor  = active ? activeColor : pendingColor ?? "#555";
+            const borderColor   = active ? activeBorder : pendingColor ? "#facc1566" : "transparent";
             return (
               <button
                 key={tab}
                 onClick={() => setViewTab(tab)}
                 style={{
-                  padding: "4px 12px 5px",
-                  fontSize: 8, letterSpacing: "0.1em",
+                  padding: "5px 12px 6px",
+                  fontSize: 10, letterSpacing: "0.08em",
                   fontFamily: MATRIX_FONT,
                   background: "transparent",
-                  color: active ? "#4ade80" : hasActions ? "#facc15" : "#555",
+                  color: displayColor,
                   border: "none",
-                  borderBottom: active ? "2px solid #4ade80" : hasActions ? "2px solid #facc1566" : "2px solid transparent",
+                  borderBottom: `2px solid ${borderColor}`,
                   cursor: "pointer",
                   transition: "all 0.12s",
                   marginBottom: -1,
@@ -554,12 +558,22 @@ export default function MatrixGrid({
             {treemapRects.length > 0 && sorted.map((pos, i) => {
               const rect = treemapRects[i];
               if (!rect || rect.w < 1 || rect.h < 1) return null;
-              const isHov = hovIdx === i;
-              const isGlitch = glitchIdx === i;
-              const isAnomaly = anomalies.has(positions.indexOf(pos));
-              const barW = (pos.value / maxVal) * 100;
-              const tiny = rect.w < 85 || rect.h < 58;
-              const micro = rect.w < 48 || rect.h < 36;
+              const isHov    = hovIdx === i;
+              const isAtRisk = atRiskSet.has(i);
+              const barW     = (pos.value / maxVal) * 100;
+              const tiny  = rect.w < 85  || rect.h < 58;
+              const micro = rect.w < 48  || rect.h < 36;
+              const large = rect.w >= 150 && rect.h >= 110;
+
+              // Stop loss distance (% below current price)
+              const slDist = (pos.stopLoss != null && pos.currentPrice != null && pos.currentPrice > 0)
+                ? ((pos.currentPrice - pos.stopLoss) / pos.currentPrice * 100)
+                : null;
+
+              // Days held
+              const held = pos.entryDate
+                ? Math.floor((Date.now() - new Date(pos.entryDate).getTime()) / 864e5)
+                : null;
 
               return (
                 <div
@@ -568,18 +582,17 @@ export default function MatrixGrid({
                   onMouseEnter={() => setHovIdx(i)}
                   onMouseLeave={() => setHovIdx(null)}
                   onClick={() => {
-                    setSelectedPos(pos);
+                    setSelectedPos(prev => prev?.ticker === pos.ticker && prev?.portfolioId === pos.portfolioId ? null : pos);
                     onPositionClick?.(pos);
                   }}
                   style={{
                     position: "absolute",
-                    left: rect.x,
-                    top: rect.y,
-                    width: rect.w,
-                    height: rect.h,
+                    left: rect.x, top: rect.y, width: rect.w, height: rect.h,
                     boxSizing: "border-box",
                     background: pbg(pos.perf),
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
+                    boxShadow: isAtRisk
+                      ? `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(248,113,113,0.25)`
+                      : `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
                     padding: micro ? "3px 4px 2px" : tiny ? "5px 6px 4px" : "9px 9px 6px",
                     cursor: "crosshair",
                     overflow: "hidden",
@@ -588,12 +601,7 @@ export default function MatrixGrid({
                       ? "border-color 0.15s, background 0.15s, left 0.35s ease-out, top 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out"
                       : "opacity 0.3s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
-                    borderLeft: `2px solid ${pos.portfolioColor}${isHov ? "cc" : "44"}`,
-                    animation: isGlitch
-                      ? "matrixGlitch 0.1s ease"
-                      : isAnomaly
-                      ? "matrixAnomalyPulse 0.8s ease infinite"
-                      : undefined,
+                    borderLeft: `2px solid ${isAtRisk ? "#f87171" : pos.portfolioColor}${isHov ? "cc" : "44"}`,
                   }}
                 >
                   {/* Chromatic aberration on hover */}
@@ -606,15 +614,10 @@ export default function MatrixGrid({
                     <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,255,0.015)", transform: "translate(1px,0)" }} />
                   </div>
 
-                  {/* Reticles */}
+                  {/* Reticles on hover */}
                   <div className="matrix-ret" style={{ position: "absolute", inset: 0, opacity: isHov ? 1 : 0, transition: "opacity 0.12s", pointerEvents: "none" }}>
                     <Reticle color="#4ade80" s={5} />
                   </div>
-
-                  {/* Anomaly indicator */}
-                  {isAnomaly && (
-                    <div style={{ position: "absolute", top: 2, right: 3, fontSize: 6, color: "#f87171", textShadow: "0 0 4px rgba(248,113,113,0.5)" }}>&#9888;</div>
-                  )}
 
                   {/* Social heat dot */}
                   {(() => {
@@ -625,13 +628,12 @@ export default function MatrixGrid({
                       <div style={{
                         position: "absolute", top: 3, left: 6,
                         width: 4, height: 4, borderRadius: "50%",
-                        background: hc,
-                        boxShadow: `0 0 5px ${hc}99`,
+                        background: hc, boxShadow: `0 0 5px ${hc}99`,
                       }} />
                     );
                   })()}
 
-                  {/* Value bar */}
+                  {/* Portfolio value bar (bottom edge) */}
                   <div style={{
                     position: "absolute", bottom: 0, left: 0,
                     width: `${barW}%`, height: isHov ? 2 : 1,
@@ -639,35 +641,88 @@ export default function MatrixGrid({
                     transition: "all 0.15s",
                   }} />
 
-                  {/* Ticker + all-time perf */}
+                  {/* Row 1: Ticker + P&L% — P&L% survives to micro cells (most important field) */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span className="matrix-tk" style={{ fontSize: micro ? 9 : tiny ? 11 : 13, fontWeight: 700, color: "#ccc", letterSpacing: "0.04em", transition: "all 0.12s", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <span className="matrix-tk" style={{
+                      fontSize: micro ? 9 : tiny ? 11 : large ? 15 : 13, fontWeight: 700, color: "#ccc",
+                      letterSpacing: "0.04em", transition: "all 0.12s",
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                    }}>
                       {pos.ticker}
                     </span>
-                    {!micro && (
-                      <span style={{ fontSize: tiny ? 9 : 11, fontWeight: 600, color: pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
-                        {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}
-                      </span>
-                    )}
+                    <span style={{ fontSize: micro ? 9 : tiny ? 9 : large ? 14 : 11, fontWeight: 700, color: pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
+                      {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}%
+                    </span>
                   </div>
 
-                  {/* Value + sparkline — hidden on micro cells */}
-                  {!tiny && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 2 }}>
-                      <span style={{ fontSize: 10, color: "#aaa" }}>{fv(pos.value)}</span>
-                      <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={56} h={18} />
+                  {/* Row 2 (large only): Price + day change */}
+                  {large && pos.currentPrice != null && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 5 }}>
+                      <span style={{ fontSize: 18, fontWeight: 300, color: "#ddd", letterSpacing: "-0.01em" }}>
+                        ${pos.currentPrice.toFixed(2)}
+                      </span>
+                      {pos.day !== 0 && (
+                        <span style={{ fontSize: 10, fontWeight: 500, color: pc(pos.day) }}>
+                          {pos.day > 0 ? "+" : ""}{pos.day.toFixed(2)}% today
+                        </span>
+                      )}
                     </div>
                   )}
 
-                  {/* Day change micro bar — hidden on tiny cells */}
+                  {/* Row 3 (large only): Value + shares */}
+                  {large && (
+                    <div style={{ display: "flex", gap: 12, marginTop: 3, alignItems: "baseline" }}>
+                      <span style={{ fontSize: 11, color: "#888" }}>
+                        ${pos.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </span>
+                      {pos.shares != null && pos.avgCost != null && (
+                        <span style={{ fontSize: 9, color: "#444" }}>
+                          {pos.shares.toFixed(0)} sh @ ${pos.avgCost.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Sparkline — larger on large cells */}
                   {!tiny && (
-                    <div style={{ marginTop: 4, height: 2 }}>
-                      <div style={{
-                        width: `${Math.min(100, Math.abs(pos.day) * 25)}%`,
-                        height: "100%",
-                        background: pos.day >= 0 ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)",
-                        transition: "width 0.3s",
-                      }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: large ? 8 : 2 }}>
+                      {held !== null && !large && (
+                        <span style={{ fontSize: 9, color: held >= 35 ? "#fbbf24" : "#555" }}>
+                          {held}d
+                        </span>
+                      )}
+                      <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={large ? rect.w - 20 : 56} h={large ? 36 : 22} />
+                    </div>
+                  )}
+
+                  {/* Bottom row (large): held + SL side by side */}
+                  {large && (held !== null || slDist !== null) && (
+                    <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                      {held !== null && (
+                        <span style={{ fontSize: 8, color: held >= 35 ? "#fbbf24" : "#444", letterSpacing: "0.05em" }}>
+                          {held}d held
+                        </span>
+                      )}
+                      {slDist !== null && (
+                        <span style={{
+                          fontSize: 8, letterSpacing: "0.05em",
+                          color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#444",
+                        }}>
+                          SL -{slDist.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Row: Stop distance — non-large cells only */}
+                  {!large && !tiny && slDist !== null && (
+                    <div style={{ marginTop: 3 }}>
+                      <span style={{
+                        fontSize: 8, letterSpacing: "0.05em",
+                        color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#444",
+                      }}>
+                        SL -{slDist.toFixed(1)}%
+                      </span>
                     </div>
                   )}
                 </div>
@@ -719,22 +774,23 @@ export default function MatrixGrid({
 
         {/* STATUS BAR */}
         <div style={{
-          padding: "4px 20px",
+          padding: "3px 20px",
           borderTop: "1px solid rgba(74,222,128,0.04)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: 7, color: "#555", letterSpacing: "0.1em", flexShrink: 0,
+          fontSize: 8, color: "#444", letterSpacing: "0.08em", flexShrink: 0,
         }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             {top && <span>&#9650; <span style={{ color: "#4ade80" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
             {bot && <span>&#9660; <span style={{ color: "#f87171" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
-            <span style={{ color: "#555" }}>&#9474;</span>
-            <span>KEYS: [1-5] SORT &middot; [ESC] RESET &middot; CLICK CELL FOR DETAIL</span>
+            {atRiskSet.size > 0 && (
+              <span>&#9474; <span style={{ color: "#f87171" }}>{atRiskSet.size} near stop</span></span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <Waveform width={100} height={12} />
             <span>MATRIX::v3.0</span>
-            <span style={{ color: "#4ade8044", animation: "matrixBlink 2s step-end infinite" }}>&#9632; LIVE</span>
-            <span style={{ color: "#4ade8055", letterSpacing: "0.05em" }}>{clock}</span>
+            <span style={{ color: "#4ade8033", animation: "matrixBlink 2s step-end infinite" }}>&#9632; LIVE</span>
+            <span style={{ color: "#4ade8044", letterSpacing: "0.05em" }}>{clock}</span>
           </div>
         </div>
       </div>
@@ -768,8 +824,8 @@ export default function MatrixGrid({
             { l: "SECTOR", v: hovered.sector },
           ].map((s) => (
             <div key={s.l}>
-              <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em" }}>{s.l}</div>
-              <div style={{ fontSize: 11, color: s.c ?? "#888", fontWeight: 500 }}>{s.v}</div>
+              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em" }}>{s.l}</div>
+              <div style={{ fontSize: 12, color: s.c ?? "#888", fontWeight: 500 }}>{s.v}</div>
             </div>
           ))}
           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
@@ -787,6 +843,7 @@ export default function MatrixGrid({
             watchlistCandidates={watchlistCandidates}
             rationale={selectedPos ? (positionRationales[selectedPos.ticker] ?? null) : null}
             buyTx={selectedPos ? (transactions.filter(t => t.ticker === selectedPos.ticker && t.action === "BUY").at(-1) ?? null) : null}
+            sellReasoning={selectedPos ? (pendingSellReasoningMap[selectedPos.ticker] ?? null) : null}
           />
         : <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
       }
@@ -817,9 +874,9 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
       {/* Header row */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "80px 1fr 60px 60px 120px 80px",
-        padding: "4px 20px",
-        fontSize: 7, color: "#555", letterSpacing: "0.12em",
+        gridTemplateColumns: "80px 1fr 60px 80px 120px 80px",
+        padding: "5px 20px",
+        fontSize: 9, color: "#444", letterSpacing: "0.09em",
         borderBottom: "1px solid rgba(74,222,128,0.04)",
         position: "sticky", top: 0, background: "#040608", zIndex: 2,
       }}>
@@ -833,20 +890,20 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
       {sorted.map((c, i) => (
         <div key={`${c.ticker}-${i}`} style={{
           display: "grid",
-          gridTemplateColumns: "80px 1fr 60px 60px 120px 80px",
+          gridTemplateColumns: "80px 1fr 60px 80px 120px 80px",
           padding: "5px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.02)",
-          fontSize: 9, fontFamily: MATRIX_FONT,
+          fontSize: 11, fontFamily: MATRIX_FONT,
           alignItems: "center",
         }}>
-          <span onClick={() => onTickerClick(c.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.05em", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{c.ticker}</span>
-          <span style={{ color: "#777", fontSize: 8, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
+          <span onClick={() => onTickerClick(c.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{c.ticker}</span>
+          <span style={{ color: "#666", fontSize: 10, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
           <span style={{ color: c.score >= 70 ? "#4ade80" : c.score >= 50 ? "#facc15" : "#888", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
-          <span style={{ color: "#666", fontSize: 8 }}>{c.sector || "—"}</span>
-          <span style={{ color: "#555", fontSize: 8 }}>{c.source || "—"}</span>
+          <span style={{ color: "#666", fontSize: 10 }}>{c.sector || "—"}</span>
+          <span style={{ color: "#555", fontSize: 10 }}>{c.source || "—"}</span>
           <span style={{
-            fontSize: 7, fontWeight: 700, letterSpacing: "0.1em",
-            color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "#555") : "#444",
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
+            color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "#555") : "#333",
           }}>{c.social_heat ?? "—"}</span>
         </div>
       ))}
@@ -856,7 +913,19 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
 
 // ─── Activity Panel ───────────────────────────────────────────────────────────
 
+function activityDaysHeld(tx: Transaction, allTxs: Transaction[]): number | null {
+  const sellDate = tx.date.slice(0, 10);
+  const matchingBuy = [...allTxs]
+    .filter(t => t.ticker === tx.ticker && t.action === "BUY" && t.date.slice(0, 10) <= sellDate)
+    .pop();
+  if (!matchingBuy) return null;
+  return Math.floor(
+    (new Date(sellDate).getTime() - new Date(matchingBuy.date.slice(0, 10)).getTime()) / (1000 * 60 * 60 * 24)
+  );
+}
+
 function ActivityPanel({ transactions, onTickerClick }: { transactions: Transaction[]; onTickerClick: (ticker: string) => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const sorted = [...transactions].reverse().slice(0, 100);
   if (sorted.length === 0) {
     return (
@@ -871,8 +940,8 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
       <div style={{
         display: "grid",
         gridTemplateColumns: COLS,
-        padding: "4px 20px",
-        fontSize: 7, color: "#555", letterSpacing: "0.12em",
+        padding: "5px 20px",
+        fontSize: 9, color: "#444", letterSpacing: "0.09em",
         borderBottom: "1px solid rgba(74,222,128,0.04)",
         position: "sticky", top: 0, background: "#040608", zIndex: 2,
       }}>
@@ -896,36 +965,85 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
         const pctStr = hasPnl
           ? `${tx.realized_pnl_pct! >= 0 ? "+" : ""}${tx.realized_pnl_pct!.toFixed(1)}%`
           : "";
+        const daysHeld = !isBuy ? activityDaysHeld(tx, transactions) : null;
+        const rationale = parseTradeRationale(tx);
+        const reasoning = rationale?.ai_reasoning || tradeExplanation(tx);
+        const isExpanded = expandedId === tx.transaction_id;
         return (
-          <div key={tx.transaction_id} style={{
-            display: "grid",
-            gridTemplateColumns: COLS,
-            padding: "5px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.02)",
-            fontSize: 9, fontFamily: MATRIX_FONT, alignItems: "center",
-          }}>
-            <span style={{ color: "#555", fontSize: 8 }}>
-              {tx.date.slice(0, 10)}
-              {tx.date.length > 10 && (
-                <span style={{ color: "#3a3a3a", display: "block", fontSize: 7 }}>
-                  {tx.date.slice(11, 16)}
-                </span>
-              )}
-            </span>
-            <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
-            <span onClick={() => onTickerClick(tx.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{tx.ticker}</span>
-            {/* Entry price (sells) or qty (buys) */}
-            {!isBuy && tx.entry_price != null
-              ? <span style={{ color: "#666" }}>${tx.entry_price.toFixed(2)}</span>
-              : <span style={{ color: "#888" }}>{isBuy ? tx.shares : "—"}</span>
-            }
-            {/* Sell price or buy price */}
-            <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
-            {/* P&L $ (sells) or total (buys) */}
-            <span style={{ color: pnlColor, fontWeight: 600 }}>{pnlStr}</span>
-            {/* Return % (sells only) */}
-            <span style={{ color: pnlColor, fontWeight: 600, fontSize: 8 }}>{pctStr}</span>
-            <span style={{ color: "#555", fontSize: 8 }}>{tx.reason}</span>
+          <div key={tx.transaction_id}>
+            <div
+              onClick={() => setExpandedId(isExpanded ? null : tx.transaction_id)}
+              style={{
+                display: "grid",
+                gridTemplateColumns: COLS,
+                padding: "5px 20px",
+                borderBottom: isExpanded ? "none" : "1px solid rgba(255,255,255,0.02)",
+                fontSize: 9, fontFamily: MATRIX_FONT, alignItems: "center",
+                cursor: "pointer",
+                background: isExpanded ? "rgba(255,255,255,0.02)" : undefined,
+              }}>
+              <span style={{ color: "#555", fontSize: 10 }}>
+                {tx.date.slice(0, 10)}
+                {tx.date.length > 10 && (
+                  <span style={{ color: "#3a3a3a", display: "block", fontSize: 9 }}>
+                    {tx.date.slice(11, 16)}
+                  </span>
+                )}
+              </span>
+              <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
+              <span
+                onClick={(e) => { e.stopPropagation(); onTickerClick(tx.ticker); }}
+                style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}
+              >{tx.ticker}</span>
+              {/* Entry price (sells) or qty (buys) */}
+              {!isBuy && tx.entry_price != null
+                ? <span style={{ color: "#666" }}>${tx.entry_price.toFixed(2)}</span>
+                : <span style={{ color: "#888" }}>{isBuy ? tx.shares : "—"}</span>
+              }
+              {/* Sell price or buy price */}
+              <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
+              {/* P&L $ (sells) or total (buys) */}
+              <span style={{ color: pnlColor, fontWeight: 600 }}>
+                {pnlStr}
+                {/* P/L badge for sells */}
+                {hasPnl && (
+                  <span style={{
+                    marginLeft: 5, fontSize: 7, fontWeight: 700,
+                    padding: "1px 3px",
+                    background: tx.realized_pnl! >= 0 ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)",
+                    color: tx.realized_pnl! >= 0 ? "#4ade80" : "#f87171",
+                  }}>
+                    {tx.realized_pnl! >= 0 ? "P" : "L"}
+                  </span>
+                )}
+              </span>
+              {/* Return % + days held (sells only) */}
+              <span style={{ color: pnlColor, fontWeight: 600, fontSize: 8 }}>
+                {pctStr}
+                {daysHeld != null && (
+                  <span style={{ display: "block", color: "#444", fontSize: 7, fontWeight: 400 }}>
+                    {daysHeld}d held
+                  </span>
+                )}
+              </span>
+              <span style={{ color: "#555", fontSize: 8 }}>{tx.reason}</span>
+            </div>
+            {/* Expanded reasoning row */}
+            {isExpanded && (
+              <div style={{
+                padding: "8px 20px 10px 20px",
+                borderBottom: "1px solid rgba(255,255,255,0.03)",
+                borderLeft: "2px solid rgba(74,222,128,0.3)",
+                background: "rgba(74,222,128,0.02)",
+              }}>
+                <div style={{ fontSize: 9, color: "#3a5a3a", letterSpacing: "0.08em", marginBottom: 4, textTransform: "uppercase" }}>
+                  {isBuy ? "Buy Reasoning" : "Sell Reasoning"}
+                </div>
+                <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, fontFamily: MATRIX_FONT }}>
+                  {reasoning}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -941,35 +1059,35 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
   return (
     <div style={{ flex: 1, overflow: "auto", minHeight: 0, padding: "16px 20px", fontFamily: MATRIX_FONT }}>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 6 }}>SCAN STATUS</div>
+        <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>SCAN STATUS</div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{
-            fontSize: 9, fontWeight: 700, color: statusColor[sc] ?? "#555",
-            letterSpacing: "0.1em",
+            fontSize: 11, fontWeight: 700, color: statusColor[sc] ?? "#555",
+            letterSpacing: "0.08em",
             textShadow: sc === "running" ? "0 0 8px rgba(250,204,21,0.4)" : sc === "complete" ? "0 0 8px rgba(74,222,128,0.3)" : "none",
           }}>
             {sc === "running" ? "● SCANNING" : sc === "complete" ? "✓ COMPLETE" : sc === "error" ? "✗ ERROR" : "○ IDLE"}
           </span>
           {scanStatus?.started_at && (
-            <span style={{ fontSize: 8, color: "#555" }}>started {scanStatus.started_at.slice(0, 19).replace("T", " ")}</span>
+            <span style={{ fontSize: 10, color: "#555" }}>started {scanStatus.started_at.slice(0, 19).replace("T", " ")}</span>
           )}
           {scanStatus?.finished_at && (
-            <span style={{ fontSize: 8, color: "#555" }}>finished {scanStatus.finished_at.slice(0, 19).replace("T", " ")}</span>
+            <span style={{ fontSize: 10, color: "#555" }}>finished {scanStatus.finished_at.slice(0, 19).replace("T", " ")}</span>
           )}
         </div>
         {scanStatus?.error && (
-          <div style={{ marginTop: 8, fontSize: 8, color: "#f87171", background: "rgba(248,113,113,0.06)", padding: "6px 10px", border: "1px solid rgba(248,113,113,0.12)" }}>
+          <div style={{ marginTop: 8, fontSize: 11, color: "#f87171", background: "rgba(248,113,113,0.06)", padding: "6px 10px", border: "1px solid rgba(248,113,113,0.12)" }}>
             {scanStatus.error}
           </div>
         )}
         {scanStatus?.message && (
-          <div style={{ marginTop: 8, fontSize: 8, color: "#888" }}>{scanStatus.message}</div>
+          <div style={{ marginTop: 8, fontSize: 11, color: "#888" }}>{scanStatus.message}</div>
         )}
       </div>
 
       {scanStatus?.result && (
         <>
-          <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
+          <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 16 }}>
             {[
               { l: "DISCOVERED", v: scanStatus.result.discovered },
@@ -983,14 +1101,14 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                 : []),
             ].map((s) => (
               <div key={s.l} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(74,222,128,0.06)", padding: "8px 10px" }}>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.l}</div>
-                <div style={{ fontSize: 14, color: "#e8ffe8", fontWeight: 700 }}>{s.v}</div>
+                <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 4 }}>{s.l}</div>
+                <div style={{ fontSize: 15, color: "#e8ffe8", fontWeight: 700 }}>{s.v}</div>
               </div>
             ))}
           </div>
           {Object.keys(scanStatus.result.sector_balanced).length > 0 && (
             <>
-              <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.14em", marginBottom: 8 }}>SECTOR DISTRIBUTION</div>
+              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>SECTOR DISTRIBUTION</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {Object.entries(scanStatus.result.sector_balanced)
                   .sort((a, b) => b[1] - a[1])
@@ -998,7 +1116,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                     const maxCount = Math.max(...Object.values(scanStatus.result!.sector_balanced));
                     return (
                       <div key={sector} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 7, color: "#666", width: 160, flexShrink: 0 }}>{sector}</span>
+                        <span style={{ fontSize: 10, color: "#666", width: 160, flexShrink: 0 }}>{sector}</span>
                         <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.04)", position: "relative" }}>
                           <div style={{
                             position: "absolute", left: 0, top: 0, bottom: 0,
@@ -1006,7 +1124,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                             background: "rgba(74,222,128,0.3)",
                           }} />
                         </div>
-                        <span style={{ fontSize: 7, color: "#888", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
+                        <span style={{ fontSize: 10, color: "#888", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
                       </div>
                     );
                   })}

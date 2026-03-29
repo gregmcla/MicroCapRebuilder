@@ -37,6 +37,8 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
   const rationale = parseTradeRationale(tx);
   const aiText = rationale?.ai_reasoning;
   const quantText = rationale?.quant_reason;
+  const isBuy = tx.action === "BUY";
+  const label = isBuy ? "BUY REASONING" : "SELL REASONING";
   return (
     <div
       className="px-3 py-2 text-xs"
@@ -46,9 +48,16 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
         borderLeft: "2px solid var(--accent)",
       }}
     >
-      <p style={{ color: "var(--text-2)", lineHeight: "1.6" }}>
-        {aiText || tradeExplanation(tx)}
-      </p>
+      {(aiText || tradeExplanation(tx)) && (
+        <>
+          <p style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "4px", textTransform: "uppercase" }}>
+            {label}
+          </p>
+          <p style={{ color: "var(--text-2)", lineHeight: "1.6" }}>
+            {aiText || tradeExplanation(tx)}
+          </p>
+        </>
+      )}
       {aiText && quantText && (
         <p style={{ color: "var(--text-3)", lineHeight: "1.5", marginTop: "4px", fontSize: "10px", opacity: 0.7 }}>
           {quantText.split(" | ")[0]}
@@ -65,14 +74,27 @@ function formatPnl(pnl: number, pct: number): string {
   return `${dolStr} (${sign}${pct.toFixed(1)}%)`;
 }
 
+function getDaysHeld(tx: Transaction, allTxs: Transaction[]): number | null {
+  const sellDate = tx.date.slice(0, 10);
+  const matchingBuy = [...allTxs]
+    .filter(t => t.ticker === tx.ticker && t.action === "BUY" && t.date.slice(0, 10) <= sellDate)
+    .pop();
+  if (!matchingBuy) return null;
+  const buyDate = new Date(matchingBuy.date.slice(0, 10));
+  const sellDateObj = new Date(sellDate);
+  return Math.floor((sellDateObj.getTime() - buyDate.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 function FeedItem({
   tx,
   expanded,
   onToggle,
+  allTxs,
 }: {
   tx: Transaction;
   expanded: boolean;
   onToggle: () => void;
+  allTxs: Transaction[];
 }) {
   const isBuy = tx.action === "BUY";
   const actionColor = isBuy ? "var(--accent)" : "var(--amber)";
@@ -81,6 +103,7 @@ function FeedItem({
   const hasPnl = !isBuy && tx.realized_pnl != null && tx.realized_pnl_pct != null;
   const hasEntry = !isBuy && tx.entry_price != null;
   const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "var(--green)" : "var(--red)") : undefined;
+  const daysHeld = !isBuy ? getDaysHeld(tx, allTxs) : null;
 
   return (
     <>
@@ -135,6 +158,25 @@ function FeedItem({
           </span>
         )}
 
+        {/* P/L badge for sells */}
+        {hasPnl && (
+          <span
+            className="font-bold px-1 py-0.5 rounded shrink-0"
+            style={{
+              fontSize: "9px",
+              background: tx.realized_pnl! >= 0 ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)",
+              color: tx.realized_pnl! >= 0 ? "var(--green)" : "var(--red)",
+            }}
+          >
+            {tx.realized_pnl! >= 0 ? "P" : "L"}
+          </span>
+        )}
+        {/* Days held for sells */}
+        {daysHeld != null && (
+          <span className="shrink-0" style={{ fontSize: "9px", color: "var(--text-0)" }}>
+            {daysHeld}d
+          </span>
+        )}
         {badge && (
           <span
             className="ml-auto font-semibold px-1 py-0.5 rounded tracking-wider"
@@ -229,6 +271,7 @@ export default function ActivityFeed({
                   tx={tx}
                   expanded={expandedId === tx.transaction_id}
                   onToggle={() => toggle(tx.transaction_id)}
+                  allTxs={transactions}
                 />
               ))}
             </div>

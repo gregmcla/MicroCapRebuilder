@@ -6,6 +6,38 @@
 
 ---
 
+## Pre-work Required (Bugs to Fix Before Implementation)
+
+Three pre-existing bugs must be fixed as part of this implementation. They are small, surgical, and are part of the task list — not optional.
+
+### Bug A: `TradeAnalyzer` has no `portfolio_id` parameter
+`TradeAnalyzer.load_transactions()` calls `load_portfolio_state(fetch_prices=False)` without `portfolio_id`, so it always reads the default portfolio's transactions. Fix: add `__init__(self, portfolio_id=None)` to `TradeAnalyzer`, store `self.portfolio_id`, and pass it in `load_transactions()`.
+
+```python
+class TradeAnalyzer:
+    def __init__(self, portfolio_id: str = None):
+        self.portfolio_id = portfolio_id
+
+    def load_transactions(self) -> pd.DataFrame:
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=self.portfolio_id)
+        return state.transactions
+```
+
+### Bug B: `EarlyWarningSystem` creates `TradeAnalyzer()` without `portfolio_id`
+`EarlyWarningSystem.__init__` already accepts `portfolio_id` but line 74 does `self.trade_analyzer = TradeAnalyzer()` — dropping it. Fix: `self.trade_analyzer = TradeAnalyzer(portfolio_id=portfolio_id)`.
+
+### Bug C: `PortfolioAnalytics.fetch_benchmark_data()` hardcodes `^RUT`/`IWM`
+The method ignores `self.config` and hardcodes Russell 2000. Allcap portfolios (using `^GSPC`) get wrong benchmark returns. Fix: read from `self.config`:
+
+```python
+primary = self.config.get("benchmark_symbol", "^RUT")
+fallback = self.config.get("fallback_benchmark", "IWM")
+for ticker in [primary, fallback]:
+    ...
+```
+
+---
+
 ## What's Being Added
 
 ### 1. Portfolio Recent Performance
@@ -62,6 +94,8 @@ Which scoring factors have actually been predictive for this portfolio based on 
 
 **Source:** `FactorLearner(portfolio_id=portfolio_id).get_factor_summary()` — CSV read, fast. Returns factors sorted by `total_contribution`.
 
+Trade count for the header: use `trade_stats.total_trades` (from the `TradeAnalyzer` call in item 1 above). Do NOT use `factor_summary["total_analyzed_trades"]` — that field is an average of per-factor trade counts, not the total completed-trade count. If `trade_stats` is None (fewer than 5 completed trades), this block is already omitted and the count is moot.
+
 **Rendered as (only when ≥10 completed trades):**
 ```
 FACTOR INTELLIGENCE (22 completed trades):
@@ -79,25 +113,27 @@ Omitted entirely when `get_factor_summary()` returns `status: insufficient_data`
 ## Data Flow
 
 ```
-run_unified_analysis()
+_run_ai_driven_analysis(state, ...)
   │
   ├── get_warnings(portfolio_id)          → warnings list
   │     └── derive warning_severity from list (replaces separate get_warning_severity() call)
   │
   ├── TradeAnalyzer(portfolio_id)
-  │     └── .calculate_trade_stats()     → trade_stats (already called, store result)
+  │     └── .calculate_trade_stats()     → trade_stats
   │
   ├── PortfolioAnalytics(portfolio_id)
   │     └── .calculate_all_metrics()     → portfolio_metrics
   │
   ├── state.transactions                  → days_since_last_buy
   │
-  └── FactorLearner(portfolio_id)
-        └── .get_factor_summary()        → factor_summary
+  ├── FactorLearner(portfolio_id)
+  │     └── .get_factor_summary()        → factor_summary
   │
   └── bundle into prompt_extras dict
-        └── pass to _run_ai_driven_analysis() → run_ai_allocation() → _build_allocation_prompt()
+        └── pass to run_ai_allocation() → _build_allocation_prompt()
 ```
+
+Note: all data gathering happens inside `_run_ai_driven_analysis`, not in `run_unified_analysis`. The `portfolio_id` is available there via `state.portfolio_id` (or passed as a parameter — confirm at implementation time by reading the actual function signature).
 
 ---
 
@@ -119,7 +155,10 @@ prompt_extras = {
 
 | File | Change |
 |---|---|
-| `scripts/unified_analysis.py` | Call `get_warnings()` once; derive severity from it; call `PortfolioAnalytics` and `FactorLearner`; compute `days_since_last_buy`; bundle `prompt_extras`; pass to `run_ai_allocation` |
+| `scripts/trade_analyzer.py` | **Pre-work Bug A**: Add `__init__(self, portfolio_id=None)` and thread `self.portfolio_id` into `load_transactions()` |
+| `scripts/early_warning.py` | **Pre-work Bug B**: Change `self.trade_analyzer = TradeAnalyzer()` to `TradeAnalyzer(portfolio_id=portfolio_id)` |
+| `scripts/analytics.py` | **Pre-work Bug C**: Fix `fetch_benchmark_data()` to use `self.config.get("benchmark_symbol", "^RUT")` and `self.config.get("fallback_benchmark", "IWM")` |
+| `scripts/unified_analysis.py` | In `_run_ai_driven_analysis`: call `get_warnings()` once; derive severity from it; call `TradeAnalyzer`, `PortfolioAnalytics`, `FactorLearner`; compute `days_since_last_buy`; bundle `prompt_extras`; pass to `run_ai_allocation` |
 | `scripts/ai_allocator.py` | Add `prompt_extras: Optional[dict] = None` to `run_ai_allocation` and `_build_allocation_prompt`; build 3 new blocks (PORTFOLIO PERFORMANCE, ACTIVE ALERTS, FACTOR INTELLIGENCE); enrich positions lines with days-held; enrich cash line with idle time |
 
 ---
@@ -142,8 +181,11 @@ All data fetches are wrapped in `try/except Exception as e:` with a print. If an
 
 ## Key Gotchas
 
-- `TradeAnalyzer` and `FactorLearner` must be initialized with `portfolio_id` to read the correct portfolio's transactions/post_mortems. Without it they fall back to a global file path.
-- `PortfolioAnalytics(portfolio_id=portfolio_id).calculate_all_metrics()` fetches yfinance benchmark data — it is cached (4hr TTL) but on a cold cache will add ~2-3s to the analyze call.
+- `TradeAnalyzer` currently has no `portfolio_id` support (Bug A above) — fix it first or it silently reads the wrong portfolio's transactions.
+- `EarlyWarningSystem` currently drops `portfolio_id` when creating its internal `TradeAnalyzer` (Bug B above) — fix alongside Bug A.
+- `FactorLearner` already supports `portfolio_id` correctly via `data_files` helpers.
+- `PortfolioAnalytics(portfolio_id=portfolio_id).calculate_all_metrics()` fetches yfinance benchmark data — it is cached (4hr TTL) but on a cold cache will add ~2-3s to the analyze call. After fixing Bug C, benchmark will correctly use `^GSPC` for allcap portfolios instead of always fetching `^RUT`.
 - `state.transactions` may be empty for a new portfolio — handle `days_since_last_buy = None` gracefully.
 - `get_warnings()` currently called via `get_warning_severity()` (which calls it internally). After this change, call `get_warnings()` directly and compute severity inline to avoid the double call.
+- Factor intelligence trade count: use `trade_stats.total_trades`, not `factor_summary["total_analyzed_trades"]` (the latter is an average, not a count).
 - Factor summary sorted by `total_contribution` (not win rate) — show top 3 and worst 1.

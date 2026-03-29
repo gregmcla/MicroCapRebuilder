@@ -34,8 +34,12 @@ export default function FreshnessIndicator() {
   return (
     <div className="flex items-center gap-1.5">
       <span
-        className={`text-xs font-medium ${severityClass[severity] ?? ""}`}
-        style={severityStyle[severity] ?? { color: "var(--text-1)" }}
+        className={`font-medium ${severityClass[severity] ?? ""}`}
+        style={{
+          fontSize: "9px",
+          letterSpacing: "0.03em",
+          ...(severityStyle[severity] ?? { color: "var(--text-1)" }),
+        }}
       >
         Updated {timeAgo}
       </span>

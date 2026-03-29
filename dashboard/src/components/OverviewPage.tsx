@@ -1,6 +1,6 @@
 /** Overview page — shown when activePortfolioId === "overview". */
 
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
@@ -10,6 +10,9 @@ import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import { play } from "../lib/sounds";
+
+const ConstellationMap = lazy(() => import("./ConstellationMap"));
+const PerformanceChart = lazy(() => import("./PerformanceChart"));
 
 // ---------------------------------------------------------------------------
 // Scan-all types
@@ -27,6 +30,9 @@ interface ScanAllState {
   currentId: string | null;
   results: Record<string, ScanAllPortfolioResult>;
 }
+
+type SortKey = "day_pnl" | "total_return_pct" | "equity" | "deployed_pct" | "name";
+type ViewMode = "grid" | "map" | "chart";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -61,7 +67,7 @@ function cardGlow(returnPct: number): string {
 // Equity sparkline — standalone visible strip
 // ---------------------------------------------------------------------------
 
-function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: number }) {
+function EquitySparkline({ values, returnPct, id }: { values: number[]; returnPct: number; id: string }) {
   const W = 200; const H = 36;
   const points = useMemo(() => {
     if (values.length < 2) return "";
@@ -78,6 +84,7 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
   if (!points) return null;
   const up = returnPct >= 0;
   const color = up ? "var(--green)" : "var(--red)";
+  const gradId = `sparkgrad-${id}`;
 
   return (
     <svg
@@ -87,14 +94,14 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
       style={{ display: "block" }}
     >
       <defs>
-        <linearGradient id={`g-${returnPct}`} x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.22" />
           <stop offset="100%" stopColor={color} stopOpacity="0.01" />
         </linearGradient>
       </defs>
       <polygon
         points={`0,${H} ${points} ${W},${H}`}
-        fill={`url(#g-${returnPct})`}
+        fill={`url(#${gradId})`}
       />
       <polyline
         points={points}
@@ -114,12 +121,13 @@ function EquitySparkline({ values, returnPct }: { values: number[]; returnPct: n
 // ---------------------------------------------------------------------------
 
 function AggregateBar({
-  totalEquity, totalCash, totalDayPnl, totalUnrealizedPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount, onNewPortfolio,
-  onUpdateAll, updatingAll, updateResult,
-  onScanAll, scanAllRunning, scanAllLabel,
+  totalEquity, totalCash, totalDayPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+  portfoliosUp, portfoliosDown, deployedPct,
+  onNewPortfolio, onUpdateAll, updatingAll, updateResult, onScanAll, scanAllRunning, scanAllLabel,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
-  totalUnrealizedPnl: number; totalAllTimePnl: number; totalReturnPct: number; totalPositions: number; portfolioCount: number;
+  totalAllTimePnl: number; totalReturnPct: number; totalPositions: number; portfolioCount: number;
+  portfoliosUp: number; portfoliosDown: number; deployedPct: number;
   onNewPortfolio: () => void;
   onUpdateAll: () => void;
   updatingAll: boolean;
@@ -128,148 +136,252 @@ function AggregateBar({
   scanAllRunning: boolean;
   scanAllLabel: string | null;
 }) {
-  // 0 decimals → then format with commas
   const rawCount = useCountUp(totalEquity, 1200, 0);
   const animatedEquity = Number(rawCount).toLocaleString();
 
-  function StatChip({ label, value, color }: { label: string; value: string; color?: string }) {
+  /** Secondary stat — clearly subordinate to the hero numbers */
+  function SecondaryChip({ label, value, color }: { label: string; value: string; color?: string }) {
     return (
-      <div className="shrink-0">
-        <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>
+      <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
           {label}
         </p>
-        <p className="font-mono tabular-nums" style={{ fontSize: "15px", fontWeight: 600, color: color ?? "var(--text-3)" }}>
+        <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, color: color ?? "var(--text-2)", lineHeight: 1.2 }}>
           {value}
         </p>
       </div>
     );
   }
 
+  const dayColor = pnlColor(totalDayPnl);
+  const atColor  = pnlColor(totalAllTimePnl);
+
   return (
     <div
-      className="flex items-center gap-6 px-6 shrink-0"
-      style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", minHeight: "68px" }}
+      className="flex items-center gap-4 px-4 shrink-0 flex-wrap"
+      style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", minHeight: "48px", height: "48px" }}
     >
-      <div className="shrink-0">
-        <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>
+      {/* Hero 1: Total Equity */}
+      <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
           Total Equity
         </p>
-        <p className="font-mono font-bold tabular-nums" style={{ fontSize: "26px", color: "var(--text-4)", letterSpacing: "-0.02em" }}>
+        <p className="font-mono font-bold tabular-nums" style={{ fontSize: "20px", color: "var(--text-4)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
           ${animatedEquity}
         </p>
       </div>
-      <div className="h-8 w-px shrink-0" style={{ background: "var(--border-1)" }} />
-      <div className="shrink-0">
-        <p style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "3px" }}>All-Time P&L</p>
-        <p className="font-mono tabular-nums" style={{ fontSize: "15px", fontWeight: 600, color: pnlColor(totalAllTimePnl) }}>
-          {fmt$(totalAllTimePnl)}
-          <span style={{ fontSize: "11px", opacity: 0.75, marginLeft: "5px" }}>({fmtPct(totalReturnPct)})</span>
+
+      <div className="w-px shrink-0" style={{ height: "28px", background: "var(--border-1)" }} />
+
+      {/* Hero 2: Day P&L — tinted inline chip */}
+      <div
+        className="shrink-0"
+        style={{
+          display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px",
+          padding: "3px 8px",
+          borderRadius: "5px",
+          background: totalDayPnl > 0
+            ? "rgba(52,211,153,0.07)"
+            : totalDayPnl < 0
+              ? "rgba(248,113,113,0.07)"
+              : "var(--surface-2)",
+          border: `1px solid ${totalDayPnl > 0 ? "rgba(52,211,153,0.15)" : totalDayPnl < 0 ? "rgba(248,113,113,0.15)" : "var(--border-0)"}`,
+        }}
+      >
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Day P&L</p>
+        <p className="font-mono tabular-nums" style={{ fontSize: "16px", fontWeight: 800, color: dayColor, letterSpacing: "-0.01em", lineHeight: 1.15 }}>
+          {fmt$(totalDayPnl)}
         </p>
       </div>
-      <StatChip label="Unrealized P&L" value={fmt$(totalUnrealizedPnl)} color={pnlColor(totalUnrealizedPnl)} />
-      <StatChip label="Day P&L" value={fmt$(totalDayPnl)} color={pnlColor(totalDayPnl)} />
-      <StatChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
-      <StatChip label="Positions" value={String(totalPositions)} />
-      <StatChip label="Portfolios" value={String(portfolioCount)} />
-      <div style={{ marginLeft: "auto", display: "flex", gap: "8px", alignItems: "center" }}>
-        <button
-          onClick={onUpdateAll}
-          disabled={updatingAll}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "5px",
-            padding: "0 12px", height: "28px",
-            background: "transparent",
-            border: "1px solid var(--border-1)",
-            borderRadius: "6px",
-            color: updatingAll ? "var(--accent)" : "var(--text-1)",
-            fontSize: "11px", fontWeight: 600,
-            letterSpacing: "0.06em", textTransform: "uppercase",
-            cursor: updatingAll ? "not-allowed" : "pointer",
-            transition: "border-color 0.15s, color 0.15s",
-            opacity: updatingAll ? 0.75 : 1,
-          }}
-          onMouseEnter={(e) => {
-            if (!updatingAll) {
-              e.currentTarget.style.borderColor = "var(--accent)";
-              e.currentTarget.style.color = "var(--accent)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!updatingAll) {
-              e.currentTarget.style.borderColor = "var(--border-1)";
-              e.currentTarget.style.color = "var(--text-1)";
-            }
-          }}
-        >
-          <svg
-            width="11" height="11" viewBox="0 0 12 12" fill="none"
-            style={{ flexShrink: 0 }}
-            className={updatingAll ? "animate-spin" : ""}
-          >
-            <path
-              d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6"
-              stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
-            />
+
+      <div className="w-px shrink-0" style={{ height: "28px", background: "var(--border-1)" }} />
+
+      {/* Secondary tier — clearly smaller */}
+      <SecondaryChip label="All-Time" value={`${fmt$(totalAllTimePnl)} (${fmtPct(totalReturnPct)})`} color={atColor} />
+
+      {/* Portfolio Up/Down — renamed from "Today" */}
+      <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Portfolios</p>
+        <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, lineHeight: 1.2 }}>
+          <span style={{ color: "var(--green)" }}>{portfoliosUp}↑</span>
+          {" "}
+          <span style={{ color: "var(--text-0)" }}>/</span>
+          {" "}
+          <span style={{ color: portfoliosDown > 0 ? "var(--red)" : "var(--text-0)" }}>{portfoliosDown}↓</span>
+        </p>
+      </div>
+
+      {/* Deployed % */}
+      <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Deployed</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, color: "var(--text-2)", lineHeight: 1.2 }}>
+            {deployedPct.toFixed(0)}%
+          </p>
+          <div style={{ width: "36px", height: "3px", borderRadius: "2px", background: "var(--surface-3)", overflow: "hidden" }}>
+            <div style={{
+              height: "100%", borderRadius: "2px",
+              width: `${Math.min(100, deployedPct)}%`,
+              background: "linear-gradient(to right, var(--accent), var(--accent-bright))",
+            }} />
+          </div>
+        </div>
+      </div>
+
+      <SecondaryChip label="Cash" value={`$${totalCash.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
+      <SecondaryChip label="Positions" value={String(totalPositions)} />
+
+      {/* Actions — clearly separated from the data surface */}
+      <div style={{
+        marginLeft: "auto",
+        display: "flex", gap: "8px", alignItems: "center",
+        paddingLeft: "16px",
+        borderLeft: "1px solid var(--border-1)",
+      }}>
+        <ActionBtn onClick={onUpdateAll} disabled={updatingAll} spinning={updatingAll}>
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }} className={updatingAll ? "animate-spin" : ""}>
+            <path d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           {updateResult ?? "Update All"}
-        </button>
-        <button
-          onClick={onScanAll}
-          disabled={scanAllRunning}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "5px",
-            padding: "0 12px", height: "28px",
-            background: "transparent",
-            border: "1px solid var(--border-1)",
-            borderRadius: "6px",
-            color: scanAllRunning ? "var(--accent)" : "var(--text-1)",
-            fontSize: "11px", fontWeight: 600,
-            letterSpacing: "0.06em", textTransform: "uppercase",
-            cursor: scanAllRunning ? "not-allowed" : "pointer",
-            transition: "border-color 0.15s, color 0.15s",
-            opacity: scanAllRunning ? 0.75 : 1,
-            whiteSpace: "nowrap",
-          }}
-          onMouseEnter={(e) => {
-            if (!scanAllRunning) {
-              e.currentTarget.style.borderColor = "var(--accent)";
-              e.currentTarget.style.color = "var(--accent)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!scanAllRunning) {
-              e.currentTarget.style.borderColor = "var(--border-1)";
-              e.currentTarget.style.color = "var(--text-1)";
-            }
-          }}
-        >
-          <span
-            style={{
-              width: "6px", height: "6px", borderRadius: "50%",
-              background: "currentColor", opacity: scanAllRunning ? 1 : 0.6, flexShrink: 0,
-              animation: scanAllRunning ? "pulse 1s ease-in-out infinite" : "none",
-            }}
-          />
+        </ActionBtn>
+        <ActionBtn onClick={onScanAll} disabled={scanAllRunning}>
+          <span style={{
+            width: "6px", height: "6px", borderRadius: "50%",
+            background: "currentColor", opacity: scanAllRunning ? 1 : 0.6, flexShrink: 0,
+            animation: scanAllRunning ? "pulse 1s ease-in-out infinite" : "none",
+          }} />
           {scanAllLabel ?? "Scan All"}
-        </button>
-        <button
-          onClick={onNewPortfolio}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: "5px",
-            padding: "0 12px", height: "28px",
-            background: "transparent",
-            border: "1px solid var(--border-1)",
-            borderRadius: "6px",
-            color: "var(--text-1)",
-            fontSize: "11px", fontWeight: 600,
-            letterSpacing: "0.06em", textTransform: "uppercase",
-            cursor: "pointer", transition: "border-color 0.15s, color 0.15s",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; e.currentTarget.style.color = "var(--text-1)"; }}
-        >
-          + New Portfolio
-        </button>
+        </ActionBtn>
+        <ActionBtn onClick={onNewPortfolio}>
+          + New
+        </ActionBtn>
+      </div>
+    </div>
+  );
+}
+
+function ActionBtn({ onClick, disabled, spinning, children }: {
+  onClick: () => void;
+  disabled?: boolean;
+  spinning?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: "5px",
+        padding: "0 12px", height: "28px",
+        background: "transparent",
+        border: "1px solid var(--border-1)",
+        borderRadius: "6px",
+        color: (disabled && !spinning) ? "var(--accent)" : "var(--text-1)",
+        fontSize: "11px", fontWeight: 600,
+        letterSpacing: "0.06em", textTransform: "uppercase",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "border-color 0.15s, color 0.15s",
+        opacity: disabled ? 0.75 : 1,
+        whiteSpace: "nowrap",
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = "var(--accent)";
+          e.currentTarget.style.color = "var(--accent)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = "var(--border-1)";
+          e.currentTarget.style.color = "var(--text-1)";
+        }
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sort + View controls bar
+// ---------------------------------------------------------------------------
+
+function ControlsBar({
+  sortKey, onSort, viewMode, onView,
+}: {
+  sortKey: SortKey;
+  onSort: (k: SortKey) => void;
+  viewMode: ViewMode;
+  onView: (v: ViewMode) => void;
+}) {
+  const sortOptions: { key: SortKey; label: string }[] = [
+    { key: "day_pnl",          label: "Day P&L" },
+    { key: "total_return_pct", label: "Return" },
+    { key: "equity",           label: "Equity" },
+    { key: "deployed_pct",     label: "Deployed" },
+    { key: "name",             label: "Name" },
+  ];
+  const viewOptions: { key: ViewMode; label: string }[] = [
+    { key: "grid",  label: "Grid" },
+    { key: "map",   label: "Map" },
+    { key: "chart", label: "Chart" },
+  ];
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "12px",
+      padding: "8px 20px",
+      background: "var(--surface-0)",
+      borderBottom: "1px solid var(--border-0)",
+      flexShrink: 0,
+    }}>
+      {/* Sort controls */}
+      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>Sort</span>
+      <div style={{ display: "flex", gap: "4px" }}>
+        {sortOptions.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => onSort(opt.key)}
+            style={{
+              padding: "3px 9px",
+              borderRadius: "4px",
+              fontSize: "10px", fontWeight: sortKey === opt.key ? 700 : 500,
+              color: sortKey === opt.key ? "var(--accent)" : "var(--text-1)",
+              background: sortKey === opt.key ? "rgba(124,92,252,0.10)" : "transparent",
+              border: sortKey === opt.key ? "1px solid rgba(124,92,252,0.25)" : "1px solid transparent",
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            {opt.label}{sortKey === opt.key && opt.key !== "name" ? " ↓" : ""}
+          </button>
+        ))}
+      </div>
+
+      {/* Spacer */}
+      <div style={{ flex: 1 }} />
+
+      {/* View toggle */}
+      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>View</span>
+      <div style={{ display: "flex", gap: "2px", background: "var(--surface-2)", borderRadius: "6px", padding: "2px" }}>
+        {viewOptions.map((opt) => (
+          <button
+            key={opt.key}
+            onClick={() => onView(opt.key)}
+            style={{
+              padding: "3px 12px",
+              borderRadius: "4px",
+              fontSize: "10px", fontWeight: viewMode === opt.key ? 700 : 500,
+              color: viewMode === opt.key ? "var(--text-4)" : "var(--text-1)",
+              background: viewMode === opt.key ? "var(--surface-4)" : "transparent",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -286,6 +398,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
   topHoldings: CrossPortfolioMover[];
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
   const queryClient = useQueryClient();
 
@@ -303,23 +416,30 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
     : summary.regime === "BEAR" ? "var(--red)"
     : "var(--amber)";
 
-  const sharePct = totalEquity > 0 ? (summary.equity / totalEquity) * 100 : 0;
   const glow = !summary.error ? cardGlow(summary.total_return_pct ?? 0) : "none";
   const hasSparkline = (summary.sparkline?.length ?? 0) >= 2;
+
+  const cardBg = hovered ? "var(--surface-2)" : "var(--surface-1)";
+  const cardBorder = hovered ? "rgba(255,255,255,0.10)" : "var(--border-0)";
 
   return (
     <div
       style={{
         position: "relative",
-        background: "var(--surface-1)",
-        border: "1px solid var(--border-0)",
+        background: cardBg,
+        border: `1px solid ${cardBorder}`,
         borderRadius: "8px",
-        boxShadow: glow,
-        transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+        boxShadow: hovered ? `${glow !== "none" ? glow + ", " : ""}0 4px 16px rgba(0,0,0,0.3)` : glow,
+        transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease",
+        transform: hovered ? "translateY(-2px)" : "translateY(0)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
+        cursor: "pointer",
       }}
+      onClick={() => setPortfolio(summary.id)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Delete */}
       <button
@@ -333,19 +453,17 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
           fontSize: "10px", padding: "2px 5px", background: "none", border: "none",
           color: confirmDelete ? "var(--red)" : "transparent",
           fontWeight: confirmDelete ? 600 : 400, cursor: "pointer",
+          transition: "color 0.15s",
         }}
-        onMouseEnter={(e) => { if (!confirmDelete) e.currentTarget.style.color = "rgba(248,113,113,0.50)"; }}
-        onMouseLeave={(e) => { if (!confirmDelete) e.currentTarget.style.color = "transparent"; }}
+        onMouseEnter={(e) => { e.stopPropagation(); if (!confirmDelete) e.currentTarget.style.color = "rgba(248,113,113,0.50)"; }}
+        onMouseLeave={(e) => { e.stopPropagation(); if (!confirmDelete) e.currentTarget.style.color = "transparent"; }}
       >
         {deleteMutation.isPending ? "..." : confirmDelete ? "Confirm?" : "×"}
       </button>
 
-      {/* Clickable body */}
-      <button
-        onClick={() => setPortfolio(summary.id)}
-        style={{ width: "100%", textAlign: "left", padding: "10px 10px 0", background: "none", border: "none", cursor: "pointer" }}
-      >
-        {/* Header */}
+      {/* Card body */}
+      <div style={{ padding: "10px 10px 0" }}>
+        {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px", paddingRight: "14px" }}>
           <h3 style={{ flex: 1, fontSize: "12px", fontWeight: 700, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {summary.name}
@@ -362,8 +480,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
           <div style={{ fontSize: "11px", color: "var(--red)", paddingBottom: "10px" }}>{summary.error}</div>
         ) : (
           <>
-            {/* Equity + return */}
-            <div style={{ display: "flex", alignItems: "baseline", gap: "7px", marginBottom: "4px" }}>
+            {/* Equity + all-time return */}
+            <div style={{ display: "flex", alignItems: "baseline", gap: "7px", marginBottom: "5px" }}>
               <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: "var(--text-3)" }}>
                 ${summary.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
@@ -372,37 +490,54 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
               </span>
             </div>
 
-            {/* P&L row */}
-            <div style={{ display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px", fontSize: "10px" }}>
-              <span style={{ color: "var(--text-0)" }}>All-time</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.all_time_pnl ?? 0), fontWeight: 600 }}>{fmt$(summary.all_time_pnl ?? 0)}</span>
-              <span style={{ color: "var(--border-1)" }}>·</span>
-              <span style={{ color: "var(--text-0)" }}>Day</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.day_pnl) }}>{fmt$(summary.day_pnl)}</span>
-              <span style={{ color: "var(--border-1)" }}>·</span>
-              <span style={{ color: "var(--text-0)" }}>Open</span>
-              <span className="font-mono tabular-nums" style={{ color: pnlColor(summary.unrealized_pnl) }}>{fmt$(summary.unrealized_pnl)}</span>
+            {/* Day P&L — dominant element */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px",
+              padding: "4px 7px",
+              borderRadius: "5px",
+              background: summary.day_pnl > 0
+                ? "rgba(52,211,153,0.06)"
+                : summary.day_pnl < 0
+                  ? "rgba(248,113,113,0.06)"
+                  : "transparent",
+            }}>
+              <span className="font-mono tabular-nums" style={{
+                fontSize: "15px", fontWeight: 800, letterSpacing: "-0.01em",
+                color: pnlColor(summary.day_pnl),
+              }}>
+                {fmt$(summary.day_pnl)}
+              </span>
+              <span className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 600, color: pnlColor(summary.day_pnl), opacity: 0.80 }}>
+                {summary.day_pnl !== 0 && summary.equity > 0
+                  ? fmtPct((summary.day_pnl / summary.equity) * 100)
+                  : ""}
+              </span>
+              <span style={{ flex: 1 }} />
+              <span className="font-mono tabular-nums" style={{ fontSize: "9.5px", color: pnlColor(summary.unrealized_pnl), opacity: 0.60 }}>
+                <span style={{ color: "var(--text-0)", fontFamily: "var(--font-sans)", marginRight: "2px" }}>unrl.</span>
+                {fmt$(summary.unrealized_pnl)}
+              </span>
             </div>
           </>
         )}
-      </button>
+      </div>
 
-      {/* Sparkline strip — grows to fill remaining vertical space */}
+      {/* Sparkline strip */}
       {!summary.error && hasSparkline && (
         <div style={{
           borderTop: "1px solid var(--border-0)",
           background: "var(--surface-0)",
           flex: 1,
-          minHeight: "24px",
+          minHeight: "28px",
           overflow: "hidden",
         }}>
-          <EquitySparkline values={summary.sparkline!} returnPct={summary.total_return_pct ?? 0} />
+          <EquitySparkline values={summary.sparkline!} returnPct={summary.total_return_pct ?? 0} id={summary.id} />
         </div>
       )}
 
       {/* Top holdings */}
       {!summary.error && topHoldings.length > 0 && (
-        <div style={{ padding: "6px 10px 0" }} onClick={() => setPortfolio(summary.id)}>
+        <div style={{ padding: "6px 10px 0" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             {topHoldings.map((h) => (
               <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px" }}>
@@ -430,9 +565,24 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       {!summary.error && (
         <div
           style={{ padding: "5px 10px 7px", display: "flex", alignItems: "center", gap: "5px", fontSize: "9.5px", color: "var(--text-1)", borderTop: "1px solid var(--border-0)", marginTop: "6px" }}
-          onClick={() => setPortfolio(summary.id)}
         >
-          <span className="tabular-nums" style={{ color: regimeColor, fontWeight: 600 }}>{summary.regime ?? "—"}</span>
+          <span
+            className="tabular-nums"
+            style={{
+              color: regimeColor,
+              fontWeight: 700,
+              fontSize: "8px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "1px 5px",
+              borderRadius: "3px",
+              background: summary.regime === "BEAR"
+                ? "rgba(248,113,113,0.10)"
+                : summary.regime === "BULL"
+                  ? "rgba(52,211,153,0.08)"
+                  : "rgba(251,191,36,0.08)",
+            }}
+          >{summary.regime ?? "—"}</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
           <span className="tabular-nums">{summary.num_positions}p</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
@@ -449,7 +599,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
         </div>
       )}
 
-      {/* Scan badge — only visible when scan-all has state for this card */}
+      {/* Scan badge */}
       {scanResult && (
         <div
           style={{
@@ -491,6 +641,158 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
 }
 
 // ---------------------------------------------------------------------------
+// Attention panel
+// ---------------------------------------------------------------------------
+
+function AttentionPanel({ portfolios, onNavigate }: {
+  portfolios: PortfolioSummary[];
+  onNavigate: (id: string) => void;
+}) {
+  const items = useMemo(() => {
+    const result: { id: string; name: string; reason: string; severity: "error" | "warn" }[] = [];
+    for (const p of portfolios) {
+      if (p.error) {
+        result.push({ id: p.id, name: p.name, reason: p.error.slice(0, 48), severity: "error" });
+      } else if (p.num_positions === 0 && p.deployed_pct === 0) {
+        result.push({ id: p.id, name: p.name, reason: "No positions", severity: "warn" });
+      } else if (p.deployed_pct < 25) {
+        result.push({ id: p.id, name: p.name, reason: `${p.deployed_pct.toFixed(0)}% deployed — high idle cash`, severity: "warn" });
+      }
+    }
+    return result;
+  }, [portfolios]);
+
+  if (items.length === 0) {
+    return (
+      <div style={{ padding: "12px 14px" }}>
+        <SideHeader>Attention</SideHeader>
+        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-0)", fontStyle: "italic" }}>
+          All portfolios nominal
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px 14px" }}>
+      <SideHeader>Attention ({items.length})</SideHeader>
+      <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "4px" }}>
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            style={{
+              display: "block", width: "100%", textAlign: "left",
+              padding: "6px 8px",
+              background: item.severity === "error" ? "rgba(248,113,113,0.06)" : "rgba(251,191,36,0.05)",
+              border: `1px solid ${item.severity === "error" ? "rgba(248,113,113,0.18)" : "rgba(251,191,36,0.15)"}`,
+              borderRadius: "5px",
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = item.severity === "error" ? "rgba(248,113,113,0.10)" : "rgba(251,191,36,0.08)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = item.severity === "error" ? "rgba(248,113,113,0.06)" : "rgba(251,191,36,0.05)"; }}
+          >
+            <div style={{ fontSize: "10px", fontWeight: 700, color: item.severity === "error" ? "var(--red)" : "var(--amber)", marginBottom: "1px" }}>
+              {item.name}
+            </div>
+            <div style={{ fontSize: "9.5px", color: "var(--text-1)" }}>{item.reason}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Movers panel
+// ---------------------------------------------------------------------------
+
+function MoversPanel({ topMovers, bottomMovers, onNavigate }: {
+  topMovers: CrossPortfolioMover[];
+  bottomMovers: CrossPortfolioMover[];
+  onNavigate: (id: string) => void;
+}) {
+  function MoverRow({ m, positive }: { m: CrossPortfolioMover; positive: boolean }) {
+    const pct = m.day_change_pct ?? m.pnl_pct;
+    const pnlVal = m.pnl;
+    return (
+      <button
+        onClick={() => onNavigate(m.portfolio_id)}
+        style={{
+          display: "flex", alignItems: "center", gap: "6px",
+          width: "100%", textAlign: "left",
+          padding: "5px 6px",
+          background: "transparent",
+          border: "none",
+          borderRadius: "4px",
+          cursor: "pointer",
+          transition: "background 0.15s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-2)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+      >
+        <span className="font-mono" style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-3)", width: "36px", flexShrink: 0 }}>
+          {m.ticker}
+        </span>
+        <span style={{ fontSize: "9px", color: "var(--text-0)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {m.portfolio_name}
+        </span>
+        <span className="font-mono tabular-nums" style={{ fontSize: "10px", fontWeight: 600, color: positive ? "var(--green)" : "var(--red)", flexShrink: 0 }}>
+          {pct >= 0 ? "+" : ""}{pct.toFixed(1)}%
+        </span>
+        <span className="font-mono tabular-nums" style={{ fontSize: "9px", color: positive ? "var(--green)" : "var(--red)", opacity: 0.7, flexShrink: 0, marginLeft: "2px" }}>
+          {pnlVal >= 0 ? "+" : ""}${Math.abs(pnlVal).toFixed(0)}
+        </span>
+      </button>
+    );
+  }
+
+  const hasMovers = topMovers.length > 0 || bottomMovers.length > 0;
+
+  return (
+    <div style={{ padding: "12px 14px" }}>
+      <SideHeader>Movers</SideHeader>
+      {!hasMovers ? (
+        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-0)", fontStyle: "italic" }}>No position data</div>
+      ) : (
+        <>
+          {topMovers.length > 0 && (
+            <div style={{ marginTop: "8px" }}>
+              <div style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--green)", opacity: 0.7, marginBottom: "3px" }}>Top</div>
+              {topMovers.slice(0, 5).map((m) => (
+                <MoverRow key={`${m.ticker}:${m.portfolio_id}`} m={m} positive={true} />
+              ))}
+            </div>
+          )}
+          {bottomMovers.length > 0 && (
+            <div style={{ marginTop: topMovers.length > 0 ? "10px" : "8px" }}>
+              <div style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--red)", opacity: 0.7, marginBottom: "3px" }}>Bottom</div>
+              {bottomMovers.slice(0, 5).map((m) => (
+                <MoverRow key={`${m.ticker}:${m.portfolio_id}`} m={m} positive={false} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SideHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.10em",
+      color: "var(--text-0)", fontWeight: 700,
+      paddingBottom: "6px",
+      borderBottom: "1px solid var(--border-0)",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
 
@@ -498,6 +800,8 @@ export default function OverviewPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [updatingAll, setUpdatingAll] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("day_pnl");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
@@ -510,6 +814,7 @@ export default function OverviewPage() {
       queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
   });
+  void deleteMutation;
 
   const [scanAll, setScanAll] = useState<ScanAllState>({
     running: false,
@@ -518,7 +823,6 @@ export default function OverviewPage() {
   });
   const scanCancelledRef = useRef(false);
 
-  // Play scanComplete when scan-all finishes
   const wasScanAllRunning = useRef(false);
   useEffect(() => {
     if (wasScanAllRunning.current && !scanAll.running) play("scanComplete");
@@ -566,7 +870,6 @@ export default function OverviewPage() {
     for (const id of ids) {
       if (scanCancelledRef.current) break;
 
-      // Mark this portfolio as running
       setScanAll((prev) => ({
         ...prev,
         currentId: id,
@@ -577,10 +880,8 @@ export default function OverviewPage() {
       }));
 
       try {
-        // Fire the scan
         await api.scan(id);
 
-        // Poll until complete or timeout (9 min frontend guard)
         const FRONTEND_TIMEOUT_MS = 9 * 60 * 1000;
         const POLL_INTERVAL_MS = 3000;
         const deadline = Date.now() + FRONTEND_TIMEOUT_MS;
@@ -605,10 +906,8 @@ export default function OverviewPage() {
               },
             },
           }));
-          // Refresh overview data so card stats update live
           queryClient.invalidateQueries({ queryKey: ["overview"] });
         } else {
-          // Timeout or backend error — non-fatal, continue chain
           setScanAll((prev) => ({
             ...prev,
             results: {
@@ -638,9 +937,7 @@ export default function OverviewPage() {
       }
     }
 
-    // Chain complete
     setScanAll((prev) => ({ ...prev, running: false, currentId: null }));
-    // Clear results after 5s
     setTimeout(() => {
       if (!scanCancelledRef.current) {
         setScanAll({ running: false, currentId: null, results: {} });
@@ -653,6 +950,22 @@ export default function OverviewPage() {
   }, []);
 
   const names = new Map((portfolioList?.portfolios ?? []).map((p) => [p.id, p.name]));
+
+  // sorted MUST stay above the isLoading early return — hooks can't be called after a conditional return
+  const sorted = useMemo(() => {
+    const summaries = overview?.portfolios ?? [];
+    const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
+    return [...enriched].sort((a, b) => {
+      switch (sortKey) {
+        case "day_pnl":          return (b.day_pnl ?? 0) - (a.day_pnl ?? 0);
+        case "total_return_pct": return (b.total_return_pct ?? 0) - (a.total_return_pct ?? 0);
+        case "equity":           return (b.equity ?? 0) - (a.equity ?? 0);
+        case "deployed_pct":     return (b.deployed_pct ?? 0) - (a.deployed_pct ?? 0);
+        case "name":             return (a.name ?? "").localeCompare(b.name ?? "");
+        default:                 return 0;
+      }
+    });
+  }, [overview?.portfolios, sortKey, names]);
 
   const scanAllLabel = useMemo(() => {
     if (!scanAll.running && Object.keys(scanAll.results).length > 0) {
@@ -667,7 +980,6 @@ export default function OverviewPage() {
     return null;
   }, [scanAll, names]);
 
-  // Build per-portfolio top-3 holdings map from all_positions (sorted by market_value desc)
   const holdingsMap = useMemo(() => {
     const map = new Map<string, CrossPortfolioMover[]>();
     const all = overview?.all_positions ?? [];
@@ -684,8 +996,33 @@ export default function OverviewPage() {
 
   if (isLoading) {
     return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--surface-0)" }}>
-        <p className="animate-pulse" style={{ color: "var(--text-1)" }}>Loading portfolios...</p>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
+        {/* Skeleton aggregate bar */}
+        <div style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", minHeight: "68px", display: "flex", alignItems: "center", padding: "0 20px", gap: "24px" }}>
+          <SkeletonBlock width={140} height={26} />
+          <SkeletonBlock width={90} height={20} />
+          <SkeletonBlock width={100} height={20} />
+          <SkeletonBlock width={60} height={20} />
+          <SkeletonBlock width={80} height={20} />
+        </div>
+        {/* Skeleton controls bar */}
+        <div style={{ background: "var(--surface-0)", borderBottom: "1px solid var(--border-0)", minHeight: "36px", display: "flex", alignItems: "center", padding: "0 20px", gap: "8px" }}>
+          <SkeletonBlock width={32} height={12} />
+          <SkeletonBlock width={220} height={22} />
+        </div>
+        {/* Skeleton grid */}
+        <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
+          <div style={{ width: "220px", flexShrink: 0, borderRight: "1px solid var(--border-0)", background: "var(--surface-0)", padding: "14px" }}>
+            <SkeletonBlock width={80} height={10} style={{ marginBottom: 12 }} />
+            <SkeletonBlock width="100%" height={52} style={{ marginBottom: 6 }} />
+            <SkeletonBlock width="100%" height={52} style={{ marginBottom: 6 }} />
+          </div>
+          <div style={{ flex: 1, padding: "14px 16px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "10px", alignContent: "start" }}>
+            {Array.from({ length: 9 }).map((_, i) => (
+              <SkeletonBlock key={i} width="100%" height={160} />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -693,19 +1030,28 @@ export default function OverviewPage() {
   const summaries = overview?.portfolios ?? [];
   const enriched = summaries.map((s) => ({ ...s, name: s.name || names.get(s.id) || s.id }));
   const totalEquity = overview?.total_equity ?? 0;
+  const totalCash   = overview?.total_cash ?? 0;
+
+  // Computed aggregates
+  const portfoliosUp   = enriched.filter((s) => s.day_pnl > 0).length;
+  const portfoliosDown = enriched.filter((s) => s.day_pnl < 0).length;
+  const deployedPct    = totalEquity > 0 ? ((totalEquity - totalCash) / totalEquity) * 100 : 0;
+
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
       {/* Aggregate stats bar */}
       <AggregateBar
         totalEquity={totalEquity}
-        totalCash={overview?.total_cash ?? 0}
+        totalCash={totalCash}
         totalDayPnl={overview?.total_day_pnl ?? 0}
-        totalUnrealizedPnl={overview?.total_unrealized_pnl ?? 0}
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={enriched.length}
+        portfoliosUp={portfoliosUp}
+        portfoliosDown={portfoliosDown}
+        deployedPct={deployedPct}
         onNewPortfolio={() => setShowCreate(true)}
         onUpdateAll={handleUpdateAll}
         updatingAll={updatingAll}
@@ -715,37 +1061,120 @@ export default function OverviewPage() {
         scanAllLabel={scanAllLabel}
       />
 
-      {/* Portfolio module grid */}
+      {/* Controls bar: sort + view toggle */}
+      <ControlsBar
+        sortKey={sortKey}
+        onSort={setSortKey}
+        viewMode={viewMode}
+        onView={setViewMode}
+      />
+
+      {/* Body */}
       {enriched.length === 0 ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-1)" }}>
           <div style={{ textAlign: "center" }}>
-            <p style={{ fontSize: "18px", marginBottom: "8px" }}>No portfolios yet</p>
-            <p style={{ fontSize: "13px" }}>Create your first portfolio to get started.</p>
+            <p style={{ fontSize: "16px", marginBottom: "10px", color: "var(--text-3)", fontWeight: 600 }}>No portfolios yet</p>
+            <p style={{ fontSize: "12px", color: "var(--text-1)" }}>Create your first portfolio to get started.</p>
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{
+                marginTop: "20px",
+                padding: "8px 20px",
+                background: "var(--accent-dim)",
+                border: "1px solid var(--accent-border)",
+                borderRadius: "6px",
+                color: "var(--accent-bright)",
+                fontSize: "11px", fontWeight: 600,
+                cursor: "pointer",
+                letterSpacing: "0.06em", textTransform: "uppercase",
+              }}
+            >
+              + New Portfolio
+            </button>
           </div>
         </div>
-      ) : (
-        <div style={{ flex: 1, overflow: "hidden", padding: "14px 20px" }}>
+      ) : viewMode === "grid" ? (
+        <div key="grid" style={{ flex: 1, overflow: "hidden", display: "flex", animation: "fadeIn 0.15s ease" }}>
+          {/* Left side panel: attention + movers */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-            gridAutoRows: "1fr",
-            gap: "12px",
-            height: "100%",
+            width: "220px",
+            flexShrink: 0,
+            overflowY: "auto",
+            borderRight: "1px solid var(--border-0)",
+            background: "var(--surface-0)",
+            display: "flex",
+            flexDirection: "column",
           }}>
-            {enriched.map((s) => (
-              <PortfolioCard
-                key={s.id}
-                summary={s}
-                totalEquity={totalEquity}
-                scanResult={scanAll.results[s.id]}
-                topHoldings={holdingsMap.get(s.id) ?? []}
-              />
-            ))}
+            <AttentionPanel portfolios={enriched} onNavigate={setPortfolio} />
+            <div style={{ height: "1px", background: "var(--border-0)" }} />
+            <MoversPanel
+              topMovers={overview?.top_movers ?? []}
+              bottomMovers={overview?.bottom_movers ?? []}
+              onNavigate={setPortfolio}
+            />
           </div>
+
+          {/* Portfolio grid */}
+          <div style={{ flex: 1, overflow: "auto", padding: "14px 16px" }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+              gap: "10px",
+            }}>
+              {sorted.map((s) => (
+                <PortfolioCard
+                  key={s.id}
+                  summary={s}
+                  totalEquity={totalEquity}
+                  scanResult={scanAll.results[s.id]}
+                  topHoldings={holdingsMap.get(s.id) ?? []}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : viewMode === "map" ? (
+        <div key="map" style={{ flex: 1, overflow: "auto", padding: "16px 20px", animation: "fadeIn 0.15s ease" }}>
+          <Suspense fallback={<LoadingPane text="Loading map…" />}>
+            <ConstellationMap
+              positions={overview?.all_positions ?? []}
+              portfolios={enriched}
+            />
+          </Suspense>
+        </div>
+      ) : (
+        <div key="chart" style={{ flex: 1, overflow: "auto", padding: "16px 20px", animation: "fadeIn 0.15s ease" }}>
+          <Suspense fallback={<LoadingPane text="Loading chart…" />}>
+            <PerformanceChart portfolios={enriched} height={480} />
+          </Suspense>
         </div>
       )}
 
       {showCreate && <CreatePortfolioModal onClose={() => setShowCreate(false)} />}
     </div>
+  );
+}
+
+function LoadingPane({ text }: { text: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "300px", color: "var(--text-1)", fontSize: "12px" }}>
+      {text}
+    </div>
+  );
+}
+
+function SkeletonBlock({ width, height, style }: { width: number | string; height: number; style?: React.CSSProperties }) {
+  return (
+    <div
+      className="animate-pulse-slow"
+      style={{
+        width: typeof width === "number" ? `${width}px` : width,
+        height: `${height}px`,
+        borderRadius: "5px",
+        background: "var(--surface-3)",
+        flexShrink: 0,
+        ...style,
+      }}
+    />
   );
 }

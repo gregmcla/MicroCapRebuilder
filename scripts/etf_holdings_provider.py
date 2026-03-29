@@ -71,6 +71,20 @@ DEFAULT_ETFS = [
     ETFConfig("XLRE", "Real Estate Select Sector SPDR", "sector-realestate", 75),
     ETFConfig("XBI", "SPDR S&P Biotech ETF", "sector-biotech", 100),
     ETFConfig("XOP", "SPDR Oil & Gas Exploration ETF", "sector-energy", 75),
+    # All-cap / broad market
+    ETFConfig("VTI", "Vanguard Total Stock Market ETF", "all-cap", 500),
+    ETFConfig("IWC", "iShares Micro-Cap ETF", "micro-cap", 200),
+    # Infrastructure / industrials / defense
+    ETFConfig("PAVE", "Global X US Infrastructure Development ETF", "sector-infrastructure", 100),
+    ETFConfig("GRID", "First Trust NASDAQ Clean Edge Smart Grid ETF", "sector-grid", 75),
+    ETFConfig("IFRA", "iShares US Infrastructure ETF", "sector-infrastructure", 100),
+    ETFConfig("IGF", "iShares Global Infrastructure ETF", "sector-infrastructure", 75),
+    ETFConfig("XME", "SPDR S&P Metals & Mining ETF", "sector-materials", 75),
+    ETFConfig("ITA", "iShares US Aerospace & Defense ETF", "sector-defense", 75),
+    # Semiconductors
+    ETFConfig("SOXX", "iShares Semiconductor ETF", "sector-semi", 75),
+    ETFConfig("SMH", "VanEck Semiconductor ETF", "sector-semi", 75),
+    ETFConfig("RSPT", "Invesco S&P 500 Equal Weight Technology ETF", "sector-tech", 75),
 ]
 
 
