@@ -182,6 +182,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/health` | Health check |
 | GET | `/api/system/logs` | 30-day pipeline health summaries (scan/execute/update/watchdog) |
 | GET | `/api/system/narrative` | Claude daily briefing (10-min cache; `?regenerate=true` to bypass) |
+| GET | `/api/convergent-signals` | Tickers found by 2+ portfolios; `?min_portfolios=N` (default 2, ge=1) |
 
 ---
 

@@ -7,7 +7,39 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Intelligence Brief feature added (uncommitted session ~2026-03-30).**
+**Operational — cron automation running daily. 16 active portfolios. Universe & Discovery Pipeline Rebuild complete (2026-04-01).**
+
+---
+
+## Recently Completed (2026-04-01) — Universe & Discovery Pipeline Rebuild
+
+### Portfolio Genesis (AI-Curated Universe at Creation)
+- `scripts/strategy_generator.py` — `suggest_config_for_dna()` now returns `curated_tickers` (50-150 tickers with sector + rationale). `max_tokens` bumped to 4096.
+- `scripts/portfolio_registry.py` — `_save_curated_universe()` saves AI-curated tickers to `data/portfolios/{id}/curated_universe.json` at creation time when `ai_config.curated_tickers` is provided.
+- `scripts/universe_provider.py` — `_load_curated()` checks portfolio-level `curated_universe.json` first (replaces global curated file for AI-driven portfolios). Extracted `_ingest_curated_dict()` helper.
+- `api/routes/portfolios.py` — `ai_config: dict | None` passes `curated_tickers` through to `create_portfolio()` automatically.
+
+### Score-All Mode (Cold-Start Fix for Small Universes)
+- `scripts/stock_discovery.py` — `_score_all_universe()` method added: when universe < 500 tickers, bypasses all 5 scan type gates and scores every ticker with the full 6-factor model. Applies `_passes_filters()` (sector/cap/fundamental), populates `market_cap_m` from info dict, logs per-ticker errors.
+- Bypass check in `run_all_scans()`: `if len(self.scan_universe) < 500: return self._score_all_universe()`.
+- Fixes: new portfolios with ETF-only universes (200-400 tickers) were getting 0-1 candidates because scan gates rejected everything.
+
+### Shared Universe Cache
+- `scripts/shared_universe.py` (new) — `SharedScanResult` dataclass + `SharedUniverse` class. Per-portfolio JSON files under `data/shared_scan_cache/` (gitignored). Atomic write (write-to-tmp + rename). Methods: `write_results`, `read_results`, `get_convergent_tickers`, `get_best_score`, `cleanup`.
+- `scripts/stock_discovery.py` — `run_all_scans()` and `_score_all_universe()` write results to shared cache after each scan (non-fatal).
+- `scripts/watchlist_manager.py` — `update_watchlist()` reads shared cache after local discovery, adds candidates from OTHER portfolios with score >= 35 that aren't already in watchlist. Counts toward `stats["added"]`.
+
+### Cross-Portfolio Convergence API
+- `api/routes/discovery.py` — new `GET /api/convergent-signals` endpoint (`min_portfolios: int = Query(default=2, ge=1)`). Returns tickers found independently by N+ portfolios, sorted by portfolio_count desc + best_score desc. NaN-safe via `serialize()`.
+- `api/main.py` — registers new `global_router` for non-portfolio-scoped routes.
+
+### Test Coverage
+- `scripts/tests/test_strategy_generator.py` — 2 tests
+- `scripts/tests/test_portfolio_genesis.py` — 2 tests
+- `scripts/tests/test_genesis_integration.py` — 1 API-layer test (TestClient, POST /api/portfolios)
+- `scripts/tests/test_score_all.py` — 3 tests
+- `scripts/tests/test_shared_universe.py` — 4 tests
+- Total: 12 tests, all passing.
 
 ---
 
