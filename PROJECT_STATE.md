@@ -7,19 +7,35 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Universe & Discovery Pipeline Rebuild complete + bug fixes (2026-04-01).**
+**Operational — cron automation running daily. 16 active portfolios. Score-First Watchlist Architecture complete (2026-04-01). Watchlists now rebuilt daily from delta-ranked ScoreStore.**
 
 ---
 
-## Recently Completed (2026-04-01) — Score-First Watchlist Architecture (Tasks 6 & 7)
+## Recently Completed (2026-04-01) — Score-First Watchlist Architecture
 
-### Task 6: GET /watchlist — blended rank support
-- `api/routes/discovery.py` — `get_watchlist()` now reads `score_delta` from watchlist entries, computes `blended = score + 0.3 * delta`, exposes both fields in response, sorts by `blended` descending instead of raw score.
+Replaced the 5-gate scan → 60-day decay watchlist with: score every ticker daily → delta-ranked rebuild.
 
-### Task 7: Migration script — one-time run complete
-- `scripts/migrate_watchlists.py` (new) — extracts CORE tickers to `core_watchlist.jsonl`, clears `watchlist.jsonl` for all portfolios so next scan rebuilds fresh.
-- Run completed: microcap 41 CORE tickers preserved in `core_watchlist.jsonl`; 2,003 total watchlist entries cleared across 24 portfolios.
-- All watchlists will be rebuilt from scratch on next scan via score-first flow.
+### ScoreStore (new)
+- `scripts/score_store.py` — append-only JSONL per portfolio (`data/portfolios/{id}/daily_scores.jsonl`). Records composite + 6 factor scores per ticker per day. Methods: `save_scores()`, `get_latest_scores()`, `get_all_deltas()`, `get_top_by_blended(n, delta_weight=0.3)`, `cleanup(keep_days=30)`.
+
+### stock_discovery.py changes
+- `_score_all_universe()` Phase 4 loop now collects `all_scores_for_store` (ALL scored tickers, not just candidates above threshold) and writes to ScoreStore after the loop.
+- `run_all_scans()` — removed 500-ticker threshold. Score-all always runs for ALL universe sizes. The 5 scan gate types (momentum_breakouts, oversold_bounces, etc.) are bypassed entirely.
+
+### watchlist_manager.py changes
+- `WatchlistEntry` — added `score_delta: float = 0.0` field (backward compatible with old JSONL files).
+- `update_watchlist()` rewritten as score-first daily rebuild: (1) remove poor performers → (2) run discovery (score-all) → (3) read ScoreStore top-N by blended rank → (4) rebuild: CORE always + top-N fill → (5) shared universe supplement → (6) sector backfill → (7) balance/enforce → (8) social enrichment. Removed: `mark_stale_tickers()`, `remove_stale_tickers()`, `_remove_zero_score_tickers()` — no more staleness decay.
+- First-run safe: falls back to `discovered_stocks` directly if ScoreStore is empty.
+
+### API change
+- `api/routes/discovery.py` `get_watchlist()` — adds `score_delta` and `blended` (= score + 0.3*delta) to each candidate. Sorts by `blended` descending.
+
+### Migration (one-time, run complete)
+- `scripts/migrate_watchlists.py` (new) — extracted CORE tickers to `core_watchlist.jsonl`, cleared all `watchlist.jsonl` files.
+- Result: microcap 41 CORE tickers preserved; 2,003 total entries cleared across 24 portfolios.
+
+### E2E verification
+- microcap scan post-migration: score-all mode triggered (338 tickers → 299 survivors → 221 candidates in 67s), ScoreStore saved 222 scores, watchlist rebuilt to 200 entries (41 CORE + 159 SCORE_ALL), `score_delta=0.0` (first run), `blended` fields present in API response.
 
 ---
 
