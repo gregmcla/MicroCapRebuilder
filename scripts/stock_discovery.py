@@ -1063,6 +1063,7 @@ class StockDiscovery:
         # Phase 4: Score all survivors with full 6-factor model
         scorer = StockScorer()
         candidates = []
+        all_scores_for_store: list = []  # ALL scores, not just candidates
 
         for ticker in survivors:
             try:
@@ -1071,7 +1072,23 @@ class StockDiscovery:
                 if not self._passes_filters(ticker, df, info if isinstance(info, dict) else {}):
                     continue
                 score = scorer.score_stock(ticker, info=info)
-                if score and score.composite_score >= self.discovery_config.get("min_discovery_score", 30):
+                if not score:
+                    continue
+
+                # Always record in score store — delta tracking needs full history
+                all_scores_for_store.append({
+                    "ticker": ticker,
+                    "composite": score.composite_score,
+                    "momentum": score.price_momentum_score,
+                    "quality": score.quality_score,
+                    "earnings": score.earnings_growth_score,
+                    "volume": score.volume_score,
+                    "volatility": score.volatility_score,
+                    "value_timing": score.value_timing_score,
+                })
+
+                # Only include in candidate list if above threshold
+                if score.composite_score >= self.discovery_config.get("min_discovery_score", 30):
                     sector = ""
                     market_cap_m = (info.get("marketCap", 0) or 0) / 1e6 if isinstance(info, dict) else 0.0
                     if isinstance(info, dict):
@@ -1099,8 +1116,8 @@ class StockDiscovery:
                         volume_ratio=0.0,
                         near_52wk_high_pct=0.0,
                         discovered_date=date.today().isoformat(),
-                        notes=f"score_all | momentum={score.price_momentum_score} "
-                              f"value={score.value_timing_score} quality={score.quality_score}",
+                        notes=f"score_all | momentum={score.price_momentum_score:.0f} "
+                              f"value={score.value_timing_score:.0f} quality={score.quality_score:.0f}",
                     ))
             except Exception as e:
                 print(f"  Score-all: skip {ticker} ({e})")
@@ -1109,6 +1126,15 @@ class StockDiscovery:
         total_elapsed = time.time() - scan_start
         print(f"\nScore-all complete: {len(candidates)} candidates from {len(survivors)} scored "
               f"(in {total_elapsed:.1f}s)")
+
+        # Save ALL scores to ScoreStore (not just candidates above threshold)
+        if self.portfolio_id and all_scores_for_store:
+            try:
+                from score_store import ScoreStore
+                ScoreStore(self.portfolio_id).save_scores(all_scores_for_store)
+                print(f"  ScoreStore: saved {len(all_scores_for_store)} scores")
+            except Exception as e:
+                print(f"  ScoreStore write failed (non-fatal): {e}")
 
         # Write to shared cache
         try:
@@ -1168,13 +1194,11 @@ class StockDiscovery:
 
         print(f"Running discovery scans on {len(self.scan_universe)} tickers...")
 
-        # Score-All Mode: for small universes, skip scan gates and score everything directly.
-        # Strict scan filters (near 52wk high, RSI < 35, volume > 2x baseline) reject everything
-        # in new/small-universe portfolios — scoring all bypasses this cold-start problem.
-        SCORE_ALL_THRESHOLD = 500
-        if len(self.scan_universe) < SCORE_ALL_THRESHOLD:
-            print(f"  Score-all mode: {len(self.scan_universe)} tickers < {SCORE_ALL_THRESHOLD} threshold")
-            return self._score_all_universe()
+        # Score-All Mode: score every ticker directly, bypassing scan gates.
+        # Scan gates (near 52wk high, RSI<35, volume 2x) embed strategy opinions as
+        # engineering filters — score-all surfaces the full signal landscape instead.
+        print(f"  Score-all mode: {len(self.scan_universe)} tickers")
+        return self._score_all_universe()
 
         # Phase 1: Batch download price data
         t0 = time.time()
