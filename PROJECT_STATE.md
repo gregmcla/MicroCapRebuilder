@@ -7,14 +7,18 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Universe & Discovery Pipeline Rebuild complete (2026-04-01).**
+**Operational — cron automation running daily. 16 active portfolios. Universe & Discovery Pipeline Rebuild complete + bug fixes (2026-04-01).**
 
 ---
 
 ## Recently Completed (2026-04-01) — Universe & Discovery Pipeline Rebuild
 
+### Bug Fixes (post-rebuild, same session)
+- `scripts/strategy_generator.py` — Anthropic timeout raised 60s → 300s; `max_tokens` raised 4096 → 8192. 150 tickers with rationale exceeded both limits, causing timeouts and truncated JSON.
+- `scripts/stock_discovery.py` — `StockScorer()` takes no `portfolio_id` arg. `_score_all_universe()` was passing it, causing score-all to silently return 0 candidates for every new portfolio.
+
 ### Portfolio Genesis (AI-Curated Universe at Creation)
-- `scripts/strategy_generator.py` — `suggest_config_for_dna()` now returns `curated_tickers` (50-150 tickers with sector + rationale). `max_tokens` bumped to 4096.
+- `scripts/strategy_generator.py` — `suggest_config_for_dna()` now returns `curated_tickers` (50-150 tickers with sector + rationale). `max_tokens` 8192, timeout 300s.
 - `scripts/portfolio_registry.py` — `_save_curated_universe()` saves AI-curated tickers to `data/portfolios/{id}/curated_universe.json` at creation time when `ai_config.curated_tickers` is provided.
 - `scripts/universe_provider.py` — `_load_curated()` checks portfolio-level `curated_universe.json` first (replaces global curated file for AI-driven portfolios). Extracted `_ingest_curated_dict()` helper.
 - `api/routes/portfolios.py` — `ai_config: dict | None` passes `curated_tickers` through to `create_portfolio()` automatically.
