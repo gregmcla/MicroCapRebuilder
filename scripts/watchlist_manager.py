@@ -483,29 +483,7 @@ class WatchlistManager:
                     "source": stock.source,
                 }
 
-        # Step 5: Supplement with shared universe results from other portfolios
-        if run_discovery:
-            try:
-                from shared_universe import SharedUniverse
-                shared = SharedUniverse()
-                shared_results = shared.read_results(max_age_hours=24)
-                MIN_SHARED_SCORE = 35
-                new_shared = [
-                    r for r in shared_results
-                    if r.ticker not in candidate_tickers_with_meta
-                    and r.scanned_by != self.portfolio_id
-                    and r.composite_score >= MIN_SHARED_SCORE
-                ]
-                for r in new_shared:
-                    candidate_tickers_with_meta[r.ticker] = {
-                        "composite": r.composite_score,
-                        "delta": 0.0,
-                        "source": r.scan_type,
-                    }
-            except Exception as e:
-                print(f"  Shared universe read failed (non-fatal): {e}")
-
-        # Step 6: Build sector map from discovered stocks for sector data
+        # Step 5: Build sector map from discovered stocks for sector data
         sector_map: Dict[str, str] = {}
         market_cap_map: Dict[str, float] = {}
         avg_volume_map: Dict[str, int] = {}
@@ -514,7 +492,7 @@ class WatchlistManager:
             market_cap_map[stock.ticker] = stock.market_cap_m
             avg_volume_map[stock.ticker] = stock.avg_volume
 
-        # Step 7: Rebuild watchlist — CORE always + top-N candidates
+        # Step 6: Rebuild watchlist — CORE always + top-N candidates
         existing_entries = self._load_watchlist()
         existing_by_ticker = {e.ticker: e for e in existing_entries}
 
@@ -585,7 +563,7 @@ class WatchlistManager:
         stats["added"] = added_count
         self._save_watchlist(new_entries)
 
-        # Step 8: Self-healing sector backfill
+        # Step 7: Self-healing sector backfill
         try:
             entries = self._load_watchlist()
             filled = self._backfill_missing_sectors(entries, batch_limit=20)
@@ -595,13 +573,13 @@ class WatchlistManager:
         except Exception as e:
             print(f"Sector backfill error: {e}")
 
-        # Step 9: Balance sectors / enforce size limits (unchanged)
+        # Step 8: Balance sectors / enforce size limits (unchanged)
         if not self._is_bucketed_mode():
             stats["sector_balanced"] = self.balance_sectors()
         stats["removed"] += self.enforce_bucket_sizes()
         stats["total_active"] = len(self.get_active_tickers())
 
-        # Step 10: Enrich active entries with social sentiment (unchanged)
+        # Step 9: Enrich active entries with social sentiment (unchanged)
         if not os.environ.get("DISABLE_SOCIAL"):
             try:
                 from social_sentiment import SocialSentimentProvider

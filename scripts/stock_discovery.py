@@ -1061,7 +1061,7 @@ class StockDiscovery:
         self._prewarm_info_cache(shuffled)
 
         # Phase 4: Score all survivors with full 6-factor model
-        scorer = StockScorer()
+        scorer = StockScorer(config=self.config)
         candidates = []
         all_scores_for_store: list = []  # ALL scores, not just candidates
 
