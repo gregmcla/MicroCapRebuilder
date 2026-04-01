@@ -76,7 +76,7 @@ def start_scan(portfolio_id: str):
 
 @router.get("/watchlist")
 def get_watchlist(portfolio_id: str):
-    """Return active watchlist candidates, sorted by discovery_score desc."""
+    """Return active watchlist candidates, sorted by blended rank (score + 0.3*delta) desc."""
     data_dir = Path(__file__).parent.parent.parent / "data" / "portfolios" / portfolio_id
     wl_path = data_dir / "watchlist.jsonl"
     if not wl_path.exists():
@@ -91,9 +91,13 @@ def get_watchlist(portfolio_id: str):
             try:
                 entry = json.loads(line)
                 if entry.get("status", "ACTIVE") == "ACTIVE":
+                    score = entry.get("discovery_score", 0) or 0
+                    delta = entry.get("score_delta", 0.0) or 0.0
                     candidates.append({
                         "ticker": entry.get("ticker", ""),
-                        "score": entry.get("discovery_score", 0),
+                        "score": score,
+                        "score_delta": delta,
+                        "blended": round(score + 0.3 * delta, 2),
                         "sector": entry.get("sector", ""),
                         "source": entry.get("source", ""),
                         "notes": entry.get("notes", ""),
@@ -102,7 +106,8 @@ def get_watchlist(portfolio_id: str):
             except Exception:
                 continue
 
-    candidates.sort(key=lambda x: x["score"], reverse=True)
+    # Sort by blended rank (score + 0.3 * delta), descending
+    candidates.sort(key=lambda x: x["blended"], reverse=True)
     return {"candidates": candidates, "total": len(candidates)}
 
 
