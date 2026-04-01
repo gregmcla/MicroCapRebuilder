@@ -1012,6 +1012,102 @@ class StockDiscovery:
         # Persist newly fetched info to disk so next scan reuses it
         self._save_disk_info_cache()
 
+    def _score_all_universe(self) -> List["DiscoveredStock"]:
+        """Score every ticker in the universe directly, bypassing scan gates.
+
+        Used when universe < 500 tickers. Runs the full 6-factor scorer on each
+        ticker and returns those above min_discovery_score as candidates.
+        """
+        from stock_scorer import StockScorer
+
+        scan_start = time.time()
+
+        # Phase 1: Batch download price data
+        t0 = time.time()
+        self._prewarm_cache(self.scan_universe)
+        print(f"  Price pre-warm done in {time.time() - t0:.1f}s")
+
+        # Phase 1b: Public.com live prices
+        try:
+            from public_quotes import fetch_live_quotes, is_configured as public_configured
+            if public_configured():
+                t0 = time.time()
+                live_prices, failures = fetch_live_quotes(self.scan_universe)
+                self._live_prices = live_prices
+                print(f"  Public.com live prices: {len(live_prices)} tickers in {time.time() - t0:.1f}s")
+        except Exception as e:
+            print(f"  Public.com price refresh skipped: {e}")
+
+        # Phase 2: Price/volume pre-filter
+        def _get_cached_df(ticker: str):
+            df = self._price_cache.get(f"{ticker}_3mo")
+            if df is None:
+                df = self._price_cache.get(f"{ticker}_1y")
+            return df
+
+        survivors = [
+            t for t in self.scan_universe
+            if self._passes_price_volume_filter(t, _get_cached_df(t))
+        ]
+        print(f"  Price/volume pre-filter: {len(self.scan_universe)} → {len(survivors)} survivors")
+
+        if not survivors:
+            return []
+
+        # Phase 3: Pre-warm .info for survivors
+        import random as _random
+        shuffled = list(survivors)
+        _random.shuffle(shuffled)
+        self._prewarm_info_cache(shuffled)
+
+        # Phase 4: Score all survivors with full 6-factor model
+        scorer = StockScorer(portfolio_id=self.portfolio_id)
+        candidates = []
+
+        for ticker in survivors:
+            try:
+                info = self._info_cache.get(ticker)
+                score = scorer.score_stock(ticker, info=info)
+                if score and score.composite_score >= self.discovery_config.get("min_discovery_score", 30):
+                    sector = ""
+                    if isinstance(info, dict):
+                        sector = info.get("sector", "")
+                    df = _get_cached_df(ticker)
+                    if self._live_prices.get(ticker):
+                        current_price = float(self._live_prices[ticker])
+                    elif df is not None and len(df) > 0:
+                        current_price = float(df["Close"].iloc[-1])
+                    else:
+                        current_price = 0.0
+                    avg_volume = 0
+                    if df is not None and "Volume" in df.columns:
+                        _vol_mean = df["Volume"].iloc[-20:].mean()
+                        avg_volume = int(_vol_mean) if pd.notna(_vol_mean) else 0
+                    candidates.append(DiscoveredStock(
+                        ticker=ticker,
+                        source="SCORE_ALL",
+                        discovery_score=score.composite_score,
+                        sector=sector,
+                        market_cap_m=0.0,
+                        avg_volume=avg_volume,
+                        current_price=current_price,
+                        momentum_20d=0.0,
+                        rsi_14=0.0,
+                        volume_ratio=0.0,
+                        near_52wk_high_pct=0.0,
+                        discovered_date=date.today().isoformat(),
+                        notes=f"score_all | momentum={score.price_momentum_score} "
+                              f"value={score.value_timing_score} quality={score.quality_score}",
+                    ))
+            except Exception as e:
+                pass  # Skip individual ticker errors silently
+
+        candidates.sort(key=lambda x: x.discovery_score, reverse=True)
+        total_elapsed = time.time() - scan_start
+        print(f"\nScore-all complete: {len(candidates)} candidates from {len(survivors)} scored "
+              f"(in {total_elapsed:.1f}s)")
+        return candidates
+
     def run_all_scans(self) -> List[DiscoveredStock]:
         """
         Run all enabled discovery scans.
@@ -1044,6 +1140,14 @@ class StockDiscovery:
             self.scan_universe = self.scan_universe[:MAX_UNIVERSE]
 
         print(f"Running discovery scans on {len(self.scan_universe)} tickers...")
+
+        # Score-All Mode: for small universes, skip scan gates and score everything directly.
+        # Strict scan filters (near 52wk high, RSI < 35, volume > 2x baseline) reject everything
+        # in new/small-universe portfolios — scoring all bypasses this cold-start problem.
+        SCORE_ALL_THRESHOLD = 500
+        if len(self.scan_universe) < SCORE_ALL_THRESHOLD:
+            print(f"  Score-all mode: {len(self.scan_universe)} tickers < {SCORE_ALL_THRESHOLD} threshold")
+            return self._score_all_universe()
 
         # Phase 1: Batch download price data
         t0 = time.time()
