@@ -1061,7 +1061,7 @@ class StockDiscovery:
         self._prewarm_info_cache(shuffled)
 
         # Phase 4: Score all survivors with full 6-factor model
-        scorer = StockScorer(portfolio_id=self.portfolio_id)
+        scorer = StockScorer()
         candidates = []
 
         for ticker in survivors:

@@ -114,10 +114,10 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
     if not api_key:
         raise ValueError("Anthropic API key not configured")
 
-    client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+    client = anthropic.Anthropic(api_key=api_key, timeout=300.0)
     response = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=4096,
+        max_tokens=8192,
         system=SUGGEST_CONFIG_PROMPT.format(starting_capital=starting_capital),
         messages=[{"role": "user", "content": f"Strategy DNA:\n{strategy_dna}"}],
     )
