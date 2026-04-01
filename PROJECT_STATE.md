@@ -11,6 +11,18 @@
 
 ---
 
+## Recently Completed (2026-04-01) — Score-First Watchlist Architecture (Tasks 6 & 7)
+
+### Task 6: GET /watchlist — blended rank support
+- `api/routes/discovery.py` — `get_watchlist()` now reads `score_delta` from watchlist entries, computes `blended = score + 0.3 * delta`, exposes both fields in response, sorts by `blended` descending instead of raw score.
+
+### Task 7: Migration script — one-time run complete
+- `scripts/migrate_watchlists.py` (new) — extracts CORE tickers to `core_watchlist.jsonl`, clears `watchlist.jsonl` for all portfolios so next scan rebuilds fresh.
+- Run completed: microcap 41 CORE tickers preserved in `core_watchlist.jsonl`; 2,003 total watchlist entries cleared across 24 portfolios.
+- All watchlists will be rebuilt from scratch on next scan via score-first flow.
+
+---
+
 ## Recently Completed (2026-04-01) — Universe & Discovery Pipeline Rebuild
 
 ### Bug Fixes (post-rebuild, same session)
