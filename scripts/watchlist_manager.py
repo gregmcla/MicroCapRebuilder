@@ -447,6 +447,49 @@ class WatchlistManager:
             except Exception as e:
                 print(f"Discovery error: {e}")
 
+        # Supplement with shared universe results from other portfolios' scans
+        if run_discovery:
+            try:
+                from shared_universe import SharedUniverse
+                shared = SharedUniverse()
+                shared_results = shared.read_results(max_age_hours=24)
+                existing_tickers = set(self.get_active_tickers())
+                # Only add tickers discovered by OTHER portfolios that aren't already in our watchlist
+                new_shared = [
+                    r for r in shared_results
+                    if r.ticker not in existing_tickers
+                    and r.scanned_by != self.portfolio_id
+                ]
+                if new_shared:
+                    from stock_discovery import DiscoveredStock
+                    from datetime import date as _date
+                    shared_candidates = []
+                    for r in new_shared:
+                        try:
+                            shared_candidates.append(DiscoveredStock(
+                                ticker=r.ticker,
+                                source=r.scan_type,
+                                discovery_score=r.composite_score,
+                                sector=r.sector,
+                                market_cap_m=0.0,
+                                avg_volume=0,
+                                current_price=0.0,
+                                momentum_20d=0.0,
+                                rsi_14=0.0,
+                                volume_ratio=0.0,
+                                near_52wk_high_pct=0.0,
+                                discovered_date=_date.today().isoformat(),
+                                notes=f"shared_universe | scanned_by={r.scanned_by}",
+                            ))
+                        except Exception as e:
+                            print(f"  Shared candidate skip {r.ticker}: {e}")
+                    if shared_candidates:
+                        shared_added = self.add_discovered_stocks(shared_candidates)
+                        if shared_added > 0:
+                            print(f"  Added {shared_added} candidates from shared universe")
+            except Exception as e:
+                print(f"  Shared universe read failed (non-fatal): {e}")
+
         # Self-healing sector backfill: fix entries with missing/Unknown sector
         # (up to 20 per cycle to avoid slowing down scans)
         try:

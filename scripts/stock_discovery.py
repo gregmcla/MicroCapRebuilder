@@ -1109,6 +1109,30 @@ class StockDiscovery:
         total_elapsed = time.time() - scan_start
         print(f"\nScore-all complete: {len(candidates)} candidates from {len(survivors)} scored "
               f"(in {total_elapsed:.1f}s)")
+
+        # Write to shared cache
+        try:
+            from shared_universe import SharedUniverse, SharedScanResult
+            from datetime import datetime as _dt
+            shared = SharedUniverse()
+            shared.write_results(
+                self.portfolio_id or "unknown",
+                [
+                    SharedScanResult(
+                        ticker=c.ticker,
+                        composite_score=c.discovery_score,
+                        scan_type="score_all",
+                        sector=c.sector if hasattr(c, "sector") else "",
+                        scanned_by=self.portfolio_id or "unknown",
+                        scanned_at=_dt.now().isoformat(),
+                        factor_scores={},
+                    )
+                    for c in candidates
+                ],
+            )
+        except Exception as e:
+            print(f"  Shared cache write failed (non-fatal): {e}")
+
         return candidates
 
     def run_all_scans(self) -> List[DiscoveredStock]:
@@ -1249,6 +1273,29 @@ class StockDiscovery:
         # or as pre-sort before bucket selection in bucketed mode)
         result = list(ticker_map.values())
         result.sort(key=lambda x: x.discovery_score, reverse=True)
+
+        # Write results to shared scan cache for cross-portfolio visibility
+        try:
+            from shared_universe import SharedUniverse, SharedScanResult
+            from datetime import datetime as _dt
+            shared = SharedUniverse()
+            shared.write_results(
+                self.portfolio_id or "unknown",
+                [
+                    SharedScanResult(
+                        ticker=c.ticker,
+                        composite_score=c.discovery_score,
+                        scan_type=c.source if hasattr(c, "source") else "unknown",
+                        sector=c.sector if hasattr(c, "sector") else "",
+                        scanned_by=self.portfolio_id or "unknown",
+                        scanned_at=_dt.now().isoformat(),
+                        factor_scores={},
+                    )
+                    for c in result
+                ],
+            )
+        except Exception as e:
+            print(f"  Shared cache write failed (non-fatal): {e}")
 
         # Bucketed mode: select top-N per sector bucket when sector_weights configured
         watchlist_cfg = self.discovery_config.get("watchlist", {})
