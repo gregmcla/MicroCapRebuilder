@@ -7,7 +7,21 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Score-First Watchlist Architecture complete (2026-04-01). Watchlists now rebuilt daily from delta-ranked ScoreStore.**
+**Operational — cron automation running daily. 16 active portfolios. Score-First Watchlist Architecture complete + portfolio isolation fixes (2026-04-01).**
+
+---
+
+## Recently Completed (2026-04-01) — Portfolio Isolation Fixes
+
+### Cross-portfolio watchlist contamination removed
+- `scripts/watchlist_manager.py` — removed "Step 5: Supplement with shared universe" block from `update_watchlist()`. Each portfolio's watchlist is now built exclusively from its own universe. `/api/convergent-signals` remains for cross-portfolio visibility.
+
+### Portfolio-specific scoring weights active during discovery
+- `scripts/stock_discovery.py` — `StockScorer(config=self.config)` now passed in `_score_all_universe()`. Each portfolio's learned factor weights (from `factor_learning.py`) now apply during discovery scoring, not just at buy-proposal time.
+
+### Tests added (25 total)
+- `test_update_watchlist_does_not_inject_cross_portfolio_candidates` — regression guard for isolation
+- `test_score_all_uses_portfolio_config_weights` — regression guard for per-portfolio scoring
 
 ---
 
