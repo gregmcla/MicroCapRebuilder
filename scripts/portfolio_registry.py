@@ -353,6 +353,29 @@ def get_portfolio_dir(portfolio_id: str) -> Path:
     return PORTFOLIOS_DIR / portfolio_id
 
 
+def _save_curated_universe(portfolio_dir: Path, curated_tickers: list):
+    """Save AI-curated tickers as the portfolio's curated universe file.
+
+    Groups tickers by sector into tier_1_core format matching
+    the structure of data/curated_universe.json.
+    """
+    if not curated_tickers:
+        return
+
+    sectors = {}
+    for entry in curated_tickers:
+        sector = entry.get("sector", "Unknown") or "Unknown"
+        if sector not in sectors:
+            sectors[sector] = {"tier_1_core": [], "tier_2_extended": []}
+        ticker = entry.get("ticker", "").upper().strip()
+        if ticker:
+            sectors[sector]["tier_1_core"].append(ticker)
+
+    curated_path = portfolio_dir / "curated_universe.json"
+    with open(curated_path, "w") as f:
+        json.dump(sectors, f, indent=2)
+
+
 def create_portfolio(
     portfolio_id: str,
     name: str,
@@ -566,6 +589,10 @@ def create_portfolio(
     config_path = portfolio_dir / "config.json"
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
+
+    # Save AI-curated universe if provided
+    if ai_config and ai_config.get("curated_tickers"):
+        _save_curated_universe(portfolio_dir, ai_config["curated_tickers"])
 
     # Register
     meta = PortfolioMeta(

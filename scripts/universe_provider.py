@@ -134,9 +134,28 @@ class UniverseProvider:
     def _load_curated(self):
         """Load tickers from curated universe file.
 
-        The curated universe file is microcap-specific. Skip it for
-        non-microcap portfolios to avoid polluting their universe.
+        Priority:
+        1. Portfolio-level curated file (data/portfolios/{id}/curated_universe.json)
+           — created by AI at portfolio genesis
+        2. Global curated file (data/curated_universe.json)
+           — only for microcap/smallcap portfolios
         """
+        # Check for portfolio-level curated universe first
+        if self.portfolio_id:
+            portfolio_curated = (
+                Path(__file__).parent.parent / "data" / "portfolios"
+                / self.portfolio_id / "curated_universe.json"
+            )
+            if portfolio_curated.exists():
+                try:
+                    with open(portfolio_curated) as f:
+                        curated = json.load(f)
+                    self._ingest_curated_dict(curated)
+                    return  # Portfolio-level curated replaces global
+                except Exception as e:
+                    print(f"Warning: failed to load portfolio curated universe: {e}")
+
+        # Fall back to global curated file (microcap/smallcap only)
         if self.portfolio_id:
             try:
                 from portfolio_registry import load_registry
@@ -148,19 +167,16 @@ class UniverseProvider:
                 print(f"Warning: failed to determine universe, loading curated as fallback: {e}")
 
         curated = load_curated_universe()
+        self._ingest_curated_dict(curated)
 
+    def _ingest_curated_dict(self, curated: dict):
+        """Ingest a curated universe dict (sector -> tickers) into the universe."""
         for sector, tickers in curated.items():
             if isinstance(tickers, dict):
-                # New format with tier_1_core and tier_2_extended
-                core_list = tickers.get("tier_1_core", [])
-                extended_list = tickers.get("tier_2_extended", [])
-
-                for ticker in core_list:
+                for ticker in tickers.get("tier_1_core", []):
                     self._add_ticker(ticker, UniverseTier.CORE, "CURATED_CORE", sector)
-
-                for ticker in extended_list:
+                for ticker in tickers.get("tier_2_extended", []):
                     self._add_ticker(ticker, UniverseTier.EXTENDED, "CURATED_EXTENDED", sector)
-
             elif isinstance(tickers, list):
                 # Old format - all core
                 for ticker in tickers:
