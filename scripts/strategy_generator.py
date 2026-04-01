@@ -29,7 +29,7 @@ except ImportError:
 # Import valid universes from registry to stay in sync
 from portfolio_registry import UNIVERSE_PRESETS
 
-SUGGEST_CONFIG_PROMPT = """You are GScott's portfolio architect. Given a strategy DNA (investment thesis), suggest the optimal portfolio configuration.
+SUGGEST_CONFIG_PROMPT = """You are GScott's portfolio architect. Given a strategy DNA (investment thesis), suggest the optimal portfolio configuration AND a curated starter universe of individual stocks.
 
 Return a JSON object with exactly these fields:
 {{
@@ -45,7 +45,11 @@ Return a JSON object with exactly these fields:
     "stop_loss_cooldown_days": <integer 1-14>,
     "lookback_days": <integer 5-90>,
     "meaningful_change_threshold_pts": <integer 5-20>
-  }}
+  }},
+  "curated_tickers": [
+    {{"ticker": "AAPL", "sector": "Technology", "rationale": "1-sentence reason this fits the thesis"}},
+    ...
+  ]
 }}
 
 Guidelines:
@@ -61,6 +65,14 @@ Guidelines:
   - Standard momentum (7–14 day holds): cooldown 7, lookback 30, threshold 10
   - High conviction, long holds (1–3 positions, >30 day targets): cooldown 14, lookback 60, threshold 15
   - Narrow curated universe (<20 tickers): keep cooldown low (1–3) to avoid starving the universe
+- curated_tickers: Return 50-150 individual stock tickers that best fit this thesis.
+  - Pick real, currently-traded tickers on NYSE/NASDAQ.
+  - Match the market cap range of the chosen universe preset.
+  - Cover the thesis sectors — diversify within theme, don't cluster in one sub-industry.
+  - Include a mix of established leaders and emerging growth names.
+  - Each entry needs: ticker (string), sector (GICS sector name), and rationale (1-sentence).
+  - For microcap/smallcap: focus on $50M-$2B names. For largecap: $10B+. For allcap: full range.
+  - Quality filter: skip SPACs, blank check companies, pre-revenue biotechs (unless DNA specifically targets biotech).
 
 Starting capital: ${starting_capital:,.0f}
 
@@ -105,7 +117,7 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
     client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
     response = client.messages.create(
         model=CLAUDE_MODEL,
-        max_tokens=1024,
+        max_tokens=4096,
         system=SUGGEST_CONFIG_PROMPT.format(starting_capital=starting_capital),
         messages=[{"role": "user", "content": f"Strategy DNA:\n{strategy_dna}"}],
     )
@@ -136,6 +148,23 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         "meaningful_change_threshold_pts": float(rg.get("meaningful_change_threshold_pts", 10)),
     }
 
+    # Parse curated tickers (optional — graceful fallback to empty list)
+    raw_tickers = data.get("curated_tickers", [])
+    curated_tickers = []
+    for entry in raw_tickers:
+        if isinstance(entry, dict) and "ticker" in entry:
+            curated_tickers.append({
+                "ticker": str(entry["ticker"]).upper().strip(),
+                "sector": str(entry.get("sector", "")),
+                "rationale": str(entry.get("rationale", "")),
+            })
+        elif isinstance(entry, str):
+            curated_tickers.append({
+                "ticker": entry.upper().strip(),
+                "sector": "",
+                "rationale": "",
+            })
+
     return {
         "name": str(data["name"]),
         "universe": data["universe"],
@@ -146,4 +175,5 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         "max_position_pct": float(data["max_position_pct"]),
         "max_positions": int(data.get("max_positions", 10)),
         "reentry_guard": reentry_guard_config,
+        "curated_tickers": curated_tickers,
     }
