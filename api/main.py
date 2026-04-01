@@ -39,6 +39,7 @@ app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(controls.router)
 app.include_router(discovery.router)
+app.include_router(discovery.global_router)
 app.include_router(system_routes.router)
 app.include_router(intelligence_routes.router)
 

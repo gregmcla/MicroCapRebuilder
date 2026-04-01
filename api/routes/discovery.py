@@ -7,9 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/api/{portfolio_id}")
+
+# Top-level (non-portfolio-scoped) discovery routes
+global_router = APIRouter(prefix="/api")
 
 # In-memory job store: portfolio_id -> job dict
 _scan_jobs: Dict[str, Dict[str, Any]] = {}
@@ -113,3 +116,34 @@ def get_scan_status(portfolio_id: str):
         "result": job["result"],
         "error": job["error"],
     }
+
+
+@global_router.get("/convergent-signals")
+def get_convergent_signals(min_portfolios: int = 2):
+    """Get tickers discovered by multiple portfolios (cross-portfolio convergence signal)."""
+    try:
+        import sys
+        scripts_dir = Path(__file__).parent.parent.parent / "scripts"
+        if str(scripts_dir) not in sys.path:
+            sys.path.insert(0, str(scripts_dir))
+        from shared_universe import SharedUniverse
+
+        shared = SharedUniverse()
+        convergent = shared.get_convergent_tickers(min_portfolios=min_portfolios)
+
+        # Sort by portfolio_count (most convergent first), then by score
+        sorted_signals = sorted(
+            convergent.items(),
+            key=lambda x: (x[1]["portfolio_count"], x[1]["best_score"]),
+            reverse=True,
+        )
+
+        return {
+            "convergent_tickers": [
+                {"ticker": ticker, **data}
+                for ticker, data in sorted_signals
+            ],
+            "total": len(sorted_signals),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
