@@ -1067,12 +1067,15 @@ class StockDiscovery:
         for ticker in survivors:
             try:
                 info = self._info_cache.get(ticker)
+                df = _get_cached_df(ticker)
+                if not self._passes_filters(ticker, df, info if isinstance(info, dict) else {}):
+                    continue
                 score = scorer.score_stock(ticker, info=info)
                 if score and score.composite_score >= self.discovery_config.get("min_discovery_score", 30):
                     sector = ""
+                    market_cap_m = (info.get("marketCap", 0) or 0) / 1e6 if isinstance(info, dict) else 0.0
                     if isinstance(info, dict):
                         sector = info.get("sector", "")
-                    df = _get_cached_df(ticker)
                     if self._live_prices.get(ticker):
                         current_price = float(self._live_prices[ticker])
                     elif df is not None and len(df) > 0:
@@ -1088,7 +1091,7 @@ class StockDiscovery:
                         source="SCORE_ALL",
                         discovery_score=score.composite_score,
                         sector=sector,
-                        market_cap_m=0.0,
+                        market_cap_m=round(market_cap_m, 1),
                         avg_volume=avg_volume,
                         current_price=current_price,
                         momentum_20d=0.0,
@@ -1100,7 +1103,7 @@ class StockDiscovery:
                               f"value={score.value_timing_score} quality={score.quality_score}",
                     ))
             except Exception as e:
-                pass  # Skip individual ticker errors silently
+                print(f"  Score-all: skip {ticker} ({e})")
 
         candidates.sort(key=lambda x: x.discovery_score, reverse=True)
         total_elapsed = time.time() - scan_start
