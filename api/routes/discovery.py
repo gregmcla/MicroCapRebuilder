@@ -7,7 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from api.deps import serialize
+
+from shared_universe import SharedUniverse
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -119,15 +122,11 @@ def get_scan_status(portfolio_id: str):
 
 
 @global_router.get("/convergent-signals")
-def get_convergent_signals(min_portfolios: int = 2):
+def get_convergent_signals(
+    min_portfolios: int = Query(default=2, ge=1, description="Minimum number of portfolios that must have discovered the ticker"),
+):
     """Get tickers discovered by multiple portfolios (cross-portfolio convergence signal)."""
     try:
-        import sys
-        scripts_dir = Path(__file__).parent.parent.parent / "scripts"
-        if str(scripts_dir) not in sys.path:
-            sys.path.insert(0, str(scripts_dir))
-        from shared_universe import SharedUniverse
-
         shared = SharedUniverse()
         convergent = shared.get_convergent_tickers(min_portfolios=min_portfolios)
 
@@ -138,12 +137,12 @@ def get_convergent_signals(min_portfolios: int = 2):
             reverse=True,
         )
 
-        return {
+        return serialize({
             "convergent_tickers": [
                 {"ticker": ticker, **data}
                 for ticker, data in sorted_signals
             ],
             "total": len(sorted_signals),
-        }
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
