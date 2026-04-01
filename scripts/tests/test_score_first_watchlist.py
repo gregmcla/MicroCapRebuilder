@@ -83,3 +83,101 @@ def test_watchlist_api_includes_score_delta(tmp_path):
 
     assert candidates[0]["score_delta"] == 12.5
     assert candidates[1]["score_delta"] == -3.0
+
+
+def test_update_watchlist_does_not_inject_cross_portfolio_candidates(tmp_path):
+    """update_watchlist() must not add tickers from other portfolios' scans.
+
+    The shared universe supplement was removed. This test verifies that even when
+    a SharedUniverse mock is wired up in the lazy-import path, foreign tickers
+    never appear — and confirms the supplement code is gone.
+    """
+    import json
+    from unittest.mock import MagicMock, patch
+    from watchlist_manager import WatchlistManager
+
+    mgr = WatchlistManager.__new__(WatchlistManager)
+    mgr.portfolio_id = "test-port"
+    mgr.max_tickers = 10
+    mgr.config = {}
+    mgr.discovery_config = {}
+    mgr._watchlist_file = tmp_path / "watchlist.jsonl"
+    mgr._core_watchlist_file = tmp_path / "core.jsonl"
+
+    # ScoreStore is lazy-imported inside update_watchlist — patch at source module
+    mock_store = MagicMock()
+    mock_store.get_top_by_blended.return_value = []
+
+    with patch("score_store.ScoreStore", return_value=mock_store), \
+         patch("stock_discovery.discover_stocks", return_value=[]), \
+         patch.object(mgr, "remove_poor_performers", return_value=0), \
+         patch.object(mgr, "_load_core_watchlist", return_value=[]), \
+         patch.object(mgr, "_backfill_missing_sectors", return_value=0), \
+         patch.object(mgr, "_is_bucketed_mode", return_value=True), \
+         patch.object(mgr, "enforce_bucket_sizes", return_value=0), \
+         patch.object(mgr, "get_active_tickers", return_value=[]), \
+         patch("os.environ.get", return_value="true"):  # DISABLE_SOCIAL
+        mgr.update_watchlist(run_discovery=True)
+
+    active = []
+    if mgr._watchlist_file.exists():
+        for line in mgr._watchlist_file.read_text().splitlines():
+            if line.strip():
+                active.append(json.loads(line)["ticker"])
+
+    # FOREIGN never in the universe, so can't appear — the supplement is gone
+    assert "FOREIGN" not in active
+
+
+def test_score_all_uses_portfolio_config_weights():
+    """_score_all_universe() passes portfolio config to StockScorer, not defaults."""
+    from unittest.mock import patch, MagicMock, call
+    from stock_discovery import StockDiscovery
+    from stock_scorer import StockScorer
+
+    custom_config = {
+        "scoring": {
+            "default_weights": {
+                "price_momentum": 0.40,  # far from default 0.25
+                "earnings_growth": 0.10,
+                "quality": 0.10,
+                "volume": 0.10,
+                "volatility": 0.10,
+                "value_timing": 0.20,
+            }
+        }
+    }
+
+    with patch.object(StockDiscovery, "__init__", lambda self, **kw: None):
+        sd = StockDiscovery()
+        sd.scan_universe = ["AAPL"]
+        sd.discovery_config = {"min_discovery_score": 0}
+        sd._price_cache = {}
+        sd._info_cache = {}
+        sd._live_prices = {}
+        sd.portfolio_id = "test-port"
+        sd.config = custom_config  # portfolio-specific config with custom weights
+
+        captured_scorer = {}
+
+        original_init = StockScorer.__init__
+
+        def capturing_init(self, regime=None, lookback_days=20, config=None):
+            captured_scorer["config"] = config
+            original_init(self, regime=regime, lookback_days=lookback_days, config=config)
+
+        # ScoreStore and SharedUniverse are lazy-imported — patch at source modules
+        with patch.object(StockScorer, "__init__", capturing_init), \
+             patch.object(sd, "_prewarm_cache"), \
+             patch.object(sd, "_prewarm_info_cache"), \
+             patch.object(sd, "_passes_price_volume_filter", return_value=True), \
+             patch.object(sd, "_passes_filters", return_value=True), \
+             patch("score_store.ScoreStore"), \
+             patch("shared_universe.SharedUniverse"):
+            sd._score_all_universe()
+
+    assert "config" in captured_scorer, "_score_all_universe() must instantiate StockScorer"
+    passed_config = captured_scorer["config"]
+    assert passed_config is custom_config, "StockScorer must receive self.config, not None or defaults"
+    weights = passed_config["scoring"]["default_weights"]
+    assert weights["price_momentum"] == 0.40

@@ -413,8 +413,8 @@ class WatchlistManager:
         1. Remove poor performers (consistent losers from transaction history)
         2. Run discovery scans (score-all universe)
         3. Read ScoreStore for score deltas
-        4. Rebuild watchlist: CORE tickers always + top-N by blended rank (score + 0.3*delta)
-        5. Supplement with shared universe candidates from other portfolios
+        4. Build sector/market-cap/volume maps from discovered stocks
+        5. Rebuild watchlist: CORE tickers always + top-N by blended rank (score + 0.3*delta)
         6. Backfill missing sectors
         7. Balance sectors / enforce size limits
         8. Enrich with social sentiment
