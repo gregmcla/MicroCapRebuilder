@@ -455,10 +455,12 @@ class WatchlistManager:
                 shared_results = shared.read_results(max_age_hours=24)
                 existing_tickers = set(self.get_active_tickers())
                 # Only add tickers discovered by OTHER portfolios that aren't already in our watchlist
+                MIN_SHARED_SCORE = 35
                 new_shared = [
                     r for r in shared_results
                     if r.ticker not in existing_tickers
                     and r.scanned_by != self.portfolio_id
+                    and r.composite_score >= MIN_SHARED_SCORE
                 ]
                 if new_shared:
                     from stock_discovery import DiscoveredStock
@@ -485,6 +487,7 @@ class WatchlistManager:
                             print(f"  Shared candidate skip {r.ticker}: {e}")
                     if shared_candidates:
                         shared_added = self.add_discovered_stocks(shared_candidates)
+                        stats["added"] += shared_added
                         if shared_added > 0:
                             print(f"  Added {shared_added} candidates from shared universe")
             except Exception as e:
