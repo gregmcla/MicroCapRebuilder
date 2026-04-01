@@ -1,18 +1,49 @@
 /** Portfolio switcher dropdown — placed in TopBar. */
 
 import { useState, useRef, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePortfolioStore } from "../lib/store";
 import { usePortfolios } from "../hooks/usePortfolios";
+import { api } from "../lib/api";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 
 
 export default function PortfolioSwitcher() {
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   const activeId = usePortfolioStore((s) => s.activePortfolioId);
   const setPortfolio = usePortfolioStore((s) => s.setPortfolio);
   const { data } = usePortfolios();
+  const queryClient = useQueryClient();
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => api.renamePortfolio(id, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["portfolios"] });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      setRenamingId(null);
+    },
+  });
+
+  function startRename(e: React.MouseEvent, id: string, currentName: string) {
+    e.stopPropagation();
+    setRenamingId(id);
+    setRenameValue(currentName);
+    setTimeout(() => renameInputRef.current?.select(), 0);
+  }
+
+  function commitRename(id: string) {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== data?.portfolios.find(p => p.id === id)?.name) {
+      renameMutation.mutate({ id, name: trimmed });
+    } else {
+      setRenamingId(null);
+    }
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -67,19 +98,58 @@ export default function PortfolioSwitcher() {
 
           {/* Portfolio list */}
           {data?.portfolios.map((p) => (
-            <button
+            <div
               key={p.id}
-              onClick={() => { setPortfolio(p.id); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 hover:opacity-80"
-              style={{
-                color: activeId === p.id ? "var(--accent)" : "var(--text-3)",
-              }}
+              className="flex items-center px-3 py-2 text-xs transition-colors hover:opacity-90 group"
+              style={{ color: activeId === p.id ? "var(--accent)" : "var(--text-3)" }}
             >
-              <span className="font-semibold">{p.name}</span>
-              <span className="ml-auto" style={{ fontSize: "10px", color: "var(--text-1)" }}>
-                {p.universe}
+              {renamingId === p.id ? (
+                <input
+                  ref={renameInputRef}
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => commitRename(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(p.id);
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    flex: 1,
+                    background: "var(--void)",
+                    border: "1px solid var(--accent-border)",
+                    borderRadius: "4px",
+                    color: "var(--text-3)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    padding: "2px 6px",
+                    outline: "none",
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  className="flex-1 text-left font-semibold truncate"
+                  style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0 }}
+                  onClick={() => { setPortfolio(p.id); setOpen(false); setRenamingId(null); }}
+                >
+                  {p.name}
+                </button>
+              )}
+              <span style={{ fontSize: "10px", color: "var(--text-1)", marginLeft: "8px", flexShrink: 0 }}>
+                {renamingId !== p.id && p.universe}
               </span>
-            </button>
+              {renamingId !== p.id && (
+                <button
+                  onClick={(e) => startRename(e, p.id, p.name)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-1)", fontSize: "11px", padding: "0 2px", lineHeight: 1 }}
+                  title="Rename"
+                >
+                  ✎
+                </button>
+              )}
+            </div>
           ))}
 
           <div style={{ borderTop: "1px solid var(--border-1)" }} />

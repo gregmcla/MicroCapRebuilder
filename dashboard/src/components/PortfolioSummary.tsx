@@ -106,7 +106,7 @@ export default function PortfolioSummary() {
         background: "var(--surface-0)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "stretch", minHeight: "44px" }}>
+      <div style={{ display: "flex", alignItems: "stretch", minHeight: "44px", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
 
         {/* ── P&L metrics ─────────────────────────────────────────────── */}
         <div

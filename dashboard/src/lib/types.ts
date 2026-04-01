@@ -529,3 +529,53 @@ export interface NarrativeResponse {
   cached: boolean;
   error?: string;
 }
+
+// --- Intelligence Brief types ---
+
+export interface SectorBreakdownEntry {
+  count: number;
+  value: number;
+  pct: number;
+}
+
+export interface IntelligenceBriefData {
+  health: StrategyHealth;
+  metrics: RiskMetrics | null;
+  factor_summary: LearningData["factor_summary"];
+  weight_suggestions: WeightSuggestion[];
+  factor_deltas: Record<string, number>;
+  risk: RiskScoreboard;
+  warnings: Warning[];
+  sector_breakdown: Record<string, SectorBreakdownEntry>;
+  top3_concentration_pct: number;
+  positions_near_stop: string[];
+  avg_position_age_days: number;
+  avg_hold_days: number;
+  most_traded_tickers: Array<{ ticker: string; count: number }>;
+  config: Record<string, unknown>;
+  total_return_pct: number;
+  regime: string | null;
+  regime_analysis: RegimeAnalysis | null;
+  cash_pct: number;
+  deployed_pct: number;
+  num_positions: number;
+  snapshots: Array<{ date: string; total_equity: number; day_pnl_pct: number }>;
+  error?: string;
+}
+
+export interface AuditBriefResponse {
+  brief: string | null;
+  generated_at: string;
+  cached: boolean;
+  error?: string | null;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  error?: string | null;
+}

@@ -27,12 +27,18 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 import warnings
 
+import logging
 import numpy as np
 import pandas as pd
 import yfinance as yf
 from yf_session import cached_download
 
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+# yfinance logs 401/429 errors at ERROR level via its internal logger, but we
+# already surface failures via our own "Warning: info fetch failed" messages.
+# Suppress yfinance logger to avoid duplicate/bare error lines in API output.
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent

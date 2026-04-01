@@ -585,6 +585,16 @@ def create_portfolio(
     return meta
 
 
+def rename_portfolio(portfolio_id: str, new_name: str) -> None:
+    """Update the display name for a portfolio in the registry."""
+    registry = load_registry()
+    portfolios = registry.get("portfolios", {})
+    if portfolio_id not in portfolios:
+        raise ValueError(f"Portfolio '{portfolio_id}' not found in registry")
+    portfolios[portfolio_id]["name"] = new_name
+    save_registry(registry)
+
+
 def archive_portfolio(portfolio_id: str) -> None:
     """Archive a portfolio by setting active=False in the registry."""
     registry = load_registry()

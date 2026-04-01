@@ -189,6 +189,15 @@ html, body, #root {
   background: var(--accent);
 }
 
+/* ── Mobile responsive ── */
+@media (max-width: 640px) {
+  .hidden-mobile { display: none !important; }
+  .show-mobile { display: flex !important; }
+}
+@media (min-width: 641px) {
+  .show-mobile { display: none !important; }
+}
+
 /* ── Slide animations ── */
 .position-detail-slide {
   animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);

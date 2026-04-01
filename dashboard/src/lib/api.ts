@@ -21,6 +21,10 @@ import type {
   TradeRationale,
   SystemLogsResponse,
   NarrativeResponse,
+  IntelligenceBriefData,
+  AuditBriefResponse,
+  ChatMessage,
+  ChatResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -66,6 +70,8 @@ export const api = {
     post<{ portfolio: PortfolioMeta; message: string }>("/portfolios", req),
   deletePortfolio: (id: string) =>
     del<{ message: string }>(`/portfolios/${id}`),
+  renamePortfolio: (id: string, name: string) =>
+    put<{ success: boolean; name: string }>(`/portfolios/${id}/rename`, { name }),
   suggestConfig: (req: SuggestConfigRequest) =>
     post<SuggestConfigResponse>("/portfolios/suggest-config", req),
 
@@ -130,4 +136,14 @@ export const api = {
     const qs = params.toString();
     return get<NarrativeResponse>(`/system/narrative${qs ? `?${qs}` : ""}`);
   },
+
+  // Intelligence brief
+  getIntelligenceBrief: (pid: string): Promise<IntelligenceBriefData> =>
+    get<IntelligenceBriefData>(`/${pid}/intelligence-brief`),
+
+  getAuditBrief: (pid: string, regenerate = false): Promise<AuditBriefResponse> =>
+    get<AuditBriefResponse>(`/${pid}/intelligence-brief/audit${regenerate ? "?regenerate=true" : ""}`),
+
+  postIntelligenceChat: (pid: string, messages: ChatMessage[]): Promise<ChatResponse> =>
+    post<ChatResponse>(`/${pid}/intelligence-chat`, { messages }),
 };

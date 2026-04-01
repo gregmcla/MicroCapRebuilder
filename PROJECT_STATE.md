@@ -7,7 +7,50 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios as of 2026-03-29.**
+**Operational — cron automation running daily. 16 active portfolios. Intelligence Brief feature added (uncommitted session ~2026-03-30).**
+
+---
+
+## Recently Completed (~2026-03-30) — Intelligence Brief + Portfolio Rename + Bug Fixes
+
+### Intelligence Brief (major feature)
+- **`api/routes/intelligence.py`** (464 lines) — new route group registered under `/api/{portfolio_id}`. Endpoints: aggregate data (`/intelligence/data`), AI audit brief (`/intelligence/audit`, 10-min cache), portfolio chat (`/intelligence/chat`).
+- **`dashboard/src/components/IntelligenceBrief/`** — 8-component modal (2,510 lines total):
+  - `index.tsx` — main modal shell (854 lines)
+  - `AuditChat.tsx` — AI audit + live chat (453 lines)
+  - `FactorIntelligence.tsx` — factor weights, deltas, suggestions (387 lines)
+  - `RiskPulse.tsx` — risk scoreboard + warnings (314 lines)
+  - `TradeIntelligence.tsx` — trade stats, hold time, most-traded (215 lines)
+  - `CompositionPanel.tsx` — sector breakdown, concentration (137 lines)
+  - `DnaCard.tsx` — strategy DNA card (147 lines)
+  - `HeroRow.tsx` — summary hero row
+- TopBar button opens Intelligence Brief for any active portfolio.
+- `strategy_health.py` bug fix: `StrategyHealthCalculator` was always loading the default portfolio (missing `portfolio_id` in 3 internal calls). Now correctly scoped per portfolio.
+- `get_risk_scoreboard()` now takes `portfolio_id` param (used by intelligence route).
+
+### Portfolio Rename
+- `rename_portfolio(portfolio_id, new_name)` in `portfolio_registry.py`
+- `PUT /api/portfolios/{portfolio_id}/rename` endpoint
+- `CreatePortfolioModal.tsx` — name is now editable before confirming creation (previews slug ID live)
+
+### MatrixGrid — HISTORY Tab
+- New `history` tab in MatrixGrid secondary tabs (sky-blue color).
+- Accepts `snapshots` + `startingCapital` props, renders equity history.
+- Tab badge shows snapshot count.
+
+### ActionsTab — Dedup Fix
+- Actions deduplicated by `ticker:action_type` key — richest AI reasoning wins.
+- Tab badge count now reflects deduplicated count.
+
+### Universe Provider Fix
+- If no core tickers exist after classification, extended tickers are promoted to core (up to `core_max`).
+- Fixes ETF-only portfolios that were stuck on `rotating_3day` until 3 scans completed.
+
+### API / Backend
+- FD limit raised in `api/main.py` (`RLIMIT_NOFILE → min(4096, hard)`) — prevents "too many open files" during cold scans.
+- CORS changed to `allow_origins=["*"]`, `allow_credentials=False` (dev convenience).
+- `unified_analysis.py`: `pd.to_datetime(..., format="mixed")` — fixes parse warning on mixed-format date columns.
+- `stock_discovery.py`: yfinance logger suppressed to `CRITICAL` — removes duplicate 401/429 noise in API output.
 
 ---
 

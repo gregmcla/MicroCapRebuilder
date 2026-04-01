@@ -11,6 +11,7 @@ import PositionPulse from "./PositionPulse";
 import ActionsTab from "../ActionsTab";
 import { useAnalysisStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
+import type { Snapshot } from "../../lib/types";
 
 // ─── Squarified Treemap ───────────────────────────────────────────────────────
 function squarifyLayout(
@@ -108,8 +109,10 @@ export default function MatrixGrid({
   showSecondaryTabs = true,
   filterOverride,
   positionRationales = {},
+  snapshots = [],
+  startingCapital,
 }: MatrixGridProps) {
-  const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs">("grid");
+  const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
 
@@ -486,18 +489,20 @@ export default function MatrixGrid({
           padding: "0 20px",
           borderBottom: "1px solid rgba(74,222,128,0.06)",
           display: "flex", alignItems: "flex-end", gap: 0, flexShrink: 0,
-        }}>
+          overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none",
+        } as React.CSSProperties}>
           {(showSecondaryTabs
-            ? ["grid", "actions", "watchlist", "activity", "logs"] as const
+            ? ["grid", "actions", "watchlist", "activity", "logs", "history"] as const
             : ["grid"] as const
           ).map((tab) => {
             const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
               grid: `PORTFOLIO [${sorted.length}]`,
-              actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${[...analysisResult.approved, ...analysisResult.modified].length}]` : "ACTIONS",
+              actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${new Set([...analysisResult.approved, ...analysisResult.modified].map(a => `${a.original.ticker}:${a.original.action_type}`)).size}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
               activity: `ACTIVITY [${transactions.length}]`,
               logs: "LOGS",
+              history: `HISTORY [${snapshots.length}]`,
             };
             const active = viewTab === tab;
             // Color per tab: grid=green (matrix), actions=violet (AI), watchlist=amber, activity=violet, logs=muted
@@ -507,6 +512,7 @@ export default function MatrixGrid({
               watchlist: "#fbbf24",
               activity:  "#917aff",
               logs:      "#888",
+              history:   "#38bdf8",
             };
             const TAB_ACTIVE_BORDER: Record<string, string> = {
               grid:      "#4ade80",
@@ -514,6 +520,7 @@ export default function MatrixGrid({
               watchlist: "#fbbf2466",
               activity:  "#7c5cfc",
               logs:      "#555",
+              history:   "#38bdf8",
             };
             const activeColor  = TAB_ACTIVE_COLOR[tab]  ?? "#4ade80";
             const activeBorder = TAB_ACTIVE_BORDER[tab] ?? "#4ade80";
@@ -672,11 +679,11 @@ export default function MatrixGrid({
                   {/* Row 3 (large only): Value + shares */}
                   {large && (
                     <div style={{ display: "flex", gap: 12, marginTop: 3, alignItems: "baseline" }}>
-                      <span style={{ fontSize: 11, color: "#888" }}>
+                      <span style={{ fontSize: 11, color: "#aaa" }}>
                         ${pos.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </span>
                       {pos.shares != null && pos.avgCost != null && (
-                        <span style={{ fontSize: 9, color: "#444" }}>
+                        <span style={{ fontSize: 10, color: "#777" }}>
                           {pos.shares.toFixed(0)} sh @ ${pos.avgCost.toFixed(2)}
                         </span>
                       )}
@@ -699,14 +706,14 @@ export default function MatrixGrid({
                   {large && (held !== null || slDist !== null) && (
                     <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                       {held !== null && (
-                        <span style={{ fontSize: 8, color: held >= 35 ? "#fbbf24" : "#444", letterSpacing: "0.05em" }}>
+                        <span style={{ fontSize: 10, color: held >= 35 ? "#fbbf24" : "#777", letterSpacing: "0.05em" }}>
                           {held}d held
                         </span>
                       )}
                       {slDist !== null && (
                         <span style={{
-                          fontSize: 8, letterSpacing: "0.05em",
-                          color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#444",
+                          fontSize: 10, letterSpacing: "0.05em",
+                          color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#777",
                         }}>
                           SL -{slDist.toFixed(1)}%
                         </span>
@@ -770,6 +777,11 @@ export default function MatrixGrid({
         {/* LOGS PANEL */}
         {viewTab === "logs" && (
           <LogsPanel scanStatus={scanStatus} />
+        )}
+
+        {/* HISTORY PANEL */}
+        {viewTab === "history" && (
+          <HistoryPanel snapshots={snapshots} startingCapital={startingCapital} />
         )}
 
         {/* STATUS BAR */}
@@ -874,7 +886,7 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
       {/* Header row */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "80px 1fr 60px 80px 120px 80px",
+        gridTemplateColumns: "80px 1fr 60px 80px 120px 65px 80px",
         padding: "5px 20px",
         fontSize: 9, color: "#444", letterSpacing: "0.09em",
         borderBottom: "1px solid rgba(74,222,128,0.04)",
@@ -885,12 +897,13 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
         <span>SCORE</span>
         <span>SECTOR</span>
         <span>SOURCE</span>
+        <span>ADDED</span>
         <span>HEAT</span>
       </div>
       {sorted.map((c, i) => (
         <div key={`${c.ticker}-${i}`} style={{
           display: "grid",
-          gridTemplateColumns: "80px 1fr 60px 80px 120px 80px",
+          gridTemplateColumns: "80px 1fr 60px 80px 120px 65px 80px",
           padding: "5px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.02)",
           fontSize: 11, fontFamily: MATRIX_FONT,
@@ -901,6 +914,7 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
           <span style={{ color: c.score >= 70 ? "#4ade80" : c.score >= 50 ? "#facc15" : "#888", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
           <span style={{ color: "#666", fontSize: 10 }}>{c.sector || "—"}</span>
           <span style={{ color: "#555", fontSize: 10 }}>{c.source || "—"}</span>
+          <span style={{ color: "#555", fontSize: 10 }}>{c.added_date ? new Date(c.added_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>
           <span style={{
             fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
             color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "#555") : "#333",
@@ -1139,6 +1153,68 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
           NO SCAN DATA — TRIGGER SCAN FROM TOPBAR
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── History Panel ────────────────────────────────────────────────────────────
+
+function HistoryPanel({ snapshots, startingCapital }: { snapshots: Snapshot[]; startingCapital?: number }) {
+  const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
+  const current = sorted.at(-1);
+  const peak = sorted.reduce((best, s) => s.total_equity > best.total_equity ? s : best, sorted[0] ?? { total_equity: 0, date: "" });
+  const start = startingCapital ?? sorted[0]?.total_equity ?? 0;
+  const returnPct = start > 0 && current ? ((current.total_equity - start) / start) * 100 : 0;
+  const col = "#38bdf8";
+
+  const fmt$ = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+  const pc = (n: number) => n >= 0 ? "#4ade80" : "#f87171";
+
+  return (
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0, fontFamily: MATRIX_FONT, padding: "16px 20px" }}>
+
+      {/* Summary cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 20 }}>
+        {[
+          { label: "STARTING", value: fmt$(start), color: "#888" },
+          { label: "CURRENT", value: current ? fmt$(current.total_equity) : "—", color: "#ccc" },
+          { label: "RETURN", value: fmtPct(returnPct), color: pc(returnPct) },
+          { label: "PEAK", value: peak ? fmt$(peak.total_equity) : "—", color: col, sub: peak?.date },
+        ].map(({ label, value, color, sub }) => (
+          <div key={label} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(56,189,248,0.12)", padding: "10px 12px" }}>
+            <div style={{ fontSize: 8, color: "#555", letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
+            {sub && <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div style={{ border: "1px solid rgba(56,189,248,0.08)" }}>
+        {/* Header */}
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr 1fr",
+          padding: "5px 14px", fontSize: 8, color: "#444", letterSpacing: "0.1em",
+          borderBottom: "1px solid rgba(56,189,248,0.08)",
+          position: "sticky", top: 0, background: "#040608", zIndex: 2,
+        }}>
+          <span>DATE</span><span>EQUITY</span><span>DAY P&L</span><span>DAY %</span>
+        </div>
+        {[...sorted].reverse().map((s) => (
+          <div key={s.date} style={{
+            display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr 1fr",
+            padding: "6px 14px", fontSize: 11,
+            borderBottom: "1px solid rgba(255,255,255,0.02)",
+            alignItems: "center",
+          }}>
+            <span style={{ color: "#666", fontSize: 10 }}>{s.date}</span>
+            <span style={{ color: "#ccc", fontWeight: 600 }}>{fmt$(s.total_equity)}</span>
+            <span style={{ color: pc(s.day_pnl) }}>{s.day_pnl >= 0 ? "+" : ""}{fmt$(s.day_pnl)}</span>
+            <span style={{ color: pc(s.day_pnl_pct), fontWeight: 600 }}>{fmtPct(s.day_pnl_pct)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

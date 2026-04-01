@@ -85,11 +85,12 @@ class StrategyHealthCalculator:
     }
 
     def __init__(self, portfolio_id: str = None):
+        self.portfolio_id = portfolio_id
         # Load config on-demand from portfolio state
         state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
         self.config = state.config
         self.analytics = PortfolioAnalytics(portfolio_id=portfolio_id)
-        self.trade_analyzer = TradeAnalyzer()
+        self.trade_analyzer = TradeAnalyzer(portfolio_id=portfolio_id)
 
     def calculate(self) -> StrategyHealth:
         """Calculate full strategy health."""
@@ -97,7 +98,7 @@ class StrategyHealthCalculator:
         risk_metrics = self.analytics.calculate_all_metrics()
         trade_stats = self.trade_analyzer.calculate_trade_stats()
         regime_analysis = get_regime_analysis()
-        risk_scoreboard = get_risk_scoreboard()
+        risk_scoreboard = get_risk_scoreboard(portfolio_id=self.portfolio_id)
         positions_df = self._load_positions()
 
         # Calculate each component
@@ -160,7 +161,7 @@ class StrategyHealthCalculator:
 
     def _load_positions(self) -> pd.DataFrame:
         """Load current positions."""
-        state = load_portfolio_state(fetch_prices=False)
+        state = load_portfolio_state(fetch_prices=False, portfolio_id=self.portfolio_id)
         return state.positions
 
     def _calc_performance(self, metrics: Optional[RiskMetrics]) -> HealthComponent:

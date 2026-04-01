@@ -13,6 +13,7 @@ import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
 import PortfolioSettingsModal from "./PortfolioSettingsModal";
+import IntelligenceBrief from "./IntelligenceBrief";
 import GScottLogo from "./GScottLogo";
 import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
 
@@ -362,127 +363,166 @@ export default function TopBar({
   isLoading: boolean;
 }) {
   const [showSettings, setShowSettings] = useState(false);
+  const [showBrief, setShowBrief] = useState(false);
   const [logoAnimKey, setLogoAnimKey]   = useState(0);
   const isOverviewOrLogs = !state;
+  const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
+
+  const actionButtons = (
+    <>
+      {(state?.stale_alerts.length ?? 0) > 0 && (
+        <span style={{ fontSize: "9px", color: "var(--color-warning)", letterSpacing: "0.04em", fontWeight: 600 }}>
+          ⚠ {state!.stale_alerts.length}
+        </span>
+      )}
+      {(state?.price_failures.length ?? 0) > 0 && (
+        <span style={{ fontSize: "9px", color: "var(--color-loss)", letterSpacing: "0.04em" }}>
+          {state!.price_failures.length} failed
+        </span>
+      )}
+      {isLoading && (
+        <span className="animate-pulse-slow" style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>
+          syncing
+        </span>
+      )}
+      {!isOverviewOrLogs && (
+        <>
+          <UpdateButton />
+          <ScanButton />
+          <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
+          <AnalyzeExecute />
+          <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
+        </>
+      )}
+      <LogsButton />
+      {state && <EmergencyClose positions={state.positions} />}
+      {state && <ModeToggle paperMode={state.paper_mode} />}
+    </>
+  );
 
   return (
     <header
-      className="flex items-center shrink-0 overflow-visible"
+      className="shrink-0 topbar-root"
       style={{
-        height: "48px",
         background: "linear-gradient(180deg, #0d0d18 0%, #080810 100%)",
         borderBottom: "1px solid rgba(124,92,252,0.12)",
       }}
     >
-      {/* Logo — clickable to overview; triggers typewriter replay on each click */}
-      <button
-        onClick={() => {
-          usePortfolioStore.getState().setPortfolio("overview");
-          setLogoAnimKey(k => k + 1);
-        }}
-        className="flex items-center justify-center hover:opacity-70 transition-opacity shrink-0"
-        style={{ height: "48px", padding: "0 16px 0 14px", cursor: "pointer" }}
-      >
-        <GScottLogo height={34} animKey={logoAnimKey} />
-      </button>
+      {/* Row 1: Logo + switcher + (desktop: stats + indices + buttons) */}
+      <div className="flex items-center overflow-visible" style={{ height: "48px" }}>
+        <button
+          onClick={() => {
+            usePortfolioStore.getState().setPortfolio("overview");
+            setLogoAnimKey(k => k + 1);
+          }}
+          className="flex items-center justify-center hover:opacity-70 transition-opacity shrink-0"
+          style={{ height: "48px", padding: "0 16px 0 14px", cursor: "pointer" }}
+        >
+          <GScottLogo height={34} animKey={logoAnimKey} />
+        </button>
 
-      <VDivider />
+        <VDivider />
 
-      {/* Portfolio switcher */}
-      <div className="flex items-center gap-2 shrink-0 px-3">
-        <PortfolioSwitcher />
-        {state?.ai_driven && (
-          <button
-            onClick={() => setShowSettings(true)}
-            title="Strategy DNA"
-            style={{
-              background: "none",
-              border: "1px solid var(--border-1)",
-              borderRadius: "4px",
-              color: "var(--color-text-muted)",
-              cursor: "pointer",
-              width: "20px",
-              height: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "11px",
-              lineHeight: 1,
-              transition: "all 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.color = "var(--accent)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)";
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
-            }}
-          >
-            ⚙
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-2 shrink-0 px-3">
+          <PortfolioSwitcher />
+          {/* Intelligence Brief button — shown for any non-overview portfolio */}
+          {!isOverviewOrLogs && (
+            <button
+              onClick={() => setShowBrief(true)}
+              title="Portfolio Intelligence Brief"
+              style={{
+                background: "none",
+                border: "1px solid var(--border-1)",
+                borderRadius: "4px",
+                color: "var(--color-text-muted)",
+                cursor: "pointer",
+                width: "20px", height: "20px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "11px", lineHeight: 1, transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "var(--accent)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
+              }}
+            >
+              ◈
+            </button>
+          )}
+          {state?.ai_driven && (
+            <button
+              onClick={() => setShowSettings(true)}
+              title="Strategy DNA"
+              style={{
+                background: "none",
+                border: "1px solid var(--border-1)",
+                borderRadius: "4px",
+                color: "var(--color-text-muted)",
+                cursor: "pointer",
+                width: "20px", height: "20px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "11px", lineHeight: 1, transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "var(--accent)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
+              }}
+            >
+              ⚙
+            </button>
+          )}
+        </div>
 
-      {/* Portfolio equity + day P&L (only when viewing a portfolio) */}
-      {state && (
-        <>
-          <VDivider />
-          <PortfolioStats state={state} />
-          <div className="shrink-0 px-2">
-            <FreshnessIndicator />
+        {/* Desktop only: equity stats + market indices + buttons */}
+        {state && (
+          <div className="hidden-mobile flex items-center">
+            <VDivider />
+            <PortfolioStats state={state} />
+            <div className="shrink-0 px-2"><FreshnessIndicator /></div>
           </div>
-        </>
-      )}
+        )}
 
-      <VDivider />
+        <div className="hidden-mobile flex-1 flex justify-center items-center min-w-0 overflow-hidden">
+          <VDivider />
+          <MarketIndices />
+        </div>
 
-      {/* Center: market indices */}
-      <div className="flex-1 flex justify-center items-center min-w-0 overflow-hidden">
-        <MarketIndices />
+        <div className="hidden-mobile flex items-center gap-2 shrink-0 px-3">
+          <VDivider />
+          {actionButtons}
+        </div>
       </div>
 
-      <VDivider />
-
-      {/* Right: action buttons */}
-      <div className="flex items-center gap-2 shrink-0 px-3">
-        {/* Status indicators */}
-        {(state?.stale_alerts.length ?? 0) > 0 && (
-          <span
-            style={{ fontSize: "9px", color: "var(--color-warning)", letterSpacing: "0.04em", fontWeight: 600 }}
-          >
-            ⚠ {state!.stale_alerts.length}
-          </span>
-        )}
-        {(state?.price_failures.length ?? 0) > 0 && (
-          <span style={{ fontSize: "9px", color: "var(--color-loss)", letterSpacing: "0.04em" }}>
-            {state!.price_failures.length} failed
-          </span>
-        )}
-        {isLoading && (
-          <span className="animate-pulse-slow" style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>
-            syncing
-          </span>
-        )}
-
-        {/* Primary action buttons — only for portfolio view */}
-        {!isOverviewOrLogs && (
-          <>
-            <UpdateButton />
-            <ScanButton />
-            <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
-            <AnalyzeExecute />
-            <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
-          </>
-        )}
-
-        <LogsButton />
-        {state && <EmergencyClose positions={state.positions} />}
-        {state && <ModeToggle paperMode={state.paper_mode} />}
+      {/* Row 2: mobile-only action button strip */}
+      <div
+        className="show-mobile flex items-center gap-2 px-3"
+        style={{
+          height: "36px",
+          overflowX: "auto",
+          scrollbarWidth: "none",
+          borderTop: "1px solid rgba(124,92,252,0.08)",
+          whiteSpace: "nowrap",
+        } as React.CSSProperties}
+      >
+        {actionButtons}
       </div>
 
       {showSettings && state?.ai_driven && (
         <PortfolioSettingsModal onClose={() => setShowSettings(false)} />
+      )}
+      {showBrief && activePortfolioId && !isOverviewOrLogs && (
+        <IntelligenceBrief
+          portfolioId={activePortfolioId}
+          portfolioName={state?.config?.name as string ?? activePortfolioId}
+          onClose={() => setShowBrief(false)}
+        />
       )}
     </header>
   );

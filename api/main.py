@@ -1,5 +1,14 @@
 """FastAPI app — thin REST layer over existing Python trading modules."""
 
+import resource
+
+# Raise file descriptor limit — scans open many yfinance/cache files simultaneously
+try:
+    _soft, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (min(4096, _hard), _hard))
+except Exception:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,13 +17,14 @@ import api.deps  # noqa: F401
 
 from api.routes import state, risk, performance, analysis, market, controls, discovery, portfolios
 from api.routes import system as system_routes
+from api.routes import intelligence as intelligence_routes
 
 app = FastAPI(title="GScott Trading Cockpit", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -30,6 +40,7 @@ app.include_router(market.router)
 app.include_router(controls.router)
 app.include_router(discovery.router)
 app.include_router(system_routes.router)
+app.include_router(intelligence_routes.router)
 
 
 @app.get("/api/health")

@@ -242,6 +242,23 @@ class UniverseProvider:
             else:
                 self._extended_tickers.append(ticker)
 
+        # If no core tickers exist, promote extended tickers to core
+        # (up to core_max). This ensures ETF-only portfolios get their
+        # full universe scanned daily instead of rotating_3day.
+        if not self._core_tickers and self._extended_tickers:
+            promote = self._extended_tickers[:self.core_max]
+            self._core_tickers = promote
+            self._extended_tickers = self._extended_tickers[self.core_max:]
+            for ticker in promote:
+                if ticker in self._universe:
+                    self._universe[ticker] = UniverseTicker(
+                        ticker=ticker,
+                        tier=UniverseTier.CORE.value,
+                        source=self._universe[ticker].source,
+                        sector=self._universe[ticker].sector,
+                        added_date=self._universe[ticker].added_date,
+                    )
+
         # Enforce limits
         if len(self._core_tickers) > self.core_max:
             # Keep first N (curated tickers are added first)

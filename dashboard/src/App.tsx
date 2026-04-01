@@ -133,6 +133,8 @@ export default function App() {
                 watchlistCandidates={watchlistData?.candidates ?? []}
                 scanStatus={scanStatus}
                 positionRationales={state?.position_rationales ?? {}}
+                snapshots={state?.snapshots ?? []}
+                startingCapital={state?.starting_capital}
               />
             </div>
           </div>

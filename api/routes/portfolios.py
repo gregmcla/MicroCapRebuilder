@@ -11,7 +11,7 @@ from api.deps import serialize
 
 from portfolio_registry import (
     list_portfolios, create_portfolio,
-    archive_portfolio, get_default_portfolio_id, UNIVERSE_PRESETS,
+    archive_portfolio, rename_portfolio, get_default_portfolio_id, UNIVERSE_PRESETS,
 )
 from strategy_generator import suggest_config_for_dna
 from portfolio_state import load_portfolio_state
@@ -134,6 +134,22 @@ def update_portfolio_config(portfolio_id: str, req: UpdateConfigRequest, backgro
     path.write_text(json.dumps(updated, indent=2))
     background_tasks.add_task(_trigger_scan, portfolio_id)
     return {"success": True, "message": "Config updated. Rescanning watchlist in background."}
+
+
+class RenamePortfolioRequest(BaseModel):
+    name: str
+
+
+@router.put("/{portfolio_id}/rename")
+def rename_portfolio_endpoint(portfolio_id: str, req: RenamePortfolioRequest):
+    """Update the display name of a portfolio."""
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    try:
+        rename_portfolio(portfolio_id, req.name.strip())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"success": True, "name": req.name.strip()}
 
 
 @router.delete("/{portfolio_id}")

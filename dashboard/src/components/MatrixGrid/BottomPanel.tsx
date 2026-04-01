@@ -25,6 +25,12 @@ interface BottomPanelProps {
 export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandidates = [], rationale = null, buyTx = null, sellReasoning = null }: BottomPanelProps) {
   const [info,      setInfo]      = useState<TickerInfo | null>(null);
   const [chartPts,  setChartPts]  = useState<ChartDataPoint[]>([]);
+  const [isMobile,  setIsMobile]  = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -52,7 +58,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
       style={{
         position: "absolute",
         bottom: 0, left: 0, right: 0,
-        height: 280,
+        height: isMobile ? "70vh" : 280,
         background: "rgba(4,6,9,0.98)",
         borderTop: `1px solid ${col}44`,
         zIndex: 300,
@@ -85,16 +91,25 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
         ✕
       </button>
 
-      {/* 3-column body — right col gets more space for trade thesis text */}
+      {/* Body — 3-col on desktop, single scrollable column on mobile */}
       <div style={{
-        flex: 1, display: "grid", gridTemplateColumns: "0.85fr 1.4fr 1fr",
-        gap: 0, overflow: "hidden", position: "relative", zIndex: 2,
+        flex: 1,
+        minHeight: 0,
+        display: "grid",
+        gridTemplateColumns: isMobile ? "1fr" : "0.85fr 1.4fr 1fr",
+        gap: 0,
+        overflow: isMobile ? "auto" : "hidden",
+        position: "relative",
+        zIndex: 2,
       }}>
 
         {/* ── LEFT: identity + P&L ─────────────────────────────────────────── */}
         <div style={{
-          padding: "14px 18px", borderRight: `1px solid ${col}18`,
-          display: "flex", flexDirection: "column", gap: 6, overflow: "hidden",
+          padding: "14px 18px",
+          borderRight: isMobile ? "none" : `1px solid ${col}18`,
+          borderBottom: isMobile ? `1px solid ${col}18` : "none",
+          display: "flex", flexDirection: "column", gap: 6,
+          overflow: isMobile ? "visible" : "hidden",
         }}>
           {/* Ticker */}
           <div style={{ position: "relative", display: "inline-flex", alignItems: "center", padding: "0 6px" }}>
@@ -171,8 +186,11 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
 
         {/* ── MIDDLE: sparkline + position stats ───────────────────────────── */}
         <div style={{
-          padding: "14px 18px", borderRight: `1px solid ${col}18`,
-          display: "flex", flexDirection: "column", gap: 8, overflow: "hidden",
+          padding: "14px 18px",
+          borderRight: isMobile ? "none" : `1px solid ${col}18`,
+          borderBottom: isMobile ? `1px solid ${col}18` : "none",
+          display: "flex", flexDirection: "column", gap: 8,
+          overflow: isMobile ? "visible" : "hidden",
         }}>
           {/* Sparkline — interactive with real price data */}
           {(() => {
@@ -183,7 +201,9 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
               <div style={{
                 padding: "10px 12px",
                 background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
-                flex: 1, display: "flex", alignItems: "center", width: "100%",
+                flex: isMobile ? undefined : 1,
+                height: isMobile ? 120 : undefined,
+                display: "flex", alignItems: "center", width: "100%",
               }}>
                 <InteractiveSparkline data={prices} color={pos.portfolioColor} h={80} timestamps={timestamps} />
               </div>
@@ -241,7 +261,9 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
         {/* ── RIGHT: trade thesis + company info (both always shown) ─────────── */}
         <div style={{
           padding: "14px 16px",
-          display: "flex", flexDirection: "column", gap: 0, overflowY: "auto",
+          display: "flex", flexDirection: "column", gap: 0,
+          overflowY: isMobile ? "visible" : "auto",
+          borderTop: isMobile ? `1px solid ${col}18` : "none",
         }}>
 
           {/* Trade Thesis section — always present */}

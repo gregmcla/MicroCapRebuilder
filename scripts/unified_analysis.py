@@ -199,7 +199,7 @@ def _run_ai_driven_analysis(
         if not state.transactions.empty:
             buys = state.transactions[state.transactions["action"] == "BUY"]
             if not buys.empty:
-                last_buy_date = _pd.to_datetime(buys["date"]).max().date()
+                last_buy_date = _pd.to_datetime(buys["date"], format="mixed").max().date()
                 prompt_extras["days_since_last_buy"] = (date.today() - last_buy_date).days
     except Exception as e:
         print(f"  [AI-Driven] Cash idle time failed (non-fatal): {e}")

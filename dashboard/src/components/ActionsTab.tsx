@@ -470,7 +470,17 @@ export default function ActionsTab() {
   if (!result) return null;
 
   const { approved, modified, vetoed, summary } = result;
-  const actionable = [...approved, ...modified];
+  // Deduplicate by ticker+action_type — keep the entry with the richest reasoning
+  const allActionable = [...approved, ...modified];
+  const seen = new Map<string, ReviewedAction>();
+  for (const a of allActionable) {
+    const key = `${a.original.ticker}:${a.original.action_type}`;
+    const existing = seen.get(key);
+    if (!existing || (a.ai_reasoning?.length ?? 0) > (existing.ai_reasoning?.length ?? 0)) {
+      seen.set(key, a);
+    }
+  }
+  const actionable = [...seen.values()];
 
   // Analysis ran but found nothing
   if (summary.total_proposed === 0) {

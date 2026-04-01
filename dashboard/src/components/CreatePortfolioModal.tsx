@@ -25,12 +25,14 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
 
   // Step 2 state
   const [suggestion, setSuggestion] = useState<SuggestConfigResponse | null>(null);
+  const [editedName, setEditedName] = useState("");
 
   // Suggest config mutation
   const suggestMutation = useMutation({
     mutationFn: () => api.suggestConfig({ strategy_dna: dna, starting_capital: capital }),
     onSuccess: (data) => {
       setSuggestion(data);
+      setEditedName(data.name);
       setError(null);
       setStep(2);
     },
@@ -43,9 +45,10 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   const createMutation = useMutation({
     mutationFn: () => {
       if (!suggestion) throw new Error("No suggestion");
+      const finalName = editedName.trim() || suggestion.name;
       return api.createPortfolio({
-        id: slugify(suggestion.name),
-        name: suggestion.name,
+        id: slugify(finalName),
+        name: finalName,
         universe: suggestion.universe,
         starting_capital: capital,
         ai_driven: true,
@@ -216,11 +219,20 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
             >
               <div style={{ marginBottom: "12px" }}>
                 <p style={labelStyle}>Name</p>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-4)", margin: 0 }}>
-                  {suggestion.name}
-                </p>
-                <p style={{ fontSize: "10px", color: "var(--text-0)", marginTop: "2px", fontFamily: "var(--font-mono)" }}>
-                  {slugify(suggestion.name)}
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    fontFamily: "var(--font-sans)",
+                    padding: "7px 10px",
+                  }}
+                />
+                <p style={{ fontSize: "10px", color: "var(--text-0)", marginTop: "4px", fontFamily: "var(--font-mono)" }}>
+                  id: {slugify(editedName.trim() || suggestion.name)}
                 </p>
               </div>
 

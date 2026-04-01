@@ -47,9 +47,11 @@ export interface MatrixGridProps {
   transactions?: Transaction[];
   watchlistCandidates?: WatchlistCandidate[];
   scanStatus?: ScanJobStatus;
-  showSecondaryTabs?: boolean; // show WATCHLIST/ACTIVITY/LOGS tabs (default true, false for overview)
-  filterOverride?: string | null; // when defined, overrides internal filter state and hides filter chips
-  positionRationales?: Record<string, TradeRationale>; // trade rationale per ticker (from PortfolioState)
+  showSecondaryTabs?: boolean;
+  filterOverride?: string | null;
+  positionRationales?: Record<string, TradeRationale>;
+  snapshots?: import("../../lib/types").Snapshot[];
+  startingCapital?: number;
 }
 
 // Re-export for convenience in mapping functions
