@@ -62,6 +62,7 @@ class WatchlistEntry:
     added_date: str = ""
     source: str = "CORE"  # CORE, MOMENTUM_BREAKOUT, OVERSOLD_BOUNCE, etc.
     discovery_score: float = 0.0
+    score_delta: float = 0.0   # today_score - yesterday_score (0.0 on first day)
     sector: str = ""
     market_cap_m: float = 0.0
     avg_volume: int = 0
@@ -407,15 +408,16 @@ class WatchlistManager:
 
     def update_watchlist(self, run_discovery: bool = True) -> Dict:
         """
-        Full watchlist update cycle.
+        Full watchlist update cycle — score-first daily rebuild.
 
-        1. Remove poor performers (consistent losers)
-        2. Run discovery scans (optional)
-        3. Add discovered stocks
-        4. Mark stale tickers
-        5. Remove old stale tickers
-        6. Balance sectors
-        7. Enforce max size
+        1. Remove poor performers (consistent losers from transaction history)
+        2. Run discovery scans (score-all universe)
+        3. Read ScoreStore for score deltas
+        4. Rebuild watchlist: CORE tickers always + top-N by blended rank (score + 0.3*delta)
+        5. Supplement with shared universe candidates from other portfolios
+        6. Backfill missing sectors
+        7. Balance sectors / enforce size limits
+        8. Enrich with social sentiment
 
         Args:
             run_discovery: Whether to run discovery scans
@@ -434,67 +436,156 @@ class WatchlistManager:
             "total_active": 0,
         }
 
-        # Remove consistent losers and zero-score dead weight first
+        # Step 1: Remove consistent losers (reads transaction history, unchanged)
         stats["poor_performers_removed"] = self.remove_poor_performers()
-        stats["poor_performers_removed"] += self._remove_zero_score_tickers()
 
+        # Step 2: Run discovery (score-all universe → also writes ScoreStore)
+        discovered_stocks = []
         if run_discovery:
             try:
                 from stock_discovery import discover_stocks
-                discovered = discover_stocks(portfolio_id=self.portfolio_id)
-                stats["discovered"] = len(discovered)
-                stats["added"] = self.add_discovered_stocks(discovered)
+                discovered_stocks = discover_stocks(portfolio_id=self.portfolio_id)
+                stats["discovered"] = len(discovered_stocks)
             except Exception as e:
                 print(f"Discovery error: {e}")
 
-        # Supplement with shared universe results from other portfolios' scans
+        # Step 3: Load CORE tickers — always preserved regardless of score
+        core_tickers = self._load_core_watchlist()
+
+        # Step 4: Read ScoreStore for delta-ranked candidates
+        candidate_tickers_with_meta: Dict[str, Dict] = {}
+
+        if self.portfolio_id:
+            try:
+                from score_store import ScoreStore
+                store = ScoreStore(self.portfolio_id)
+                top_by_blended = store.get_top_by_blended(
+                    n=self.max_tickers * 2,  # Fetch 2x to leave room for filtering
+                    delta_weight=0.3,
+                )
+                for ticker, composite, delta in top_by_blended:
+                    candidate_tickers_with_meta[ticker] = {
+                        "composite": composite,
+                        "delta": delta,
+                        "source": "SCORE_ALL",
+                    }
+            except Exception as e:
+                print(f"  ScoreStore read failed (non-fatal): {e}")
+
+        # Fall back to discovered_stocks list if ScoreStore is empty
+        # (happens on first run before any scores are persisted)
+        if not candidate_tickers_with_meta and discovered_stocks:
+            print("  No ScoreStore data yet — using discovered_stocks directly")
+            for stock in discovered_stocks:
+                candidate_tickers_with_meta[stock.ticker] = {
+                    "composite": stock.discovery_score,
+                    "delta": 0.0,
+                    "source": stock.source,
+                }
+
+        # Step 5: Supplement with shared universe results from other portfolios
         if run_discovery:
             try:
                 from shared_universe import SharedUniverse
                 shared = SharedUniverse()
                 shared_results = shared.read_results(max_age_hours=24)
-                existing_tickers = set(self.get_active_tickers())
-                # Only add tickers discovered by OTHER portfolios that aren't already in our watchlist
                 MIN_SHARED_SCORE = 35
                 new_shared = [
                     r for r in shared_results
-                    if r.ticker not in existing_tickers
+                    if r.ticker not in candidate_tickers_with_meta
                     and r.scanned_by != self.portfolio_id
                     and r.composite_score >= MIN_SHARED_SCORE
                 ]
-                if new_shared:
-                    from stock_discovery import DiscoveredStock
-                    from datetime import date as _date
-                    shared_candidates = []
-                    for r in new_shared:
-                        try:
-                            shared_candidates.append(DiscoveredStock(
-                                ticker=r.ticker,
-                                source=r.scan_type,
-                                discovery_score=r.composite_score,
-                                sector=r.sector,
-                                market_cap_m=0.0,
-                                avg_volume=0,
-                                current_price=0.0,
-                                momentum_20d=0.0,
-                                rsi_14=0.0,
-                                volume_ratio=0.0,
-                                near_52wk_high_pct=0.0,
-                                discovered_date=_date.today().isoformat(),
-                                notes=f"shared_universe | scanned_by={r.scanned_by}",
-                            ))
-                        except Exception as e:
-                            print(f"  Shared candidate skip {r.ticker}: {e}")
-                    if shared_candidates:
-                        shared_added = self.add_discovered_stocks(shared_candidates)
-                        stats["added"] += shared_added
-                        if shared_added > 0:
-                            print(f"  Added {shared_added} candidates from shared universe")
+                for r in new_shared:
+                    candidate_tickers_with_meta[r.ticker] = {
+                        "composite": r.composite_score,
+                        "delta": 0.0,
+                        "source": r.scan_type,
+                    }
             except Exception as e:
                 print(f"  Shared universe read failed (non-fatal): {e}")
 
-        # Self-healing sector backfill: fix entries with missing/Unknown sector
-        # (up to 20 per cycle to avoid slowing down scans)
+        # Step 6: Build sector map from discovered stocks for sector data
+        sector_map: Dict[str, str] = {}
+        market_cap_map: Dict[str, float] = {}
+        avg_volume_map: Dict[str, int] = {}
+        for stock in discovered_stocks:
+            sector_map[stock.ticker] = stock.sector or "Unknown"
+            market_cap_map[stock.ticker] = stock.market_cap_m
+            avg_volume_map[stock.ticker] = stock.avg_volume
+
+        # Step 7: Rebuild watchlist — CORE always + top-N candidates
+        existing_entries = self._load_watchlist()
+        existing_by_ticker = {e.ticker: e for e in existing_entries}
+
+        new_entries: List[WatchlistEntry] = []
+
+        # Always include CORE tickers first
+        for ticker in core_tickers:
+            existing = existing_by_ticker.get(ticker)
+            if existing:
+                # Update score from ScoreStore if available
+                meta = candidate_tickers_with_meta.get(ticker, {})
+                if meta:
+                    existing.discovery_score = meta["composite"]
+                    existing.score_delta = meta["delta"]
+                    existing.last_checked = date.today().isoformat()
+                    existing.status = "ACTIVE"
+                new_entries.append(existing)
+            else:
+                # CORE ticker not yet in watchlist — add it
+                meta = candidate_tickers_with_meta.get(ticker, {})
+                new_entries.append(WatchlistEntry(
+                    ticker=ticker,
+                    source="CORE",
+                    discovery_score=meta.get("composite", 0.0),
+                    score_delta=meta.get("delta", 0.0),
+                    sector=sector_map.get(ticker, ""),
+                    market_cap_m=market_cap_map.get(ticker, 0.0),
+                    avg_volume=avg_volume_map.get(ticker, 0),
+                    last_checked=date.today().isoformat(),
+                    status="ACTIVE",
+                ))
+
+        core_ticker_set = {e.ticker for e in new_entries}
+
+        # Add top-N non-CORE candidates by blended rank
+        slots_remaining = self.max_tickers - len(new_entries)
+        added_count = 0
+        for ticker, meta in candidate_tickers_with_meta.items():
+            if slots_remaining <= 0:
+                break
+            if ticker in core_ticker_set:
+                continue
+            existing = existing_by_ticker.get(ticker)
+            if existing:
+                # Update existing entry with fresh scores
+                existing.discovery_score = meta["composite"]
+                existing.score_delta = meta["delta"]
+                existing.last_checked = date.today().isoformat()
+                existing.status = "ACTIVE"
+                if meta.get("source") and existing.source != "CORE":
+                    existing.source = meta["source"]
+                new_entries.append(existing)
+            else:
+                new_entries.append(WatchlistEntry(
+                    ticker=ticker,
+                    source=meta.get("source", "SCORE_ALL"),
+                    discovery_score=meta["composite"],
+                    score_delta=meta["delta"],
+                    sector=sector_map.get(ticker, "Unknown"),
+                    market_cap_m=market_cap_map.get(ticker, 0.0),
+                    avg_volume=avg_volume_map.get(ticker, 0),
+                    last_checked=date.today().isoformat(),
+                    status="ACTIVE",
+                ))
+                added_count += 1
+            slots_remaining -= 1
+
+        stats["added"] = added_count
+        self._save_watchlist(new_entries)
+
+        # Step 8: Self-healing sector backfill
         try:
             entries = self._load_watchlist()
             filled = self._backfill_missing_sectors(entries, batch_limit=20)
@@ -504,18 +595,13 @@ class WatchlistManager:
         except Exception as e:
             print(f"Sector backfill error: {e}")
 
-        stats["marked_stale"] = self.mark_stale_tickers()
-        stats["removed"] = self.remove_stale_tickers(older_than_days=30)
-
-        # Balance sectors — skip in bucketed mode (bucket sizes already enforce distribution)
+        # Step 9: Balance sectors / enforce size limits (unchanged)
         if not self._is_bucketed_mode():
             stats["sector_balanced"] = self.balance_sectors()
-
-        # Enforce size limits (per-bucket in bucketed mode, global in flat mode)
         stats["removed"] += self.enforce_bucket_sizes()
         stats["total_active"] = len(self.get_active_tickers())
 
-        # Enrich active entries with social sentiment (disabled when DISABLE_SOCIAL=true)
+        # Step 10: Enrich active entries with social sentiment (unchanged)
         if not os.environ.get("DISABLE_SOCIAL"):
             try:
                 from social_sentiment import SocialSentimentProvider
