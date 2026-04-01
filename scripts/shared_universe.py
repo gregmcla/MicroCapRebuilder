@@ -133,4 +133,8 @@ class SharedUniverse:
             return []
 
     def _save_portfolio_results(self, portfolio_id: str, results: List[SharedScanResult]):
-        self._cache_file(portfolio_id).write_text(json.dumps([asdict(r) for r in results], indent=2))
+        data = json.dumps([asdict(r) for r in results], indent=2)
+        target = self._cache_file(portfolio_id)
+        tmp = target.with_suffix(".tmp")
+        tmp.write_text(data)
+        tmp.rename(target)

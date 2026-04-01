@@ -4,6 +4,7 @@ __pycache__/
 env/
 data/*.csv
 data/*.json
+data/shared_scan_cache/
 !data/config.json
 !data/curated_universe.json
 !data/portfolios.json
