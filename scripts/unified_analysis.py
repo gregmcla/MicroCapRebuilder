@@ -228,6 +228,8 @@ def _run_ai_driven_analysis(
         regime_analysis=state.regime_analysis,
         prompt_extras=prompt_extras,
     )
+    import ai_allocator as _ai_alloc_mod
+    ai_mode = _ai_alloc_mod._last_ai_mode
 
     # Split by decision (all will be APPROVE in AI-driven mode)
     approved = [r for r in reviewed_actions if r.decision == ReviewDecision.APPROVE]
@@ -273,6 +275,7 @@ def _run_ai_driven_analysis(
         "regime": regime.value,
         "timestamp": datetime.now().isoformat(),
         "stale_positions": stale_positions,
+        "ai_mode": ai_mode,
     }
 
 
@@ -883,6 +886,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         # stale_positions: dict of ticker -> consecutive_days without a price update (>= 2)
         # Surfaced here so the API and dashboard can display a warning to the user.
         "stale_positions": stale_positions,
+        "ai_mode": "mechanical",
     }
 
     return result
@@ -1091,6 +1095,16 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         }
         validated.append((reviewed, tx))
 
+    # Filter out sells for tickers not actually held (prevents phantom cash)
+    held_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+    phantom_sells = [tx["ticker"] for r, tx in validated
+                     if r.original.action_type == "SELL" and tx["ticker"] not in held_tickers]
+    if phantom_sells:
+        print(f"  ⚠️  [Guard] Blocked phantom sells for unheld tickers: {phantom_sells}")
+    validated = [
+        (r, tx) for r, tx in validated
+        if r.original.action_type != "SELL" or tx["ticker"] in held_tickers
+    ]
     transactions = [tx for _, tx in validated]
 
     # Save sells first so cash is updated before buy validation runs
@@ -1115,9 +1129,14 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                                     tx["stop_loss"], tx["take_profit"],
                                     sector=ticker_sector)
         elif action.action_type == "SELL":
-            # Check for partial sell — only remove if selling the full position
             pos_row = state.positions[state.positions["ticker"] == action.ticker]
-            held_shares = int(pos_row["shares"].iloc[0]) if not pos_row.empty else shares
+            if pos_row.empty:
+                print(f"  ⚠️  Skipping sell {action.ticker}: not in positions")
+                continue
+            held_shares = int(pos_row["shares"].iloc[0])
+            if shares > held_shares:
+                print(f"  ⚠️  {action.ticker}: capping sell {shares} → {held_shares} (held)")
+                shares = held_shares
             if shares < held_shares:
                 # Partial sell: reduce shares, keep avg_cost_basis unchanged
                 df = state.positions.copy()
@@ -1158,7 +1177,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 if not buy_txns.empty:
                     buy_txn = buy_txns.iloc[-1].to_dict()
                     pm = analyzer.analyze_trade(sell_tx, buy_txn, analysis_result.get("regime", "UNKNOWN"))
-                    save_post_mortem(pm)
+                    save_post_mortem(pm, portfolio_id=portfolio_id)
                     print(f"    📝 {ticker}: {pm.summary}")
         except Exception as e:
             print(f"    [warn] Post-mortem generation failed: {e}")

@@ -5,8 +5,9 @@ AI Allocator — Claude as portfolio manager with full allocation authority.
 In AI-driven mode, Claude replaces Layers 2-4. It receives quant scores as
 advisory inputs and makes all position sizing and stock selection decisions.
 
-Layer 1 sells (stop/target triggers) always execute mechanically and are passed
-to Claude as context so it can factor freed cash into its allocation plan.
+Layer 1 detects risk conditions (stop hits, momentum fades, etc.) and flags them
+as advisory inputs. Claude makes all final sell decisions. Mechanical fallback
+only activates when the AI client is unavailable.
 """
 
 import json
@@ -21,6 +22,10 @@ from ai_review import ReviewedAction, ReviewDecision, get_ai_client
 from market_regime import MarketRegime, RegimeAnalysis
 from schema import CLAUDE_MODEL
 from reentry_guard import _format_reentry_block
+
+# Tracks which path was taken in the most recent run_ai_allocation() call.
+# Values: "claude" | "mechanical_fallback"
+_last_ai_mode: str = "claude"
 
 
 # ─── Main Entry Point ─────────────────────────────────────────────────────────
@@ -41,9 +46,8 @@ def run_ai_allocation(
     Run full AI allocation for an AI-driven portfolio.
 
     Returns list of ReviewedAction objects (all APPROVE):
-    - Layer 1 sells (mechanical, passed through)
     - AI-directed buys
-    - AI-initiated additional sells (optional, used sparingly)
+    - AI-decided sells (including any flagged positions Claude agrees with)
 
     Args:
         state: PortfolioState
@@ -57,33 +61,31 @@ def run_ai_allocation(
     """
     client = get_ai_client()
 
-    # Build set of held tickers for sell validation
+    # Build held position data for sell validation
     held_tickers: set = set()
+    held_shares_map: dict = {}
     if not state.positions.empty:
         held_tickers = set(state.positions["ticker"].tolist())
+        held_shares_map = dict(zip(state.positions["ticker"], state.positions["shares"].astype(int)))
 
-    # Layer 1 sells are mechanical — always APPROVE them.
-    # ai_reasoning is populated with the specific trigger text for now; after
-    # Claude runs it will be enriched with contextual reasoning from layer1_sell_reasoning.
+    # layer1_sells are FLAGS only — Claude makes all final decisions.
+    # If the AI client is unavailable, fall back to executing Layer 1 sells mechanically.
     reviewed: list[ReviewedAction] = []
-    layer1_reviewed_map: dict = {}  # ticker → ReviewedAction, for post-Claude enrichment
-    for sell_action in layer1_sells:
-        ra = ReviewedAction(
-            original=sell_action,
-            decision=ReviewDecision.APPROVE,
-            ai_reasoning=sell_action.reason,  # specific trigger text as initial fallback
-            confidence=1.0,
-        )
-        reviewed.append(ra)
-        layer1_reviewed_map[sell_action.ticker] = ra
 
     if client is None:
-        print("  [AI Allocator] No AI client available — returning Layer 1 sells only")
+        global _last_ai_mode
+        _last_ai_mode = "mechanical_fallback"
+        print("  [AI Allocator] No AI client available — falling back to Layer 1 mechanical sells")
+        for sell_action in layer1_sells:
+            reviewed.append(ReviewedAction(
+                original=sell_action,
+                decision=ReviewDecision.APPROVE,
+                ai_reasoning=sell_action.reason,
+                confidence=1.0,
+            ))
         return reviewed
 
-    # Calculate cash after Layer 1 sells (freed cash is available for new buys)
-    freed_cash = sum(s.shares * s.price for s in layer1_sells)
-    available_cash = state.cash + freed_cash
+    available_cash = state.cash
 
     full_watchlist = bool(state.config.get("full_watchlist_prompt", False))
 
@@ -102,8 +104,6 @@ def run_ai_allocation(
         prompt_extras=prompt_extras,
     )
 
-    # Per-portfolio model override: config key "ai_model" allows smaller portfolios
-    # to use cheaper models (e.g. claude-haiku-4-5-20251001) without changing defaults.
     model = state.config.get("ai_model", CLAUDE_MODEL)
 
     try:
@@ -119,31 +119,42 @@ def run_ai_allocation(
 
         allocation_data = _parse_json(response_text)
 
+        # Available cash for buy validation = current cash + proceeds from Claude's own sells
+        claude_sell_proceeds = sum(
+            float(s.get("price", 0)) * int(float(s.get("shares", 0)))
+            for s in allocation_data.get("sells", [])
+        )
+        effective_cash = available_cash + claude_sell_proceeds
+
         valid_buys, ai_sells = _validate_allocation(
-            allocation_data, available_cash, state.total_equity, scored_candidates,
+            allocation_data, effective_cash, state.total_equity, scored_candidates,
             held_tickers=held_tickers,
+            held_shares_map=held_shares_map,
         )
 
-        ai_actions = _convert_to_reviewed_actions(
-            valid_buys, ai_sells, regime
-        )
+        ai_actions = _convert_to_reviewed_actions(valid_buys, ai_sells, regime)
         reviewed.extend(ai_actions)
 
-        # Enrich Layer 1 sell reasoning with Claude's contextual explanations
-        l1_reasoning = allocation_data.get("layer1_sell_reasoning", {})
-        for ticker, reasoning in l1_reasoning.items():
-            ticker = ticker.strip().upper()
-            if ticker in layer1_reviewed_map and reasoning:
-                layer1_reviewed_map[ticker].ai_reasoning = str(reasoning)
+        global _last_ai_mode
+        _last_ai_mode = "claude"
 
         thesis = allocation_data.get("portfolio_thesis", "")
         if thesis:
             print(f"\n  AI Portfolio Thesis: {thesis[:250]}{'...' if len(thesis) > 250 else ''}")
-        print(f"  AI allocation: {len(valid_buys)} buy(s), {len(ai_sells)} AI-initiated sell(s)")
+        print(f"  AI allocation: {len(valid_buys)} buy(s), {len(ai_sells)} sell(s)")
 
     except Exception as e:
+        global _last_ai_mode
+        _last_ai_mode = "mechanical_fallback"
         print(f"  [AI Allocator] Error during AI allocation: {e}")
-        print("  [AI Allocator] Proceeding with Layer 1 sells only")
+        print("  [AI Allocator] Falling back to Layer 1 mechanical sells")
+        for sell_action in layer1_sells:
+            reviewed.append(ReviewedAction(
+                original=sell_action,
+                decision=ReviewDecision.APPROVE,
+                ai_reasoning=sell_action.reason,
+                confidence=1.0,
+            ))
 
     return reviewed
 
@@ -209,21 +220,20 @@ def _build_allocation_prompt(
             sector_lines.append(f"  {sec}: {val / state.total_equity * 100:.1f}%")
         sector_block = "CURRENT SECTOR ALLOCATION:\n" + "\n".join(sector_lines) + "\n"
 
-    # Layer 1 sells block
-    freed_cash = sum(s.shares * s.price for s in layer1_sells)
+    # At-risk positions flagged by risk analysis (Claude decides whether to sell)
     if layer1_sells:
         l1_lines = []
         for s in layer1_sells:
-            proceeds = s.shares * s.price
+            value = s.shares * s.price
             l1_lines.append(
-                f"  SELL {s.ticker}: {s.shares} shares @ ${s.price:.2f} = ${proceeds:,.0f} freed — {s.reason}"
+                f"  {s.ticker}: {s.shares} shares @ ${s.price:.2f} (${value:,.0f}) — TRIGGER: {s.reason}"
             )
         l1_block = (
-            "LAYER 1 MECHANICAL SELLS (executing regardless — factor freed cash into your budget):\n"
+            "POSITIONS FLAGGED BY RISK ANALYSIS (you decide whether to sell — include in sells[] if you agree):\n"
             + "\n".join(l1_lines) + "\n"
         )
     else:
-        l1_block = "LAYER 1 MECHANICAL SELLS: None\n"
+        l1_block = ""
 
     def _pct(v) -> str:
         return f"{v * 100:+.1f}%" if v is not None else "N/A"
@@ -415,8 +425,7 @@ YOUR MANDATE — STRATEGY DNA:
 
 PORTFOLIO STATE:
 - Total Equity: ${state.total_equity:,.0f}
-- Current Cash: ${state.cash:,.0f}{_cash_idle_note}
-- Cash After Layer 1 Sells: ${state.cash + freed_cash:,.0f} (available for new buys)
+- Available Cash: ${state.cash:,.0f}{_cash_idle_note}
 - Current Positions: {state.num_positions}
 
 {positions_block}
@@ -458,18 +467,15 @@ Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
       "ticker": "SYMBOL",
       "shares": 5,
       "price": 200.00,
-      "reasoning": "Why selling this improves portfolio alignment"
+      "reasoning": "Why selling — include flagged positions you agree with AND any others misaligned with strategy"
     }}
   ],
-  "layer1_sell_reasoning": {{
-    "SYMBOL": "1-2 sentence explanation of what the trigger means in portfolio context — e.g. why the stop was hit, what it signals about the position, how it affects the overall strategy"
-  }},
   "portfolio_thesis": "Your overall allocation rationale and market view",
   "cash_after_plan": 5000.00
 }}
 
-"allocation_plan" = new buys. "sells" = AI-initiated sells beyond Layer 1 mechanicals (use sparingly — only when genuinely misaligned with strategy). If no buys, return empty array. If no extra sells, return empty array.
-"layer1_sell_reasoning" = brief contextual explanation for each Layer 1 mechanical sell. Address the specific trigger (stop loss hit, score deterioration, stagnation, liquidity drop, etc.) and what it means for the position. One entry per Layer 1 sell ticker."""
+"allocation_plan" = new buys. "sells" = all sells you want to execute — flagged positions you agree should be sold plus any others. You have full authority. If no buys or sells, return empty arrays.
+Note: buy validation uses current cash + proceeds from your sells[], so you can plan sells and buys together."""
 
     return prompt
 
@@ -482,6 +488,7 @@ def _validate_allocation(
     total_equity: float,
     scored_candidates: list,
     held_tickers: set = None,
+    held_shares_map: dict = None,
 ) -> tuple[list, list]:
     """
     Enforce hard constraints on AI allocation output.
@@ -490,9 +497,12 @@ def _validate_allocation(
         (valid_buys, ai_sells) — filtered and capped lists
     """
     price_map = {c["ticker"]: c.get("current_price", 0) for c in scored_candidates}
+    factor_scores_map = {c["ticker"]: c.get("factor_scores", {}) for c in scored_candidates}
     max_position = total_equity * 0.25
     if held_tickers is None:
         held_tickers = set()
+    if held_shares_map is None:
+        held_shares_map = {}
 
     valid_buys = []
     running_cost = 0.0
@@ -578,9 +588,10 @@ def _validate_allocation(
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "reasoning": reasoning,
+            "factor_scores": factor_scores_map.get(ticker, {}),
         })
 
-    # AI-initiated sells (use from allocation data, basic validation only)
+    # AI sells — validate against held positions
     ai_sells = []
     for sell in allocation_data.get("sells", []):
         ticker = str(sell.get("ticker", "")).strip().upper()
@@ -592,6 +603,15 @@ def _validate_allocation(
         except (TypeError, ValueError):
             continue
         if shares < 1 or price <= 0:
+            continue
+        if ticker not in held_tickers:
+            print(f"  [Validate] Skipping sell {ticker}: not held")
+            continue
+        actual_shares = held_shares_map.get(ticker, 0)
+        if shares > actual_shares:
+            print(f"  [Validate] {ticker}: capping sell {shares} → {actual_shares} (held)")
+            shares = actual_shares
+        if shares < 1:
             continue
         ai_sells.append({
             "ticker": ticker,
@@ -622,7 +642,7 @@ def _convert_to_reviewed_actions(
             stop_loss=buy["stop_loss"],
             take_profit=buy["take_profit"],
             quant_score=0,  # AI-driven — no single quant score
-            factor_scores={},
+            factor_scores=buy.get("factor_scores", {}),
             regime=regime.value,
             reason="AI allocation",
         )
