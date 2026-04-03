@@ -20,3 +20,21 @@ def test_fallback_result_has_ai_mode_fallback():
     """When Claude API fails, ai_mode must be 'mechanical_fallback'."""
     result = {"ai_mode": "mechanical_fallback", "summary": {"approved": 0}}
     assert result["ai_mode"] == "mechanical_fallback"
+
+
+def test_execution_summary_structure():
+    """Execute return must include execution_summary with counts and drops."""
+    summary = {
+        "proposed": {"buys": 4, "sells": 5},
+        "executed": {"buys": 2, "sells": 5},
+        "dropped": [
+            {"ticker": "ACTG", "reason": "no live price"},
+            {"ticker": "MTZ", "reason": "insufficient cash"},
+        ],
+        "ai_mode": "claude",
+    }
+    assert summary["proposed"]["buys"] == 4
+    assert summary["executed"]["buys"] == 2
+    assert len(summary["dropped"]) == 2
+    assert summary["dropped"][0]["ticker"] == "ACTG"
+    assert summary["dropped"][0]["reason"] == "no live price"

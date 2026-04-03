@@ -944,6 +944,10 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     if not actions_to_execute:
         return {"executed": 0, "message": "No actions to execute"}
 
+    proposed_buys = len([r for r in actions_to_execute if r.original.action_type == "BUY"])
+    proposed_sells = len([r for r in actions_to_execute if r.original.action_type == "SELL"])
+    dropped_actions = []
+
     # Load fresh state for execution with live prices so stop/target checks use today's prices
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
     transactions = []
@@ -952,6 +956,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     # fill price, not the stale cache price from analyze time.
     # BUYs with no confirmed live price are dropped entirely — never fall back to stale data.
     confirmed_live: set[str] = set()
+    bad_data_tickers: set[str] = set()
     all_tickers = [r.original.ticker for r in actions_to_execute]
     if all_tickers:
         # Try Public.com API first — real-time bid/ask data, single batch call.
@@ -986,6 +991,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 ratio = fresh / prev
                 if ratio > 2.0 or ratio < 0.5:
                     print(f"  ⛔ {action.ticker}: live price ${fresh:.2f} is {ratio:.2f}× prev_close ${prev:.2f} — bad data, buy skipped")
+                    bad_data_tickers.add(action.ticker)
                     continue
             confirmed_live.add(action.ticker)
             old_price = action.price
@@ -1009,6 +1015,10 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     # Drop any BUY that didn't get a confirmed live price
     before = len(actions_to_execute)
+    for r in actions_to_execute:
+        if r.original.action_type == "BUY" and r.original.ticker not in confirmed_live:
+            reason = "bad price data" if r.original.ticker in bad_data_tickers else "no live price"
+            dropped_actions.append({"ticker": r.original.ticker, "reason": reason})
     actions_to_execute = [
         r for r in actions_to_execute
         if r.original.action_type != "BUY" or r.original.ticker in confirmed_live
@@ -1041,6 +1051,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             min_notional = max(action.price * 5, 250.0)  # at least 5 shares or $250
             if shares * action.price < min_notional:
                 print(f"  ⏭️  Skipping BUY {action.ticker}: position too small ({shares} shares = ${shares * action.price:.0f} < ${min_notional:.0f} minimum)")
+                dropped_actions.append({"ticker": action.ticker, "reason": "position too small"})
                 continue
             # BUY: cap to what cash can afford
             if action.price > 0:
@@ -1049,6 +1060,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 max_affordable = 0
             if max_affordable < 1:
                 print(f"  ⏭️  Skipping BUY {action.ticker}: insufficient cash (need ${shares * action.price:,.0f}, have ${available_cash:,.0f})")
+                dropped_actions.append({"ticker": action.ticker, "reason": "insufficient cash"})
                 continue
             if shares > max_affordable:
                 print(f"  ⚠️  {action.ticker}: Capping shares {shares} → {max_affordable} (cash constraint)")
@@ -1101,6 +1113,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                      if r.original.action_type == "SELL" and tx["ticker"] not in held_tickers]
     if phantom_sells:
         print(f"  ⚠️  [Guard] Blocked phantom sells for unheld tickers: {phantom_sells}")
+        for ticker in phantom_sells:
+            dropped_actions.append({"ticker": ticker, "reason": "not held (phantom sell blocked)"})
     validated = [
         (r, tx) for r, tx in validated
         if r.original.action_type != "SELL" or tx["ticker"] in held_tickers
@@ -1132,6 +1146,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             pos_row = state.positions[state.positions["ticker"] == action.ticker]
             if pos_row.empty:
                 print(f"  ⚠️  Skipping sell {action.ticker}: not in positions")
+                dropped_actions.append({"ticker": action.ticker, "reason": "not in positions"})
                 continue
             held_shares = int(pos_row["shares"].iloc[0])
             if shares > held_shares:
@@ -1195,7 +1210,18 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     except Exception as e:
         print(f"  [factor_learning] Weight adjustment skipped: {e}")
 
-    return {"executed": len(transactions), "transactions": transactions}
+    executed_buys = len([t for t in transactions if t["action"] == "BUY"])
+    executed_sells = len([t for t in transactions if t["action"] == "SELL"])
+    return {
+        "executed": len(transactions),
+        "transactions": transactions,
+        "execution_summary": {
+            "proposed": {"buys": proposed_buys, "sells": proposed_sells},
+            "executed": {"buys": executed_buys, "sells": executed_sells},
+            "dropped": dropped_actions,
+            "ai_mode": analysis_result.get("ai_mode", "unknown"),
+        },
+    }
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
