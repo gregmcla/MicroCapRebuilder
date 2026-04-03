@@ -236,7 +236,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "XLI",
           "XLU",
@@ -247,6 +247,29 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "sectors": [
+          "Industrials",
+          "Utilities",
+          "Energy",
+          "Technology"
+        ],
+        "industries": [
+          "Electrical Equipment & Parts",
+          "Specialty Industrial Machinery",
+          "Utilities - Regulated Electric",
+          "Utilities - Independent Power Producers",
+          "Solar",
+          "Semiconductor Equipment & Materials"
+        ],
+        "market_cap_min": 500000000,
+        "region": "us"
+      },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select companies in the physical infrastructure layer that enables AI \u2014 power generation, grid infrastructure, cooling systems, data center construction, electrical components. Exclude pure software, cloud services, and chip designers."
       }
     },
     "tiers": {

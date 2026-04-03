@@ -235,7 +235,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "SPY",
           "IVV",
@@ -250,6 +250,31 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "sectors": [
+          "Industrials",
+          "Financial Services",
+          "Consumer Defensive",
+          "Utilities"
+        ],
+        "industries": [
+          "Waste Management",
+          "Railroads",
+          "Insurance - Specialty",
+          "Insurance - Property & Casualty",
+          "Packaging & Containers",
+          "Beverages - Non-Alcoholic",
+          "Tobacco",
+          "Integrated Freight & Logistics"
+        ],
+        "market_cap_min": 10000000000,
+        "region": "us"
+      },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select boring, cash-generating companies with wide moats \u2014 waste haulers, railroads, title insurers, toll roads, consumer staples with pricing power. Exclude high-growth, unprofitable, or cyclical companies."
       }
     },
     "tiers": {

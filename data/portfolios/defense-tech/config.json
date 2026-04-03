@@ -235,7 +235,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "ITA",
           "FITE",
@@ -246,6 +246,25 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "sectors": [
+          "Industrials",
+          "Technology"
+        ],
+        "industries": [
+          "Aerospace & Defense",
+          "Security & Protection Services",
+          "Specialty Industrial Machinery",
+          "Scientific & Technical Instruments"
+        ],
+        "market_cap_min": 500000000,
+        "region": "us"
+      },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select defense technology and autonomous systems companies \u2014 drones, autonomous vehicles, cybersecurity for defense, space systems, directed energy, electronic warfare, defense AI. Exclude legacy defense primes focused on ships/tanks unless they have significant autonomous systems divisions."
       }
     },
     "tiers": {

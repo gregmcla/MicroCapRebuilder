@@ -259,7 +259,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "IWM",
           "IJR",
@@ -273,6 +273,30 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "sectors": [
+          "Industrials",
+          "Basic Materials",
+          "Consumer Cyclical"
+        ],
+        "industries": [
+          "Metal Fabrication",
+          "Steel",
+          "Building Products & Equipment",
+          "Specialty Industrial Machinery",
+          "Auto Parts",
+          "Textile Manufacturing",
+          "Packaging & Containers"
+        ],
+        "market_cap_min": 300000000,
+        "market_cap_max": 5000000000,
+        "region": "us"
+      },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select small and micro-cap US manufacturers and industrial companies that benefit from tariffs and trade protection \u2014 companies whose domestic competitors are shielded from cheap imports. Exclude importers, companies with heavy overseas manufacturing, and large multinationals."
       }
     },
     "tiers": {

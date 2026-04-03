@@ -259,7 +259,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "PAVE",
           "GRID",
@@ -271,6 +271,29 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "sectors": [
+          "Industrials",
+          "Utilities",
+          "Technology",
+          "Real Estate"
+        ],
+        "industries": [
+          "Electrical Equipment & Parts",
+          "Specialty Industrial Machinery",
+          "Utilities - Independent Power Producers",
+          "REIT - Specialty",
+          "Semiconductor Equipment & Materials",
+          "Electronic Components"
+        ],
+        "market_cap_min": 50000000,
+        "region": "us"
+      },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select companies that physically build AI infrastructure \u2014 data center REITs, power suppliers, cooling companies, fiber/network builders, semiconductor equipment. Exclude AI software, SaaS, and chip designers."
       }
     },
     "tiers": {

@@ -229,7 +229,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "IWM",
           "QQQ",
@@ -245,6 +245,11 @@
       },
       "exchange_listings": {
         "enabled": false
+      },
+      "screener": {
+        "enabled": true,
+        "market_cap_min": 50000000,
+        "region": "us"
       }
     },
     "tiers": {
@@ -274,5 +279,5 @@
     "ai_rationale": null
   },
   "ai_driven": true,
-  "strategy_dna": "Maximum aggression momentum portfolio. No sector bias, no style constraints — find whatever is moving the hardest right now and buy it. Cast the widest possible net across small, mid, and large cap. Look for the highest-momentum names in any sector: breakouts near 52-week highs, oversold bounces with volume confirmation, anything with explosive price action. Max 2 positions at a time, sized at 50% of capital each — go all in on the best 1-2 ideas. High conviction only. Sell fast if momentum stalls. This is not a diversified portfolio — it is a concentrated bet on whatever has the strongest price action at any given moment. Ignore fundamentals. Follow the tape."
+  "strategy_dna": "Maximum aggression momentum portfolio. No sector bias, no style constraints \u2014 find whatever is moving the hardest right now and buy it. Cast the widest possible net across small, mid, and large cap. Look for the highest-momentum names in any sector: breakouts near 52-week highs, oversold bounces with volume confirmation, anything with explosive price action. Max 2 positions at a time, sized at 50% of capital each \u2014 go all in on the best 1-2 ideas. High conviction only. Sell fast if momentum stalls. This is not a diversified portfolio \u2014 it is a concentrated bet on whatever has the strongest price action at any given moment. Ignore fundamentals. Follow the tape."
 }

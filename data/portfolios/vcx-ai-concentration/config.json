@@ -7,12 +7,12 @@
     "paper_data_suffix": "_paper"
   },
   "starting_capital": 500000.0,
-  "initial_deployment_target_pct": 98.0,
-  "risk_per_trade_pct": 15.0,
-  "max_position_pct": 35.0,
+  "initial_deployment_target_pct": 99.0,
+  "risk_per_trade_pct": 25.0,
+  "max_position_pct": 50.0,
   "max_positions": 999,
   "default_stop_loss_pct": 12.0,
-  "default_take_profit_pct": 50.0,
+  "default_take_profit_pct": 75.0,
   "volatility_lookback_days": 20,
   "benchmark_symbol": "^GSPC",
   "fallback_benchmark": "SPY",
@@ -26,7 +26,7 @@
       "volatility": 0.15,
       "value_timing": 0.2
     },
-    "min_score_threshold": 35.0,
+    "min_score_threshold": 30.0,
     "momentum": {
       "multi_timeframe_enabled": true,
       "timeframes": {
@@ -61,14 +61,14 @@
     "capital_preservation": {
       "enabled": true,
       "triggers": {
-        "drawdown_threshold_pct": 10.0,
+        "drawdown_threshold_pct": 20.0,
         "risk_score_threshold": 40,
         "regime_bear_auto_enable": true
       },
       "actions": {
         "halt_new_buys": true,
-        "tighten_stops_pct": 5.0,
-        "reduce_position_size_multiplier": 0.5
+        "tighten_stops_pct": 8.0,
+        "reduce_position_size_multiplier": 0.7
       }
     }
   },
@@ -106,21 +106,21 @@
     "enable_layers": true,
     "layer1": {
       "enable_reeval": true,
-      "aggressiveness": "moderate",
+      "aggressiveness": "aggressive",
       "min_score_drop_for_alert": 20,
       "min_score_drop_for_sell": 30,
       "enable_trailing_stops": true,
       "enable_volatility_stops": true,
-      "trailing_stop_trigger_pct": 10.0,
-      "trailing_stop_distance_pct": 6.0,
+      "trailing_stop_trigger_pct": 15.0,
+      "trailing_stop_distance_pct": 8.0,
       "volatility_stop_high_atr": 10.0,
       "volatility_stop_low_atr": 6.0,
       "volatility_stop_atr_threshold_high": 5.0,
       "volatility_stop_atr_threshold_low": 2.0,
       "regime_stops": {
-        "BULL": 8.0,
-        "SIDEWAYS": 7.0,
-        "BEAR": 6.0
+        "BULL": 12.0,
+        "SIDEWAYS": 10.0,
+        "BEAR": 8.0
       }
     },
     "layer2": {
@@ -136,8 +136,8 @@
       },
       "conviction_multipliers": {
         "exceptional": 2.0,
-        "strong": 1.5,
-        "good": 1.0,
+        "strong": 1.75,
+        "good": 1.25,
         "acceptable": 1.0
       },
       "conviction_adjustments": {
@@ -148,9 +148,9 @@
         "low_volatility": 0.1
       },
       "position_sizing": {
-        "high_conviction_pct": 30.0,
-        "medium_conviction_pct": 15.0,
-        "low_conviction_pct": 8.0
+        "high_conviction_pct": 45.0,
+        "medium_conviction_pct": 25.0,
+        "low_conviction_pct": 10.0
       }
     },
     "layer3": {
@@ -180,9 +180,9 @@
     },
     "rotation": {
       "enabled": true,
-      "min_upgrade_score_gap": 20,
-      "max_rotations_per_cycle": 2,
-      "min_held_days_before_rotation": 10,
+      "min_upgrade_score_gap": 15,
+      "max_rotations_per_cycle": 3,
+      "min_held_days_before_rotation": 5,
       "max_unrealized_loss_pct_for_rotation": -15
     },
     "reentry_guard": {
@@ -207,24 +207,24 @@
       "momentum_breakouts": true,
       "oversold_bounces": true,
       "sector_leaders": true,
-      "volume_anomalies": false
+      "volume_anomalies": true
     },
     "filters": {
       "min_market_cap_m": 0,
       "max_market_cap_m": null,
-      "min_avg_volume": 50000,
+      "min_avg_volume": 100000,
       "min_price": 1.0,
       "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 250,
+      "max_tickers": 400,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
       "remove_poor_performers": true,
       "min_trades_for_removal": 3,
       "max_loss_rate_for_removal": 0.75,
-      "total_watchlist_slots": 500
+      "total_watchlist_slots": 750
     }
   },
   "universe": {
@@ -236,17 +236,29 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "QQQ",
+          "TQQQ",
           "ARKK",
-          "AIQ",
-          "BOTZ",
-          "MSFT"
+          "ARKG",
+          "SMH",
+          "XBI",
+          "IWM",
+          "IWC",
+          "SOXL",
+          "FFTY",
+          "BUZZ",
+          "MTUM"
         ]
       },
       "exchange_listings": {
-        "enabled": false
+        "enabled": true
+      },
+      "screener": {
+        "enabled": true,
+        "market_cap_min": 0,
+        "region": "us"
       }
     },
     "tiers": {
@@ -262,19 +274,19 @@
     "filters": {
       "min_market_cap_m": 0,
       "max_market_cap_m": null,
-      "min_avg_volume": 50000,
+      "min_avg_volume": 100000,
       "min_price": 1.0,
       "max_price": 5000.0
     }
   },
   "strategy": {
-    "name": "Default",
+    "name": "Recovery Mode \u2014 Maximum Aggression",
     "sectors": [],
-    "trading_style": null,
+    "trading_style": "momentum",
     "created_via": "ai_driven",
     "ai_prompt": null,
-    "ai_rationale": null
+    "ai_rationale": "Portfolio is down ~38% from $500K starting capital. Recovery requires aggressive position sizing, full deployment, and high-conviction concentrated bets \u2014 not conservative nibbles. Do whatever it takes."
   },
   "ai_driven": true,
-  "strategy_dna": "VCX-anchored pre-IPO AI concentration play. Primary thesis: Fundrise Innovation Fund (VCX) is the only publicly traded vehicle giving retail access to OpenAI, Anthropic, SpaceX, Databricks, and Anduril in a single position \u2014 buy and hold a large concentrated position in VCX as the core. Supplement with a small number of liquid AI infrastructure and platform stocks that have direct exposure to the same AI wave (hyperscalers, GPU supply chain, AI software platforms). This is not a diversified portfolio \u2014 it is a concentrated bet on the AI pre-IPO supercycle.\n\nDEPLOYMENT POSTURE: Stay nearly fully deployed at all times. Cash target is 2% of starting capital \u2014 not 2% of current equity. Do not sit idle waiting for perfect entries. Do not sell VCX on volatility; it will be volatile and that is expected and acceptable. Regime signals should not constrain deployment \u2014 this strategy runs hot in all regimes. Do sell AI satellite positions that lose momentum or thesis. Take profits on satellite AI positions at 30\u201350% gains and redeploy into VCX or the next highest-conviction AI name. Prioritize large position sizing on VCX \u2014 it is the anchor and should be treated as such, not as a small speculative line."
+  "strategy_dna": "RECOVERY MODE \u2014 MAXIMUM AGGRESSION. This portfolio is down ~38% from $500K starting capital and sits at ~$306K. The goal is to get back to $500K by any means necessary. This is not a wealth-preservation posture. This is a controlled all-in recovery campaign.\n\nPRIMARY DIRECTIVE: Get the money back. That is the only job. Not risk management theater. Not thesis purity. Not diversification for its own sake. Find the highest-conviction trades available and size them aggressively. We need large moves to recover. Small, safe trades will not close a $194K gap \u2014 big swings will.\n\nDEPLOYMENT: Stay as close to fully deployed as possible at all times. Cash is dead weight. Every dollar sitting idle is a dollar not working toward recovery. Deploy fast, deploy fully, and redeploy immediately after exits. Do not wait for perfect conditions. Good conditions with big size is enough.\n\nPOSITION SIZING: Go big on high-conviction names. This is not the time for 5% nibbles. When you have conviction, express it with size. One big winner can do more than ten small ones. Concentrate into the best ideas. Three to five positions max \u2014 not a diversified basket.\n\nWHAT TO TRADE: High-beta, high-momentum names that can move 30-100%+ in weeks. Catalysts, breakouts, sector surges, momentum names running hard. Small and microcap names with room to explode. AI, tech, biotech catalysts \u2014 anything that can move fast and big. VCX itself if it has momentum. Volatility is your friend right now, not your enemy.\n\nEXITS: Ride winners hard. Do not exit too early just because a position is up \u2014 let momentum run. Trailing stops to protect gains but give room to breathe. Cut losers quickly \u2014 a position that isn't working is capital that could be in a winner. No dead weight.\n\nMINDSET: We are not managing a retirement account. We are in a recovery sprint. The downside risk from being aggressive is lower than the cost of being timid and never getting back to even. Take the big swings. The system should be biased toward action, toward size, and toward offense. Every single analysis cycle, the question is: where is the biggest, fastest opportunity, and are we in it?"
 }

@@ -235,7 +235,7 @@
         "file": "data/curated_universe.json"
       },
       "etf_holdings": {
-        "enabled": true,
+        "enabled": false,
         "etfs": [
           "UPRO",
           "TQQQ",
@@ -246,6 +246,11 @@
       },
       "exchange_listings": {
         "enabled": true
+      },
+      "screener": {
+        "enabled": true,
+        "market_cap_min": 50000000,
+        "region": "us"
       }
     },
     "tiers": {
