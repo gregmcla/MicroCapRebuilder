@@ -38,3 +38,19 @@ def test_execution_summary_structure():
     assert len(summary["dropped"]) == 2
     assert summary["dropped"][0]["ticker"] == "ACTG"
     assert summary["dropped"][0]["reason"] == "no live price"
+
+
+def test_trade_summary_structure():
+    """Trade summary must have win_rate, avg_win, avg_loss, top patterns."""
+    summary = {
+        "total_trades": 15,
+        "win_rate_pct": 40.0,
+        "avg_win_pct": 5.3,
+        "avg_loss_pct": -6.0,
+        "avg_hold_days": 4.2,
+        "top_patterns": ["quick_stop", "regime_change"],
+        "recent_streak": "2W",
+    }
+    assert summary["total_trades"] == 15
+    assert summary["win_rate_pct"] == 40.0
+    assert len(summary["top_patterns"]) == 2

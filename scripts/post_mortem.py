@@ -279,33 +279,35 @@ class PostMortemAnalyzer:
         return "Document lessons and move on - losses are part of trading"
 
 
-def save_post_mortem(post_mortem: PostMortem):
-    """Save post-mortem to CSV file."""
-    # Convert to dict for DataFrame
-    data = asdict(post_mortem)
+def save_post_mortem(post_mortem: PostMortem, portfolio_id: str = None):
+    """Save post-mortem to per-portfolio CSV file."""
+    from data_files import get_post_mortems_file
+    target = get_post_mortems_file(portfolio_id) if portfolio_id else POST_MORTEMS_FILE
 
-    # Convert lists to JSON strings for CSV storage
+    data = asdict(post_mortem)
     data["what_worked"] = json.dumps(data["what_worked"])
     data["what_failed"] = json.dumps(data["what_failed"])
     data["pattern_tags"] = json.dumps(data["pattern_tags"])
 
     df_new = pd.DataFrame([data])
 
-    if POST_MORTEMS_FILE.exists():
-        df_existing = pd.read_csv(POST_MORTEMS_FILE)
+    if target.exists():
+        df_existing = pd.read_csv(target)
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new
 
-    df_combined.to_csv(POST_MORTEMS_FILE, index=False)
+    df_combined.to_csv(target, index=False)
 
 
-def load_post_mortems() -> List[PostMortem]:
+def load_post_mortems(portfolio_id: str = None) -> List[PostMortem]:
     """Load all post-mortems from file."""
-    if not POST_MORTEMS_FILE.exists():
+    from data_files import get_post_mortems_file
+    target = get_post_mortems_file(portfolio_id) if portfolio_id else POST_MORTEMS_FILE
+    if not target.exists():
         return []
 
-    df = pd.read_csv(POST_MORTEMS_FILE)
+    df = pd.read_csv(target)
     post_mortems = []
 
     for _, row in df.iterrows():
@@ -340,9 +342,55 @@ def load_post_mortems() -> List[PostMortem]:
     return post_mortems
 
 
-def get_recent_post_mortems(n: int = 5) -> List[PostMortem]:
+def get_portfolio_trade_summary(portfolio_id: str, max_trades: int = 20) -> Optional[dict]:
+    """Build a concise trade history summary for Claude's allocation prompt."""
+    pms = load_post_mortems(portfolio_id=portfolio_id)
+    if not pms or len(pms) < 3:
+        return None
+
+    recent = pms[-max_trades:]
+    wins = [p for p in recent if p.pnl > 0]
+    losses = [p for p in recent if p.pnl <= 0]
+    win_rate = len(wins) / len(recent) * 100 if recent else 0
+
+    avg_win = sum(p.pnl_pct for p in wins) / len(wins) if wins else 0
+    avg_loss = sum(p.pnl_pct for p in losses) / len(losses) if losses else 0
+    avg_hold = sum(max(0, p.holding_days) for p in recent) / len(recent) if recent else 0
+
+    from collections import Counter
+    tag_counter = Counter()
+    for p in recent:
+        for tag in p.pattern_tags:
+            tag_counter[tag] += 1
+    top_patterns = [tag for tag, _ in tag_counter.most_common(3)]
+
+    streak = ""
+    if len(recent) >= 2:
+        last_results = ["W" if p.pnl > 0 else "L" for p in recent[-5:]]
+        current = last_results[-1]
+        count = 0
+        for r in reversed(last_results):
+            if r == current:
+                count += 1
+            else:
+                break
+        streak = f"{count}{current}"
+
+    return {
+        "total_trades": len(pms),
+        "recent_count": len(recent),
+        "win_rate_pct": round(win_rate, 1),
+        "avg_win_pct": round(avg_win, 1),
+        "avg_loss_pct": round(avg_loss, 1),
+        "avg_hold_days": round(avg_hold, 1),
+        "top_patterns": top_patterns,
+        "recent_streak": streak,
+    }
+
+
+def get_recent_post_mortems(n: int = 5, portfolio_id: str = None) -> List[PostMortem]:
     """Get the most recent post-mortems."""
-    all_pm = load_post_mortems()
+    all_pm = load_post_mortems(portfolio_id=portfolio_id)
     return all_pm[-n:] if all_pm else []
 
 

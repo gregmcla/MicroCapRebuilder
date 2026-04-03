@@ -102,6 +102,7 @@ def run_ai_allocation(
         full_watchlist=full_watchlist,
         regime_analysis=regime_analysis,
         prompt_extras=prompt_extras,
+        portfolio_id=state.portfolio_id,
     )
 
     model = state.config.get("ai_model", CLAUDE_MODEL)
@@ -174,6 +175,7 @@ def _build_allocation_prompt(
     full_watchlist: bool = False,
     regime_analysis: Optional[RegimeAnalysis] = None,
     prompt_extras: Optional[dict] = None,
+    portfolio_id: str = None,
 ) -> str:
     """Build the full allocation prompt for Claude."""
 
@@ -418,6 +420,24 @@ def _build_allocation_prompt(
                 + "\n".join(_f_lines) + "\n"
             )
 
+    _trade_history_block = ""
+    if portfolio_id:
+        try:
+            from post_mortem import get_portfolio_trade_summary
+            trade_summary = get_portfolio_trade_summary(portfolio_id)
+            if trade_summary and trade_summary["total_trades"] >= 5:
+                ts = trade_summary
+                pattern_str = ", ".join(ts["top_patterns"]) if ts["top_patterns"] else "none identified"
+                _trade_history_block = (
+                    f"YOUR TRADE HISTORY IN THIS PORTFOLIO ({ts['total_trades']} completed trades, last {ts['recent_count']} shown):\n"
+                    f"  Win rate: {ts['win_rate_pct']:.0f}% | Avg win: {ts['avg_win_pct']:+.1f}% | Avg loss: {ts['avg_loss_pct']:+.1f}%\n"
+                    f"  Avg hold: {ts['avg_hold_days']:.1f} days | Recent streak: {ts['recent_streak']}\n"
+                    f"  Top failure patterns: {pattern_str}\n"
+                    f"  Use this history to calibrate your position sizing and conviction levels.\n"
+                )
+        except Exception as e:
+            print(f"  [AI Allocator] Trade history load failed (non-fatal): {e}")
+
     prompt = f"""You are the portfolio manager for this trading portfolio. You have FULL AUTHORITY over stock selection and position sizing.
 
 YOUR MANDATE — STRATEGY DNA:
@@ -431,7 +451,7 @@ PORTFOLIO STATE:
 {positions_block}
 
 {sector_block}
-{_perf_block}{_alerts_block}{_factor_block}{regime_block}
+{_perf_block}{_alerts_block}{_factor_block}{_trade_history_block}{regime_block}
 {l1_block}
 {candidates_block}
 
