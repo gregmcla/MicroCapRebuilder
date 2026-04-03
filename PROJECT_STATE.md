@@ -7,7 +7,26 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Score-First Watchlist Architecture complete + portfolio isolation fixes (2026-04-01).**
+**Operational — cron automation running daily. 16 active portfolios. Screener-based universe migration complete (2026-04-02). Score-First Watchlist Architecture complete + portfolio isolation fixes (2026-04-01).**
+
+---
+
+## Recently Completed (2026-04-02) — Screener-Based Universe Migration
+
+Migrated all 25 non-`gov-infra` portfolios from broken `etf_holdings` (top-10-per-ETF) to `yfscreen`-based screener universe.
+
+- All portfolios: `etf_holdings.enabled` → `false`, `screener` block added with appropriate `market_cap_min`, `region: us`
+- 6 thematic portfolios get sector/industry filters + `ai_refinement` prompt:
+  - `adjacent-supporters-of-ai` — Industrials/Utilities/Energy/Technology sectors, AI infra physical layer prompt
+  - `ai-pickaxe-infrastructure` — Industrials/Utilities/Technology/Real Estate, AI infra picks & shovels prompt
+  - `boomers` — Healthcare/Real Estate/Consumer Defensive, aging boomer profit prompt
+  - `cash-cow-compounders` — Industrials/Financial Services/Consumer Defensive/Utilities, wide-moat cash generators prompt
+  - `defense-tech` — Industrials/Technology, autonomous defense systems prompt
+  - `tariff-moat-industrials` — Industrials/Basic Materials/Consumer Cyclical, domestic tariff beneficiary prompt
+- `diversified-healthcare` — Healthcare sector filter, no ai_refinement
+- All remaining portfolios — market cap + region only (broad/all-sector strategies)
+- `scripts/migrate_to_screener.py` — migration script (kept for reference)
+- 26 files committed: `feat: migrate all portfolios to screener-based universe`
 
 ---
 
