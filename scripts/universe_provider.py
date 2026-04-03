@@ -227,6 +227,13 @@ class UniverseProvider:
         try:
             from screener_provider import run_screen
             tickers = run_screen(self.screener_config, portfolio_id=self.portfolio_id)
+
+            # Optional AI refinement for thematic portfolios
+            refinement_config = self.universe_config.get("sources", {}).get("ai_refinement", {})
+            if refinement_config.get("enabled", False):
+                from screener_provider import maybe_refine_with_claude
+                tickers = maybe_refine_with_claude(tickers, refinement_config, portfolio_id=self.portfolio_id)
+
             for ticker in tickers:
                 self._add_ticker(ticker=ticker, tier=UniverseTier.CORE, source="screener", sector="")
             print(f"Screener: {len(tickers)} tickers loaded as CORE")

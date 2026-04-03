@@ -103,3 +103,34 @@ def test_universe_provider_screener_config_recognized():
     screener_config = config["universe"]["sources"].get("screener", {})
     assert screener_config.get("enabled") is True
     assert "Industrials" in screener_config.get("sectors", [])
+
+
+# ---------------------------------------------------------------------------
+# maybe_refine_with_claude — unit tests (no network calls)
+# ---------------------------------------------------------------------------
+
+def test_refinement_skipped_when_disabled():
+    """Refinement should return original tickers when disabled."""
+    from screener_provider import maybe_refine_with_claude
+    tickers = ["AAPL", "MSFT", "GOOG"]
+    config = {"enabled": False}
+    result = maybe_refine_with_claude(tickers, config, portfolio_id="test")
+    assert result == tickers
+
+
+def test_refinement_skipped_when_too_few_tickers():
+    """Refinement should skip if fewer than 50 tickers."""
+    from screener_provider import maybe_refine_with_claude
+    tickers = ["AAPL"] * 10
+    config = {"enabled": True, "prompt": "test prompt"}
+    result = maybe_refine_with_claude(tickers, config, portfolio_id="test")
+    assert result == tickers
+
+
+def test_refinement_skipped_when_no_prompt():
+    """Refinement should skip if prompt is empty."""
+    from screener_provider import maybe_refine_with_claude
+    tickers = ["AAPL"] * 100
+    config = {"enabled": True, "prompt": ""}
+    result = maybe_refine_with_claude(tickers, config, portfolio_id="test")
+    assert result == tickers

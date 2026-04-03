@@ -7,8 +7,11 @@ full result sets from yfscreen.
 """
 
 import json
+import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from yfscreen import create_query, create_payload, get_data
 
@@ -177,3 +180,153 @@ def run_screen(config: dict, portfolio_id: str = None) -> list:
             print(f"[screener] Cache write error: {e}")
 
     return unique
+
+
+# ---------------------------------------------------------------------------
+# Claude AI Refinement
+# ---------------------------------------------------------------------------
+
+def _get_api_key() -> Optional[str]:
+    """Get Anthropic API key from environment or .env file."""
+    key = os.environ.get("ANTHROPIC_API_KEY")
+    if key:
+        return key
+    env_file = Path(__file__).parent.parent / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line.startswith("ANTHROPIC_API_KEY="):
+                return line.split("=", 1)[1].strip().strip('"').strip("'")
+    return None
+
+
+def _refinement_cache_path(portfolio_id: str) -> Path:
+    """Return path to the refinement cache file for a portfolio."""
+    return DATA_DIR / "portfolios" / portfolio_id / "refinement_cache.json"
+
+
+def _load_refinement_cache(portfolio_id: str, max_age_days: int = 7) -> Optional[list]:
+    """Load refinement cache if it exists and is within max_age_days."""
+    cache_path = _refinement_cache_path(portfolio_id)
+    if not cache_path.exists():
+        return None
+    try:
+        with cache_path.open() as f:
+            cached = json.load(f)
+        ts = datetime.fromisoformat(cached["timestamp"])
+        now = datetime.now(timezone.utc)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        age_days = (now - ts).total_seconds() / 86400
+        if age_days < max_age_days:
+            print(f"[refinement] Using cached results ({cached['count']} tickers, {age_days:.1f}d old)")
+            return cached["tickers"]
+    except Exception as e:
+        print(f"[refinement] Cache read error: {e}")
+    return None
+
+
+def _save_refinement_cache(tickers: list, portfolio_id: str) -> None:
+    """Save refinement results to cache."""
+    cache_path = _refinement_cache_path(portfolio_id)
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        with cache_path.open("w") as f:
+            json.dump(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "count": len(tickers),
+                    "tickers": tickers,
+                },
+                f,
+                indent=2,
+            )
+    except Exception as e:
+        print(f"[refinement] Cache write error: {e}")
+
+
+def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_id: str = None) -> list:
+    """
+    Optionally filter a ticker list using Claude for thematic portfolio refinement.
+
+    Args:
+        tickers:           List of ticker strings from the screener.
+        refinement_config: Dict with keys: enabled (bool), prompt (str).
+        portfolio_id:      Portfolio identifier used for cache path.
+
+    Returns:
+        Filtered list of tickers (subset of input), or original list unchanged.
+    """
+    if not refinement_config.get("enabled", False):
+        return tickers
+
+    if len(tickers) < 50:
+        print(f"[refinement] Skipping — only {len(tickers)} tickers (need ≥50)")
+        return tickers
+
+    prompt_text = refinement_config.get("prompt", "")
+    if not prompt_text:
+        return tickers
+
+    # Check cache
+    if portfolio_id:
+        cached = _load_refinement_cache(portfolio_id)
+        if cached is not None:
+            # Validate cached tickers against current ticker set
+            original_set = set(tickers)
+            valid = [t for t in cached if t in original_set]
+            return valid
+
+    # Call Claude
+    try:
+        import anthropic
+
+        api_key = _get_api_key()
+        if not api_key:
+            print("[refinement] Warning: ANTHROPIC_API_KEY not found — skipping refinement")
+            return tickers
+
+        client = anthropic.Anthropic(api_key=api_key, timeout=120.0)
+
+        ticker_list_str = ", ".join(tickers)
+        user_prompt = (
+            f"You are filtering a stock universe for a thematic portfolio.\n\n"
+            f"SCREENER RESULTS ({len(tickers)} tickers):\n"
+            f"{ticker_list_str}\n\n"
+            f"FILTER CRITERIA:\n"
+            f"{prompt_text}\n\n"
+            f"Return ONLY a JSON array of ticker symbols that match the criteria. "
+            f"Include tickers that clearly fit and exclude those that don't. "
+            f"Aim for 30-100 tickers.\n\n"
+            f'Example: ["STRL", "ACM", "DY", "BLD"]'
+        )
+
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=4096,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+
+        response_text = message.content[0].text
+
+        # Parse JSON array from response
+        match = re.search(r"\[.*?\]", response_text, re.DOTALL)
+        if not match:
+            print("[refinement] Warning: could not find JSON array in Claude response — returning original")
+            return tickers
+
+        raw_filtered = json.loads(match.group(0))
+
+        # Validate: only keep tickers that were in the original list
+        original_set = set(tickers)
+        filtered = [t.upper() for t in raw_filtered if isinstance(t, str) and t.upper() in original_set]
+
+        print(f"[refinement] Claude filtered {len(tickers)} → {len(filtered)} tickers")
+
+        if portfolio_id:
+            _save_refinement_cache(filtered, portfolio_id)
+
+        return filtered
+
+    except Exception as e:
+        print(f"[refinement] Warning: Claude refinement failed ({e}) — returning original tickers")
+        return tickers
