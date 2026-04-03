@@ -296,6 +296,10 @@
         "market_cap_max": 15000000000,
         "region": "us"
       },
+      "ai_refinement": {
+        "enabled": true,
+        "prompt": "Select companies that directly benefit from US federal and state infrastructure spending — road and bridge builders, water system contractors, broadband deployers, grid modernization suppliers, aggregate and cement producers, heavy equipment for construction. Exclude defense contractors, pure logistics/shipping, airlines, and staffing agencies."
+      },
       "exchange_listings": {
         "enabled": false
       }
