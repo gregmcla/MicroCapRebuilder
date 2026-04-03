@@ -70,10 +70,10 @@ def run_ai_allocation(
 
     # layer1_sells are FLAGS only — Claude makes all final decisions.
     # If the AI client is unavailable, fall back to executing Layer 1 sells mechanically.
+    global _last_ai_mode
     reviewed: list[ReviewedAction] = []
 
     if client is None:
-        global _last_ai_mode
         _last_ai_mode = "mechanical_fallback"
         print("  [AI Allocator] No AI client available — falling back to Layer 1 mechanical sells")
         for sell_action in layer1_sells:
@@ -136,7 +136,6 @@ def run_ai_allocation(
         ai_actions = _convert_to_reviewed_actions(valid_buys, ai_sells, regime)
         reviewed.extend(ai_actions)
 
-        global _last_ai_mode
         _last_ai_mode = "claude"
 
         thesis = allocation_data.get("portfolio_thesis", "")
@@ -145,7 +144,6 @@ def run_ai_allocation(
         print(f"  AI allocation: {len(valid_buys)} buy(s), {len(ai_sells)} sell(s)")
 
     except Exception as e:
-        global _last_ai_mode
         _last_ai_mode = "mechanical_fallback"
         print(f"  [AI Allocator] Error during AI allocation: {e}")
         print("  [AI Allocator] Falling back to Layer 1 mechanical sells")

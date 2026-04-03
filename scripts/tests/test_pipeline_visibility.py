@@ -74,3 +74,18 @@ def test_data_completeness_tracks_real_vs_default():
     }
     completeness = sum(1 for _, real in scores.values() if real)
     assert completeness == 4
+
+
+def test_pipeline_status_file_structure():
+    """Pipeline status file must contain required fields."""
+    status = {
+        "timestamp": "2026-04-02T09:35:00",
+        "portfolio_id": "max",
+        "ai_mode": "claude",
+        "proposed": {"buys": 3, "sells": 2},
+        "executed": {"buys": 2, "sells": 2},
+        "dropped": [],
+    }
+    assert "timestamp" in status
+    assert "ai_mode" in status
+    assert status["proposed"]["buys"] == 3

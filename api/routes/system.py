@@ -30,6 +30,31 @@ def _empty_day(date_str: str) -> dict:
     }
 
 
+@router.get("/pipeline-health")
+def pipeline_health():
+    """Return latest pipeline execution status for all portfolios."""
+    import json
+    status_dir = Path(__file__).parent.parent.parent / "data" / "pipeline_status"
+    if not status_dir.exists():
+        return {"portfolios": [], "anomalies": []}
+
+    results = []
+    anomalies = []
+    for f in sorted(status_dir.glob("*.json")):
+        try:
+            data = json.loads(f.read_text())
+            results.append(data)
+            # Check for anomalies
+            if data.get("ai_mode") == "mechanical_fallback":
+                anomalies.append(f"{data['portfolio_id']}: Claude fallback activated")
+            if data.get("executed", {}).get("buys", 0) == 0 and data.get("proposed", {}).get("buys", 0) > 0:
+                anomalies.append(f"{data['portfolio_id']}: all buys dropped")
+        except Exception:
+            pass
+
+    return {"portfolios": results, "anomalies": anomalies}
+
+
 @router.get("/logs")
 def get_system_logs():
     """Return last 30 days of pipeline activity, newest first."""

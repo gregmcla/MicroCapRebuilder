@@ -1214,6 +1214,25 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     executed_buys = len([t for t in transactions if t["action"] == "BUY"])
     executed_sells = len([t for t in transactions if t["action"] == "SELL"])
+
+    # Write pipeline status for watchdog/health monitoring
+    try:
+        status_dir = Path(__file__).parent.parent / "data" / "pipeline_status"
+        status_dir.mkdir(exist_ok=True)
+        status_file = status_dir / f"{portfolio_id or 'default'}.json"
+        import json as _json
+        status = {
+            "timestamp": datetime.now().isoformat(),
+            "portfolio_id": portfolio_id or "default",
+            "ai_mode": analysis_result.get("ai_mode", "unknown"),
+            "proposed": {"buys": proposed_buys, "sells": proposed_sells},
+            "executed": {"buys": executed_buys, "sells": executed_sells},
+            "dropped": dropped_actions,
+        }
+        status_file.write_text(_json.dumps(status, indent=2))
+    except Exception as e:
+        print(f"  [pipeline_status] Write failed (non-fatal): {e}")
+
     return {
         "executed": len(transactions),
         "transactions": transactions,
