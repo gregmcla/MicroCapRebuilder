@@ -60,6 +60,8 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
           max_position_pct: suggestion.max_position_pct,
           max_positions: suggestion.max_positions,
           etf_sources: suggestion.etfs,
+          screener: suggestion.screener,
+          ai_refinement: suggestion.ai_refinement,
         },
       });
     },

@@ -559,6 +559,10 @@ def create_portfolio(
                     ai_config["reentry_guard"].get("meaningful_change_threshold_pts", 10)
                 ),
             }
+        if "screener" in ai_config:
+            config["universe"]["sources"]["screener"] = dict(ai_config["screener"])
+        if "ai_refinement" in ai_config:
+            config["universe"]["sources"]["ai_refinement"] = dict(ai_config["ai_refinement"])
 
     # Store strategy metadata
     created_via = "ai_driven" if ai_driven else ("ai" if ai_config else "wizard")

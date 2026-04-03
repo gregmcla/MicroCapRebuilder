@@ -49,7 +49,14 @@ Return a JSON object with exactly these fields:
   "curated_tickers": [
     {{"ticker": "AAPL", "sector": "Technology", "rationale": "1-sentence reason this fits the thesis"}},
     ...
-  ]
+  ],
+  "screener": {{
+    "sectors": ["1-3 sector names from: Basic Materials, Consumer Cyclical, Financial Services, Real Estate, Consumer Defensive, Healthcare, Utilities, Communication Services, Energy, Industrials, Technology"],
+    "industries": ["3-8 specific Yahoo Finance industries within those sectors that match the thesis"],
+    "market_cap_min": "<integer in dollars, e.g. 500000000 for $500M>",
+    "market_cap_max": "<integer in dollars, e.g. 15000000000 for $15B>"
+  }},
+  "ai_refinement_prompt": "1-2 sentence filter describing what to include/exclude from screener results. Only for thematic strategies where industry codes don't fully capture the thesis. Empty string if sectors+industries are sufficient."
 }}
 
 Guidelines:
@@ -73,6 +80,10 @@ Guidelines:
   - Each entry needs: ticker (string), sector (GICS sector name), and rationale (1-sentence).
   - For microcap/smallcap: focus on $50M-$2B names. For largecap: $10B+. For allcap: full range.
   - Quality filter: skip SPACs, blank check companies, pre-revenue biotechs (unless DNA specifically targets biotech).
+- screener.sectors: pick the 1-3 GICS sectors that contain the target companies. Use exact names from the list above.
+- screener.industries: pick specific Yahoo Finance industries within those sectors. Be precise — "Engineering & Construction" not just "Industrials".
+- screener market cap: match the universe preset (microcap: 50000000-2000000000, smallcap: 300000000-5000000000, midcap: 500000000-15000000000, largecap: 5000000000-999000000000, allcap: 50000000-999000000000).
+- ai_refinement_prompt: write a clear 1-2 sentence filter for thematic strategies. Leave as empty string "" for generic strategies where sector+industry filters are sufficient.
 
 Starting capital: ${starting_capital:,.0f}
 
@@ -165,6 +176,22 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
                 "rationale": "",
             })
 
+    screener_data = data.get("screener", {})
+    screener_config = {
+        "enabled": True,
+        "sectors": [str(s) for s in screener_data.get("sectors", [])],
+        "industries": [str(i) for i in screener_data.get("industries", [])],
+        "market_cap_min": int(screener_data.get("market_cap_min", 500000000)),
+        "market_cap_max": int(screener_data.get("market_cap_max", 15000000000)),
+        "region": "us",
+    }
+
+    refinement_prompt = str(data.get("ai_refinement_prompt", ""))
+    ai_refinement = {
+        "enabled": bool(refinement_prompt),
+        "prompt": refinement_prompt,
+    }
+
     return {
         "name": str(data["name"]),
         "universe": data["universe"],
@@ -176,4 +203,6 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
         "max_positions": int(data.get("max_positions", 10)),
         "reentry_guard": reentry_guard_config,
         "curated_tickers": curated_tickers,
+        "screener": screener_config,
+        "ai_refinement": ai_refinement,
     }

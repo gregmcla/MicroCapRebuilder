@@ -455,6 +455,14 @@ export interface AnalysisResult {
   portfolio_context: Record<string, unknown>;
   regime: string;
   timestamp: string;
+  ai_mode?: "claude" | "mechanical" | "mechanical_fallback";
+}
+
+export interface ExecutionSummary {
+  proposed: { buys: number; sells: number };
+  executed: { buys: number; sells: number };
+  dropped: Array<{ ticker: string; reason: string }>;
+  ai_mode: string;
 }
 
 // --- Strategy generation types ---
@@ -479,6 +487,20 @@ export interface SuggestConfigRequest {
   starting_capital: number;
 }
 
+export interface ScreenerConfig {
+  enabled: boolean;
+  sectors: string[];
+  industries: string[];
+  market_cap_min: number;
+  market_cap_max: number;
+  region: string;
+}
+
+export interface AiRefinementConfig {
+  enabled: boolean;
+  prompt: string;
+}
+
 export interface SuggestConfigResponse {
   name: string;
   universe: string;
@@ -488,6 +510,8 @@ export interface SuggestConfigResponse {
   risk_per_trade_pct: number;
   max_position_pct: number;
   max_positions: number;
+  screener?: ScreenerConfig;
+  ai_refinement?: AiRefinementConfig;
 }
 
 // ── System Logs ──────────────────────────────────────────────────────────────
