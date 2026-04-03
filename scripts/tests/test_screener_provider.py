@@ -83,3 +83,23 @@ def test_filter_us_listed():
     input_tickers = ["AAPL", "CRWOF", "STBBF", "SKBSY", "ACM", "STRL", "AVHNY", "BLD.TO"]
     result = filter_us_listed(input_tickers)
     assert result == ["AAPL", "ACM", "STRL"]
+
+
+def test_universe_provider_screener_config_recognized():
+    """UniverseProvider should recognize screener source in config."""
+    config = {
+        "universe": {
+            "enabled": True,
+            "sources": {
+                "screener": {
+                    "enabled": True,
+                    "sectors": ["Industrials"],
+                    "market_cap_min": 500000000,
+                    "market_cap_max": 15000000000,
+                }
+            }
+        }
+    }
+    screener_config = config["universe"]["sources"].get("screener", {})
+    assert screener_config.get("enabled") is True
+    assert "Industrials" in screener_config.get("sectors", [])

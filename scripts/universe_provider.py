@@ -103,6 +103,8 @@ class UniverseProvider:
         self.curated_enabled = sources_config.get("curated", {}).get("enabled", True)
         self.etf_enabled = sources_config.get("etf_holdings", {}).get("enabled", True)
         self.exchange_listings_enabled = sources_config.get("exchange_listings", {}).get("enabled", False)
+        self.screener_enabled = sources_config.get("screener", {}).get("enabled", False)
+        self.screener_config = sources_config.get("screener", {})
 
         # Build the universe
         self._universe: Dict[str, UniverseTicker] = {}
@@ -125,10 +127,14 @@ class UniverseProvider:
         if self.exchange_listings_enabled:
             self._load_exchange_listings()
 
-        # 4. Deduplicate and assign final tiers
+        # 4. Load screener results
+        if self.screener_enabled:
+            self._load_screener_universe()
+
+        # 5. Deduplicate and assign final tiers
         self._finalize_tiers()
 
-        # 5. Save cache
+        # 6. Save cache
         self._save_cache()
 
     def _load_curated(self):
@@ -215,6 +221,19 @@ class UniverseProvider:
             print(f"Warning: Could not load exchange listings: {e}")
         except Exception as e:
             print(f"Warning: Error loading exchange listings: {e}")
+
+    def _load_screener_universe(self):
+        """Load tickers from the screener provider."""
+        try:
+            from screener_provider import run_screen
+            tickers = run_screen(self.screener_config, portfolio_id=self.portfolio_id)
+            for ticker in tickers:
+                self._add_ticker(ticker=ticker, tier=UniverseTier.CORE, source="screener", sector="")
+            print(f"Screener: {len(tickers)} tickers loaded as CORE")
+        except ImportError as e:
+            print(f"Warning: Could not load screener provider: {e}")
+        except Exception as e:
+            print(f"Warning: Error loading screener universe: {e}")
 
     def _add_ticker(self, ticker: str, tier: UniverseTier, source: str, sector: str):
         """Add a ticker to the universe."""
