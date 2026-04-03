@@ -151,6 +151,7 @@ def _run_ai_driven_analysis(
                     "composite_score": s.composite_score,
                     "current_price": s.current_price,
                     "factor_scores": current_scores,
+                    "data_completeness": s.data_completeness,
                     "reentry_context": None,
                 }
                 if rg_enabled:
@@ -582,7 +583,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
                                 "value_timing": s.value_timing_score,
                                 "volume": s.volume_score,
                                 "volatility": s.volatility_score,
-                            }
+                            },
+                            "data_completeness": s.data_completeness,
                         })
 
                 # Filter to top candidates with score >= 60

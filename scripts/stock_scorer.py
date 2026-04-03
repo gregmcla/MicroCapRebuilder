@@ -77,6 +77,7 @@ class StockScore:
     forward_pe: Optional[float] = None
     trailing_pe: Optional[float] = None
     company_description: str = ""
+    data_completeness: int = 0  # 0-6: how many factors had real data (not default 50)
 
 
 def load_config() -> dict:
@@ -459,51 +460,51 @@ class StockScorer:
         score = 50 + (pct_change * 2.5)
         return max(0, min(100, score))
 
-    def score_volatility(self, df: pd.DataFrame) -> float:
+    def score_volatility(self, df: pd.DataFrame) -> Tuple[float, bool]:
         """
         Score based on volatility (lower = better for microcaps).
-        Returns 0-100 score.
+        Returns (score 0-100, has_real_data).
         """
         if df is None or len(df) < 5:
-            return 50.0
+            return 50.0, False
 
         # Calculate daily returns volatility
         returns = df["Close"].pct_change().dropna()
         if len(returns) < 5:
-            return 50.0
+            return 50.0, False
 
         volatility = returns.std() * 100  # As percentage
         if math.isnan(volatility):
-            return 50.0
+            return 50.0, False
 
         # Map to 0-100 scale (inverted - lower volatility = higher score)
         # 0% vol = 100, 5%+ daily vol = 0
         score = 100 - (volatility * 20)
-        return max(0, min(100, score))
+        return max(0, min(100, score)), True
 
-    def score_volume(self, df: pd.DataFrame) -> float:
+    def score_volume(self, df: pd.DataFrame) -> Tuple[float, bool]:
         """
         Score based on recent volume vs average (liquidity check).
-        Returns 0-100 score.
+        Returns (score 0-100, has_real_data).
         """
         if df is None or len(df) < 10:
-            return 50.0
+            return 50.0, False
 
         if "Volume" not in df.columns:
-            return 50.0
+            return 50.0, False
 
         recent_vol = float(df["Volume"].iloc[-5:].mean())
         avg_vol = float(df["Volume"].iloc[-20:].mean())
 
         if math.isnan(avg_vol) or math.isnan(recent_vol) or avg_vol <= 0:
-            return 50.0
+            return 50.0, False
 
         vol_ratio = recent_vol / avg_vol
 
         # Map to 0-100 scale
         # 0.5x average = 25, 1x = 50, 2x = 100
         score = vol_ratio * 50
-        return max(0, min(100, score))
+        return max(0, min(100, score)), True
 
     def score_relative_strength(self, df: pd.DataFrame) -> float:
         """
@@ -565,27 +566,28 @@ class StockScorer:
         score = 100 - abs(distance_pct) * 5
         return max(0, min(100, score))
 
-    def score_price_momentum(self, df: pd.DataFrame) -> Tuple[float, Dict]:
+    def score_price_momentum(self, df: pd.DataFrame) -> Tuple[float, bool, Dict]:
         """
         Combined price momentum score: 60% multi-TF momentum + 40% relative strength.
         Alignment bonus is already embedded in the momentum component.
+        Returns (score, has_real_data, metadata).
         """
         if df is None or len(df) < 5:
-            return 50.0, {"mom_5d": 0, "mom_20d": 0, "mom_60d": 0, "alignment": "UNKNOWN"}
+            return 50.0, False, {"mom_5d": 0, "mom_20d": 0, "mom_60d": 0, "alignment": "UNKNOWN"}
 
         mom_score, mom_metadata = self.score_momentum(df)
         rs_score = self.score_relative_strength(df)
 
         combined = mom_score * 0.60 + rs_score * 0.40
-        return max(0.0, min(100.0, round(combined, 1))), mom_metadata
+        return max(0.0, min(100.0, round(combined, 1))), True, mom_metadata
 
-    def score_earnings_growth(self, info: dict) -> float:
+    def score_earnings_growth(self, info: dict) -> Tuple[float, bool]:
         """
         Score based on earnings and revenue growth from yfinance .info dict.
-        Returns 50 (neutral) when data is unavailable — never penalizes missing data.
+        Returns (score, has_real_data). Score is 50 (neutral) when data is unavailable.
         """
         if not info:
-            return 50.0
+            return 50.0, False
 
         scores = []
 
@@ -629,17 +631,17 @@ class StockScorer:
                 scores.append(45.0)
 
         if not scores:
-            return 50.0
-        return round(sum(scores) / len(scores), 1)
+            return 50.0, False
+        return round(sum(scores) / len(scores), 1), True
 
-    def score_quality(self, info: dict) -> float:
+    def score_quality(self, info: dict) -> Tuple[float, bool]:
         """
         Score based on business quality metrics from yfinance .info dict.
-        Returns 50 (neutral) when data is unavailable — never penalizes missing data.
+        Returns (score, has_real_data). Score is 50 (neutral) when data is unavailable.
         Note: yfinance debtToEquity is often in ×100 form (50 = 0.5 ratio).
         """
         if not info:
-            return 50.0
+            return 50.0, False
 
         scores = []
 
@@ -680,22 +682,23 @@ class StockScorer:
                 scores.append(30.0)
 
         if not scores:
-            return 50.0
-        return round(sum(scores) / len(scores), 1)
+            return 50.0, False
+        return round(sum(scores) / len(scores), 1), True
 
-    def score_value_timing(self, df: pd.DataFrame) -> float:
+    def score_value_timing(self, df: pd.DataFrame) -> Tuple[float, bool]:
         """
         Combined value/timing score: 50% SMA distance + 50% RSI sweet-spot.
         Replaces separate mean_reversion and rsi factors.
+        Returns (score, has_real_data).
         """
         if df is None or len(df) < 14:
-            return 50.0
+            return 50.0, False
 
         mean_rev = self.score_mean_reversion(df)
         rsi_score, _ = self.score_rsi(df)
 
         combined = mean_rev * 0.50 + rsi_score * 0.50
-        return max(0.0, min(100.0, round(combined, 1)))
+        return max(0.0, min(100.0, round(combined, 1))), True
 
     def calculate_atr_percent(self, df: pd.DataFrame) -> float:
         """
@@ -744,14 +747,16 @@ class StockScorer:
         info_dict = info or {}
 
         # Price/volume factors
-        price_momentum, mom_metadata = self.score_price_momentum(df)
-        volume = self.score_volume(df)
-        volatility = self.score_volatility(df)
-        value_timing = self.score_value_timing(df)
+        price_momentum, pm_real, mom_metadata = self.score_price_momentum(df)
+        volume, vol_real = self.score_volume(df)
+        volatility, vlt_real = self.score_volatility(df)
+        value_timing, vt_real = self.score_value_timing(df)
 
         # Fundamental factors (default 50 if no info)
-        earnings_growth = self.score_earnings_growth(info_dict)
-        quality = self.score_quality(info_dict)
+        earnings_growth, eg_real = self.score_earnings_growth(info_dict)
+        quality, q_real = self.score_quality(info_dict)
+
+        data_completeness = sum([pm_real, eg_real, q_real, vol_real, vlt_real, vt_real])
 
         # RSI value for metadata
         rsi_series = self._calculate_rsi(df)
@@ -800,6 +805,7 @@ class StockScorer:
             forward_pe=info_dict.get("forwardPE"),
             trailing_pe=info_dict.get("trailingPE"),
             company_description=(info_dict.get("longBusinessSummary") or "")[:200],
+            data_completeness=data_completeness,
         )
 
     def score_watchlist(self, tickers: List[str], info_cache: Optional[Dict[str, dict]] = None) -> List[StockScore]:
