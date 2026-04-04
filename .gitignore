@@ -19,6 +19,8 @@ backup/
 *.secret
 secrets/
 .worktrees/
+node_modules/
+dashboard/dist/
 
 # Cron logs
 cron/logs/
