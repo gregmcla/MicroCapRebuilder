@@ -7,7 +7,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { usePortfolioStore } from "../lib/store";
+import { usePortfolioStore, useUIStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
@@ -368,6 +368,9 @@ export default function TopBar({
   const isOverviewOrLogs = !state;
   const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
+  const theme = useUIStore((s) => s.theme);
+  const toggleTheme = useUIStore((s) => s.toggleTheme);
+
   const actionButtons = (
     <>
       {(state?.stale_alerts.length ?? 0) > 0 && (
@@ -397,6 +400,29 @@ export default function TopBar({
       <LogsButton />
       {state && <EmergencyClose positions={state.positions} />}
       {state && <ModeToggle paperMode={state.paper_mode} />}
+      <button
+        onClick={toggleTheme}
+        title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        className="inline-flex items-center justify-center rounded transition-all"
+        style={{
+          width: "26px", height: "26px",
+          fontSize: "12px",
+          border: "1px solid var(--border-1)",
+          background: "transparent",
+          color: "var(--text-1)",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border-2)";
+          (e.currentTarget as HTMLElement).style.color = "var(--text-3)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
+          (e.currentTarget as HTMLElement).style.color = "var(--text-1)";
+        }}
+      >
+        {theme === "dark" ? "☀" : "☾"}
+      </button>
     </>
   );
 
@@ -404,7 +430,7 @@ export default function TopBar({
     <header
       className="shrink-0 topbar-root"
       style={{
-        background: "linear-gradient(180deg, #0d0d18 0%, #080810 100%)",
+        background: "linear-gradient(180deg, var(--surface-1), var(--void))",
         borderBottom: "1px solid rgba(124,92,252,0.12)",
       }}
     >

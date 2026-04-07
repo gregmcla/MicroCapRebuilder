@@ -1,6 +1,6 @@
 /** 3-column layout: positions list | center chart | right analytics. */
 
-import { Component, useMemo, type ReactNode } from "react";
+import { Component, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePortfolioState } from "./hooks/usePortfolioState";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
@@ -66,7 +66,12 @@ export default function App() {
   const { data: state, isLoading } = usePortfolioState();
   const activityOpen = useUIStore((s) => s.activityOpen);
   const toggleActivity = useUIStore((s) => s.toggleActivity);
+  const theme = useUIStore((s) => s.theme);
   useKeyboardShortcuts();
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
 
   const { data: overview } = useOverview();
 

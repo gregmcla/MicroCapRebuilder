@@ -1,4 +1,4 @@
-/** Create Portfolio Modal — 2-step AI-driven flow. */
+/** Create Portfolio Modal — redesigned 2-step AI-driven flow with DNA builder. */
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,11 +13,141 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
+function formatCapital(val: number): string {
+  return val.toLocaleString("en-US");
+}
+
+// ── DNA Builder options ──────────────────────────────────────────────────────
+
+const STYLES = ["Momentum", "Value", "Growth", "Income", "Contrarian", "Thematic"] as const;
+const AGGRESSION = ["Conservative", "Moderate", "Aggressive", "YOLO"] as const;
+const CAPS = [
+  { label: "Micro", range: "$50M-$2B" },
+  { label: "Small", range: "$300M-$5B" },
+  { label: "Mid", range: "$500M-$15B" },
+  { label: "Large", range: "$5B+" },
+  { label: "All", range: "All caps" },
+] as const;
+const HOLDS = ["Day Trade", "Swing (1-5d)", "Position (1-4w)", "Long-term"] as const;
+const CONCENTRATIONS = [
+  { label: "Diversified", detail: "10+" },
+  { label: "Focused", detail: "5-10" },
+  { label: "Concentrated", detail: "1-4" },
+] as const;
+const SECTORS = [
+  "Technology", "Healthcare", "Energy", "Industrials", "Financial Services",
+  "Consumer Cyclical", "Consumer Defensive", "Basic Materials",
+  "Real Estate", "Utilities", "Communication Services",
+] as const;
+
+function buildObjective(style: string | null, aggression: string | null): string {
+  const map: Record<string, Record<string, string>> = {
+    Momentum: {
+      Conservative: "Steady trend-following with tight risk management",
+      Moderate: "Capture momentum swings with balanced risk/reward",
+      Aggressive: "Maximum short-term alpha from momentum breakouts",
+      YOLO: "Full send on the strongest movers — ride or die",
+    },
+    Value: {
+      Conservative: "Steady compounding with downside protection",
+      Moderate: "Buy quality at a discount, patient accumulation",
+      Aggressive: "Deep value contrarian bets with asymmetric upside",
+      YOLO: "Distressed turnarounds — buy the blood",
+    },
+    Growth: {
+      Conservative: "Quality growth compounders with proven revenue",
+      Moderate: "High-growth companies at reasonable valuations",
+      Aggressive: "Hypergrowth names — revenue acceleration over profitability",
+      YOLO: "Pre-revenue rockets with 10x potential",
+    },
+    Income: {
+      Conservative: "Stable dividends with capital preservation",
+      Moderate: "High yield with moderate growth potential",
+      Aggressive: "Maximum yield — chase the highest payers",
+      YOLO: "Leveraged income plays and special dividends",
+    },
+    Contrarian: {
+      Conservative: "Carefully selected out-of-favor quality names",
+      Moderate: "Buy what everyone else is selling — with discipline",
+      Aggressive: "Catch falling knives that are about to bounce",
+      YOLO: "Maximum pain trades — peak fear is the entry",
+    },
+    Thematic: {
+      Conservative: "Broad exposure to a structural theme",
+      Moderate: "Focused thematic picks with quality filters",
+      Aggressive: "Pure-play bets on an emerging theme",
+      YOLO: "All-in on a single conviction theme",
+    },
+  };
+  return map[style ?? "Momentum"]?.[aggression ?? "Moderate"] ?? "Generate alpha through disciplined stock selection";
+}
+
+function assembleDna(
+  style: string | null,
+  aggression: string | null,
+  cap: string | null,
+  hold: string | null,
+  concentration: string | null,
+  sectors: string[],
+): string {
+  const lines: string[] = [];
+  if (style) lines.push(`Style: ${style}${aggression ? ` | Aggression: ${aggression}` : ""}`);
+  else if (aggression) lines.push(`Aggression: ${aggression}`);
+  if (cap) {
+    const capObj = CAPS.find((c) => c.label === cap);
+    lines.push(`Cap: ${cap} (${capObj?.range ?? ""})`);
+  }
+  if (hold) lines.push(`Hold: ${hold}`);
+  if (concentration) {
+    const concObj = CONCENTRATIONS.find((c) => c.label === concentration);
+    lines.push(`Concentration: ${concObj?.detail ?? ""} positions`);
+  }
+  if (sectors.length > 0) lines.push(`Sectors: ${sectors.join(", ")}`);
+  lines.push(`Objective: ${buildObjective(style, aggression)}`);
+  return lines.join("\n");
+}
+
+// ── Chip component ───────────────────────────────────────────────────────────
+
+function Chip({
+  label,
+  selected,
+  onClick,
+  small,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+  small?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: small ? "2px 8px" : "4px 10px",
+        fontSize: small ? "9px" : "10px",
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+        borderRadius: "4px",
+        cursor: "pointer",
+        transition: "all 0.15s",
+        border: selected ? "1px solid var(--accent-border)" : "1px solid var(--border-1)",
+        background: selected ? "var(--accent-dim)" : "transparent",
+        color: selected ? "var(--accent-bright)" : "var(--text-1)",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
 export default function CreatePortfolioModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const setActivePortfolio = usePortfolioStore((s) => s.setPortfolio);
 
-  // Step 1 state
+  // Step state
   const [step, setStep] = useState(1);
   const [capital, setCapital] = useState(1_000_000);
   const [dna, setDna] = useState("");
@@ -26,22 +156,52 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
   // Step 2 state
   const [suggestion, setSuggestion] = useState<SuggestConfigResponse | null>(null);
   const [editedName, setEditedName] = useState("");
+  const [editedStopLoss, setEditedStopLoss] = useState(0);
+  const [editedTakeProfit, setEditedTakeProfit] = useState(0);
+  const [editedRiskPerTrade, setEditedRiskPerTrade] = useState(0);
+  const [editedMaxPosition, setEditedMaxPosition] = useState(0);
+  const [editedMaxPositions, setEditedMaxPositions] = useState(0);
+  const [editedRefinementEnabled, setEditedRefinementEnabled] = useState(false);
+  const [editedRefinementPrompt, setEditedRefinementPrompt] = useState("");
+  const [editedSectors, setEditedSectors] = useState<string[]>([]);
+  const [editedIndustries, setEditedIndustries] = useState<string[]>([]);
+  const [showDna, setShowDna] = useState(false);
 
-  // Suggest config mutation
+  // DNA Builder state
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [bStyle, setBStyle] = useState<string | null>(null);
+  const [bAggression, setBAggression] = useState<string | null>(null);
+  const [bCap, setBCap] = useState<string | null>(null);
+  const [bHold, setBHold] = useState<string | null>(null);
+  const [bConcentration, setBConcentration] = useState<string | null>(null);
+  const [bSectors, setBSectors] = useState<string[]>([]);
+
+  // Mutations
+  const randomMutation = useMutation({
+    mutationFn: () => api.randomDna(),
+    onSuccess: (data) => setDna(data.dna),
+  });
+
   const suggestMutation = useMutation({
     mutationFn: () => api.suggestConfig({ strategy_dna: dna, starting_capital: capital }),
     onSuccess: (data) => {
       setSuggestion(data);
       setEditedName(data.name);
+      setEditedStopLoss(data.stop_loss_pct);
+      setEditedTakeProfit(data.take_profit_pct);
+      setEditedRiskPerTrade(data.risk_per_trade_pct);
+      setEditedMaxPosition(data.max_position_pct);
+      setEditedMaxPositions(data.max_positions);
+      setEditedRefinementEnabled(data.ai_refinement?.enabled ?? false);
+      setEditedRefinementPrompt(data.ai_refinement?.prompt ?? "");
+      setEditedSectors(data.screener?.sectors ?? []);
+      setEditedIndustries(data.screener?.industries ?? []);
       setError(null);
       setStep(2);
     },
-    onError: (err: Error) => {
-      setError(err.message || "Failed to generate config");
-    },
+    onError: (err: Error) => setError(err.message || "Failed to generate config"),
   });
 
-  // Create portfolio mutation
   const createMutation = useMutation({
     mutationFn: () => {
       if (!suggestion) throw new Error("No suggestion");
@@ -54,14 +214,21 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
         ai_driven: true,
         strategy_dna: dna,
         ai_config: {
-          stop_loss_pct: suggestion.stop_loss_pct,
-          take_profit_pct: suggestion.take_profit_pct,
-          risk_per_trade_pct: suggestion.risk_per_trade_pct,
-          max_position_pct: suggestion.max_position_pct,
-          max_positions: suggestion.max_positions,
+          stop_loss_pct: editedStopLoss,
+          take_profit_pct: editedTakeProfit,
+          risk_per_trade_pct: editedRiskPerTrade,
+          max_position_pct: editedMaxPosition,
+          max_positions: editedMaxPositions,
           etf_sources: suggestion.etfs,
-          screener: suggestion.screener,
-          ai_refinement: suggestion.ai_refinement,
+          screener: {
+            ...suggestion.screener,
+            sectors: editedSectors,
+            industries: editedIndustries,
+          },
+          ai_refinement: {
+            enabled: editedRefinementEnabled,
+            prompt: editedRefinementPrompt,
+          },
         },
       });
     },
@@ -71,237 +238,415 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
       setActivePortfolio(data.portfolio.id);
       onClose();
     },
-    onError: (err: Error) => {
-      setError(err.message || "Failed to create portfolio");
-    },
+    onError: (err: Error) => setError(err.message || "Failed to create portfolio"),
   });
 
   const labelStyle: React.CSSProperties = {
-    fontSize: "9px",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.10em",
-    color: "var(--text-0)",
-    marginBottom: "6px",
+    fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+    letterSpacing: "0.10em", color: "var(--text-0)", marginBottom: "6px",
   };
 
   const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    fontSize: "13px",
-    fontFamily: "var(--font-mono)",
-    background: "var(--void)",
-    border: "1px solid var(--border-1)",
-    borderRadius: "6px",
-    color: "var(--text-3)",
-    outline: "none",
+    width: "100%", padding: "10px 12px", fontSize: "13px",
+    fontFamily: "var(--font-mono)", background: "var(--void)",
+    border: "1px solid var(--border-1)", borderRadius: "6px",
+    color: "var(--text-3)", outline: "none", boxSizing: "border-box",
+  };
+
+  const smallInputStyle: React.CSSProperties = {
+    ...inputStyle, padding: "6px 8px", fontSize: "12px", textAlign: "center" as const,
   };
 
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
+        position: "fixed", inset: 0, zIndex: 50,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)",
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        style={{
-          width: "480px",
-          maxHeight: "85vh",
-          overflowY: "auto",
-          background: "var(--surface-0)",
-          border: "1px solid var(--border-1)",
-          borderRadius: "12px",
-          padding: "24px",
-        }}
-      >
+      <div style={{
+        width: "520px", maxHeight: "90vh", overflowY: "auto",
+        background: "var(--surface-0)", border: "1px solid var(--border-1)",
+        borderRadius: "12px", padding: "24px",
+      }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h2 style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-4)", margin: 0 }}>
             {step === 1 ? "New Portfolio" : "Review & Create"}
           </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-1)",
-              fontSize: "18px",
-              cursor: "pointer",
-              padding: "4px",
-            }}
-          >
-            ×
-          </button>
+          <button onClick={onClose} style={{
+            background: "none", border: "none", color: "var(--text-1)",
+            fontSize: "18px", cursor: "pointer", padding: "4px",
+          }}>×</button>
         </div>
 
+        {/* ═══════════ STEP 1 ═══════════ */}
         {step === 1 && (
           <>
             {/* Starting Capital */}
             <div style={{ marginBottom: "16px" }}>
               <p style={labelStyle}>Starting Capital</p>
-              <input
-                type="number"
-                value={capital}
-                onChange={(e) => setCapital(Number(e.target.value))}
-                style={inputStyle}
-              />
+              <div style={{ position: "relative" }}>
+                <span style={{
+                  position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)",
+                  color: "var(--text-1)", fontSize: "13px", fontFamily: "var(--font-mono)",
+                }}>$</span>
+                <input
+                  type="text"
+                  value={formatCapital(capital)}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    setCapital(Number(raw) || 0);
+                  }}
+                  style={{ ...inputStyle, paddingLeft: "24px" }}
+                />
+              </div>
             </div>
 
             {/* Strategy DNA */}
-            <div style={{ marginBottom: "20px" }}>
-              <p style={labelStyle}>Strategy DNA</p>
+            <div style={{ marginBottom: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <p style={{ ...labelStyle, marginBottom: 0 }}>Strategy DNA</p>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => randomMutation.mutate()}
+                    disabled={randomMutation.isPending}
+                    style={{
+                      padding: "3px 10px", fontSize: "9px", fontWeight: 600,
+                      borderRadius: "4px", cursor: "pointer",
+                      border: "1px solid var(--border-1)", background: "transparent",
+                      color: randomMutation.isPending ? "var(--text-0)" : "var(--text-2)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {randomMutation.isPending ? "cooking..." : "🎲 Random"}
+                  </button>
+                  <button
+                    onClick={() => setShowBuilder(!showBuilder)}
+                    style={{
+                      padding: "3px 10px", fontSize: "9px", fontWeight: 600,
+                      borderRadius: "4px", cursor: "pointer",
+                      border: showBuilder ? "1px solid var(--accent-border)" : "1px solid var(--border-1)",
+                      background: showBuilder ? "var(--accent-dim)" : "transparent",
+                      color: showBuilder ? "var(--accent-bright)" : "var(--text-2)",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    🔧 Builder
+                  </button>
+                </div>
+              </div>
+
+              {/* DNA Builder Panel */}
+              {showBuilder && (
+                <div style={{
+                  background: "var(--surface-1)", border: "1px solid var(--border-1)",
+                  borderRadius: "8px", padding: "12px", marginBottom: "8px",
+                }}>
+                  {/* Style */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Style</p>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {STYLES.map((s) => (
+                        <Chip key={s} label={s} selected={bStyle === s}
+                          onClick={() => setBStyle(bStyle === s ? null : s)} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Aggression */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Aggression</p>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {AGGRESSION.map((a) => (
+                        <Chip key={a} label={a} selected={bAggression === a}
+                          onClick={() => setBAggression(bAggression === a ? null : a)} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cap + Hold */}
+                  <div style={{ display: "flex", gap: "16px", marginBottom: "8px" }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Market Cap</p>
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                        {CAPS.map((c) => (
+                          <Chip key={c.label} label={c.label} selected={bCap === c.label} small
+                            onClick={() => setBCap(bCap === c.label ? null : c.label)} />
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Hold Period</p>
+                      <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                        {HOLDS.map((h) => (
+                          <Chip key={h} label={h} selected={bHold === h} small
+                            onClick={() => setBHold(bHold === h ? null : h)} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Concentration */}
+                  <div style={{ marginBottom: "8px" }}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Concentration</p>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      {CONCENTRATIONS.map((c) => (
+                        <Chip key={c.label} label={`${c.label} (${c.detail})`}
+                          selected={bConcentration === c.label}
+                          onClick={() => setBConcentration(bConcentration === c.label ? null : c.label)} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sectors */}
+                  <div style={{ marginBottom: "10px" }}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px" }}>Sectors</p>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {SECTORS.map((s) => (
+                        <Chip key={s} label={s} small
+                          selected={bSectors.includes(s)}
+                          onClick={() => setBSectors(
+                            bSectors.includes(s) ? bSectors.filter((x) => x !== s) : [...bSectors, s]
+                          )} />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Build DNA button */}
+                  <button
+                    onClick={() => {
+                      setDna(assembleDna(bStyle, bAggression, bCap, bHold, bConcentration, bSectors));
+                      setShowBuilder(false);
+                    }}
+                    disabled={!bStyle && !bAggression && !bCap}
+                    style={{
+                      width: "100%", padding: "6px 0", fontSize: "10px", fontWeight: 700,
+                      letterSpacing: "0.06em", textTransform: "uppercase",
+                      background: (!bStyle && !bAggression && !bCap)
+                        ? "var(--surface-2)" : "var(--accent-dim)",
+                      color: (!bStyle && !bAggression && !bCap)
+                        ? "var(--text-0)" : "var(--accent-bright)",
+                      border: "1px solid var(--accent-border)", borderRadius: "4px",
+                      cursor: (!bStyle && !bAggression && !bCap) ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    Build DNA
+                  </button>
+                </div>
+              )}
+
               <textarea
                 value={dna}
                 onChange={(e) => setDna(e.target.value)}
                 rows={7}
-                placeholder="Describe your investment thesis..."
+                placeholder="Describe your investment thesis, or use the builder above..."
                 style={{
-                  ...inputStyle,
-                  resize: "vertical",
-                  fontFamily: "var(--font-sans)",
-                  lineHeight: 1.5,
+                  ...inputStyle, resize: "vertical",
+                  fontFamily: "var(--font-sans)", lineHeight: 1.5,
                 }}
               />
             </div>
 
-            {/* Error */}
             {error && (
               <p style={{ fontSize: "11px", color: "var(--red)", marginBottom: "12px" }}>{error}</p>
             )}
 
-            {/* Next button */}
+            {/* Generate Config button */}
             <button
-              onClick={() => {
-                setError(null);
-                suggestMutation.mutate();
-              }}
+              onClick={() => { setError(null); suggestMutation.mutate(); }}
               disabled={!dna.trim() || suggestMutation.isPending}
               style={{
-                width: "100%",
-                padding: "10px 0",
-                fontSize: "12px",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
+                width: "100%", padding: "12px 0", fontSize: "12px",
+                fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
                 background: !dna.trim() || suggestMutation.isPending
                   ? "var(--surface-1)"
-                  : "linear-gradient(135deg, #7c5cfc 0%, #9b7eff 100%)",
+                  : "linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%)",
                 color: !dna.trim() || suggestMutation.isPending ? "var(--text-0)" : "#fff",
-                border: "none",
-                borderRadius: "6px",
+                border: "none", borderRadius: "6px",
                 cursor: !dna.trim() || suggestMutation.isPending ? "not-allowed" : "pointer",
               }}
             >
-              {suggestMutation.isPending ? "Generating..." : "Next"}
+              {suggestMutation.isPending ? (
+                <span className="animate-pulse-slow">GScott is analyzing your strategy...</span>
+              ) : (
+                "Generate Config"
+              )}
             </button>
           </>
         )}
 
+        {/* ═══════════ STEP 2 ═══════════ */}
         {step === 2 && suggestion && (
           <>
-            {/* Suggestion card */}
-            <div
-              style={{
-                background: "var(--surface-1)",
-                border: "1px solid var(--border-0)",
-                borderRadius: "8px",
-                padding: "16px",
-                marginBottom: "16px",
-              }}
-            >
-              <div style={{ marginBottom: "12px" }}>
-                <p style={labelStyle}>Name</p>
-                <input
-                  type="text"
-                  value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    fontFamily: "var(--font-sans)",
-                    padding: "7px 10px",
-                  }}
-                />
-                <p style={{ fontSize: "10px", color: "var(--text-0)", marginTop: "4px", fontFamily: "var(--font-mono)" }}>
-                  id: {slugify(editedName.trim() || suggestion.name)}
-                </p>
-              </div>
-
-              <div style={{ display: "flex", gap: "24px", marginBottom: "12px" }}>
-                <div>
-                  <p style={labelStyle}>Universe</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, fontWeight: 600 }}>
-                    {suggestion.universe}
-                  </p>
-                </div>
-                <div>
-                  <p style={labelStyle}>Capital</p>
-                  <p style={{ fontSize: "12px", color: "var(--text-3)", margin: 0, fontFamily: "var(--font-mono)" }}>
-                    ${capital.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: "12px" }}>
-                <p style={labelStyle}>ETFs</p>
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {suggestion.etfs.map((etf) => (
-                    <span
-                      key={etf}
-                      style={{
-                        fontSize: "10px",
-                        fontWeight: 600,
-                        fontFamily: "var(--font-mono)",
-                        padding: "2px 6px",
-                        borderRadius: "3px",
-                        background: "rgba(124,92,252,0.15)",
-                        color: "var(--accent-bright)",
-                      }}
-                    >
-                      {etf}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p style={labelStyle}>Risk</p>
-                <p style={{ fontSize: "11px", color: "var(--text-2)", margin: 0, fontFamily: "var(--font-mono)" }}>
-                  {suggestion.stop_loss_pct}% stop · {suggestion.take_profit_pct}% target · {suggestion.risk_per_trade_pct}% risk/trade · {suggestion.max_position_pct}% max pos · {suggestion.max_positions} max positions
-                </p>
-              </div>
-            </div>
-
-            {/* DNA preview */}
+            {/* Name + Universe */}
             <div style={{ marginBottom: "16px" }}>
-              <p style={labelStyle}>Strategy DNA</p>
-              <p
-                style={{
-                  fontSize: "11px",
-                  color: "var(--text-2)",
-                  lineHeight: 1.5,
-                  fontStyle: "italic",
-                  margin: 0,
-                  maxHeight: "80px",
-                  overflow: "hidden",
-                }}
-              >
-                {dna}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+                <p style={{ ...labelStyle, marginBottom: 0, flex: 1 }}>Name</p>
+                <span style={{
+                  fontSize: "9px", fontWeight: 700, padding: "2px 8px",
+                  borderRadius: "3px", letterSpacing: "0.08em",
+                  background: "var(--accent-dim)", color: "var(--accent-bright)",
+                  border: "1px solid var(--accent-border)", textTransform: "uppercase",
+                }}>
+                  {suggestion.universe}
+                </span>
+              </div>
+              <input
+                type="text" value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                style={{ ...inputStyle, fontSize: "14px", fontWeight: 600, fontFamily: "var(--font-sans)" }}
+              />
+              <p style={{ fontSize: "10px", color: "var(--text-0)", marginTop: "4px", fontFamily: "var(--font-mono)" }}>
+                id: {slugify(editedName.trim() || suggestion.name)}
               </p>
             </div>
 
-            {/* Error */}
+            {/* Universe & Discovery */}
+            {(editedSectors.length > 0 || editedIndustries.length > 0) && (
+              <div style={{
+                background: "var(--surface-1)", border: "1px solid var(--border-0)",
+                borderRadius: "8px", padding: "12px", marginBottom: "16px",
+              }}>
+                <p style={labelStyle}>Universe Filters</p>
+
+                {editedSectors.length > 0 && (
+                  <div style={{ marginBottom: "8px" }}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px", color: "var(--text-0)" }}>Sectors</p>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {editedSectors.map((s) => (
+                        <span key={s} style={{
+                          fontSize: "10px", fontWeight: 600, padding: "2px 8px",
+                          borderRadius: "3px", background: "var(--accent-dim)",
+                          color: "var(--accent-bright)", display: "inline-flex",
+                          alignItems: "center", gap: "4px",
+                        }}>
+                          {s}
+                          <button onClick={() => setEditedSectors(editedSectors.filter((x) => x !== s))}
+                            style={{
+                              background: "none", border: "none", color: "var(--text-1)",
+                              cursor: "pointer", fontSize: "10px", padding: 0, lineHeight: 1,
+                            }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {editedIndustries.length > 0 && (
+                  <div>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "4px", color: "var(--text-0)" }}>Industries</p>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {editedIndustries.map((ind) => (
+                        <span key={ind} style={{
+                          fontSize: "9px", fontWeight: 500, padding: "2px 6px",
+                          borderRadius: "3px", background: "var(--surface-2)",
+                          color: "var(--text-2)", display: "inline-flex",
+                          alignItems: "center", gap: "4px",
+                        }}>
+                          {ind}
+                          <button onClick={() => setEditedIndustries(editedIndustries.filter((x) => x !== ind))}
+                            style={{
+                              background: "none", border: "none", color: "var(--text-0)",
+                              cursor: "pointer", fontSize: "9px", padding: 0, lineHeight: 1,
+                            }}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Refinement toggle */}
+            <div style={{
+              background: "var(--surface-1)", border: "1px solid var(--border-0)",
+              borderRadius: "8px", padding: "12px", marginBottom: "16px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: editedRefinementEnabled ? "8px" : 0 }}>
+                <p style={{ ...labelStyle, marginBottom: 0 }}>Claude Universe Refinement</p>
+                <button
+                  onClick={() => setEditedRefinementEnabled(!editedRefinementEnabled)}
+                  style={{
+                    width: "36px", height: "20px", borderRadius: "10px", cursor: "pointer",
+                    border: "none", position: "relative", transition: "background 0.2s",
+                    background: editedRefinementEnabled ? "var(--accent)" : "var(--surface-3)",
+                  }}
+                >
+                  <span style={{
+                    position: "absolute", top: "2px",
+                    left: editedRefinementEnabled ? "18px" : "2px",
+                    width: "16px", height: "16px", borderRadius: "50%",
+                    background: "#fff", transition: "left 0.2s",
+                  }} />
+                </button>
+              </div>
+              {editedRefinementEnabled && (
+                <textarea
+                  value={editedRefinementPrompt}
+                  onChange={(e) => setEditedRefinementPrompt(e.target.value)}
+                  rows={3}
+                  placeholder="Describe what to include/exclude from screener results..."
+                  style={{
+                    ...inputStyle, fontSize: "11px", resize: "vertical",
+                    fontFamily: "var(--font-sans)", lineHeight: 1.4,
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Risk & Sizing */}
+            <div style={{
+              background: "var(--surface-1)", border: "1px solid var(--border-0)",
+              borderRadius: "8px", padding: "12px", marginBottom: "16px",
+            }}>
+              <p style={labelStyle}>Risk & Sizing</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                {[
+                  { label: "Stop Loss %", value: editedStopLoss, set: setEditedStopLoss },
+                  { label: "Take Profit %", value: editedTakeProfit, set: setEditedTakeProfit },
+                  { label: "Risk/Trade %", value: editedRiskPerTrade, set: setEditedRiskPerTrade },
+                  { label: "Max Position %", value: editedMaxPosition, set: setEditedMaxPosition },
+                  { label: "Max Positions", value: editedMaxPositions, set: setEditedMaxPositions },
+                  { label: "Capital", value: capital, set: setCapital },
+                ].map(({ label, value, set }) => (
+                  <div key={label}>
+                    <p style={{ ...labelStyle, fontSize: "8px", marginBottom: "3px" }}>{label}</p>
+                    <input
+                      type="number" value={value}
+                      onChange={(e) => set(Number(e.target.value))}
+                      style={smallInputStyle}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Strategy DNA (collapsible) */}
+            <div style={{ marginBottom: "16px" }}>
+              <button
+                onClick={() => setShowDna(!showDna)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
+                  letterSpacing: "0.10em", color: "var(--text-0)", padding: 0,
+                  display: "flex", alignItems: "center", gap: "4px",
+                }}
+              >
+                {showDna ? "▾" : "▸"} Strategy DNA
+              </button>
+              {showDna && (
+                <p style={{
+                  fontSize: "11px", color: "var(--text-2)", lineHeight: 1.5,
+                  fontStyle: "italic", margin: "6px 0 0", whiteSpace: "pre-wrap",
+                }}>
+                  {dna}
+                </p>
+              )}
+            </div>
+
             {error && (
               <p style={{ fontSize: "11px", color: "var(--red)", marginBottom: "12px" }}>{error}</p>
             )}
@@ -311,15 +656,9 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
               <button
                 onClick={() => { setStep(1); setError(null); }}
                 style={{
-                  flex: 1,
-                  padding: "10px 0",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  background: "var(--surface-1)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-0)",
-                  borderRadius: "6px",
-                  cursor: "pointer",
+                  flex: 1, padding: "10px 0", fontSize: "12px", fontWeight: 600,
+                  background: "var(--surface-1)", color: "var(--text-2)",
+                  border: "1px solid var(--border-0)", borderRadius: "6px", cursor: "pointer",
                 }}
               >
                 Back
@@ -328,18 +667,13 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                 onClick={() => createMutation.mutate()}
                 disabled={createMutation.isPending}
                 style={{
-                  flex: 2,
-                  padding: "10px 0",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
+                  flex: 2, padding: "10px 0", fontSize: "12px", fontWeight: 700,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
                   background: createMutation.isPending
                     ? "var(--surface-1)"
-                    : "linear-gradient(135deg, #7c5cfc 0%, #9b7eff 100%)",
+                    : "linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%)",
                   color: createMutation.isPending ? "var(--text-0)" : "#fff",
-                  border: "none",
-                  borderRadius: "6px",
+                  border: "none", borderRadius: "6px",
                   cursor: createMutation.isPending ? "not-allowed" : "pointer",
                 }}
               >

@@ -3,7 +3,7 @@
   "portfolios": {
     "microcap": {
       "id": "microcap",
-      "name": "Micro-Cap Portfolio",
+      "name": "MicroCap",
       "universe": "microcap",
       "created": "2026-02-16T12:30:20",
       "starting_capital": 50000.0,
@@ -35,7 +35,7 @@
     },
     "defense-tech": {
       "id": "defense-tech",
-      "name": "Defense Tech",
+      "name": "DefenseTech",
       "universe": "midcap",
       "created": "2026-03-11T14:16:25",
       "starting_capital": 1000000.0,
@@ -51,7 +51,7 @@
     },
     "asymmetric-catalyst-hunters": {
       "id": "asymmetric-catalyst-hunters",
-      "name": "Asymmetric Catalyst Hunters",
+      "name": "Asymmetric Catalyst",
       "universe": "microcap",
       "created": "2026-03-23T16:52:36",
       "starting_capital": 10000.0,
@@ -79,7 +79,7 @@
       "universe": "allcap",
       "created": "2026-03-25T12:14:04",
       "starting_capital": 500000.0,
-      "active": true
+      "active": false
     },
     "asymmetric-microcap-compounder": {
       "id": "asymmetric-microcap-compounder",
@@ -87,7 +87,7 @@
       "universe": "microcap",
       "created": "2026-03-26T00:54:37",
       "starting_capital": 1000.0,
-      "active": true
+      "active": false
     },
     "microcap-momentum-compounder": {
       "id": "microcap-momentum-compounder",
@@ -107,11 +107,11 @@
     },
     "yolo-degen-momentum": {
       "id": "yolo-degen-momentum",
-      "name": "YOLO Degen Momentum",
+      "name": "YOLO",
       "universe": "allcap",
       "created": "2026-03-26T19:36:46",
       "starting_capital": 100000.0,
-      "active": true
+      "active": false
     },
     "tariff-moat-industrials": {
       "id": "tariff-moat-industrials",
@@ -119,15 +119,15 @@
       "universe": "smallcap",
       "created": "2026-03-29T14:35:06",
       "starting_capital": 100000.0,
-      "active": true
+      "active": false
     },
     "pre-earnings-momentum": {
       "id": "pre-earnings-momentum",
-      "name": "Pre-Earnings Momentum",
+      "name": "Pre-Earnings",
       "universe": "allcap",
       "created": "2026-03-29T15:25:37",
       "starting_capital": 250000.0,
-      "active": true
+      "active": false
     },
     "ai-pickaxe-infrastructure": {
       "id": "ai-pickaxe-infrastructure",
@@ -135,6 +135,110 @@
       "universe": "allcap",
       "created": "2026-03-29T15:26:39",
       "starting_capital": 2000000.0,
+      "active": false
+    },
+    "sector-momentum-rotation": {
+      "id": "sector-momentum-rotation",
+      "name": "Sector Momentum Rotation",
+      "universe": "largecap",
+      "created": "2026-03-31T11:18:16",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "yolo-momentum-chaos": {
+      "id": "yolo-momentum-chaos",
+      "name": "YOLO Momentum Chaos",
+      "universe": "allcap",
+      "created": "2026-03-31T17:29:49",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "high-conviction-compounders": {
+      "id": "high-conviction-compounders",
+      "name": "Folio",
+      "universe": "allcap",
+      "created": "2026-03-31T17:36:05",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "2-day-maximum-aggression": {
+      "id": "2-day-maximum-aggression",
+      "name": "2-Day Maximum Aggression",
+      "universe": "allcap",
+      "created": "2026-04-01T10:13:06",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "2-day-max-alpha-blitz": {
+      "id": "2-day-max-alpha-blitz",
+      "name": "2-Day Max Alpha Blitz",
+      "universe": "allcap",
+      "created": "2026-04-01T10:16:31",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "diversified-healthcare": {
+      "id": "diversified-healthcare",
+      "name": "Diversified Healthcare",
+      "universe": "allcap",
+      "created": "2026-04-01T10:17:41",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "diversified-all-cap-core": {
+      "id": "diversified-all-cap-core",
+      "name": "Diversified All-Cap Core",
+      "universe": "allcap",
+      "created": "2026-04-01T10:30:05",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "multi-sector-aggressive": {
+      "id": "multi-sector-aggressive",
+      "name": "Aggressive Multi-Sector Momentum",
+      "universe": "allcap",
+      "created": "2026-04-01T14:00:34",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "quality-momentum-growth": {
+      "id": "quality-momentum-growth",
+      "name": "BasicTest",
+      "universe": "allcap",
+      "created": "2026-04-02T11:36:03",
+      "starting_capital": 500000.0,
+      "active": false
+    },
+    "gov-infra": {
+      "id": "gov-infra",
+      "name": "Gov Infra",
+      "universe": "midcap",
+      "created": "2026-04-03T10:02:22",
+      "starting_capital": 1000000.0,
+      "active": true
+    },
+    "baseball-industry": {
+      "id": "baseball-industry",
+      "name": "Baseball Industry",
+      "universe": "allcap",
+      "created": "2026-04-06T15:41:53",
+      "starting_capital": 100000.0,
+      "active": false
+    },
+    "falling-knife-bounce-hunter": {
+      "id": "falling-knife-bounce-hunter",
+      "name": "Falling Knife Bounce Hunter",
+      "universe": "allcap",
+      "created": "2026-04-06T16:40:13",
+      "starting_capital": 1000000.0,
+      "active": true
+    },
+    "unloved-microcap-cash-cows": {
+      "id": "unloved-microcap-cash-cows",
+      "name": "Unloved Microcap Cash Cows",
+      "universe": "microcap",
+      "created": "2026-04-06T17:51:10",
+      "starting_capital": 1000000.0,
       "active": true
     }
   }

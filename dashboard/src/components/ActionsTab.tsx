@@ -546,6 +546,26 @@ export default function ActionsTab() {
         {summary.vetoed > 0 && (
           <span className="text-xs" style={{ color: "var(--red)" }}>{summary.vetoed} vetoed</span>
         )}
+        {result.ai_mode && (
+          <span style={{
+            fontSize: "9px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            padding: "2px 8px",
+            borderRadius: "3px",
+            background: result.ai_mode === "claude"
+              ? "rgba(74,222,128,0.12)"
+              : "rgba(248,113,113,0.15)",
+            color: result.ai_mode === "claude"
+              ? "var(--green)"
+              : "var(--red)",
+            border: `1px solid ${result.ai_mode === "claude"
+              ? "rgba(74,222,128,0.25)"
+              : "rgba(248,113,113,0.3)"}`,
+          }}>
+            {result.ai_mode === "claude" ? "AI MODE" : "FALLBACK"}
+          </span>
+        )}
         <div className="flex-1" />
         {summary.can_execute && (
           <button

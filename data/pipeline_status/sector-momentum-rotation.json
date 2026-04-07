@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-06T14:20:22.605372",
+  "portfolio_id": "sector-momentum-rotation",
+  "ai_mode": "claude",
+  "proposed": {
+    "buys": 5,
+    "sells": 1
+  },
+  "executed": {
+    "buys": 5,
+    "sells": 1
+  },
+  "dropped": []
+}

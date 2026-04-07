@@ -1,11 +1,18 @@
 {
-  "ESE": 3,
-  "NATL": 3,
-  "LHX": 3,
-  "ENS": 3,
+  "ATI": 3,
+  "CW": 3,
+  "RTX": 3,
   "LMT": 3,
-  "MOG-A": 1,
-  "PLTR": 1,
-  "GD": 1,
-  "BWXT": 1
+  "SAIC": 3,
+  "BAH": 3,
+  "NATL": 3,
+  "BWXT": 3,
+  "ESE": 3,
+  "DRS": 3,
+  "GD": 3,
+  "VISN": 3,
+  "NOC": 3,
+  "RCAT": 3,
+  "PL": 3,
+  "RDW": 3
 }

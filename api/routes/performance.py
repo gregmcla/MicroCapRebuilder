@@ -36,6 +36,7 @@ def daily_report(portfolio_id: str):
 @router.get("/learning")
 def learning(portfolio_id: str):
     """Factor learning summary and weight suggestions."""
+    from portfolio_state import load_portfolio_state
     state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     regime = state.regime.value if state.regime else None
 

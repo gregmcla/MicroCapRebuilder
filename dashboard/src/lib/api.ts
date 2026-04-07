@@ -74,6 +74,8 @@ export const api = {
     put<{ success: boolean; name: string }>(`/portfolios/${id}/rename`, { name }),
   suggestConfig: (req: SuggestConfigRequest) =>
     post<SuggestConfigResponse>("/portfolios/suggest-config", req),
+  randomDna: () =>
+    post<{ dna: string }>("/portfolios/random-dna", {}),
 
   // --- Portfolio-scoped endpoints ---
   getState: (pid: string) => get<PortfolioState>(`/${pid}/state`),

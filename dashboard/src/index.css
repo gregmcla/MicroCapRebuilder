@@ -88,6 +88,72 @@
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* ── Light mode overrides ── */
+[data-theme="light"] {
+  /* Raw CSS vars (inline styles) */
+  --void:       #f5f5f7;
+  --surface-0:  #ebebef;
+  --surface-1:  #e0e0e5;
+  --surface-2:  #d6d6dc;
+  --surface-3:  #ccccd3;
+  --surface-4:  #c2c2ca;
+  --accent:        #6346e0;
+  --accent-bright: #5738d4;
+  --accent-dim:    rgba(99,70,224,0.10);
+  --accent-border: rgba(99,70,224,0.25);
+  --accent-glow:   rgba(99,70,224,0.06);
+  --accent-cyan:   #0e9a90;
+  --green:      #16a34a;
+  --green-dim:  rgba(22,163,74,0.10);
+  --red:        #dc2626;
+  --red-dim:    rgba(220,38,38,0.08);
+  --amber:      #d97706;
+  --amber-dim:  rgba(217,119,6,0.08);
+  --border-0:   rgba(0,0,0,0.06);
+  --border-1:   rgba(0,0,0,0.08);
+  --border-2:   rgba(0,0,0,0.12);
+  --border-3:   rgba(0,0,0,0.18);
+  --text-0:     rgba(0,0,0,0.35);
+  --text-1:     rgba(0,0,0,0.50);
+  --text-2:     rgba(0,0,0,0.70);
+  --text-3:     rgba(0,0,0,0.82);
+  --text-4:     rgba(0,0,0,0.92);
+
+  /* Tailwind @theme overrides (utility classes) */
+  --color-bg-primary:    #f5f5f7;
+  --color-bg-surface:    #ebebef;
+  --color-bg-elevated:   #e0e0e5;
+  --color-surface-2:     #d6d6dc;
+  --color-surface-3:     #ccccd3;
+  --color-surface-4:     #c2c2ca;
+  --color-border:        rgba(0,0,0,0.06);
+  --color-border-hover:  rgba(0,0,0,0.12);
+  --color-border-1:      rgba(0,0,0,0.08);
+  --color-border-3:      rgba(0,0,0,0.18);
+  --color-accent:        #6346e0;
+  --color-accent-dim:    rgba(99,70,224,0.10);
+  --color-accent-bright: #5738d4;
+  --color-accent-border: rgba(99,70,224,0.25);
+  --color-accent-glow:   rgba(99,70,224,0.06);
+  --color-accent-cyan:   #0e9a90;
+  --color-profit:        #16a34a;
+  --color-profit-dim:    rgba(22,163,74,0.10);
+  --color-loss:          #dc2626;
+  --color-loss-dim:      rgba(220,38,38,0.08);
+  --color-warning:       #d97706;
+  --color-warning-dim:   rgba(217,119,6,0.08);
+  --color-text-primary:   rgba(0,0,0,0.92);
+  --color-text-secondary: rgba(0,0,0,0.50);
+  --color-text-muted:     rgba(0,0,0,0.35);
+  --color-text-2:         rgba(0,0,0,0.70);
+  --color-text-3:         rgba(0,0,0,0.82);
+
+  color-scheme: light;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.10); }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
+
 /* ── Keyframes ── */
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }

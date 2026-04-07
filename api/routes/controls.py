@@ -10,7 +10,7 @@ from portfolio_state import (
     remove_position,
     save_positions,
 )
-from post_mortem import save_post_mortem
+from post_mortem import save_post_mortem, PostMortemAnalyzer
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -72,7 +72,14 @@ def sell_position(portfolio_id: str, ticker: str):
 
     # Post-mortem (non-fatal)
     try:
-        save_post_mortem(ticker)
+        buy_txns = state.transactions[
+            (state.transactions["ticker"] == ticker) &
+            (state.transactions["action"] == "BUY")
+        ]
+        if not buy_txns.empty:
+            analyzer = PostMortemAnalyzer()
+            pm = analyzer.analyze_trade(transaction, buy_txns.iloc[-1].to_dict(), "UNKNOWN")
+            save_post_mortem(pm, portfolio_id=portfolio_id)
     except Exception as e:
         print(f"Failed to generate post-mortem for {ticker}: {e}")
 
@@ -136,9 +143,16 @@ def close_all(portfolio_id: str):
 
     save_positions(state)
 
-    for pos_info in closed_positions:
+    analyzer = PostMortemAnalyzer()
+    for pos_info, tx in zip(closed_positions, transactions):
         try:
-            save_post_mortem(pos_info["ticker"])
+            buy_txns = state.transactions[
+                (state.transactions["ticker"] == pos_info["ticker"]) &
+                (state.transactions["action"] == "BUY")
+            ]
+            if not buy_txns.empty:
+                pm = analyzer.analyze_trade(tx, buy_txns.iloc[-1].to_dict(), "UNKNOWN")
+                save_post_mortem(pm, portfolio_id=portfolio_id)
         except Exception as e:
             print(f"Failed to generate post-mortem for {pos_info['ticker']}: {e}")
 

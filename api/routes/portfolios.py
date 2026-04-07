@@ -78,6 +78,49 @@ def create_new_portfolio(req: CreatePortfolioRequest, background_tasks: Backgrou
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/random-dna")
+def random_dna():
+    """Generate a random creative strategy DNA via Claude."""
+    import os
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        env_file = Path(__file__).parent.parent.parent / ".env"
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                if line.startswith("ANTHROPIC_API_KEY="):
+                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="No API key configured")
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key, timeout=30.0)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Generate a creative, specific, and actionable portfolio strategy DNA. "
+                    "Be bold and opinionated. Use this structured brief format:\n\n"
+                    "Style: [one of: Momentum, Value, Growth, Income, Contrarian, Thematic]\n"
+                    "Aggression: [Conservative/Moderate/Aggressive/YOLO]\n"
+                    "Cap: [Micro/Small/Mid/Large/All] with dollar range\n"
+                    "Hold: [timeframe]\n"
+                    "Concentration: [number of positions]\n"
+                    "Sectors: [1-3 specific sectors]\n"
+                    "Thesis: [2-3 sentences — the unique edge or angle. Be specific about WHAT to buy and WHY. "
+                    "Make it something a real trader would actually run. No generic platitudes.]\n\n"
+                    "Return ONLY the structured brief, nothing else."
+                ),
+            }],
+        )
+        dna = response.content[0].text.strip()
+        return {"dna": dna}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class SuggestConfigRequest(BaseModel):
     strategy_dna: str
     starting_capital: float

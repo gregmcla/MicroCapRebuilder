@@ -39,6 +39,8 @@ interface UIStore {
   toggleActivity: () => void;
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  theme: "dark" | "light";
+  toggleTheme: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -58,6 +60,19 @@ export const useUIStore = create<UIStore>((set) => ({
       const next = !s.sidebarCollapsed;
       localStorage.setItem("sidebar-collapsed", String(next));
       return { sidebarCollapsed: next };
+    }),
+  theme: (() => {
+    const stored = localStorage.getItem("gscott-theme");
+    const t = (stored === "light" || stored === "dark") ? stored : "dark";
+    document.documentElement.setAttribute("data-theme", t);
+    return t;
+  })() as "dark" | "light",
+  toggleTheme: () =>
+    set((s) => {
+      const next = s.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("gscott-theme", next);
+      document.documentElement.setAttribute("data-theme", next);
+      return { theme: next };
     }),
 }));
 

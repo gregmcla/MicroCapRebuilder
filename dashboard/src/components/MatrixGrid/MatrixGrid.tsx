@@ -12,6 +12,7 @@ import ActionsTab from "../ActionsTab";
 import { useAnalysisStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
+import { useWarnings } from "../../hooks/useRisk";
 
 // ─── Squarified Treemap ───────────────────────────────────────────────────────
 function squarifyLayout(
@@ -115,6 +116,7 @@ export default function MatrixGrid({
   const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
+  const { data: warnings } = useWarnings();
 
   // Build a map of pending sell reasoning from analysis result (ticker → ai_reasoning)
   const pendingSellReasoningMap = useMemo(() => {
@@ -135,7 +137,7 @@ export default function MatrixGrid({
     wasAnalyzing.current = isAnalyzing;
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "alpha" | "portfolio">("perf");
+  const [sortBy, setSortBy] = useState<"entry" | "value" | "perf" | "day" | "alpha" | "portfolio">("perf");
   const [filterP, setFilterP] = useState<string | null>(initialFilter ?? null);
   const [mounted, setMounted] = useState(false);
   const [boot, setBoot] = useState(0);
@@ -186,8 +188,9 @@ export default function MatrixGrid({
       if (e.key === "1") setSortBy("entry");
       if (e.key === "2") setSortBy("value");
       if (e.key === "3") setSortBy("perf");
-      if (e.key === "4") setSortBy("alpha");
-      if (e.key === "5") setSortBy("portfolio");
+      if (e.key === "4") setSortBy("day");
+      if (e.key === "5") setSortBy("alpha");
+      if (e.key === "6") setSortBy("portfolio");
       if (e.key === "Escape") { setSelectedPos(null); setFilterP(null); }
     };
     window.addEventListener("keydown", handler);
@@ -228,6 +231,7 @@ export default function MatrixGrid({
     if (sortBy === "entry") arr.sort((a, b) => (b.entryDate ?? "").localeCompare(a.entryDate ?? ""));
     else if (sortBy === "value") arr.sort((a, b) => b.value - a.value);
     else if (sortBy === "perf") arr.sort((a, b) => b.perf - a.perf);
+    else if (sortBy === "day") arr.sort((a, b) => b.day - a.day);
     else if (sortBy === "alpha") arr.sort((a, b) => (b.alpha ?? 0) - (a.alpha ?? 0));
     else if (sortBy === "portfolio") arr.sort((a, b) => a.portfolioId.localeCompare(b.portfolioId) || b.value - a.value);
     return arr;
@@ -267,6 +271,7 @@ export default function MatrixGrid({
     // Pick sizing metric based on sort tab
     const sizeOf = (pos: typeof sorted[0]) => {
       if (sortBy === "perf") return Math.max(Math.abs(pos.perf), 0.5);
+      if (sortBy === "day") return Math.max(Math.abs(pos.day), 0.5);
       if (sortBy === "alpha") return Math.max(Math.abs(pos.alpha ?? 0), 0.5);
       if (sortBy === "entry") return 1; // uniform grid
       return Math.max(pos.value, 1); // value / portfolio
@@ -426,8 +431,8 @@ export default function MatrixGrid({
               )}
             </div>
             <span style={{ fontSize: 9, color: "#444", letterSpacing: "0.1em", marginRight: 8 }}>SORT</span>
-            {(["entry", "value", "perf", "alpha", "portfolio"] as const).map((k) => {
-              const SORT_LABELS: Record<string, string> = { entry: "entry", value: "size", perf: "perf", alpha: "alpha", portfolio: "portfolio" };
+            {(["entry", "value", "perf", "day", "alpha", "portfolio"] as const).map((k) => {
+              const SORT_LABELS: Record<string, string> = { entry: "entry", value: "size", perf: "perf", day: "today", alpha: "alpha", portfolio: "portfolio" };
               return (
                 <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
                   padding: "3px 8px", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase",
@@ -481,8 +486,37 @@ export default function MatrixGrid({
                 ))}
               </>
             )}
+            <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", fontSize: 8, color: "#444", letterSpacing: "0.08em" }}>
+              <Waveform width={80} height={10} />
+              <span>MATRIX::v3.0</span>
+              <span style={{ color: "#4ade8044", letterSpacing: "0.05em" }}>{clock}</span>
+            </div>
           </div>
         </div>
+
+        {/* CRITICAL/HIGH WARNINGS STRIP */}
+        {warnings && warnings.filter((w) => w.severity === "critical" || w.severity === "high").length > 0 && (
+          <div style={{
+            padding: "4px 20px",
+            background: "rgba(248,113,113,0.06)",
+            borderBottom: "1px solid rgba(248,113,113,0.15)",
+            display: "flex", gap: 16, alignItems: "center",
+            fontSize: "10px", letterSpacing: "0.06em",
+            flexShrink: 0,
+          }}>
+            {warnings
+              .filter((w) => w.severity === "critical" || w.severity === "high")
+              .slice(0, 3)
+              .map((w, i) => (
+                <span key={i} style={{
+                  color: w.severity === "critical" ? "var(--red)" : "var(--color-warning)",
+                  fontWeight: 600,
+                }}>
+                  {w.severity.toUpperCase()} {w.title}
+                </span>
+              ))}
+          </div>
+        )}
 
         {/* TAB BAR */}
         <div style={{
@@ -596,7 +630,7 @@ export default function MatrixGrid({
                     position: "absolute",
                     left: rect.x, top: rect.y, width: rect.w, height: rect.h,
                     boxSizing: "border-box",
-                    background: pbg(pos.perf),
+                    background: pbg(sortBy === "day" ? pos.day : pos.perf),
                     boxShadow: isAtRisk
                       ? `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(248,113,113,0.25)`
                       : `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
@@ -657,8 +691,10 @@ export default function MatrixGrid({
                     }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: micro ? 9 : tiny ? 9 : large ? 14 : 11, fontWeight: 700, color: pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
-                      {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}%
+                    <span style={{ fontSize: micro ? 9 : tiny ? 9 : large ? 14 : 11, fontWeight: 700, color: sortBy === "day" ? pc(pos.day) : pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
+                      {sortBy === "day"
+                        ? `${pos.day > 0 ? "+" : ""}${pos.day.toFixed(2)}%`
+                        : `${pos.perf > 0 ? "+" : ""}${pos.perf.toFixed(1)}%`}
                     </span>
                   </div>
 
@@ -698,7 +734,7 @@ export default function MatrixGrid({
                           {held}d
                         </span>
                       )}
-                      <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={large ? rect.w - 20 : 56} h={large ? 36 : 22} />
+                      <Sparkline data={pos.sparkline} color={(sortBy === "day" ? pos.day : pos.perf) >= 0 ? "#4ade80" : "#f87171"} w={large ? rect.w - 20 : 56} h={large ? 36 : 22} />
                     </div>
                   )}
 
@@ -798,12 +834,7 @@ export default function MatrixGrid({
               <span>&#9474; <span style={{ color: "#f87171" }}>{atRiskSet.size} near stop</span></span>
             )}
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <Waveform width={100} height={12} />
-            <span>MATRIX::v3.0</span>
-            <span style={{ color: "#4ade8033", animation: "matrixBlink 2s step-end infinite" }}>&#9632; LIVE</span>
-            <span style={{ color: "#4ade8044", letterSpacing: "0.05em" }}>{clock}</span>
-          </div>
+          <div />
         </div>
       </div>
 

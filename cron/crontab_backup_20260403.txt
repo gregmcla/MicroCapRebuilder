@@ -1,0 +1,22 @@
+
+# ── GScott Trading System ──────────────────────────────────────────
+MAILTO=""
+
+# Pre-market scan (6:30 AM ET, Mon-Fri)
+30 6 * * 1-5 /Users/gregmclaughlin/MicroCapRebuilder/cron/scan.sh
+
+# Market-open execute (9:35 AM ET, Mon-Fri)
+35 9 * * 1-5 /Users/gregmclaughlin/MicroCapRebuilder/cron/execute.sh
+
+# Mid-day position update (12:00 PM ET, Mon-Fri)
+0 12 * * 1-5 /Users/gregmclaughlin/MicroCapRebuilder/cron/update.sh
+
+# Post-close position update + factor learning (4:15 PM ET, Mon-Fri)
+15 16 * * 1-5 /Users/gregmclaughlin/MicroCapRebuilder/cron/update.sh
+
+# API watchdog (every 15 min, all days)
+*/15 * * * * /Users/gregmclaughlin/MicroCapRebuilder/cron/api_watchdog.sh
+
+# Log cleanup: delete logs older than 30 days (Sunday midnight)
+0 0 * * 0 find /Users/gregmclaughlin/MicroCapRebuilder/cron/logs -name "*.log" -mtime +30 -delete
+# ───────────────────────────────────────────────────────────────────

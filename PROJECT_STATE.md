@@ -7,7 +7,80 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 16 active portfolios. Screener-based universe migration complete (2026-04-02). Score-First Watchlist Architecture complete + portfolio isolation fixes (2026-04-01).**
+**Operational — cron automation running daily. 26 active portfolios. Pipeline visibility + screener universe + portfolio creation redesign complete (2026-04-02 → 2026-04-07). Cron PAUSED for market holiday 2026-04-03 — needs to be re-enabled.**
+
+---
+
+## Recently Completed (2026-04-06 → 2026-04-07) — Portfolio Creation UX Redesign
+
+Full rewrite of `dashboard/src/components/CreatePortfolioModal.tsx` (354 → ~600 lines).
+
+### Backend
+- `api/routes/portfolios.py` — added `POST /portfolios/random-dna` endpoint that calls Claude (haiku) to generate a random structured-brief strategy DNA. ~30s timeout, returns `{"dna": "..."}`.
+- `dashboard/src/lib/api.ts` — added `randomDna()` function.
+
+### Screen 1 (Strategy Input)
+- Capital input with `$` prefix and live comma formatting
+- 🎲 Random button — calls `POST /portfolios/random-dna` for fresh creative strategy each click
+- 🔧 Builder toggle — expandable panel with chip selectors for Style/Aggression/Cap/Hold/Concentration/Sectors. "Build DNA" button assembles into structured brief format and fills textarea
+- Better loading state on Generate Config: "GScott is analyzing your strategy..."
+
+### Screen 2 (Review & Configure)
+- Editable name + universe pill badge
+- Universe Filters card showing screener sectors + industries as removable tag badges
+- Claude Universe Refinement toggle switch + editable prompt textarea
+- Risk & Sizing in 2x3 grid (all 6 fields editable inline: stop loss, take profit, risk/trade, max position, max positions, capital)
+- Collapsible Strategy DNA preview
+- Removed: ETF badges (dead UI), curated tickers preview
+
+### Light mode (partial)
+- Added `data-theme="light"` CSS variable overrides in `dashboard/src/index.css` for both `:root` raw vars and `@theme` Tailwind vars
+- Added theme toggle button (☀/☾) in TopBar
+- `useUIStore.theme` state with localStorage persistence
+- Inline `<script>` in `index.html` sets `data-theme` on first paint to avoid flash
+- KNOWN INCOMPLETE: Many MatrixGrid components have hardcoded hex colors (e.g., `#0a0a0b`, `rgba(255,255,255,0.04)`) that don't respond to CSS variable swap. Overview page works in light mode; portfolio detail views look mostly dark even in light mode.
+
+### MatrixGrid status bar relocation
+- Moved Waveform + MATRIX::v3.0 + clock from bottom status bar to right side of CONTROLS bar (next to portfolio filter chips) using `marginLeft: auto`
+
+---
+
+## Recently Completed (2026-04-02) — Pipeline Visibility Features
+
+Implemented in 6 task subagent flow with two-stage review per task. All 8 tests passing.
+
+1. **`ai_mode` flag** in every analysis result — `"claude" | "mechanical" | "mechanical_fallback"`. Tracked via module-level `_last_ai_mode` in `ai_allocator.py`, set in 3 paths (success, no-client fallback, exception fallback). Read by `_run_ai_driven_analysis` and added to return dict.
+
+2. **Execution summary** in `execute_approved_actions` return — `{proposed: {buys, sells}, executed: {buys, sells}, dropped: [{ticker, reason}], ai_mode}`. All 6 silent-drop paths now track to `dropped_actions` list with specific reasons.
+
+3. **Post-mortem trade history in Claude prompt** — `get_portfolio_trade_summary(portfolio_id, max_trades=20)` in `post_mortem.py` returns `{total_trades, win_rate_pct, avg_win_pct, avg_loss_pct, avg_hold_days, top_patterns, recent_streak}`. Injected into `_build_allocation_prompt` as `_trade_history_block`. Only shows when ≥5 trades exist.
+
+4. **`data_completeness` (0-6)** in StockScore — each factor function (`score_price_momentum`, `score_earnings_growth`, `score_quality`, `score_volume`, `score_volatility`, `score_value_timing`) now returns `(score, has_real_data)` tuple. `score_stock` sums the booleans. Passed to Claude in candidate prompt as `data={n}/6`.
+
+5. **Dashboard updates** — `dashboard/src/lib/types.ts` got `ai_mode` field on `AnalysisResult` + new `ExecutionSummary` interface. `ActionsTab.tsx` shows AI MODE/FALLBACK badge in summary bar. `MatrixGrid.tsx` shows critical/high warnings strip when active.
+
+6. **Pipeline health endpoint** — `execute_approved_actions` writes `data/pipeline_status/{portfolio_id}.json` after each run. New `GET /api/system/pipeline-health` endpoint reads all status files, returns `{portfolios, anomalies}`. Anomalies detected: mechanical_fallback active, all-buys-dropped.
+
+### Sell Validation Hardening (same session)
+- `_validate_allocation` in `ai_allocator.py` now checks `held_tickers` and caps shares to `held_shares_map` for AI sells (prevents phantom sells from Claude hallucinations)
+- `execute_approved_actions` filters phantom sells before saving transactions (defense in depth) with `[Guard] Blocked phantom sells` log
+
+### Stop-Loss Architecture Change
+- Changed from "Layer 1 auto-executes mechanical sells" to "Layer 1 flags at-risk positions; Claude makes ALL final sell decisions"
+- `_build_allocation_prompt`: changed from "LAYER 1 MECHANICAL SELLS (executing regardless)" to "POSITIONS FLAGGED BY RISK ANALYSIS — you decide whether to sell"
+- Mechanical fallback only when AI client unavailable
+
+### Post-Mortem Per-Portfolio Fix
+- `post_mortem.py:save_post_mortem` now accepts `portfolio_id` and writes to `data/portfolios/{id}/post_mortems.csv`
+- Backfilled 202 historical records to correct portfolios via `buy_transaction_id` matching, dropped 159 from deleted portfolios
+- `controls.py` sell/close-all paths now build PostMortem objects properly (was passing ticker string)
+- `load_post_mortems` and `get_recent_post_mortems` accept `portfolio_id`
+
+### Factor Scores Recording Fix
+- `ai_allocator._convert_to_reviewed_actions` was hardcoding `factor_scores={}`. Now passes through `factor_scores_map` from scored candidates so future buys record real factor breakdowns. Existing historical data still has `{}`.
+
+### PTEN Phantom Cash Bug Fix
+- Found double-sell bug: both Layer 1 and Claude AI sold the same position simultaneously, crediting cash twice. Fixed by adding dedup filter in `_validate_allocation` (later superseded by stop-loss architecture change). Removed phantom $6,883.88 from MAX portfolio cash.
 
 ---
 

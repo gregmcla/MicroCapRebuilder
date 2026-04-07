@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-06T13:19:22.208725",
+  "portfolio_id": "defense-tech",
+  "ai_mode": "claude",
+  "proposed": {
+    "buys": 2,
+    "sells": 0
+  },
+  "executed": {
+    "buys": 2,
+    "sells": 0
+  },
+  "dropped": []
+}

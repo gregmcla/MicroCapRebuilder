@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-06T12:46:30.081312",
+  "portfolio_id": "microcap",
+  "ai_mode": "claude",
+  "proposed": {
+    "buys": 4,
+    "sells": 6
+  },
+  "executed": {
+    "buys": 4,
+    "sells": 6
+  },
+  "dropped": []
+}

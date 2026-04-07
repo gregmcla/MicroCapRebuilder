@@ -236,10 +236,16 @@ def _build_allocation_prompt(
         l1_block = ""
 
     def _pct(v) -> str:
-        return f"{v * 100:+.1f}%" if v is not None else "N/A"
+        try:
+            return f"{float(v) * 100:+.1f}%" if v is not None else "N/A"
+        except (TypeError, ValueError):
+            return "N/A"
 
     def _num(v) -> str:
-        return f"{v:.1f}" if v is not None else "N/A"
+        try:
+            return f"{float(v):.1f}" if v is not None else "N/A"
+        except (TypeError, ValueError):
+            return "N/A"
 
     cand_lines = []
 
