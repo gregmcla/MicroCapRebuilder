@@ -74,3 +74,30 @@ def get_indicator_snapshots() -> list[dict]:
     except Exception as e:
         logger.warning("macro_context: get_indicator_snapshots failed: %s", e)
         return []
+
+
+def _save_cached_headlines(ticker: str, headlines: list[dict]) -> None:
+    """Save headlines for a ticker to disk cache. Silent on failure."""
+    try:
+        _NEWS_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        cache_file = _NEWS_CACHE_DIR / f"{ticker.upper()}.json"
+        with open(cache_file, "w") as f:
+            json.dump(headlines, f)
+    except Exception as e:
+        logger.warning("macro_context: cache write failed for %s: %s", ticker, e)
+
+
+def _load_cached_headlines(ticker: str, ttl_seconds: int) -> Optional[list[dict]]:
+    """Load headlines from disk cache if fresh, else None."""
+    try:
+        cache_file = _NEWS_CACHE_DIR / f"{ticker.upper()}.json"
+        if not cache_file.exists():
+            return None
+        age = time.time() - cache_file.stat().st_mtime
+        if age > ttl_seconds:
+            return None
+        with open(cache_file) as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning("macro_context: cache read failed for %s: %s", ticker, e)
+        return None

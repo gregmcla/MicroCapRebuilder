@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for macro_context module."""
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -51,3 +52,34 @@ def test_get_indicator_snapshots_handles_fetch_failure():
         result = get_indicator_snapshots()
     # Failure mode: empty list, no crash
     assert result == []
+
+
+import tempfile
+import os
+
+
+def test_headline_cache_round_trip(tmp_path, monkeypatch):
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    from macro_context import _save_cached_headlines, _load_cached_headlines
+    payload = [{"title": "test", "publisher": "Reuters", "age_minutes": 10}]
+    _save_cached_headlines("AAPL", payload)
+    loaded = _load_cached_headlines("AAPL", ttl_seconds=3600)
+    assert loaded == payload
+
+
+def test_headline_cache_expires(tmp_path, monkeypatch):
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    from macro_context import _save_cached_headlines, _load_cached_headlines
+    _save_cached_headlines("AAPL", [{"title": "test", "publisher": "X", "age_minutes": 1}])
+    # Force the cache file to look 2 hours old
+    cache_file = tmp_path / "AAPL.json"
+    old_time = time.time() - 7200
+    os.utime(cache_file, (old_time, old_time))
+    loaded = _load_cached_headlines("AAPL", ttl_seconds=3600)
+    assert loaded is None
+
+
+def test_headline_cache_missing_returns_none(tmp_path, monkeypatch):
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    from macro_context import _load_cached_headlines
+    assert _load_cached_headlines("NEVERHEARD", ttl_seconds=3600) is None
