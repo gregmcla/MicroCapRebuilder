@@ -11,6 +11,17 @@
 
 ---
 
+## Recently Completed (2026-04-08) — AI Allocator Prompt Improvements
+
+- **TRIM authority** added to AI allocator (`scripts/ai_allocator.py`) — Claude can now emit partial sells (`shares < held_quantity`) to lock gains on winners or reduce oversized positions instead of binary exit/hold.
+- **Sector overlap data annotations** on every candidate line: `OVERLAP: N held in <sector> (X% of book — HEAVY/MODERATE/LIGHT/none)`. Pure data; concentration *policy* is left to strategy DNA per first-principles drill (data goes in scaffolding, policy in DNA).
+- **Reentry guard guidance** + top-level `RECENTLY SOLD FROM THIS PORTFOLIO` block aggregates names sold in last 7d so Claude doesn't immediately re-buy yesterday's stop-outs.
+- **MACRO CONTEXT block** — new `scripts/macro_context.py` module fetches 7 macro indicators (WTI, Brent, Gold, DXY, VIX, US 10Y, SPY) + per-position headlines (last 48h, top 2 per ticker) and injects between regime_block and l1_block in the analyze prompt. Caches headlines to `data/news_cache/` (60min TTL), reuses 4hr `yf_session` cache for indicator prices. Failure-mode silent — if news fetch fails, block is omitted; analyze never breaks. Built TDD with 16 unit tests (all passing). Plan: `docs/plans/2026-04-08-macro-context-block.md`.
+- Handles current yfinance news schema (`{id, content: {title, provider.displayName, pubDate}}`) with legacy fallback.
+- Lesson driving the change: 2026-04-07 MAX rotated 4-deep into energy on the day of a binary Hormuz deadline event with zero macro-headline awareness — block fixes that gap.
+
+---
+
 ## Recently Completed (2026-04-06 → 2026-04-07) — Portfolio Creation UX Redesign
 
 Full rewrite of `dashboard/src/components/CreatePortfolioModal.tsx` (354 → ~600 lines).
