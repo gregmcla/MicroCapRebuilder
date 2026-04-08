@@ -101,3 +101,59 @@ def _load_cached_headlines(ticker: str, ttl_seconds: int) -> Optional[list[dict]
     except Exception as e:
         logger.warning("macro_context: cache read failed for %s: %s", ticker, e)
         return None
+
+
+def get_position_headlines(
+    tickers: list[str],
+    max_per_ticker: int = 2,
+    ttl_seconds: int = 3600,
+) -> dict[str, list[dict]]:
+    """
+    Fetch recent headlines for each ticker.
+
+    For each ticker, returns up to max_per_ticker dicts:
+        {"title": str, "publisher": str, "age_minutes": int}
+
+    Uses disk cache (TTL ttl_seconds). Cache miss → yfinance Ticker.news call.
+    Per-ticker failures yield empty lists, never raise.
+    """
+    if not tickers:
+        return {}
+
+    result: dict[str, list[dict]] = {}
+    now = time.time()
+
+    for ticker in tickers:
+        try:
+            ticker_uc = ticker.strip().upper()
+            cached = _load_cached_headlines(ticker_uc, ttl_seconds)
+            if cached is not None:
+                result[ticker_uc] = cached[:max_per_ticker]
+                continue
+
+            # Cache miss — fetch from yfinance
+            t = yf.Ticker(ticker_uc)
+            raw_news = getattr(t, "news", None) or []
+            parsed: list[dict] = []
+            for n in raw_news[:max_per_ticker]:
+                title = n.get("title") or ""
+                publisher = n.get("publisher") or "unknown"
+                pub_ts = n.get("providerPublishTime")
+                if pub_ts:
+                    age_minutes = max(0, int((now - pub_ts) / 60))
+                else:
+                    age_minutes = -1
+                if title:
+                    parsed.append({
+                        "title": title,
+                        "publisher": publisher,
+                        "age_minutes": age_minutes,
+                    })
+
+            _save_cached_headlines(ticker_uc, parsed)
+            result[ticker_uc] = parsed
+        except Exception as e:
+            logger.warning("macro_context: headline fetch failed for %s: %s", ticker, e)
+            result[ticker.strip().upper()] = []
+
+    return result
