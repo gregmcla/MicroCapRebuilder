@@ -37,3 +37,40 @@ INDICATORS: list[dict] = [
     {"symbol": "^TNX",     "name": "US 10Y"},
     {"symbol": "SPY",      "name": "SPY"},
 ]
+
+
+def get_indicator_snapshots() -> list[dict]:
+    """
+    Fetch current price + day % change for each macro indicator.
+
+    Returns list of dicts: [{symbol, name, price, day_pct}, ...].
+    Returns [] on any failure — caller must handle empty result.
+    """
+    try:
+        results: list[dict] = []
+        for ind in INDICATORS:
+            try:
+                df = cached_download(ind["symbol"], period="5d", progress=False)
+                if df is None or df.empty or "Close" not in df.columns:
+                    continue
+                closes = df["Close"].dropna()
+                if len(closes) < 2:
+                    continue
+                today = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2])
+                if prev == 0:
+                    continue
+                day_pct = (today - prev) / prev * 100.0
+                results.append({
+                    "symbol": ind["symbol"],
+                    "name": ind["name"],
+                    "price": today,
+                    "day_pct": day_pct,
+                })
+            except Exception as e:
+                logger.warning("macro_context: indicator fetch failed for %s: %s", ind["symbol"], e)
+                continue
+        return results
+    except Exception as e:
+        logger.warning("macro_context: get_indicator_snapshots failed: %s", e)
+        return []
