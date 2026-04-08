@@ -157,3 +157,72 @@ def get_position_headlines(
             result[ticker.strip().upper()] = []
 
     return result
+
+
+def _fmt_age(minutes: int) -> str:
+    if minutes < 0:
+        return "?"
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    if hours < 48:
+        return f"{hours}h"
+    days = hours // 24
+    return f"{days}d"
+
+
+def format_macro_block(
+    indicators: list[dict],
+    headlines: dict[str, list[dict]],
+) -> str:
+    """
+    Render indicator snapshots + per-ticker headlines as a prompt block.
+
+    Returns an empty string if both inputs are empty (caller drops the block).
+    No policy language — pure data, per the data-vs-policy bedrock.
+    """
+    if not indicators and not any(headlines.values()):
+        return ""
+
+    lines: list[str] = []
+    fetched = datetime.now(timezone.utc).strftime("%H:%M UTC")
+    lines.append(f"MACRO CONTEXT (fetched {fetched}):")
+
+    # Indicators — single line, comma-separated
+    if indicators:
+        parts: list[str] = []
+        for ind in indicators:
+            sign = "+" if ind["day_pct"] >= 0 else ""
+            parts.append(
+                f"{ind['name']} ${ind['price']:,.2f} ({sign}{ind['day_pct']:.1f}%)"
+            )
+        lines.append("  INDICATORS: " + ", ".join(parts))
+
+    # Headlines — one section per ticker that has any
+    tickers_with_news = [t for t, hs in headlines.items() if hs]
+    if tickers_with_news:
+        lines.append("  POSITION HEADLINES (last 24-48h):")
+        for ticker in tickers_with_news:
+            for h in headlines[ticker]:
+                age = _fmt_age(h.get("age_minutes", -1))
+                title = h["title"]
+                pub = h.get("publisher", "?")
+                lines.append(f"    {ticker}: {title} — {pub}, {age}")
+
+    return "\n".join(lines) + "\n"
+
+
+def get_macro_context(held_tickers: list[str]) -> str:
+    """
+    Top-level entry point. Returns a fully formatted MACRO CONTEXT block,
+    or empty string on total failure.
+
+    Caller (ai_allocator) should treat empty string as "no block to inject".
+    """
+    try:
+        indicators = get_indicator_snapshots()
+        headlines = get_position_headlines(held_tickers, max_per_ticker=2, ttl_seconds=3600)
+        return format_macro_block(indicators, headlines)
+    except Exception as e:
+        logger.warning("macro_context: get_macro_context failed: %s", e)
+        return ""

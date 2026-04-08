@@ -130,3 +130,60 @@ def test_get_position_headlines_handles_per_ticker_failure(tmp_path, monkeypatch
 def test_get_position_headlines_empty_input():
     from macro_context import get_position_headlines
     assert get_position_headlines([], max_per_ticker=2, ttl_seconds=3600) == {}
+
+
+def test_format_macro_block_renders_indicators_and_headlines():
+    indicators = [
+        {"symbol": "CL=F", "name": "WTI Crude", "price": 95.10, "day_pct": -15.2},
+        {"symbol": "^VIX", "name": "VIX",        "price": 21.4,  "day_pct": 8.1},
+    ]
+    headlines = {
+        "AAPL": [
+            {"title": "Apple beats earnings", "publisher": "Reuters", "age_minutes": 240},
+        ],
+        "TSLA": [],
+    }
+    from macro_context import format_macro_block
+    block = format_macro_block(indicators, headlines)
+
+    assert "MACRO CONTEXT" in block
+    assert "WTI Crude" in block
+    assert "$95.10" in block
+    assert "-15.2%" in block
+    assert "VIX" in block
+    assert "+8.1%" in block
+    assert "AAPL" in block
+    assert "Apple beats earnings" in block
+    assert "Reuters" in block
+    assert "4h" in block  # 240 minutes formatted as ~4h
+    # TSLA had no headlines — should be omitted or marked, not crash
+    assert block  # non-empty
+
+
+def test_format_macro_block_empty_inputs_returns_empty_string():
+    from macro_context import format_macro_block
+    assert format_macro_block([], {}) == ""
+
+
+def test_get_macro_context_orchestrator_returns_block_string(tmp_path, monkeypatch):
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    fake_df = pd.DataFrame(
+        {"Close": [100.0, 95.0]}, index=pd.date_range("2026-04-07", periods=2)
+    )
+    with patch("macro_context.cached_download", return_value=fake_df), \
+         patch("macro_context.yf.Ticker") as mock_ticker:
+        mock_ticker.return_value = type("T", (), {"news": []})()
+        from macro_context import get_macro_context
+        block = get_macro_context(["AAPL"])
+    assert "MACRO CONTEXT" in block
+    assert "WTI Crude" in block
+
+
+def test_get_macro_context_returns_empty_string_on_total_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    with patch("macro_context.cached_download", side_effect=Exception("boom")), \
+         patch("macro_context.yf.Ticker", side_effect=Exception("boom")):
+        from macro_context import get_macro_context
+        block = get_macro_context(["AAPL"])
+    # Indicators failed AND no headlines → returns empty string, no crash
+    assert block == ""
