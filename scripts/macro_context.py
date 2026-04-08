@@ -56,8 +56,11 @@ def get_indicator_snapshots() -> list[dict]:
                 closes = df["Close"].dropna()
                 if len(closes) < 2:
                     continue
-                today = float(closes.iloc[-1])
-                prev = float(closes.iloc[-2])
+                today_val = closes.iloc[-1]
+                prev_val = closes.iloc[-2]
+                # Handle both scalar and 1-element Series (yfinance can return either)
+                today = float(today_val.iloc[0]) if hasattr(today_val, "iloc") else float(today_val)
+                prev = float(prev_val.iloc[0]) if hasattr(prev_val, "iloc") else float(prev_val)
                 if prev == 0:
                     continue
                 day_pct = (today - prev) / prev * 100.0
@@ -107,6 +110,7 @@ def get_position_headlines(
     tickers: list[str],
     max_per_ticker: int = 2,
     ttl_seconds: int = 3600,
+    max_age_minutes: int = 2880,  # 48h freshness window
 ) -> dict[str, list[dict]]:
     """
     Fetch recent headlines for each ticker.
@@ -134,16 +138,37 @@ def get_position_headlines(
             # Cache miss — fetch from yfinance
             t = yf.Ticker(ticker_uc)
             raw_news = getattr(t, "news", None) or []
+            # Don't slice raw_news yet — we filter by age first, then take top N
             parsed: list[dict] = []
-            for n in raw_news[:max_per_ticker]:
-                title = n.get("title") or ""
-                publisher = n.get("publisher") or "unknown"
-                pub_ts = n.get("providerPublishTime")
-                if pub_ts:
-                    age_minutes = max(0, int((now - pub_ts) / 60))
+            for n in raw_news:
+                if len(parsed) >= max_per_ticker:
+                    break
+                # yfinance news shape (current): {id, content: {title, provider: {displayName}, pubDate, ...}}
+                # legacy shape (kept as fallback): {title, publisher, providerPublishTime}
+                content = n.get("content") if isinstance(n, dict) else None
+                if isinstance(content, dict):
+                    title = content.get("title") or ""
+                    provider = content.get("provider") or {}
+                    publisher = provider.get("displayName") or "unknown"
+                    pub_date = content.get("pubDate") or content.get("displayTime")
+                    if pub_date:
+                        try:
+                            # ISO 8601 with trailing Z
+                            dt = datetime.fromisoformat(str(pub_date).replace("Z", "+00:00"))
+                            age_minutes = max(0, int((now - dt.timestamp()) / 60))
+                        except Exception:
+                            age_minutes = -1
+                    else:
+                        age_minutes = -1
                 else:
-                    age_minutes = -1
-                if title:
+                    title = n.get("title") or ""
+                    publisher = n.get("publisher") or "unknown"
+                    pub_ts = n.get("providerPublishTime")
+                    if pub_ts:
+                        age_minutes = max(0, int((now - pub_ts) / 60))
+                    else:
+                        age_minutes = -1
+                if title and 0 <= age_minutes <= max_age_minutes:
                     parsed.append({
                         "title": title,
                         "publisher": publisher,
@@ -221,7 +246,9 @@ def get_macro_context(held_tickers: list[str]) -> str:
     """
     try:
         indicators = get_indicator_snapshots()
-        headlines = get_position_headlines(held_tickers, max_per_ticker=2, ttl_seconds=3600)
+        headlines = get_position_headlines(
+            held_tickers, max_per_ticker=2, ttl_seconds=3600, max_age_minutes=2880
+        )
         return format_macro_block(indicators, headlines)
     except Exception as e:
         logger.warning("macro_context: get_macro_context failed: %s", e)

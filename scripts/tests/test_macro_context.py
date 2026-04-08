@@ -118,6 +118,41 @@ def test_get_position_headlines_fetches_when_cache_missing(tmp_path, monkeypatch
     assert "age_minutes" in result["TSLA"][0]
 
 
+def test_get_position_headlines_parses_current_yfinance_shape(tmp_path, monkeypatch):
+    """yfinance changed its news schema — items are now {id, content: {title, provider, pubDate}}."""
+    monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
+    from datetime import datetime, timezone, timedelta
+    now_utc = datetime.now(timezone.utc)
+    fake_news = [
+        {
+            "id": "abc",
+            "content": {
+                "title": "Apple beats earnings expectations",
+                "provider": {"displayName": "Reuters", "url": "https://reuters.com"},
+                "pubDate": (now_utc - timedelta(minutes=240)).isoformat().replace("+00:00", "Z"),
+            },
+        },
+        {
+            "id": "def",
+            "content": {
+                "title": "Apple announces new product",
+                "provider": {"displayName": "Bloomberg"},
+                "pubDate": (now_utc - timedelta(minutes=30)).isoformat().replace("+00:00", "Z"),
+            },
+        },
+    ]
+    mock_ticker = type("T", (), {"news": fake_news})()
+    with patch("macro_context.yf.Ticker", return_value=mock_ticker):
+        from macro_context import get_position_headlines
+        result = get_position_headlines(["AAPL"], max_per_ticker=2, ttl_seconds=3600)
+    assert len(result["AAPL"]) == 2
+    assert result["AAPL"][0]["title"] == "Apple beats earnings expectations"
+    assert result["AAPL"][0]["publisher"] == "Reuters"
+    # 240 min ago → age should be approximately 240 (allow ±2 minutes for test execution drift)
+    assert 238 <= result["AAPL"][0]["age_minutes"] <= 242
+    assert result["AAPL"][1]["publisher"] == "Bloomberg"
+
+
 def test_get_position_headlines_handles_per_ticker_failure(tmp_path, monkeypatch):
     monkeypatch.setattr("macro_context._NEWS_CACHE_DIR", tmp_path)
     with patch("macro_context.yf.Ticker", side_effect=Exception("network err")):
