@@ -22,6 +22,7 @@ from ai_review import ReviewedAction, ReviewDecision, get_ai_client
 from market_regime import MarketRegime, RegimeAnalysis
 from schema import CLAUDE_MODEL
 from reentry_guard import _format_reentry_block
+from macro_context import get_macro_context
 
 # Tracks which path was taken in the most recent run_ai_allocation() call.
 # Values: "claude" | "mechanical_fallback"
@@ -208,16 +209,24 @@ def _build_allocation_prompt(
 
     # Sector allocation
     sector_totals: dict = {}
+    sector_counts: dict = {}
     if not state.positions.empty:
         for _, pos in state.positions.iterrows():
             sec = sector_map.get(pos["ticker"], "Unknown")
             sector_totals[sec] = sector_totals.get(sec, 0.0) + float(pos.get("market_value", 0) or 0)
+            sector_counts[sec] = sector_counts.get(sec, 0) + 1
+
+    # sector → (count, weight_pct) for candidate overlap annotations
+    sector_weight_map: dict = {}
+    if state.total_equity > 0:
+        for sec, val in sector_totals.items():
+            sector_weight_map[sec] = (sector_counts.get(sec, 0), val / state.total_equity * 100)
 
     sector_block = ""
     if sector_totals and state.total_equity > 0:
         sector_lines = []
         for sec, val in sorted(sector_totals.items(), key=lambda x: x[1], reverse=True):
-            sector_lines.append(f"  {sec}: {val / state.total_equity * 100:.1f}%")
+            sector_lines.append(f"  {sec}: {val / state.total_equity * 100:.1f}% ({sector_counts.get(sec, 0)} positions)")
         sector_block = "CURRENT SECTOR ALLOCATION:\n" + "\n".join(sector_lines) + "\n"
 
     # At-risk positions flagged by risk analysis (Claude decides whether to sell)
@@ -248,6 +257,15 @@ def _build_allocation_prompt(
             return "N/A"
 
     cand_lines = []
+    recently_sold_summary: list = []  # (ticker, days_since_exit, exit_reason, meaningful_change)
+
+    def _overlap_str(sec: str) -> str:
+        info = sector_weight_map.get(sec)
+        if not info or info[0] == 0:
+            return " | OVERLAP: none (new sector)"
+        cnt, wt = info
+        tag = "HEAVY" if wt >= 30 else ("MODERATE" if wt >= 15 else "LIGHT")
+        return f" | OVERLAP: {cnt} held in {sec} ({wt:.0f}% of book — {tag})"
 
     if full_watchlist:
         # Compact mode: 1 line per stock, all candidates visible
@@ -277,13 +295,16 @@ def _build_allocation_prompt(
                     fund_part = f" | revG={rg} gm={gm} P/E={pe}"
 
             cand_lines.append(
-                f"\n  {ticker} | {score:.0f} | ${price:.2f} | {sector} | {factor_part}{fund_part}"
+                f"\n  {ticker} | {score:.0f} | ${price:.2f} | {sector} | {factor_part}{fund_part}{_overlap_str(sector)}"
             )
 
             rc = c.get("reentry_context")
             if rc is not None:
                 try:
                     cand_lines.append(_format_reentry_block(rc).rstrip())
+                    recently_sold_summary.append((
+                        ticker, rc.get("days_since_exit"), rc.get("exit_reason"), rc.get("meaningful_change", False)
+                    ))
                 except Exception as e:
                     logging.warning(
                         "ai_allocator: failed to format reentry block for %s: %s",
@@ -306,6 +327,7 @@ def _build_allocation_prompt(
             factor_str = ", ".join(f"{k}={v:.0f}" for k, v in factors.items())
             cand_lines.append(f"\n  {ticker}: score={score:.0f}/100, ${price:.2f}, sector={sector}")
             cand_lines.append(f"    factors: [{factor_str}] data_quality={data_comp}/6")
+            cand_lines.append(f"   {_overlap_str(sector).lstrip(' |')}")
 
             if info_cache:
                 info = info_cache.get(ticker, {})
@@ -325,6 +347,9 @@ def _build_allocation_prompt(
             if rc is not None:
                 try:
                     cand_lines.append(_format_reentry_block(rc).rstrip())
+                    recently_sold_summary.append((
+                        ticker, rc.get("days_since_exit"), rc.get("exit_reason"), rc.get("meaningful_change", False)
+                    ))
                 except Exception as e:
                     logging.warning(
                         "ai_allocator: failed to format reentry block for %s: %s",
@@ -334,6 +359,21 @@ def _build_allocation_prompt(
         header = f"WATCHLIST CANDIDATES (top {len(candidates_to_show)} by quant score — advisory data for your reasoning, sorted highest to lowest):"
 
     candidates_block = header + "".join(cand_lines)
+
+    # RECENTLY SOLD summary — top-level visibility so Claude doesn't re-buy yesterday's exits
+    recently_sold_block = ""
+    if recently_sold_summary:
+        rs_lines = []
+        for tk, days, reason, meaningful in sorted(recently_sold_summary, key=lambda x: x[1] or 999):
+            d = f"{days}d ago" if days is not None else "recent"
+            tag = "factor improved" if meaningful else "no meaningful change"
+            rs_lines.append(f"  {tk}: sold {d} (reason: {reason}) — {tag}")
+        recently_sold_block = (
+            "RECENTLY SOLD FROM THIS PORTFOLIO (reentry guard — these names came off the book recently):\n"
+            + "\n".join(rs_lines)
+            + "\n  Do NOT re-buy a recently-sold name unless its factor profile has MEANINGFULLY improved\n"
+            + "  since exit. Re-buying yesterday's losers is the most common avoidable mistake.\n"
+        )
 
     # Regime context block — rich market data for Claude's judgment
     if regime_analysis is not None:
@@ -444,6 +484,16 @@ def _build_allocation_prompt(
         except Exception as e:
             print(f"  [AI Allocator] Trade history load failed (non-fatal): {e}")
 
+    # ─── Macro context block (data only — no policy) ────────────────────────────
+    held_for_news: list[str] = []
+    if not state.positions.empty:
+        held_for_news = [str(t).strip().upper() for t in state.positions["ticker"].tolist()]
+    try:
+        macro_block = get_macro_context(held_for_news)
+    except Exception as e:
+        print(f"  [AI Allocator] macro_context failed (non-fatal): {e}")
+        macro_block = ""
+
     prompt = f"""You are the portfolio manager for this trading portfolio. You have FULL AUTHORITY over stock selection and position sizing.
 
 YOUR MANDATE — STRATEGY DNA:
@@ -458,7 +508,9 @@ PORTFOLIO STATE:
 
 {sector_block}
 {_perf_block}{_alerts_block}{_factor_block}{_trade_history_block}{regime_block}
+{macro_block}
 {l1_block}
+{recently_sold_block}
 {candidates_block}
 
 HARD CONSTRAINTS (non-negotiable):
@@ -475,6 +527,18 @@ YOUR AUTHORITY:
 - You MAY propose 0 buys if conditions don't warrant new positions
 - You MAY propose additional sells (beyond Layer 1) if positions are misaligned with the strategy
 - You determine position sizes based on conviction, not config percentages
+- You MAY TRIM positions instead of full exits. Set "shares" to less than the held quantity to partially sell. Use trims when:
+  * A winner has run hard and you want to lock in some profit but keep upside (sell 25-50%)
+  * A position is oversized vs conviction or sector cap and needs to be reduced
+  * Thesis is weakening but not broken — reduce exposure rather than fully exit
+  * Use FULL sells for: stop-outs, broken thesis, dead money, locking gains on a fully reversed winner
+- Each candidate line includes an OVERLAP annotation showing how many positions you already hold in that sector and what % of the book it represents. Treat this as data for your judgment — your strategy DNA tells you whether concentration is desired or to be avoided.
+
+REENTRY GUARD GUIDANCE:
+- If a candidate appears in the RECENTLY SOLD block above, treat it as guilty until proven innocent.
+- DO NOT re-buy a name sold within the last 7 days unless its factor profile shows MEANINGFUL improvement since exit (the reentry block tells you when this is true).
+- Re-buying yesterday's stop-out at a 1-2% discount is typically a losing trade — the same forces that triggered the exit are still in motion. Wait for a real reset.
+- If a recently-sold name is the obvious best candidate and the factors haven't improved, prefer the second-best non-recent name instead.
 
 Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
 {{
@@ -493,7 +557,7 @@ Respond ONLY with valid JSON in this exact format (no markdown, no extra text):
       "ticker": "SYMBOL",
       "shares": 5,
       "price": 200.00,
-      "reasoning": "Why selling — include flagged positions you agree with AND any others misaligned with strategy"
+      "reasoning": "Why selling — include flagged positions you agree with AND any others misaligned with strategy. For TRIMS, set shares < held quantity and explain (e.g. 'Trimming 50% to lock gains, keep half for further upside')."
     }}
   ],
   "portfolio_thesis": "Your overall allocation rationale and market view",
