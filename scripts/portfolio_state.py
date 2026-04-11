@@ -734,6 +734,40 @@ def update_position(
     )
 
 
+def reduce_position(state: PortfolioState, ticker: str, sell_shares: int) -> PortfolioState:
+    """
+    Reduce a position by a given number of shares (partial sell).
+
+    Does NOT persist to disk — call save_positions() when ready.
+    """
+    df = state.positions.copy()
+    idx = df[df["ticker"] == ticker].index
+    if idx.empty:
+        raise ValueError(f"No position found for {ticker}")
+
+    i = idx[0]
+    current_shares = int(df.at[i, "shares"])
+    if sell_shares >= current_shares:
+        raise ValueError(f"sell_shares ({sell_shares}) >= position ({current_shares}); use remove_position for full exit")
+
+    remaining = current_shares - sell_shares
+    price = float(df.at[i, "current_price"])
+    avg_cost = float(df.at[i, "avg_cost_basis"])
+    df.at[i, "shares"] = remaining
+    df.at[i, "market_value"] = round(remaining * price, 2)
+    df.at[i, "unrealized_pnl"] = round(remaining * (price - avg_cost), 2)
+
+    positions_value = float(df["market_value"].sum())
+    return replace(
+        state,
+        positions=df,
+        positions_value=positions_value,
+        total_equity=positions_value + state.cash,
+        num_positions=len(df),
+        timestamp=datetime.now(),
+    )
+
+
 def remove_position(state: PortfolioState, ticker: str) -> PortfolioState:
     """
     Remove a position (after a full sell).

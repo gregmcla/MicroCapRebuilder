@@ -90,16 +90,51 @@ export const api = {
   scan: (pid: string) => post<ScanJobStatus>(`/${pid}/scan`),
   scanStatus: (pid: string) => get<ScanJobStatus>(`/${pid}/scan/status`),
   getWatchlist: (pid: string) => get<WatchlistData>(`/${pid}/watchlist`),
-  sellPosition: (pid: string, ticker: string) =>
+  sellPosition: (pid: string, ticker: string, shares?: number) =>
+    post<{
+      ticker: string;
+      shares: number;
+      total_shares: number;
+      remaining_shares: number;
+      price: number;
+      total_value: number;
+      unrealized_pnl: number;
+      unrealized_pnl_pct: number;
+      partial: boolean;
+      message: string;
+    }>(`/${pid}/sell/${ticker}`, shares != null ? { shares } : undefined),
+
+  getQuote: (pid: string, ticker: string) =>
+    get<{
+      ticker: string;
+      price: number;
+      name: string;
+      sector: string;
+      prev_close: number | null;
+      available_cash: number;
+      risk_per_trade_pct: number;
+      default_stop_loss_pct: number;
+      default_take_profit_pct: number;
+      suggested_shares: number;
+    }>(`/${pid}/quote/${ticker}`),
+
+  buyPosition: (pid: string, body: {
+    ticker: string;
+    shares: number;
+    stop_loss_pct?: number;
+    take_profit_pct?: number;
+  }) =>
     post<{
       ticker: string;
       shares: number;
       price: number;
       total_value: number;
-      unrealized_pnl: number;
-      unrealized_pnl_pct: number;
+      stop_loss: number;
+      take_profit: number;
+      remaining_cash: number;
       message: string;
-    }>(`/${pid}/sell/${ticker}`),
+    }>(`/${pid}/buy`, body),
+
   toggleMode: (pid: string) => post<{ paper_mode: boolean; message: string }>(`/${pid}/mode/toggle`),
   closeAll: (pid: string) =>
     post<{

@@ -7,7 +7,38 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 26 active portfolios. Pipeline visibility + screener universe + portfolio creation redesign complete (2026-04-02 → 2026-04-07). Cron PAUSED for market holiday 2026-04-03 — needs to be re-enabled.**
+**Operational — cron automation running daily. 26 active portfolios. Manual buy/sell dashboard controls added (2026-04-09). Cron PAUSED for market holiday 2026-04-03 — needs to be re-enabled.**
+
+---
+
+## Recently Completed (2026-04-09) — Manual Buy/Sell + Watchlist Cap + Tailscale
+
+### Manual Sell (partial + full)
+- `POST /api/{portfolio_id}/sell/{ticker}` now accepts optional `{ "shares": N }` body for partial sells
+- New `reduce_position()` function in `portfolio_state.py` handles share reduction
+- `SellModal` component (`dashboard/src/components/SellModal.tsx`) — share count input, 25%/50%/75%/ALL presets, live trade preview, confirmation
+- SELL button added to MatrixGrid `BottomPanel` inline with STOP/TARGET blocks
+- Old inline `SellButton` in `PositionDetail.tsx` replaced with modal trigger
+
+### Manual Buy
+- `GET /api/{portfolio_id}/quote/{ticker}` — live price + company info + risk config defaults + auto-suggested share count
+- `POST /api/{portfolio_id}/buy` — manual buy at market price, validates cash, records transaction as `MANUAL`
+- `BuyModal` component (`dashboard/src/components/BuyModal.tsx`) — ticker input → quote fetch → shares/stop/target editing → trade preview → confirm
+- "+ BUY" button added to TopBar (green, between SCAN and ANALYZE)
+- `getQuote` and `buyPosition` added to `api.ts`
+
+### Watchlist Cap
+- MAX portfolio `max_tickers` bumped from 250 → 500 (matches `total_watchlist_slots`)
+- Original 250 cap reasons mostly outdated: score-all architecture, 4hr disk cache, Public.com API, rotating 3-day extended tier all mitigate old constraints
+
+### CLAUDE.md Updates
+- Updated sell endpoint docs to reflect partial sell support
+- Updated scan timeout notes to reflect current mitigations
+- Corrected scan time estimates
+
+### Tailscale Access
+- `vite.config.ts` — added `host: true` to server config for LAN/Tailscale access
+- Dashboard accessible at `http://100.91.78.110:5173` from phone
 
 ---
 

@@ -4,12 +4,13 @@
  */
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import CandlestickChart from "./CandlestickChart";
 import CompanyInfoModal from "./CompanyInfoModal";
+import SellModal from "./SellModal";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -86,42 +87,13 @@ function ProgressVisualization({ pos }: { pos: Position }) {
 }
 
 function SellButton({ pos }: { pos: Position }) {
-  const queryClient = useQueryClient();
-  const selectPosition = useUIStore((s) => s.selectPosition);
-  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [selling, setSelling] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
-  const handleSell = async () => {
-    setSelling(true);
-    setShowConfirm(false);
-    try {
-      const res = await api.sellPosition(portfolioId, pos.ticker);
-      setResult(res.message);
-      queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-      queryClient.invalidateQueries({ queryKey: ["chartData"] });
-      setTimeout(() => {
-        setResult(null);
-        selectPosition(null);
-      }, 3000);
-    } catch (e) {
-      setResult(e instanceof Error ? e.message : "Sell failed");
-      setTimeout(() => setResult(null), 5000);
-    } finally {
-      setSelling(false);
-    }
-  };
-
-  const pnlColor = pos.unrealized_pnl >= 0 ? "var(--green)" : "var(--red)";
+  const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className="relative">
-      {/* Ghost-style SELL button with red tint */}
+    <>
       <button
-        onClick={() => setShowConfirm(true)}
-        disabled={selling}
-        className="px-3 py-1 rounded transition-colors disabled:opacity-50"
+        onClick={() => setShowModal(true)}
+        className="px-3 py-1 rounded transition-colors"
         style={{
           fontSize: "11px",
           fontWeight: 600,
@@ -140,79 +112,10 @@ function SellButton({ pos }: { pos: Position }) {
           e.currentTarget.style.color = "rgba(248,113,113,0.70)";
         }}
       >
-        {selling ? "Selling..." : "SELL"}
+        SELL
       </button>
-
-      {result && (
-        <span className="ml-2 text-xs" style={{ color: "var(--text-1)" }}>{result}</span>
-      )}
-
-      {showConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div
-            className="rounded-lg p-4 max-w-sm w-full"
-            style={{
-              background: "var(--surface-1)",
-              border: "1px solid var(--border-1)",
-            }}
-          >
-            <h3 className="text-sm font-semibold mb-2" style={{ color: "var(--text-4)" }}>
-              Sell {pos.ticker}?
-            </h3>
-            <div
-              className="rounded p-3 mb-3 space-y-1 text-xs"
-              style={{ background: "var(--surface-2)" }}
-            >
-              <div className="flex justify-between">
-                <span style={{ color: "var(--text-1)" }}>Shares</span>
-                <span className="font-mono" style={{ color: "var(--text-3)" }}>{pos.shares}</span>
-              </div>
-              <div className="flex justify-between">
-                <span style={{ color: "var(--text-1)" }}>Price</span>
-                <span className="font-mono" style={{ color: "var(--text-3)" }}>${pos.current_price.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span style={{ color: "var(--text-1)" }}>Value</span>
-                <span className="font-mono" style={{ color: "var(--text-3)" }}>${pos.market_value.toFixed(2)}</span>
-              </div>
-              <div
-                className="flex justify-between pt-1 mt-1"
-                style={{ borderTop: "1px solid var(--border-1)" }}
-              >
-                <span style={{ color: "var(--text-1)" }}>P&L</span>
-                <span className="font-mono font-semibold" style={{ color: pnlColor }}>
-                  {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toFixed(2)} ({pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(1)}%)
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-3 py-1 rounded transition-colors text-xs font-semibold"
-                style={{
-                  background: "var(--surface-3)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-1)",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSell}
-                className="px-3 py-1 rounded transition-colors text-xs font-semibold"
-                style={{
-                  border: "1px solid rgba(248,113,113,0.30)",
-                  color: "rgba(248,113,113,0.80)",
-                  background: "rgba(248,113,113,0.08)",
-                }}
-              >
-                Confirm Sell
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {showModal && <SellModal pos={pos} onClose={() => setShowModal(false)} />}
+    </>
   );
 }
 

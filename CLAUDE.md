@@ -169,7 +169,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/{portfolio_id}/warnings` | Early warnings |
 | GET | `/api/{portfolio_id}/performance` | Strategy health + analytics |
 | GET | `/api/{portfolio_id}/learning` | Factor summary + suggestions |
-| POST | `/api/{portfolio_id}/sell/{ticker}` | Manual sell |
+| POST | `/api/{portfolio_id}/sell/{ticker}` | Manual sell (full or partial; optional body `{"shares": N}`) |
 | POST | `/api/{portfolio_id}/close-all` | Close all positions |
 | GET | `/api/{portfolio_id}/mode` | Paper/live mode |
 | POST | `/api/{portfolio_id}/mode/toggle` | Toggle paper/live |
@@ -244,7 +244,7 @@ SCAN → watchlist_manager.update_watchlist(run_discovery=True)
     → universe_provider: core (daily) + extended (rotating_3day)
     → stock_discovery: score candidates, apply filters
     → Update watchlist.jsonl (add new, remove stale/poor)
-    ~30-50s warm cache, ~5-6min cold cache
+    ~30-50s warm cache, ~2-3min cold cache (mitigated by rotating_3day + 4hr disk cache + Public.com API)
 ```
 
 ---
@@ -313,7 +313,7 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 - `save_snapshot` must filter out today's row before computing day P&L (avoid zeroing on repeat updates)
 - `run_dashboard.sh` uses `wait` not `wait -n` (macOS bash lacks `wait -n`)
 - `day_change` in positions CSV is **total position dollar change** (not per-share). Per-share = `day_change / shares`
-- **Scan timeout:** cold cache scan can take 5-6 min and crash API from memory pressure. Keep `rotating_3day` on extended tier. 4hr cache TTL reduces cold scan frequency.
+- **Scan timeout:** cold cache scan can still be slow on large allcap universes. Mitigations: rotating_3day extended tier (scans ~1/3 per day), 4hr disk cache, Public.com API for live prices, 500-ticker .info cap in stock_discovery, price pre-filtering eliminates ~80% before heavy work. Typical warm cache scan: 30-50s.
 - API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8001`
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
 - **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.

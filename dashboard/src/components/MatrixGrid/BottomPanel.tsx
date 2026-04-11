@@ -1,12 +1,30 @@
 import { useEffect, useState } from "react";
 import type { MatrixPosition, WatchlistCandidate, TradeRationale, Transaction } from "./types";
-import type { TickerInfo, ChartDataPoint } from "../../lib/types";
+import type { TickerInfo, ChartDataPoint, Position } from "../../lib/types";
 import { api } from "../../lib/api";
 import InteractiveSparkline from "./InteractiveSparkline";
 import Reticle from "./Reticle";
 import TradeThesis from "./TradeThesis";
 import { tradeExplanation } from "../../lib/tradeUtils";
 import { pc, MATRIX_FONT } from "./constants";
+import SellModal from "../SellModal";
+
+function matrixToPosition(mp: MatrixPosition): Position {
+  return {
+    ticker: mp.ticker,
+    shares: mp.shares ?? 0,
+    avg_cost_basis: mp.avgCost ?? 0,
+    current_price: mp.currentPrice ?? 0,
+    market_value: mp.value,
+    unrealized_pnl: mp.unrealizedPnl ?? 0,
+    unrealized_pnl_pct: mp.perf,
+    stop_loss: mp.stopLoss ?? 0,
+    take_profit: mp.takeProfit ?? 0,
+    entry_date: mp.entryDate ?? "",
+    day_change: mp.dayChangeDollar,
+    day_change_pct: mp.day,
+  };
+}
 
 const HEAT_COLOR: Record<string, string> = {
   SPIKING: "#f87171", HOT: "#fb923c", WARM: "#facc15", COLD: "#555",
@@ -26,6 +44,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
   const [info,      setInfo]      = useState<TickerInfo | null>(null);
   const [chartPts,  setChartPts]  = useState<ChartDataPoint[]>([]);
   const [isMobile,  setIsMobile]  = useState(() => window.innerWidth < 640);
+  const [showSell,  setShowSell]  = useState(false);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener("resize", handler);
@@ -90,6 +109,10 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
       >
         ✕
       </button>
+
+      {showSell && pos.shares != null && pos.shares > 0 && (
+        <SellModal pos={matrixToPosition(pos)} onClose={() => setShowSell(false)} />
+      )}
 
       {/* Body — 3-col on desktop, single scrollable column on mobile */}
       <div style={{
@@ -231,7 +254,7 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
             );
           })()}
 
-          {/* Stop / take-profit inline with signal bars */}
+          {/* Stop / take-profit + SELL inline */}
           <div style={{ display: "flex", gap: 6, alignItems: "flex-end" }}>
             {pos.stopLoss != null && (
               <div style={{ background: "rgba(248,113,113,0.04)", padding: "6px 8px", border: "1px solid rgba(248,113,113,0.18)", minWidth: 80 }}>
@@ -254,6 +277,36 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
                   </div>
                 )}
               </div>
+            )}
+            {pos.shares != null && pos.shares > 0 && (
+              <button
+                onClick={() => setShowSell(true)}
+                style={{
+                  background: "rgba(248,113,113,0.04)",
+                  border: "1px solid rgba(248,113,113,0.18)",
+                  cursor: "pointer",
+                  color: "#f87171",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "6px 8px",
+                  minWidth: 80,
+                  fontFamily: MATRIX_FONT,
+                  letterSpacing: "0.08em",
+                  transition: "all 0.15s",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(248,113,113,0.12)";
+                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.40)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(248,113,113,0.04)";
+                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.18)";
+                }}
+              >
+                <div style={{ fontSize: 9, letterSpacing: "0.08em", marginBottom: 3, color: "#f87171" }}>SELL</div>
+                <div style={{ fontWeight: 600 }}>{pos.ticker}</div>
+              </button>
             )}
           </div>
         </div>

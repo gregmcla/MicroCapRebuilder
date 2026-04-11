@@ -16,6 +16,7 @@ import PortfolioSettingsModal from "./PortfolioSettingsModal";
 import IntelligenceBrief from "./IntelligenceBrief";
 import GScottLogo from "./GScottLogo";
 import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
+import BuyModal from "./BuyModal";
 
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
@@ -353,6 +354,24 @@ function LogsButton() {
   );
 }
 
+// ── Buy button ─────────────────────────────────────────────────────────────────
+
+function BuyButton() {
+  const [showModal, setShowModal] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setShowModal(true)}
+        className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] border border-emerald-400/40 bg-emerald-400/[0.07] text-emerald-400 hover:border-emerald-400/70 hover:bg-emerald-400/[0.13]"
+        style={{ fontSize: "10px", padding: "4px 10px", letterSpacing: "0.1em" }}
+      >
+        + BUY
+      </button>
+      {showModal && <BuyModal onClose={() => setShowModal(false)} />}
+    </>
+  );
+}
+
 // ── Main TopBar ────────────────────────────────────────────────────────────────
 
 export default function TopBar({
@@ -392,6 +411,7 @@ export default function TopBar({
         <>
           <UpdateButton />
           <ScanButton />
+          <BuyButton />
           <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
           <AnalyzeExecute />
           <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />

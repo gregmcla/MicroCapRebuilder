@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.25,
-      "earnings_growth": 0.15,
-      "quality": 0.15,
-      "volume": 0.1,
-      "volatility": 0.15,
-      "value_timing": 0.2
+      "price_momentum": 0.3236,
+      "earnings_growth": 0.1276,
+      "quality": 0.1276,
+      "volume": 0.0686,
+      "volatility": 0.1276,
+      "value_timing": 0.225
     },
     "min_score_threshold": 35.0,
     "momentum": {
@@ -216,7 +216,7 @@
       "max_price": 5000.0
     },
     "watchlist": {
-      "max_tickers": 250,
+      "max_tickers": 500,
       "stale_days_threshold": 30,
       "core_tickers_file": "data/core_watchlist.jsonl",
       "max_sector_pct": 25,
