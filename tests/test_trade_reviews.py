@@ -96,6 +96,45 @@ def test_missing_post_mortem_graceful(portfolio_dir: Path) -> None:
     assert t["recommendation"] == ""
 
 
+def test_post_mortem_json_arrays_parsed(portfolio_dir: Path) -> None:
+    """what_worked and what_failed JSON arrays are joined into readable strings."""
+    import json as _json
+    _write_csv(portfolio_dir / "transactions.csv", [
+        {"transaction_id": "buy-3", "date": "2026-03-01", "ticker": "FOO",
+         "action": "BUY", "shares": 10, "price": 50.0, "total_value": 500.0,
+         "stop_loss": 45.0, "take_profit": 65.0, "reason": "SIGNAL",
+         "regime_at_entry": "BULL", "composite_score": 0, "signal_rank": 0,
+         "factor_scores": "{}", "trade_rationale": "{}"},
+        {"transaction_id": "sell-3", "date": "2026-03-10", "ticker": "FOO",
+         "action": "SELL", "shares": 10, "price": 45.0, "total_value": 450.0,
+         "stop_loss": 0, "take_profit": 0, "reason": "STOP_LOSS",
+         "regime_at_entry": "BULL", "composite_score": 0, "signal_rank": 0,
+         "factor_scores": "{}", "trade_rationale": "{}"},
+    ])
+    _write_csv(portfolio_dir / "post_mortems.csv", [
+        {"transaction_id": "sell-3", "buy_transaction_id": "buy-3",
+         "ticker": "FOO", "close_date": "2026-03-10",
+         "entry_price": 50.0, "exit_price": 45.0,
+         "pnl": -50.0, "pnl_pct": -10.0, "exit_reason": "STOP_LOSS",
+         "holding_days": 9, "regime_at_entry": "BULL", "regime_at_exit": "BULL",
+         "composite_score_at_entry": 0, "signal_rank_at_entry": 0,
+         "summary": "Loss taken",
+         "what_worked": _json.dumps(["Stop loss protected capital"]),
+         "what_failed": _json.dumps(["Entry timing was poor", "Momentum faded quickly"]),
+         "pattern_tags": "[]",
+         "recommendation": "Wait for pullback before entry"},
+    ])
+    trades = _load_closed_trades("test", data_dir=portfolio_dir.parent)
+    assert len(trades) == 1
+    t = trades[0]
+    assert t["what_worked"] == "Stop loss protected capital"
+    assert "Entry timing was poor" in t["what_failed"]
+    assert "Momentum faded quickly" in t["what_failed"]
+    assert t["holding_days"] == 9
+    assert t["pnl"] == pytest.approx(-50.0)
+    assert t["pnl_pct"] == pytest.approx(-10.0)
+
+
 def test_same_ticker_multiple_roundtrips(portfolio_dir: Path) -> None:
     """Two BUY+SELL pairs for the same ticker become two separate entries (FIFO)."""
     _write_csv(portfolio_dir / "transactions.csv", [

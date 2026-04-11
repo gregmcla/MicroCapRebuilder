@@ -43,6 +43,19 @@ def _parse_factor_scores(factor_str) -> dict:
         return {}
 
 
+def _parse_json_list(val) -> str:
+    """Parse a JSON-encoded list field from CSV into a readable string."""
+    if not val or not isinstance(val, str) or val.strip() in ("", "[]", "null"):
+        return ""
+    try:
+        parsed = json.loads(val)
+        if isinstance(parsed, list):
+            return " ".join(str(item) for item in parsed if item)
+        return str(parsed)
+    except (json.JSONDecodeError, AttributeError):
+        return str(val)
+
+
 def _load_closed_trades(portfolio_id: str, data_dir: Path = DATA_DIR) -> list[dict]:
     """Join transactions + post_mortems into enriched closed-trade objects.
 
@@ -75,6 +88,7 @@ def _load_closed_trades(portfolio_id: str, data_dir: Path = DATA_DIR) -> list[di
             pm_map[key] = row.to_dict()
 
     # Build FIFO queue per ticker
+    # FIFO queue per ticker — assumes dates are ISO-8601 sortable strings (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
     ticker_buys: dict[str, list] = {}
     for _, buy in buys.sort_values("date").iterrows():
         t = str(buy.get("ticker", ""))
@@ -126,8 +140,8 @@ def _load_closed_trades(portfolio_id: str, data_dir: Path = DATA_DIR) -> list[di
             "entry_ai_reasoning": _parse_ai_reasoning(buy.get("trade_rationale")),
             "exit_ai_reasoning": _parse_ai_reasoning(sell.get("trade_rationale")),
             "factor_scores": _parse_factor_scores(buy.get("factor_scores")),
-            "what_worked": str(pm.get("what_worked") or ""),
-            "what_failed": str(pm.get("what_failed") or ""),
+            "what_worked": _parse_json_list(pm.get("what_worked")),
+            "what_failed": _parse_json_list(pm.get("what_failed")),
             "recommendation": str(pm.get("recommendation") or ""),
             "summary": str(pm.get("summary") or ""),
         })
