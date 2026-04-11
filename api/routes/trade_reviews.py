@@ -156,3 +156,57 @@ def get_trade_reviews(portfolio_id: str) -> dict:
     """Return all closed trades for a portfolio as enriched objects."""
     trades = _load_closed_trades(portfolio_id)
     return {"trades": trades}
+
+
+def _build_analyze_prompt(trade: dict) -> str:
+    """Build the Claude prompt for re-analyzing a single trade."""
+    pnl_pct = trade.get("pnl_pct") or 0.0
+    pnl = trade.get("pnl") or 0.0
+    sign = "+" if pnl_pct >= 0 else ""
+
+    factor_lines = "\n".join(
+        f"  {k}: {v:.1f}" for k, v in (trade.get("factor_scores") or {}).items()
+    ) or "  Not recorded"
+
+    return f"""You are reviewing a completed trade for post-mortem analysis. Connect the entry thesis to the actual outcome.
+
+TRADE: {trade["ticker"]}
+Entry: {trade["entry_date"]} @ ${trade.get("entry_price", 0):.2f} | Exit: {trade["exit_date"]} @ ${trade.get("exit_price", 0):.2f}
+P&L: {sign}{pnl_pct:.1f}% (${pnl:.2f}) | Hold: {trade["holding_days"]} days
+Exit reason: {trade["exit_reason"]}
+Market regime at entry: {trade["regime_at_entry"]} | at exit: {trade["regime_at_exit"]}
+
+ENTRY THESIS:
+{trade["entry_ai_reasoning"] or "No AI reasoning recorded"}
+
+FACTOR SCORES AT ENTRY:
+{factor_lines}
+
+EXIT REASONING:
+{trade["exit_ai_reasoning"] or "No AI reasoning recorded"}
+
+STORED POST-MORTEM:
+What worked: {trade["what_worked"] or "Not recorded"}
+What failed: {trade["what_failed"] or "Not recorded"}
+
+Write a 3-4 sentence synthesis that explicitly connects: (1) whether the entry thesis played out as expected, (2) which factors at entry were predictive vs misleading, (3) one specific lesson for future trades of this type. Be direct and concrete."""
+
+
+@router.post("/trade-reviews/{trade_id}/analyze")
+def analyze_trade(portfolio_id: str, trade_id: str) -> dict:
+    """Call Claude Haiku to synthesize entry thesis vs exit outcome. Not persisted."""
+    import anthropic
+
+    trades = _load_closed_trades(portfolio_id)
+    trade = next((t for t in trades if t["trade_id"] == trade_id), None)
+    if trade is None:
+        raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found in {portfolio_id}")
+
+    prompt = _build_analyze_prompt(trade)
+    client = anthropic.Anthropic()
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return {"narrative": message.content[0].text}

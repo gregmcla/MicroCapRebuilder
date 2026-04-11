@@ -164,3 +164,26 @@ def test_same_ticker_multiple_roundtrips(portfolio_dir: Path) -> None:
     # Default sort is exit_date descending
     assert trades[0]["trade_id"] == "b2"
     assert trades[1]["trade_id"] == "b1"
+
+
+def test_build_analyze_prompt_contains_ticker(portfolio_dir: Path) -> None:
+    """Prompt built for a trade contains the ticker, P&L, entry thesis, and factors."""
+    from api.routes.trade_reviews import _build_analyze_prompt
+    trade = {
+        "trade_id": "x1", "ticker": "AAPL",
+        "entry_date": "2026-01-01", "exit_date": "2026-01-10",
+        "entry_price": 100.0, "exit_price": 110.0,
+        "pnl": 100.0, "pnl_pct": 10.0,
+        "holding_days": 9, "exit_reason": "TAKE_PROFIT",
+        "regime_at_entry": "BULL", "regime_at_exit": "BULL",
+        "entry_ai_reasoning": "Strong trend", "exit_ai_reasoning": "Target hit",
+        "factor_scores": {"momentum": 90.0},
+        "what_worked": "Momentum", "what_failed": "", "recommendation": "Scale up",
+        "summary": "",
+    }
+    prompt = _build_analyze_prompt(trade)
+    assert "AAPL" in prompt
+    assert "+10.0%" in prompt
+    assert "Strong trend" in prompt
+    assert "momentum" in prompt.lower()
+    assert "90" in prompt
