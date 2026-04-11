@@ -7,7 +7,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { usePortfolioStore, useUIStore } from "../lib/store";
+import { usePortfolioStore, useUIStore, useBriefStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
@@ -382,8 +382,15 @@ export default function TopBar({
   isLoading: boolean;
 }) {
   const [showSettings, setShowSettings] = useState(false);
-  const [showBrief, setShowBrief] = useState(false);
   const [logoAnimKey, setLogoAnimKey]   = useState(0);
+  const briefOpen = useBriefStore(s => s.briefOpen);
+  const briefInitialTab = useBriefStore(s => s.briefInitialTab);
+  const briefInitialTradeId = useBriefStore(s => s.briefInitialTradeId);
+  const openBrief = useBriefStore(s => s.openBrief);
+  const closeBrief = useBriefStore(s => s.closeBrief);
+  // Task 8 adds initialTab/initialTradeId to IntelligenceBrief Props — cast to any until then
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const IntelligenceBriefAny = IntelligenceBrief as any;
   const isOverviewOrLogs = !state;
   const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
@@ -474,7 +481,7 @@ export default function TopBar({
           {/* Intelligence Brief button — shown for any non-overview portfolio */}
           {!isOverviewOrLogs && (
             <button
-              onClick={() => setShowBrief(true)}
+              onClick={() => openBrief()}
               title="Portfolio Intelligence Brief"
               style={{
                 background: "none",
@@ -563,11 +570,13 @@ export default function TopBar({
       {showSettings && state?.ai_driven && (
         <PortfolioSettingsModal onClose={() => setShowSettings(false)} />
       )}
-      {showBrief && activePortfolioId && !isOverviewOrLogs && (
-        <IntelligenceBrief
+      {briefOpen && activePortfolioId && !isOverviewOrLogs && (
+        <IntelligenceBriefAny
           portfolioId={activePortfolioId}
           portfolioName={state?.config?.name as string ?? activePortfolioId}
-          onClose={() => setShowBrief(false)}
+          initialTab={briefInitialTab}
+          initialTradeId={briefInitialTradeId}
+          onClose={closeBrief}
         />
       )}
     </header>
