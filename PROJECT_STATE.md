@@ -7,7 +7,37 @@
 
 ## Current Phase
 
-**Operational — cron automation running daily. 26 active portfolios. Manual buy/sell dashboard controls added (2026-04-09). Cron PAUSED for market holiday 2026-04-03 — needs to be re-enabled.**
+**Operational — 6 active portfolios (microcap, max, defense-tech, catalyst-momentum-scalper, gov-infra, unloved-microcap-cash-cows). Cron still PAUSED since 2026-04-03 holiday (user deferred re-enable). Post-trade review feature just shipped 2026-04-11.**
+
+---
+
+## Recently Completed (2026-04-11) — Post-Trade Review Feature
+
+New TRADES tab in the Intelligence Brief modal with aggregate stats, filterable closed-trade list, and per-trade detail panel (entry thesis, factor scores, exit analysis, Re-analyze with Claude button). Second entry point from MatrixGrid History tab via deep-link.
+
+### Backend
+- **`GET /api/{portfolio_id}/trade-reviews`** — `api/routes/trade_reviews.py`. Joins `transactions.csv` + `post_mortems.csv` into enriched closed-trade objects. FIFO matching for multi-round-trip tickers. Handles missing post-mortem, malformed `trade_rationale` JSON, and None prices gracefully. Parses `what_worked`/`what_failed` JSON arrays into readable joined strings via `_parse_json_list`.
+- **`POST /api/{portfolio_id}/trade-reviews/{trade_id}/analyze`** — ephemeral Claude Haiku synthesis. Builds prompt from entry thesis + factor scores + exit reasoning + post-mortem. 60s timeout, error handling returns 503 on failure, safe content extraction over blocks.
+- **8 tests** in `tests/test_trade_reviews.py` (TDD): no transactions, open position excluded, basic round-trip, missing post-mortem graceful, multi-ticker FIFO, JSON array parsing, prompt builder content, None-price regression.
+- **Router registered** in `api/main.py:46`.
+
+### Frontend
+- **`useBriefStore`** in `dashboard/src/lib/store.ts` — Zustand store controlling Intelligence Brief open state globally. `openBrief(tab, tradeId)` / `closeBrief()`. Lets any component deep-link.
+- **TopBar.tsx** refactored from local `showBrief` useState to `useBriefStore` selectors (5-call pattern to avoid unrelated re-renders).
+- **`TradesTab.tsx`** (~500 lines) — split-panel: 40% left (AggregatePanel with win rate / avg P&L / avg hold / total + BY EXIT and BY REGIME breakdowns, TradeList with filter bar and sortable columns), 60% right (TradeDetail with header, Entry Thesis, FactorBar rows, Exit Analysis with WORKED/FAILED/RECOMMENDATION cards, Re-analyze button). TanStack Query `["trade-reviews", portfolioId]`, 2min staleTime. Keyboard-accessible (role=button, tabIndex, onKeyDown). Sort has deterministic trade_id tiebreaker. Ephemeral re-analyzed state resets on trade change via prevTradeId pattern.
+- **IntelligenceBrief/index.tsx** — added 5th "TRADES" tab, `initialTab` + `initialTradeId` props for deep-linking.
+- **MatrixGrid HistoryPanel** — clickable CLOSED TRADES section below snapshots (max 50 rows). Calls `openBrief("trades", trade_id)` on click. Keyboard-accessible.
+
+### Architecture
+- **Spec:** `docs/superpowers/specs/2026-04-11-post-trade-review-design.md`
+- **Plan:** `docs/superpowers/plans/2026-04-11-post-trade-review.md`
+- Executed via subagent-driven development with two-stage review (spec + code quality) per task.
+
+### Smoke-tested against real portfolios
+- microcap: 47 closed trades
+- max: 90 closed trades
+- defense-tech: 23 closed trades
+- Analyze endpoint: returns ~900-char Claude narrative synthesizing thesis vs outcome
 
 ---
 
