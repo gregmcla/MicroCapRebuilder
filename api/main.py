@@ -18,6 +18,7 @@ import api.deps  # noqa: F401
 from api.routes import state, risk, performance, analysis, market, controls, discovery, portfolios
 from api.routes import system as system_routes
 from api.routes import intelligence as intelligence_routes
+from api.routes import trade_reviews as trade_reviews_routes
 
 app = FastAPI(title="GScott Trading Cockpit", version="0.1.0")
 
@@ -42,6 +43,7 @@ app.include_router(discovery.router)
 app.include_router(discovery.global_router)
 app.include_router(system_routes.router)
 app.include_router(intelligence_routes.router)
+app.include_router(trade_reviews_routes.router)
 
 
 @app.get("/api/health")
