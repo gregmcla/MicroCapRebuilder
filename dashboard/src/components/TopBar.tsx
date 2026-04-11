@@ -388,9 +388,6 @@ export default function TopBar({
   const briefInitialTradeId = useBriefStore(s => s.briefInitialTradeId);
   const openBrief = useBriefStore(s => s.openBrief);
   const closeBrief = useBriefStore(s => s.closeBrief);
-  // Task 8 adds initialTab/initialTradeId to IntelligenceBrief Props — cast to any until then
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const IntelligenceBriefAny = IntelligenceBrief as any;
   const isOverviewOrLogs = !state;
   const activePortfolioId = usePortfolioStore((s) => s.activePortfolioId);
 
@@ -571,7 +568,7 @@ export default function TopBar({
         <PortfolioSettingsModal onClose={() => setShowSettings(false)} />
       )}
       {briefOpen && activePortfolioId && !isOverviewOrLogs && (
-        <IntelligenceBriefAny
+        <IntelligenceBrief
           portfolioId={activePortfolioId}
           portfolioName={state?.config?.name as string ?? activePortfolioId}
           initialTab={briefInitialTab}

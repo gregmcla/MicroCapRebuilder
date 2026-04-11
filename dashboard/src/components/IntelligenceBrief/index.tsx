@@ -13,12 +13,15 @@ import CompositionPanel from "./CompositionPanel";
 import RiskPulse from "./RiskPulse";
 import FactorIntelligence from "./FactorIntelligence";
 import AuditChat from "./AuditChat";
+import TradesTab from "./TradesTab";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
 interface Props {
   portfolioId: string;
   portfolioName: string;
+  initialTab?: string;
+  initialTradeId?: string | null;
   onClose: () => void;
 }
 
@@ -192,8 +195,10 @@ function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function IntelligenceBrief({ portfolioId, portfolioName, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<"performance" | "risk" | "factors" | "gscott">("performance");
+export default function IntelligenceBrief({ portfolioId, portfolioName, initialTab, initialTradeId, onClose }: Props) {
+  const [activeTab, setActiveTab] = useState<"performance" | "risk" | "factors" | "gscott" | "trades">(
+    (initialTab as "performance" | "risk" | "factors" | "gscott" | "trades") ?? "performance"
+  );
   const [closeHover, setCloseHover] = useState(false);
   const { data: state } = usePortfolioState();
 
@@ -250,6 +255,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, onClose 
     },
     { key: "factors" as const, label: "FACTORS", dot: null },
     { key: "gscott" as const, label: "GSCOTT", dot: "#7c5cfc" },
+    { key: "trades" as const, label: "TRADES", dot: null },
   ];
 
   return (
@@ -612,6 +618,8 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, onClose 
               <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                 <AuditChat portfolioId={portfolioId} />
               </div>
+            ) : activeTab === "trades" ? (
+              <TradesTab portfolioId={portfolioId} initialTradeId={initialTradeId ?? null} />
             ) : null}
           </div>
         </div>
