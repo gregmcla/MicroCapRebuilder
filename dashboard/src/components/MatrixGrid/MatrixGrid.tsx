@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../lib/api";
 import type { MatrixGridProps, MatrixPosition, Transaction, WatchlistCandidate, ScanJobStatus } from "./types";
 import { pc, pbg, fv, MATRIX_FONT } from "./constants";
 import Sparkline from "./Sparkline";
@@ -9,7 +11,7 @@ import BottomPanel from "./BottomPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
 import PositionPulse from "./PositionPulse";
 import ActionsTab from "../ActionsTab";
-import { useAnalysisStore } from "../../lib/store";
+import { useAnalysisStore, useBriefStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
 import { useWarnings } from "../../hooks/useRisk";
@@ -817,7 +819,7 @@ export default function MatrixGrid({
 
         {/* HISTORY PANEL */}
         {viewTab === "history" && (
-          <HistoryPanel snapshots={snapshots} startingCapital={startingCapital} />
+          <HistoryPanel snapshots={snapshots} startingCapital={startingCapital} portfolioId={portfolios[0]?.id ?? ""} />
         )}
 
         {/* STATUS BAR */}
@@ -1190,7 +1192,17 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
 
 // ─── History Panel ────────────────────────────────────────────────────────────
 
-function HistoryPanel({ snapshots, startingCapital }: { snapshots: Snapshot[]; startingCapital?: number }) {
+function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: Snapshot[]; startingCapital?: number; portfolioId: string }) {
+  const openBrief = useBriefStore(s => s.openBrief);
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ["trade-reviews", portfolioId],
+    queryFn: () => api.getTradeReviews(portfolioId),
+    staleTime: 5 * 60_000,
+    enabled: !!portfolioId,
+  });
+  const closedTrades = reviewsData?.trades ?? [];
+
   const sorted = [...snapshots].sort((a, b) => a.date.localeCompare(b.date));
   const current = sorted.at(-1);
   const peak = sorted.reduce((best, s) => s.total_equity > best.total_equity ? s : best, sorted[0] ?? { total_equity: 0, date: "" });
@@ -1246,6 +1258,59 @@ function HistoryPanel({ snapshots, startingCapital }: { snapshots: Snapshot[]; s
           </div>
         ))}
       </div>
+
+      {/* Closed trades */}
+      {closedTrades.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 8, color: "#444", letterSpacing: "0.1em", marginBottom: 10 }}>
+            CLOSED TRADES ({closedTrades.length})
+          </div>
+          <div style={{ border: "1px solid rgba(56,189,248,0.08)" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "60px 1fr 50px 60px 70px",
+              padding: "5px 14px", fontSize: 8, color: "#444", letterSpacing: "0.1em",
+              borderBottom: "1px solid rgba(56,189,248,0.08)",
+            }}>
+              <span>TICKER</span><span>CLOSE</span><span>HOLD</span><span>P&L%</span><span>EXIT</span>
+            </div>
+            {closedTrades.slice(0, 50).map(trade => {
+              const pnl = trade.pnl_pct ?? 0;
+              return (
+                <div
+                  key={trade.trade_id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openBrief("trades", trade.trade_id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openBrief("trades", trade.trade_id);
+                    }
+                  }}
+                  style={{
+                    display: "grid", gridTemplateColumns: "60px 1fr 50px 60px 70px",
+                    padding: "6px 14px", fontSize: 11, cursor: "pointer",
+                    borderBottom: "1px solid rgba(255,255,255,0.02)",
+                    alignItems: "center", transition: "background 0.12s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(56,189,248,0.04)"}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
+                >
+                  <span style={{ color: "#ccc", fontWeight: 700 }}>{trade.ticker}</span>
+                  <span style={{ color: "#555" }}>{trade.exit_date}</span>
+                  <span style={{ color: "#555" }}>{trade.holding_days}d</span>
+                  <span style={{ color: pnl >= 0 ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+                    {pnl >= 0 ? "+" : ""}{pnl.toFixed(1)}%
+                  </span>
+                  <span style={{ fontSize: 9, color: trade.exit_reason === "STOP_LOSS" ? "#f87171" : trade.exit_reason === "TAKE_PROFIT" ? "#4ade80" : "#818cf8" }}>
+                    {trade.exit_reason.replace(/_/g, " ")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
