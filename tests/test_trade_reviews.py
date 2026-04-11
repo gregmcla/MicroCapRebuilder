@@ -187,3 +187,29 @@ def test_build_analyze_prompt_contains_ticker(portfolio_dir: Path) -> None:
     assert "Strong trend" in prompt
     assert "momentum" in prompt.lower()
     assert "90" in prompt
+
+
+def test_build_analyze_prompt_handles_none_prices(portfolio_dir: Path) -> None:
+    """Prompt builder must not crash when a trade has None prices (loaded from malformed CSV)."""
+    from api.routes.trade_reviews import _build_analyze_prompt, _load_closed_trades
+    # Write a trade with empty price fields — _safe_float returns None for these
+    _write_csv(portfolio_dir / "transactions.csv", [
+        {"transaction_id": "buy-empty", "date": "2026-04-01", "ticker": "WEIRD",
+         "action": "BUY", "shares": 10, "price": "", "total_value": "",
+         "stop_loss": "", "take_profit": "", "reason": "SIGNAL",
+         "regime_at_entry": "BULL", "composite_score": 0, "signal_rank": 0,
+         "factor_scores": "{}", "trade_rationale": "{}"},
+        {"transaction_id": "sell-empty", "date": "2026-04-05", "ticker": "WEIRD",
+         "action": "SELL", "shares": 10, "price": "", "total_value": "",
+         "stop_loss": 0, "take_profit": 0, "reason": "MANUAL",
+         "regime_at_entry": "BULL", "composite_score": 0, "signal_rank": 0,
+         "factor_scores": "{}", "trade_rationale": "{}"},
+    ])
+    trades = _load_closed_trades("test", data_dir=portfolio_dir.parent)
+    assert len(trades) == 1
+    assert trades[0]["entry_price"] is None
+    assert trades[0]["exit_price"] is None
+    # This must not raise
+    prompt = _build_analyze_prompt(trades[0])
+    assert "WEIRD" in prompt
+    assert "$0.00" in prompt

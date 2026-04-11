@@ -1,11 +1,14 @@
 """Trade reviews route — GET closed trade history, POST re-analyze with Claude."""
 
 import json
+import logging
 import math
 from pathlib import Path
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data" / "portfolios"
 
@@ -159,19 +162,29 @@ def get_trade_reviews(portfolio_id: str) -> dict:
 
 
 def _build_analyze_prompt(trade: dict) -> str:
-    """Build the Claude prompt for re-analyzing a single trade."""
+    """Build the Claude prompt for re-analyzing a single trade.
+
+    Normalizes all numeric fields to safe floats before formatting — _load_closed_trades
+    returns None for missing prices, which would crash f-string formatting otherwise.
+    """
+    entry_price = trade.get("entry_price") or 0.0
+    exit_price = trade.get("exit_price") or 0.0
     pnl_pct = trade.get("pnl_pct") or 0.0
     pnl = trade.get("pnl") or 0.0
     sign = "+" if pnl_pct >= 0 else ""
 
-    factor_lines = "\n".join(
-        f"  {k}: {v:.1f}" for k, v in (trade.get("factor_scores") or {}).items()
-    ) or "  Not recorded"
+    factor_items = (trade.get("factor_scores") or {}).items()
+    factor_lines_list = []
+    for k, v in factor_items:
+        fv = _safe_float(v)
+        if fv is not None:
+            factor_lines_list.append(f"  {k}: {fv:.1f}")
+    factor_lines = "\n".join(factor_lines_list) or "  Not recorded"
 
     return f"""You are reviewing a completed trade for post-mortem analysis. Connect the entry thesis to the actual outcome.
 
 TRADE: {trade["ticker"]}
-Entry: {trade["entry_date"]} @ ${trade.get("entry_price", 0):.2f} | Exit: {trade["exit_date"]} @ ${trade.get("exit_price", 0):.2f}
+Entry: {trade["entry_date"]} @ ${entry_price:.2f} | Exit: {trade["exit_date"]} @ ${exit_price:.2f}
 P&L: {sign}{pnl_pct:.1f}% (${pnl:.2f}) | Hold: {trade["holding_days"]} days
 Exit reason: {trade["exit_reason"]}
 Market regime at entry: {trade["regime_at_entry"]} | at exit: {trade["regime_at_exit"]}
@@ -194,19 +207,32 @@ Write a 3-4 sentence synthesis that explicitly connects: (1) whether the entry t
 
 @router.post("/trade-reviews/{trade_id}/analyze")
 def analyze_trade(portfolio_id: str, trade_id: str) -> dict:
-    """Call Claude Haiku to synthesize entry thesis vs exit outcome. Not persisted."""
-    import anthropic
+    """Call Claude Haiku to synthesize entry thesis vs exit outcome. Not persisted.
 
+    Note: trade_id is a lookup key (BUY transaction_id), not a filesystem path.
+    """
     trades = _load_closed_trades(portfolio_id)
     trade = next((t for t in trades if t["trade_id"] == trade_id), None)
     if trade is None:
         raise HTTPException(status_code=404, detail=f"Trade {trade_id} not found in {portfolio_id}")
 
     prompt = _build_analyze_prompt(trade)
-    client = anthropic.Anthropic()
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return {"narrative": message.content[0].text}
+    try:
+        import anthropic
+        client = anthropic.Anthropic(timeout=60.0)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        # Safely extract text from the first text block
+        narrative = ""
+        for block in (message.content or []):
+            if getattr(block, "type", None) == "text":
+                narrative = block.text
+                break
+    except Exception as e:
+        logger.warning("[trade_reviews] analyze failed for %s/%s: %s", portfolio_id, trade_id, e)
+        raise HTTPException(status_code=503, detail="AI analysis unavailable")
+
+    return {"narrative": narrative}
