@@ -25,6 +25,8 @@ import type {
   AuditBriefResponse,
   ChatMessage,
   ChatResponse,
+  TradeReviewsResponse,
+  TradeAnalyzeResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -183,4 +185,11 @@ export const api = {
 
   postIntelligenceChat: (pid: string, messages: ChatMessage[]): Promise<ChatResponse> =>
     post<ChatResponse>(`/${pid}/intelligence-chat`, { messages }),
+
+  // Trade reviews
+  getTradeReviews: (pid: string): Promise<TradeReviewsResponse> =>
+    get<TradeReviewsResponse>(`/${pid}/trade-reviews`),
+
+  analyzeTradeReview: (pid: string, tradeId: string): Promise<TradeAnalyzeResponse> =>
+    post<TradeAnalyzeResponse>(`/${pid}/trade-reviews/${tradeId}/analyze`, {}),
 };

@@ -603,3 +603,48 @@ export interface ChatResponse {
   reply: string;
   error?: string | null;
 }
+
+// ── Trade Reviews ─────────────────────────────────────────────────────────
+
+export interface ClosedTradeFactorScores {
+  momentum?: number;
+  quality?: number;
+  earnings?: number;
+  volume?: number;
+  volatility?: number;
+  value_timing?: number;
+  [key: string]: number | undefined;
+}
+
+export interface ClosedTrade {
+  trade_id: string;
+  ticker: string;
+  entry_date: string;
+  exit_date: string;
+  holding_days: number;
+  entry_price: number | null;
+  exit_price: number | null;
+  shares: number | null;
+  stop_loss: number | null;
+  take_profit: number | null;
+  pnl: number | null;
+  pnl_pct: number | null;
+  exit_reason: string;
+  regime_at_entry: string;
+  regime_at_exit: string;
+  entry_ai_reasoning: string;
+  exit_ai_reasoning: string;
+  factor_scores: ClosedTradeFactorScores;
+  what_worked: string;
+  what_failed: string;
+  recommendation: string;
+  summary: string;
+}
+
+export interface TradeReviewsResponse {
+  trades: ClosedTrade[];
+}
+
+export interface TradeAnalyzeResponse {
+  narrative: string;
+}
