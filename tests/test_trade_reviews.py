@@ -70,7 +70,7 @@ def test_closed_trade_basic_fields(portfolio_dir: Path) -> None:
     assert t["entry_ai_reasoning"] == "Strong momentum play"
     assert t["exit_ai_reasoning"] == "Stop loss triggered"
     assert t["factor_scores"]["momentum"] == pytest.approx(80.0)
-    assert t["pnl"] == pytest.approx(-5.0)
+    assert t["pnl"] == pytest.approx(-50.0)
     assert t["pnl_pct"] == pytest.approx(-5.0)
 
 

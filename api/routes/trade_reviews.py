@@ -101,8 +101,8 @@ def _load_closed_trades(portfolio_id: str, data_dir: Path = DATA_DIR) -> list[di
             pnl_pct = (exit_price - entry_price) / entry_price * 100
 
         pnl = _safe_float(pm.get("pnl"))
-        if pnl is None and pnl_pct is not None:
-            pnl = pnl_pct
+        if pnl is None and entry_price is not None and exit_price is not None and shares is not None:
+            pnl = (exit_price - entry_price) * shares
 
         holding_days_raw = _safe_float(pm.get("holding_days"))
         holding_days = int(holding_days_raw) if holding_days_raw is not None else 0
