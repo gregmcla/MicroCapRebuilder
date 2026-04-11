@@ -158,3 +158,23 @@ export const useFreshnessStore = create<FreshnessStore>((set, get) => ({
     return `${ageHr}h ago`;
   },
 }));
+
+// ── Brief Store — controls Intelligence Brief open state globally ──────────
+
+interface BriefStore {
+  briefOpen: boolean;
+  briefInitialTab: string;
+  briefInitialTradeId: string | null;
+  openBrief: (tab?: string, tradeId?: string | null) => void;
+  closeBrief: () => void;
+}
+
+export const useBriefStore = create<BriefStore>((set) => ({
+  briefOpen: false,
+  briefInitialTab: "performance",
+  briefInitialTradeId: null,
+  openBrief: (tab = "performance", tradeId = null) =>
+    set({ briefOpen: true, briefInitialTab: tab, briefInitialTradeId: tradeId }),
+  closeBrief: () =>
+    set({ briefOpen: false, briefInitialTradeId: null }),
+}));
