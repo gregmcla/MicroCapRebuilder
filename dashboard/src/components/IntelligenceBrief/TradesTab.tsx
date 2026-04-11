@@ -186,14 +186,21 @@ function TradeList({
       list = list.filter(t => t.exit_reason === filterReason);
     }
 
+    const getSortVal = (t: ClosedTrade): string | number => {
+      switch (sortKey) {
+        case "ticker":       return t.ticker;
+        case "exit_date":    return t.exit_date;
+        case "holding_days": return t.holding_days;
+        case "pnl_pct":      return t.pnl_pct ?? (sortDir === 1 ? -Infinity : Infinity);
+      }
+    };
     list.sort((a, b) => {
-      const aRaw = a[sortKey as keyof ClosedTrade];
-      const bRaw = b[sortKey as keyof ClosedTrade];
-      const av = aRaw == null ? (sortDir === 1 ? -Infinity : Infinity) : aRaw;
-      const bv = bRaw == null ? (sortDir === 1 ? -Infinity : Infinity) : bRaw;
+      const av = getSortVal(a);
+      const bv = getSortVal(b);
       if (av < bv) return -sortDir;
       if (av > bv) return sortDir;
-      return 0;
+      // Tiebreaker: trade_id for deterministic ordering
+      return a.trade_id < b.trade_id ? -1 : a.trade_id > b.trade_id ? 1 : 0;
     });
 
     return list;
@@ -205,16 +212,20 @@ function TradeList({
   };
 
   const hdr = (key: SortKey, label: string) => (
-    <span
+    <button
+      type="button"
       onClick={() => toggleSort(key)}
       style={{
         cursor: "pointer", fontSize: 9, letterSpacing: "0.08em", textTransform: "uppercase",
         fontFamily: FONT, userSelect: "none",
         color: sortKey === key ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.35)",
+        background: "transparent", border: "none", padding: 0, textAlign: "left",
       }}
+      aria-label={`Sort by ${label}`}
+      aria-pressed={sortKey === key}
     >
       {label}{sortKey === key ? (sortDir === 1 ? " ↑" : " ↓") : ""}
-    </span>
+    </button>
   );
 
   const reasons: ExitReasonFilter[] = ["ALL", "STOP_LOSS", "TAKE_PROFIT", "INTELLIGENCE", "MANUAL"];
@@ -266,7 +277,16 @@ function TradeList({
           return (
             <div
               key={trade.trade_id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
               onClick={() => onSelect(trade.trade_id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(trade.trade_id);
+                }
+              }}
               style={{
                 padding: "6px 14px", display: "grid",
                 gridTemplateColumns: "52px 80px 36px 56px 68px",
@@ -315,7 +335,9 @@ function TradeDetail({ trade, portfolioId }: { trade: ClosedTrade; portfolioId: 
 
   const pnl = trade.pnl_pct ?? 0;
   const pnlColor = pnl >= 0 ? "#4ade80" : "#f87171";
-  const factors = Object.entries(trade.factor_scores || {}).filter(([, v]) => v != null) as [string, number][];
+  const factors = Object.entries(trade.factor_scores || {}).filter(
+    (e): e is [string, number] => e[1] != null
+  );
 
   const chip = (label: string, value: string) => (
     <span key={label} style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: FONT }}>
