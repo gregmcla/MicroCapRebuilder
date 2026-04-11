@@ -1,1 +1,0 @@
-transaction_id,date,ticker,action,shares,price,total_value,stop_loss,take_profit,reason,regime_at_entry,composite_score,factor_scores,signal_rank,trade_rationale

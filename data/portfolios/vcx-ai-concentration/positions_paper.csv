@@ -1,5 +1,0 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,sector,price_high
-VCX,530,234.9,234.9,124497.0,0.0,0.0,165.86,376.56,2026-03-27,Technology,234.9
-MSFT,340,366.77,366.77,124701.8,0.0,0.0,320.7,476.04,2026-03-27,Technology,366.77
-GOOG,442,281.38,281.38,124369.96,0.0,0.0,245.56,370.84,2026-03-27,Technology,281.38
-AAPL,391,254.8933,254.8933,99663.28,0.0,0.0,221.74,332.61,2026-03-27,Technology,254.8933

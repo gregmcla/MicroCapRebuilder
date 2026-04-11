@@ -1,7 +1,0 @@
-ticker,shares,avg_cost_basis,current_price,market_value,unrealized_pnl,unrealized_pnl_pct,stop_loss,take_profit,entry_date,day_change,day_change_pct,price_high,sector
-NEXT,335,7.12,8.36,2800.3,415.1,17.4,6.62,35.6,2026-03-24,115.58,4.39,8.36,
-CODI,198,8.0,9.78,1936.44,352.44,22.25,7.44,32.2,2026-04-02,194.04,11.41,9.78,Industrials
-TROX,150,9.44,9.1,1365.0,-51.0,-3.6,8.78,38.0,2026-04-02,-3.0,-0.22,9.44,Basic Materials
-JANX,98,14.83,14.74,1444.52,-8.82,-0.61,13.79,58.67,2026-04-02,25.97,1.79,15.15,Healthcare
-RDW,146,9.68,9.78,1427.88,14.6,1.03,9.0,38.88,2026-04-02,-5.11,-0.36,10.04,Industrials
-RES,199,6.9,6.92,1377.08,3.98,0.29,6.42,28.04,2026-04-02,-11.94,-0.87,6.92,Energy

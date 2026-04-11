@@ -9,6 +9,15 @@ data/news_cache/
 !data/config.json
 !data/curated_universe.json
 !data/portfolios.json
+
+# Per-portfolio operational data — all CSVs, JSONL, scan caches, and status
+# files are runtime state and MUST NOT be committed. Only config.json is tracked.
+data/portfolios/*/*.csv
+data/portfolios/*/*.jsonl
+data/portfolios/*/*.json
+!data/portfolios/*/config.json
+data/pipeline_status/
+data/yf_cache/
 logs/
 reports/
 charts/
