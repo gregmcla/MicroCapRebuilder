@@ -613,7 +613,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       </button>
 
       {/* Card body */}
-      <div style={{ padding: "10px 10px 0" }}>
+      <div style={{ padding: "18px 20px" }}>
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px", paddingRight: "14px" }}>
           <h3 style={{ flex: 1, fontSize: "14px", fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

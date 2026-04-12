@@ -91,7 +91,7 @@ export default function PortfolioSummary() {
   const riskScore = risk?.overall_score != null ? Math.round(risk.overall_score) : null;
   const riskColor =
     riskScore == null
-      ? "var(--text-1)"
+      ? "var(--text-secondary)"
       : riskScore >= 70
       ? "var(--green)"
       : riskScore >= 40
@@ -225,7 +225,7 @@ export default function PortfolioSummary() {
           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
             <span
               className="font-mono font-semibold"
-              style={{ fontSize: "13px", color: "var(--text-3)", lineHeight: 1 }}
+              style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1 }}
             >
               {state?.positions.length ?? 0}
             </span>
