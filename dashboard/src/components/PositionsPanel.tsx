@@ -251,13 +251,19 @@ export default function PositionsPanel({
           </h2>
           <button
             onClick={toggleActivity}
-            className="hover:text-text-secondary transition-colors"
+            className="transition-colors"
             title="Activity Log"
             style={{
               fontSize: 10,
               color: "var(--text-dim)",
               textTransform: "uppercase",
               letterSpacing: "0.06em",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-dim)";
             }}
           >
             LOG
