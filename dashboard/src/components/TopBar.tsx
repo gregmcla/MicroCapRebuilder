@@ -26,7 +26,7 @@ function VDivider() {
       style={{
         width: "1px",
         height: "24px",
-        background: "var(--border-1)",
+        background: "var(--border)",
         flexShrink: 0,
         opacity: 0.5,
       }}
@@ -42,36 +42,46 @@ function IndexPill({ label, value, changePct, isVix }: {
   const up = changePct >= 0;
   // VIX rising = fear increasing = bad → invert sentiment colors
   const color = isVix
-    ? (up ? "var(--loss)" : "var(--profit)")
-    : (up ? "var(--profit)" : "var(--loss)");
+    ? (up ? "var(--red)" : "var(--green)")
+    : (up ? "var(--green)" : "var(--red)");
   return (
-    <div className="flex items-baseline gap-1.5 px-3">
+    <div
+      style={{
+        fontSize: 10,
+        color: "var(--text-dim)",
+        padding: "4px 8px",
+        background: "rgba(148,163,184,0.04)",
+        borderRadius: 6,
+        display: "flex",
+        alignItems: "baseline",
+        gap: "6px",
+      }}
+    >
       <span
         style={{
           fontSize: "9px",
-          textTransform: "uppercase",
+          textTransform: "uppercase" as const,
           letterSpacing: "0.08em",
           // VIX label in amber — signals it's a fear gauge not a price index
-          color: isVix ? "var(--amber)" : "var(--color-text-muted)",
+          color: isVix ? "var(--amber)" : "var(--text-dim)",
           fontFamily: "var(--font-sans)",
         }}
       >
         {label}
       </span>
       <span
-        className="font-mono tabular-nums"
         style={{
           fontSize: "12px",
           // VIX value also in amber (subdued) to reinforce it's a different register
-          color: isVix ? "rgba(251,191,36,0.65)" : "var(--color-text-2)",
+          color: isVix ? "rgba(245,158,11,0.65)" : "var(--text-secondary)",
           letterSpacing: "-0.01em",
+          fontFamily: "var(--font-mono)",
         }}
       >
         {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
       <span
-        className="font-mono tabular-nums font-semibold"
-        style={{ fontSize: "10px", color }}
+        style={{ fontSize: "10px", color, fontFamily: "var(--font-mono)", fontWeight: 600 }}
       >
         {up ? "+" : ""}{changePct.toFixed(2)}%
       </span>
@@ -87,16 +97,27 @@ function MarketIndices() {
     { key: "vix" as const,         label: "VIX",  isVix: true  },
   ];
   return (
-    <div className="flex items-center">
+    <div className="flex items-center gap-1">
       {items.map(({ key, label, isVix }, i) => {
         const d = data?.[key];
         return (
           <div key={key} className="flex items-center">
             {i > 0 && <VDivider />}
             {!d || isError ? (
-              <div className="flex items-baseline gap-1.5 px-3">
-                <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: isVix ? "var(--amber)" : "var(--color-text-muted)" }}>{label}</span>
-                <span style={{ fontSize: "12px", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>—</span>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--text-dim)",
+                  padding: "4px 8px",
+                  background: "rgba(148,163,184,0.04)",
+                  borderRadius: 6,
+                  display: "flex",
+                  alignItems: "baseline",
+                  gap: "6px",
+                }}
+              >
+                <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: isVix ? "var(--amber)" : "var(--text-dim)", fontFamily: "var(--font-sans)" }}>{label}</span>
+                <span style={{ fontSize: "12px", color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>—</span>
               </div>
             ) : (
               <IndexPill label={label} value={d.value} changePct={d.change_pct} isVix={isVix} />
@@ -114,20 +135,18 @@ function PortfolioStats({ state }: { state: PortfolioState | undefined }) {
   if (!state) return null;
   const equity = state.total_equity ?? 0;
   const dayPnl = state.day_pnl ?? 0;
-  const dayColor = dayPnl >= 0 ? "var(--color-profit)" : "var(--color-loss)";
+  const dayColor = dayPnl >= 0 ? "var(--green)" : "var(--red)";
   const sign = dayPnl >= 0 ? "+" : "";
 
   return (
     <div className="flex items-baseline gap-2 px-3 shrink-0">
       <span
-        className="font-mono tabular-nums font-medium"
-        style={{ fontSize: "14px", color: "var(--color-text-3)", letterSpacing: "-0.02em" }}
+        style={{ fontSize: "14px", color: "var(--text-primary)", letterSpacing: "-0.02em", fontFamily: "var(--font-mono)", fontWeight: 500 }}
       >
         ${equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
       <span
-        className="font-mono tabular-nums font-semibold"
-        style={{ fontSize: "11px", color: dayColor }}
+        style={{ fontSize: "11px", color: dayColor, fontFamily: "var(--font-mono)", fontWeight: 600 }}
       >
         {sign}${Math.abs(dayPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
@@ -162,24 +181,29 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
       <button
         onClick={() => setShowConfirm(true)}
         disabled={closing}
-        className="inline-flex items-center justify-center px-2.5 rounded transition-all disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded transition-all disabled:opacity-50"
         style={{
-          height: "26px",
-          fontSize: "10px",
+          height: "30px",
+          padding: "0 12px",
+          borderRadius: 6,
+          fontSize: 11,
           fontWeight: 600,
           letterSpacing: "0.06em",
-          border: "1px solid rgba(248,113,113,0.25)",
-          background: "transparent",
-          color: "rgba(248,113,113,0.6)",
+          border: "1px solid",
+          borderColor: "rgba(239,68,68,0.2)",
+          background: "var(--red-dim)",
+          color: "rgba(239,68,68,0.6)",
           cursor: "pointer",
+          transition: "all 150ms ease",
+          fontFamily: "var(--font-mono)",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(248,113,113,0.5)";
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--color-loss)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.4)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--red)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(248,113,113,0.25)";
-          (e.currentTarget as HTMLButtonElement).style.color = "rgba(248,113,113,0.6)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.2)";
+          (e.currentTarget as HTMLButtonElement).style.color = "rgba(239,68,68,0.6)";
         }}
       >
         {closing ? "..." : "CLOSE ALL"}
@@ -262,9 +286,10 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
           fontSize: "9px",
           fontWeight: 700,
           letterSpacing: "0.08em",
-          background: paperMode ? "rgba(255,255,255,0.03)" : "rgba(34,197,94,0.10)",
-          border: paperMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(34,197,94,0.30)",
-          color: paperMode ? "var(--color-text-secondary)" : "#22c55e",
+          fontFamily: "var(--font-mono)",
+          background: paperMode ? "rgba(255,255,255,0.03)" : "var(--green-dim)",
+          border: paperMode ? "1px solid var(--border)" : "1px solid rgba(34,197,94,0.30)",
+          color: paperMode ? "var(--text-secondary)" : "var(--green)",
         }}
       >
         {!paperMode && (
@@ -273,9 +298,9 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
               width: "5px",
               height: "5px",
               borderRadius: "50%",
-              background: "#22c55e",
+              background: "var(--green)",
               flexShrink: 0,
-              boxShadow: "0 0 5px #22c55e",
+              boxShadow: "0 0 5px var(--green)",
             }}
             className="animate-pulse"
           />
@@ -322,30 +347,33 @@ function LogsButton() {
   return (
     <button
       onClick={() => setPortfolio(isActive ? "overview" : "logs")}
-      className="inline-flex items-center justify-center px-2.5 rounded transition-all"
+      className="inline-flex items-center justify-center rounded transition-all"
       style={{
-        height: "26px",
-        fontSize: "10px",
+        height: "30px",
+        padding: "0 12px",
+        borderRadius: 6,
+        fontSize: 11,
         fontWeight: 600,
         letterSpacing: "0.06em",
         fontFamily: "var(--font-mono)",
         border: isActive
-          ? "1px solid var(--color-accent-border)"
-          : "1px solid var(--color-border-1)",
-        background: isActive ? "var(--color-accent-dim)" : "transparent",
-        color: isActive ? "var(--color-accent-bright)" : "var(--color-text-secondary)",
+          ? "1px solid rgba(139,92,246,0.25)"
+          : "1px solid var(--border)",
+        background: isActive ? "var(--accent-dim)" : "rgba(148,163,184,0.04)",
+        color: isActive ? "var(--accent)" : "var(--text-secondary)",
         cursor: "pointer",
+        transition: "all 150ms ease",
       }}
       onMouseEnter={(e) => {
         if (!isActive) {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border-hover)";
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-2)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border-hover)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)";
         }
       }}
       onMouseLeave={(e) => {
         if (!isActive) {
-          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border-1)";
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-secondary)";
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
         }
       }}
     >
@@ -362,8 +390,29 @@ function BuyButton() {
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] border border-emerald-400/40 bg-emerald-400/[0.07] text-emerald-400 hover:border-emerald-400/70 hover:bg-emerald-400/[0.13]"
-        style={{ fontSize: "10px", padding: "4px 10px", letterSpacing: "0.1em" }}
+        className="inline-flex items-center justify-center"
+        style={{
+          height: "30px",
+          padding: "0 12px",
+          borderRadius: 6,
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: "0.06em",
+          border: "1px solid rgba(34,197,94,0.25)",
+          background: "var(--green-dim)",
+          color: "var(--green)",
+          cursor: "pointer",
+          transition: "all 150ms ease",
+          fontFamily: "var(--font-mono)",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(34,197,94,0.5)";
+          (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.14)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(34,197,94,0.25)";
+          (e.currentTarget as HTMLButtonElement).style.background = "var(--green-dim)";
+        }}
       >
         + BUY
       </button>
@@ -397,17 +446,17 @@ export default function TopBar({
   const actionButtons = (
     <>
       {(state?.stale_alerts.length ?? 0) > 0 && (
-        <span style={{ fontSize: "9px", color: "var(--color-warning)", letterSpacing: "0.04em", fontWeight: 600 }}>
+        <span style={{ fontSize: "9px", color: "var(--amber)", letterSpacing: "0.04em", fontWeight: 600, fontFamily: "var(--font-mono)" }}>
           ⚠ {state!.stale_alerts.length}
         </span>
       )}
       {(state?.price_failures.length ?? 0) > 0 && (
-        <span style={{ fontSize: "9px", color: "var(--color-loss)", letterSpacing: "0.04em" }}>
+        <span style={{ fontSize: "9px", color: "var(--red)", letterSpacing: "0.04em", fontFamily: "var(--font-mono)" }}>
           {state!.price_failures.length} failed
         </span>
       )}
       {isLoading && (
-        <span className="animate-pulse-slow" style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>
+        <span className="animate-pulse-slow" style={{ fontSize: "9px", color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}>
           syncing
         </span>
       )}
@@ -416,9 +465,9 @@ export default function TopBar({
           <UpdateButton />
           <ScanButton />
           <BuyButton />
-          <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
+          <div style={{ width: "1px", height: "18px", background: "var(--border)", flexShrink: 0 }} />
           <AnalyzeExecute />
-          <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
+          <div style={{ width: "1px", height: "18px", background: "var(--border)", flexShrink: 0 }} />
         </>
       )}
       <LogsButton />
@@ -429,20 +478,22 @@ export default function TopBar({
         title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         className="inline-flex items-center justify-center rounded transition-all"
         style={{
-          width: "26px", height: "26px",
+          width: "30px", height: "30px",
+          borderRadius: 6,
           fontSize: "12px",
-          border: "1px solid var(--border-1)",
-          background: "transparent",
-          color: "var(--text-1)",
+          border: "1px solid var(--border)",
+          background: "rgba(148,163,184,0.04)",
+          color: "var(--text-secondary)",
           cursor: "pointer",
+          transition: "all 150ms ease",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = "var(--border-2)";
-          (e.currentTarget as HTMLElement).style.color = "var(--text-3)";
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border-hover)";
+          (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
-          (e.currentTarget as HTMLElement).style.color = "var(--text-1)";
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+          (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)";
         }}
       >
         {theme === "dark" ? "☀" : "☾"}
@@ -454,8 +505,8 @@ export default function TopBar({
     <header
       className="shrink-0 topbar-root"
       style={{
-        background: "linear-gradient(180deg, var(--surface-1), var(--void))",
-        borderBottom: "1px solid rgba(124,92,252,0.12)",
+        background: "var(--bg-surface)",
+        borderBottom: "1px solid var(--border)",
       }}
     >
       {/* Row 1: Logo + switcher + (desktop: stats + indices + buttons) */}
@@ -481,22 +532,22 @@ export default function TopBar({
               onClick={() => openBrief()}
               title="Portfolio Intelligence Brief"
               style={{
-                background: "none",
-                border: "1px solid var(--border-1)",
-                borderRadius: "4px",
-                color: "var(--color-text-muted)",
+                background: "rgba(148,163,184,0.04)",
+                border: "1px solid rgba(139,92,246,0.15)",
+                borderRadius: "6px",
+                color: "var(--text-muted)",
                 cursor: "pointer",
-                width: "20px", height: "20px",
+                width: "30px", height: "30px",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "11px", lineHeight: 1, transition: "all 0.15s",
+                fontSize: "11px", lineHeight: 1, transition: "all 150ms ease",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.color = "var(--accent)";
                 (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(139,92,246,0.15)";
               }}
             >
               ◈
@@ -507,22 +558,22 @@ export default function TopBar({
               onClick={() => setShowSettings(true)}
               title="Strategy DNA"
               style={{
-                background: "none",
-                border: "1px solid var(--border-1)",
-                borderRadius: "4px",
-                color: "var(--color-text-muted)",
+                background: "rgba(148,163,184,0.04)",
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                color: "var(--text-muted)",
                 cursor: "pointer",
-                width: "20px", height: "20px",
+                width: "30px", height: "30px",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "11px", lineHeight: 1, transition: "all 0.15s",
+                fontSize: "11px", lineHeight: 1, transition: "all 150ms ease",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLElement).style.color = "var(--accent)";
                 (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.color = "var(--color-text-muted)";
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--border-1)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
               }}
             >
               ⚙
@@ -557,7 +608,7 @@ export default function TopBar({
           height: "36px",
           overflowX: "auto",
           scrollbarWidth: "none",
-          borderTop: "1px solid rgba(124,92,252,0.08)",
+          borderTop: "1px solid var(--border)",
           whiteSpace: "nowrap",
         } as React.CSSProperties}
       >
