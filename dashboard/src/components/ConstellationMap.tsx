@@ -35,15 +35,15 @@ const LABEL_FONT      = "500 10px 'JetBrains Mono', monospace";
 const LABEL_FONT_S    = "400 9px 'JetBrains Mono', monospace";
 
 // Theme colors
-const C_BG         = "#08090d";
-const C_GREEN      = "#34d399";
-const C_RED        = "#f87171";
-const C_ACCENT     = "#7c5cfc";
-const C_BASELINE   = "rgba(255,255,255,0.08)";
-const C_SEPARATOR  = "rgba(255,255,255,0.05)";
-const C_TEXT       = "rgba(255,255,255,0.70)";
-const C_TEXT_DIM   = "rgba(255,255,255,0.35)";
-const C_HOVER_FILL = "rgba(255,255,255,0.06)";
+const C_BG         = "#020617";
+const C_GREEN      = "#22C55E";
+const C_RED        = "#EF4444";
+const C_ACCENT     = "#8B5CF6";
+const C_BASELINE   = "rgba(148,163,184,0.08)";
+const C_SEPARATOR  = "rgba(148,163,184,0.05)";
+const C_TEXT       = "rgba(248,250,252,0.70)";
+const C_TEXT_DIM   = "rgba(148,163,184,0.50)";
+const C_HOVER_FILL = "rgba(255,255,255,0.04)";
 
 // ── Internal types ─────────────────────────────────────────────────────────────
 interface Bar {
@@ -234,11 +234,11 @@ function barGradient(
 ): CanvasGradient {
   const grad = ctx.createLinearGradient(0, tipY, 0, baseY);
   if (isGreen) {
-    grad.addColorStop(0, "rgba(52, 211, 153, 1.0)");
-    grad.addColorStop(1, "rgba(52, 211, 153, 0.28)");
+    grad.addColorStop(0, "rgba(34, 197, 94, 1.0)");
+    grad.addColorStop(1, "rgba(34, 197, 94, 0.28)");
   } else {
-    grad.addColorStop(0, "rgba(248, 113, 113, 1.0)");
-    grad.addColorStop(1, "rgba(248, 113, 113, 0.28)");
+    grad.addColorStop(0, "rgba(239, 68, 68, 1.0)");
+    grad.addColorStop(1, "rgba(239, 68, 68, 0.28)");
   }
   return grad;
 }
@@ -372,7 +372,7 @@ function drawWaveform(
 
       // Collapse hint at bottom of gutter
       ctx.font      = "400 8px 'JetBrains Mono', monospace";
-      ctx.fillStyle = "rgba(124,92,252,0.55)";
+      ctx.fillStyle = "rgba(139,92,246,0.55)";
       ctx.textBaseline = "bottom";
       ctx.fillText("▼ collapse", 10, laneY + laneH - 8);
       ctx.textBaseline = "alphabetic";
@@ -610,7 +610,7 @@ function Tooltip({
         left,
         top,
         width:         TW,
-        background:    "#0e0f17",
+        background:    "#020617",
         border:        `1px solid ${C_ACCENT}`,
         borderRadius:  4,
         padding:       "10px 13px",

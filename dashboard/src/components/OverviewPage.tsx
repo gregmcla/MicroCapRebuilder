@@ -117,7 +117,158 @@ function EquitySparkline({ values, returnPct, id }: { values: number[]; returnPc
 }
 
 // ---------------------------------------------------------------------------
-// Aggregate header bar
+// Morning Briefing headline + stats row
+// ---------------------------------------------------------------------------
+
+function MorningBriefing({
+  totalEquity, totalDayPnl, totalReturnPct, totalPositions, portfolioCount,
+  onNewPortfolio, onUpdateAll, updatingAll, updateResult, onScanAll, scanAllRunning, scanAllLabel,
+}: {
+  totalEquity: number; totalDayPnl: number; totalReturnPct: number;
+  totalPositions: number; portfolioCount: number;
+  onNewPortfolio: () => void;
+  onUpdateAll: () => void;
+  updatingAll: boolean;
+  updateResult: string | null;
+  onScanAll: () => void;
+  scanAllRunning: boolean;
+  scanAllLabel: string | null;
+}) {
+  const rawCount = useCountUp(totalEquity, 1200, 0);
+  const animatedEquity = Number(rawCount).toLocaleString();
+
+  const dayColor = pnlColor(totalDayPnl);
+  const daySign  = totalDayPnl >= 0 ? "+" : "";
+  const dayPct   = totalEquity > 0 ? (totalDayPnl / totalEquity) * 100 : 0;
+
+  // Headline narrative
+  const headline = portfolioCount === 0
+    ? "No portfolios yet. Create one to get started."
+    : `${portfolioCount} portfolio${portfolioCount !== 1 ? "s" : ""}, ${totalPositions} position${totalPositions !== 1 ? "s" : ""} · $${Number(rawCount).toLocaleString()} total equity`;
+
+  return (
+    <div style={{
+      background: "var(--bg-surface)",
+      borderBottom: "1px solid var(--border)",
+      padding: "16px 20px 12px",
+      flexShrink: 0,
+    }}>
+      {/* Narrative headline */}
+      <div style={{ marginBottom: "14px" }}>
+        <p style={{
+          fontSize: "20px", fontWeight: 600, color: "var(--text-primary)",
+          fontFamily: "var(--font-sans)", lineHeight: 1.2, marginBottom: "3px",
+        }}>
+          Morning Briefing
+        </p>
+        <p style={{ fontSize: "13px", color: "var(--text-secondary)", fontFamily: "var(--font-sans)" }}>
+          {headline}
+          {totalDayPnl !== 0 && totalEquity > 0 && (
+            <span style={{ color: dayColor, marginLeft: "8px", fontFamily: "var(--font-mono)" }}>
+              {daySign}${Math.abs(totalDayPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} ({daySign}{Math.abs(dayPct).toFixed(1)}%) today
+            </span>
+          )}
+        </p>
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: "flex", gap: "10px", alignItems: "stretch", flexWrap: "wrap" }}>
+        {/* Total Equity */}
+        <div style={{
+          background: "var(--bg-elevated)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)", padding: "16px 20px", minWidth: "140px",
+        }}>
+          <p style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500, marginBottom: "6px" }}>
+            Total Equity
+          </p>
+          <p className="font-mono tabular-nums" style={{ fontSize: "24px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+            ${animatedEquity}
+          </p>
+        </div>
+
+        {/* Today's P&L */}
+        <div style={{
+          background: totalDayPnl > 0 ? "var(--green-dim)" : totalDayPnl < 0 ? "var(--red-dim)" : "var(--bg-elevated)",
+          border: `1px solid ${totalDayPnl > 0 ? "rgba(34,197,94,0.18)" : totalDayPnl < 0 ? "rgba(239,68,68,0.18)" : "var(--border)"}`,
+          borderRadius: "var(--radius-lg)", padding: "16px 20px", minWidth: "130px",
+        }}>
+          <p style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500, marginBottom: "6px" }}>
+            Today's P&L
+          </p>
+          <p className="font-mono tabular-nums" style={{ fontSize: "24px", fontWeight: 700, color: dayColor, letterSpacing: "-0.02em", lineHeight: 1 }}>
+            {fmt$(totalDayPnl)}
+          </p>
+        </div>
+
+        {/* Total Positions */}
+        <div style={{
+          background: "var(--bg-elevated)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)", padding: "16px 20px", minWidth: "100px",
+        }}>
+          <p style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500, marginBottom: "6px" }}>
+            Positions
+          </p>
+          <p className="font-mono tabular-nums" style={{ fontSize: "24px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+            {totalPositions}
+          </p>
+        </div>
+
+        {/* Portfolios */}
+        <div style={{
+          background: "var(--bg-elevated)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)", padding: "16px 20px", minWidth: "100px",
+        }}>
+          <p style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500, marginBottom: "6px" }}>
+            Portfolios
+          </p>
+          <p className="font-mono tabular-nums" style={{ fontSize: "24px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.02em", lineHeight: 1 }}>
+            {portfolioCount}
+          </p>
+        </div>
+
+        {/* Return */}
+        <div style={{
+          background: "var(--bg-elevated)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)", padding: "16px 20px", minWidth: "110px",
+        }}>
+          <p style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500, marginBottom: "6px" }}>
+            All-Time Return
+          </p>
+          <p className="font-mono tabular-nums" style={{ fontSize: "24px", fontWeight: 700, color: pnlColor(totalReturnPct), letterSpacing: "-0.02em", lineHeight: 1 }}>
+            {fmtPct(totalReturnPct)}
+          </p>
+        </div>
+
+        {/* Action buttons — flush right */}
+        <div style={{
+          marginLeft: "auto",
+          display: "flex", gap: "8px", alignItems: "center",
+        }}>
+          <ActionBtn onClick={onUpdateAll} disabled={updatingAll} spinning={updatingAll}>
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }} className={updatingAll ? "animate-spin" : ""}>
+              <path d="M10 6A4 4 0 1 1 6 2a4 4 0 0 1 2.83 1.17L10 2v4H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            {updateResult ?? "Update All"}
+          </ActionBtn>
+          <ActionBtn onClick={onScanAll} disabled={scanAllRunning}>
+            <span style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              background: "currentColor", opacity: scanAllRunning ? 1 : 0.6, flexShrink: 0,
+              animation: scanAllRunning ? "pulse 1s ease-in-out infinite" : "none",
+            }} />
+            {scanAllLabel ?? "Scan All"}
+          </ActionBtn>
+          <ActionBtn onClick={onNewPortfolio}>
+            + New
+          </ActionBtn>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Aggregate header bar (kept for backwards compat reference — not rendered)
 // ---------------------------------------------------------------------------
 
 function AggregateBar({
@@ -331,12 +482,12 @@ function ControlsBar({
     <div style={{
       display: "flex", alignItems: "center", gap: "12px",
       padding: "8px 20px",
-      background: "var(--surface-0)",
-      borderBottom: "1px solid var(--border-0)",
+      background: "var(--bg-void)",
+      borderBottom: "1px solid var(--border)",
       flexShrink: 0,
     }}>
       {/* Sort controls */}
-      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>Sort</span>
+      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>Sort</span>
       <div style={{ display: "flex", gap: "4px" }}>
         {sortOptions.map((opt) => (
           <button
@@ -346,7 +497,7 @@ function ControlsBar({
               padding: "3px 9px",
               borderRadius: "4px",
               fontSize: "10px", fontWeight: sortKey === opt.key ? 700 : 500,
-              color: sortKey === opt.key ? "var(--accent)" : "var(--text-1)",
+              color: sortKey === opt.key ? "var(--accent)" : "var(--text-secondary)",
               background: sortKey === opt.key ? "rgba(124,92,252,0.10)" : "transparent",
               border: sortKey === opt.key ? "1px solid rgba(124,92,252,0.25)" : "1px solid transparent",
               cursor: "pointer",
@@ -362,8 +513,8 @@ function ControlsBar({
       <div style={{ flex: 1 }} />
 
       {/* View toggle */}
-      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>View</span>
-      <div style={{ display: "flex", gap: "2px", background: "var(--surface-2)", borderRadius: "6px", padding: "2px" }}>
+      <span style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}>View</span>
+      <div style={{ display: "flex", gap: "2px", background: "var(--bg-elevated)", borderRadius: "6px", padding: "2px" }}>
         {viewOptions.map((opt) => (
           <button
             key={opt.key}
@@ -372,8 +523,8 @@ function ControlsBar({
               padding: "3px 12px",
               borderRadius: "4px",
               fontSize: "10px", fontWeight: viewMode === opt.key ? 700 : 500,
-              color: viewMode === opt.key ? "var(--text-4)" : "var(--text-1)",
-              background: viewMode === opt.key ? "var(--surface-4)" : "transparent",
+              color: viewMode === opt.key ? "var(--text-primary)" : "var(--text-secondary)",
+              background: viewMode === opt.key ? "var(--accent-dim)" : "transparent",
               border: "none",
               cursor: "pointer",
               transition: "all 0.15s",
@@ -419,8 +570,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
   const glow = !summary.error ? cardGlow(summary.total_return_pct ?? 0) : "none";
   const hasSparkline = (summary.sparkline?.length ?? 0) >= 2;
 
-  const cardBg = hovered ? "var(--surface-2)" : "var(--surface-1)";
-  const cardBorder = hovered ? "rgba(255,255,255,0.10)" : "var(--border-0)";
+  const cardBg = hovered ? "var(--bg-elevated)" : "var(--bg-surface)";
+  const cardBorder = hovered ? "var(--border-hover)" : "var(--border)";
 
   return (
     <div
@@ -428,10 +579,10 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
         position: "relative",
         background: cardBg,
         border: `1px solid ${cardBorder}`,
-        borderRadius: "8px",
+        borderRadius: "var(--radius-lg)",
         boxShadow: hovered ? `${glow !== "none" ? glow + ", " : ""}0 4px 16px rgba(0,0,0,0.3)` : glow,
         transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.25s ease, transform 0.2s ease",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
+        transform: hovered ? "translateY(-1px)" : "translateY(0)",
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
@@ -465,10 +616,10 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       <div style={{ padding: "10px 10px 0" }}>
         {/* Header row */}
         <div style={{ display: "flex", alignItems: "center", gap: "5px", marginBottom: "6px", paddingRight: "14px" }}>
-          <h3 style={{ flex: 1, fontSize: "12px", fontWeight: 700, color: "var(--text-4)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <h3 style={{ flex: 1, fontSize: "14px", fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {summary.name}
           </h3>
-          <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-0)" }}>
+          <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
             {summary.universe}
           </span>
           <span style={{ fontSize: "8.5px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: summary.paper_mode ? "var(--amber)" : "var(--accent)" }}>
@@ -482,7 +633,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
           <>
             {/* Equity + all-time return */}
             <div style={{ display: "flex", alignItems: "baseline", gap: "7px", marginBottom: "5px" }}>
-              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: "var(--text-3)" }}>
+              <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "17px", color: "var(--text-secondary)" }}>
                 ${summary.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
               <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "11px", color: pnlColor(summary.total_return_pct) }}>
@@ -525,8 +676,8 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       {/* Sparkline strip */}
       {!summary.error && hasSparkline && (
         <div style={{
-          borderTop: "1px solid var(--border-0)",
-          background: "var(--surface-0)",
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg-void)",
           flex: 1,
           minHeight: "28px",
           overflow: "hidden",
@@ -541,7 +692,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
           <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             {topHoldings.map((h) => (
               <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10px" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-3)", width: "40px", flexShrink: 0 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--text-primary)", width: "40px", flexShrink: 0 }}>
                   {h.ticker}
                 </span>
                 <div style={{ flex: 1, height: "2px", background: "var(--surface-3)", borderRadius: "1px", overflow: "hidden" }}>
@@ -564,7 +715,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       {/* Bottom stats */}
       {!summary.error && (
         <div
-          style={{ padding: "5px 10px 7px", display: "flex", alignItems: "center", gap: "5px", fontSize: "9.5px", color: "var(--text-1)", borderTop: "1px solid var(--border-0)", marginTop: "6px" }}
+          style={{ padding: "5px 10px 7px", display: "flex", alignItems: "center", gap: "5px", fontSize: "9.5px", color: "var(--text-secondary)", borderTop: "1px solid var(--border)", marginTop: "6px" }}
         >
           <span
             className="tabular-nums"
@@ -583,9 +734,9 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
                   : "rgba(251,191,36,0.08)",
             }}
           >{summary.regime ?? "—"}</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
+          <span style={{ color: "var(--text-muted)" }}>·</span>
           <span className="tabular-nums">{summary.num_positions}p</span>
-          <span style={{ color: "var(--border-2)" }}>·</span>
+          <span style={{ color: "var(--text-muted)" }}>·</span>
           <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}%</span>
           <div style={{ flex: 1, height: "2px", borderRadius: "1px", background: "var(--surface-3)", overflow: "hidden", margin: "0 3px" }}>
             <div style={{
@@ -604,9 +755,9 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
         <div
           style={{
             padding: "5px 14px 7px",
-            borderTop: "1px solid var(--border-0)",
+            borderTop: "1px solid var(--border)",
             display: "flex", alignItems: "center", gap: "6px",
-            fontSize: "10px", color: "var(--text-1)",
+            fontSize: "10px", color: "var(--text-secondary)",
           }}
         >
           <span
@@ -666,7 +817,7 @@ function AttentionPanel({ portfolios, onNavigate }: {
     return (
       <div style={{ padding: "12px 14px" }}>
         <SideHeader>Attention</SideHeader>
-        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-0)", fontStyle: "italic" }}>
+        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-muted)", fontStyle: "italic" }}>
           All portfolios nominal
         </div>
       </div>
@@ -696,7 +847,7 @@ function AttentionPanel({ portfolios, onNavigate }: {
             <div style={{ fontSize: "10px", fontWeight: 700, color: item.severity === "error" ? "var(--red)" : "var(--amber)", marginBottom: "1px" }}>
               {item.name}
             </div>
-            <div style={{ fontSize: "9.5px", color: "var(--text-1)" }}>{item.reason}</div>
+            <div style={{ fontSize: "9.5px", color: "var(--text-secondary)" }}>{item.reason}</div>
           </button>
         ))}
       </div>
@@ -729,13 +880,13 @@ function MoversPanel({ topMovers, bottomMovers, onNavigate }: {
           cursor: "pointer",
           transition: "background 0.15s",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-2)"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-elevated)"; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
       >
-        <span className="font-mono" style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-3)", width: "36px", flexShrink: 0 }}>
+        <span className="font-mono" style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-primary)", width: "36px", flexShrink: 0 }}>
           {m.ticker}
         </span>
-        <span style={{ fontSize: "9px", color: "var(--text-0)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: "9px", color: "var(--text-muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {m.portfolio_name}
         </span>
         <span className="font-mono tabular-nums" style={{ fontSize: "10px", fontWeight: 600, color: positive ? "var(--green)" : "var(--red)", flexShrink: 0 }}>
@@ -754,7 +905,7 @@ function MoversPanel({ topMovers, bottomMovers, onNavigate }: {
     <div style={{ padding: "12px 14px" }}>
       <SideHeader>Movers</SideHeader>
       {!hasMovers ? (
-        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-0)", fontStyle: "italic" }}>No position data</div>
+        <div style={{ marginTop: "10px", fontSize: "10px", color: "var(--text-muted)", fontStyle: "italic" }}>No position data</div>
       ) : (
         <>
           {topMovers.length > 0 && (
@@ -783,9 +934,9 @@ function SideHeader({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.10em",
-      color: "var(--text-0)", fontWeight: 700,
+      color: "var(--text-muted)", fontWeight: 700,
       paddingBottom: "6px",
-      borderBottom: "1px solid var(--border-0)",
+      borderBottom: "1px solid var(--border)",
     }}>
       {children}
     </div>
@@ -996,9 +1147,9 @@ export default function OverviewPage() {
 
   if (isLoading) {
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg-void)" }}>
         {/* Skeleton aggregate bar */}
-        <div style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", minHeight: "68px", display: "flex", alignItems: "center", padding: "0 20px", gap: "24px" }}>
+        <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", minHeight: "68px", display: "flex", alignItems: "center", padding: "0 20px", gap: "24px" }}>
           <SkeletonBlock width={140} height={26} />
           <SkeletonBlock width={90} height={20} />
           <SkeletonBlock width={100} height={20} />
@@ -1006,13 +1157,13 @@ export default function OverviewPage() {
           <SkeletonBlock width={80} height={20} />
         </div>
         {/* Skeleton controls bar */}
-        <div style={{ background: "var(--surface-0)", borderBottom: "1px solid var(--border-0)", minHeight: "36px", display: "flex", alignItems: "center", padding: "0 20px", gap: "8px" }}>
+        <div style={{ background: "var(--bg-void)", borderBottom: "1px solid var(--border)", minHeight: "36px", display: "flex", alignItems: "center", padding: "0 20px", gap: "8px" }}>
           <SkeletonBlock width={32} height={12} />
           <SkeletonBlock width={220} height={22} />
         </div>
         {/* Skeleton grid */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-          <div style={{ width: "220px", flexShrink: 0, borderRight: "1px solid var(--border-0)", background: "var(--surface-0)", padding: "14px" }}>
+          <div style={{ width: "220px", flexShrink: 0, borderRight: "1px solid var(--border)", background: "var(--bg-surface)", padding: "14px" }}>
             <SkeletonBlock width={80} height={10} style={{ marginBottom: 12 }} />
             <SkeletonBlock width="100%" height={52} style={{ marginBottom: 6 }} />
             <SkeletonBlock width="100%" height={52} style={{ marginBottom: 6 }} />
@@ -1039,19 +1190,14 @@ export default function OverviewPage() {
 
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#040608" }}>
-      {/* Aggregate stats bar */}
-      <AggregateBar
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg-void)" }}>
+      {/* Morning Briefing headline + stats */}
+      <MorningBriefing
         totalEquity={totalEquity}
-        totalCash={totalCash}
         totalDayPnl={overview?.total_day_pnl ?? 0}
-        totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={enriched.length}
-        portfoliosUp={portfoliosUp}
-        portfoliosDown={portfoliosDown}
-        deployedPct={deployedPct}
         onNewPortfolio={() => setShowCreate(true)}
         onUpdateAll={handleUpdateAll}
         updatingAll={updatingAll}
@@ -1100,13 +1246,13 @@ export default function OverviewPage() {
             width: "220px",
             flexShrink: 0,
             overflowY: "auto",
-            borderRight: "1px solid var(--border-0)",
-            background: "var(--surface-0)",
+            borderRight: "1px solid var(--border)",
+            background: "var(--bg-surface)",
             display: "flex",
             flexDirection: "column",
           }}>
             <AttentionPanel portfolios={enriched} onNavigate={setPortfolio} />
-            <div style={{ height: "1px", background: "var(--border-0)" }} />
+            <div style={{ height: "1px", background: "var(--border)" }} />
             <MoversPanel
               topMovers={overview?.top_movers ?? []}
               bottomMovers={overview?.bottom_movers ?? []}

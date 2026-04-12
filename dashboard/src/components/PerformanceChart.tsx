@@ -7,7 +7,7 @@ const CHART_PALETTE = [
   "#38bdf8", // sky blue
   "#a78bfa", // violet
   "#fb923c", // orange
-  "#34d399", // emerald
+  "#22C55E", // emerald → new green
   "#f472b6", // pink
   "#facc15", // yellow
   "#2dd4bf", // teal
@@ -15,7 +15,7 @@ const CHART_PALETTE = [
   "#a3e635", // lime
   "#60a5fa", // blue
   "#c084fc", // purple
-  "#4ade80", // green
+  "#22C55E", // green
   "#f97316", // orange-red
   "#22d3ee", // cyan
   "#e879f9", // fuchsia
@@ -416,7 +416,7 @@ export default function PerformanceChart({ portfolios, height = 340 }: Performan
       const { toPixelY: fieldPixelY,  guides: fieldGuides  } = fieldScale;
 
       // Fill background
-      ctx.fillStyle = "#08090d";
+      ctx.fillStyle = "#020617";
       ctx.fillRect(0, 0, dims.width, dims.height);
 
       ctx.save();
@@ -960,7 +960,7 @@ export default function PerformanceChart({ portfolios, height = 340 }: Performan
 
   if (series.length === 0) {
     return (
-      <div style={{ height: `${height}px`, display: "flex", alignItems: "center", justifyContent: "center", background: "#08090d", borderRadius: "7px" }}>
+      <div style={{ height: `${height}px`, display: "flex", alignItems: "center", justifyContent: "center", background: "#020617", borderRadius: "7px" }}>
         <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.2)", fontFamily: "'JetBrains Mono', 'Courier New', monospace" }}>
           No portfolio history
         </p>
@@ -973,7 +973,7 @@ export default function PerformanceChart({ portfolios, height = 340 }: Performan
       ref={containerRef}
       style={{
         height: `${height}px`,
-        background: "#08090d",
+        background: "#020617",
         borderRadius: "7px",
         overflow: "hidden",
         position: "relative",

@@ -16,7 +16,7 @@ function StripDivider() {
         width: "1px",
         alignSelf: "stretch",
         margin: "10px 0",
-        background: "var(--border-1)",
+        background: "var(--border-hover)",
         flexShrink: 0,
         opacity: 0.5,
       }}
@@ -46,7 +46,7 @@ function Stat({
           fontSize: "9px",
           textTransform: "uppercase",
           letterSpacing: "0.09em",
-          color: "var(--text-0)",
+          color: "var(--text-muted)",
           lineHeight: 1,
         }}
       >
@@ -102,8 +102,8 @@ export default function PortfolioSummary() {
     <div
       className="flex-shrink-0 border-b"
       style={{
-        borderColor: "var(--border-0)",
-        background: "var(--surface-0)",
+        borderColor: "var(--border)",
+        background: "var(--bg-surface)",
       }}
     >
       <div style={{ display: "flex", alignItems: "stretch", minHeight: "44px", overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
@@ -159,7 +159,7 @@ export default function PortfolioSummary() {
                       fontSize: "9px",
                       textTransform: "uppercase",
                       letterSpacing: "0.09em",
-                      color: "var(--text-0)",
+                      color: "var(--text-muted)",
                       lineHeight: 1,
                     }}
                   >
@@ -194,7 +194,7 @@ export default function PortfolioSummary() {
                 fontSize: "9px",
                 textTransform: "uppercase",
                 letterSpacing: "0.09em",
-                color: "var(--text-0)",
+                color: "var(--text-muted)",
                 lineHeight: 1,
               }}
             >
@@ -214,7 +214,7 @@ export default function PortfolioSummary() {
                 fontSize: "9px",
                 textTransform: "uppercase",
                 letterSpacing: "0.09em",
-                color: "var(--text-0)",
+                color: "var(--text-muted)",
                 lineHeight: 1,
               }}
             >
@@ -234,7 +234,7 @@ export default function PortfolioSummary() {
                 fontSize: "9px",
                 textTransform: "uppercase",
                 letterSpacing: "0.09em",
-                color: "var(--text-0)",
+                color: "var(--text-muted)",
                 lineHeight: 1,
               }}
             >
