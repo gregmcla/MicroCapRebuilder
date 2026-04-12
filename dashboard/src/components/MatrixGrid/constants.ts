@@ -11,10 +11,10 @@ export const PORTFOLIO_COLORS: Array<{ color: string; hex: [number, number, numb
   { color: "#bef264", hex: [190, 242, 100] },
 ];
 
-export const BG_COLOR = "#040608";
-export const ACCENT_GREEN = "#4ade80";
-export const DANGER_RED = "#f87171";
-export const MATRIX_FONT = "'Azeret Mono','JetBrains Mono','Fira Code',monospace";
+export const BG_COLOR = "#020617";
+export const ACCENT_GREEN = "#22C55E";
+export const DANGER_RED = "#EF4444";
+export const MATRIX_FONT = "'Fira Code', monospace";
 
 export function portfolioAbbr(id: string): string {
   const map: Record<string, string> = {
@@ -64,7 +64,7 @@ export function crossMoverToMatrix(
     name: mover.portfolio_name,
     abbr: portfolioAbbr(mover.portfolio_id),
     color: ACCENT_GREEN,
-    hex: [74, 222, 128] as [number, number, number],
+    hex: [34, 197, 94] as [number, number, number],
   };
   return {
     ticker: mover.ticker,
@@ -113,15 +113,15 @@ export function positionToMatrix(pos: Position, port: MatrixPortfolio): MatrixPo
 }
 
 export const pc = (p: number): string =>
-  p > 5 ? "#4ade80" : p > 0 ? "#86c98e" : p > -5 ? "#c98e86" : "#f87171";
+  p > 5 ? "#22C55E" : p > 0 ? "#6EBF8B" : p > -5 ? "#B07070" : "#EF4444";
 
 export const pbg = (p: number): string => {
-  if (p > 15) return "linear-gradient(to bottom, #1d4530 0%, #122d20 100%)";
-  if (p > 5)  return "linear-gradient(to bottom, #163221 0%, #0d2417 100%)";
-  if (p > 0)  return "linear-gradient(to bottom, #0f2216 0%, #08180d 100%)";
-  if (p > -5) return "linear-gradient(to bottom, #22100f 0%, #160909 100%)";
-  if (p > -10) return "linear-gradient(to bottom, #31110f 0%, #210c0c 100%)";
-  return "linear-gradient(to bottom, #3f1414 0%, #2c0f0f 100%)";
+  if (p > 15) return "linear-gradient(to bottom, #162E20 0%, #0E1F15 100%)";
+  if (p > 5)  return "linear-gradient(to bottom, #112619 0%, #0A1B10 100%)";
+  if (p > 0)  return "linear-gradient(to bottom, #0C1C12 0%, #07140D 100%)";
+  if (p > -5) return "linear-gradient(to bottom, #1C0D0C 0%, #130808 100%)";
+  if (p > -10) return "linear-gradient(to bottom, #270E0C 0%, #1A0909 100%)";
+  return "linear-gradient(to bottom, #321010 0%, #230B0B 100%)";
 };
 
 export const fv = (v: number): string =>

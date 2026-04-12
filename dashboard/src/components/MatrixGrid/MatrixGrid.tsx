@@ -115,7 +115,7 @@ export default function MatrixGrid({
   snapshots = [],
   startingCapital,
 }: MatrixGridProps) {
-  const [viewTab, setViewTab] = useState<"grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("grid");
+  const [viewTab, setViewTab] = useState<"detail" | "grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("detail");
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
   const { data: warnings } = useWarnings();
@@ -298,16 +298,16 @@ export default function MatrixGrid({
     watchlistCandidates.forEach(c => { if (c.social_heat) m.set(c.ticker, c.social_heat); });
     return m;
   }, [watchlistCandidates]);
-  const CELL_HEAT: Record<string, string> = { SPIKING: "#f87171", HOT: "#fb923c", WARM: "#facc15" };
+  const CELL_HEAT: Record<string, string> = { SPIKING: "#EF4444", HOT: "#fb923c", WARM: "#F59E0B" };
 
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
-        background: "#040608",
-        fontFamily: MATRIX_FONT,
-        color: "#ccc",
+        background: "var(--bg-void)",
+        fontFamily: "var(--font-mono)",
+        color: "var(--text-secondary)",
         position: "relative",
         overflow: "hidden",
         display: "flex",
@@ -339,7 +339,7 @@ export default function MatrixGrid({
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
         .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
-        .matrix-sb:hover { color:#4ade80 !important; }
+        .matrix-sb:hover { color:#22C55E !important; }
         .matrix-fb:hover { border-color:rgba(74,222,128,0.2) !important; color:#888 !important; }
         ::-webkit-scrollbar{width:3px}
         ::-webkit-scrollbar-track{background:transparent}
@@ -358,14 +358,14 @@ export default function MatrixGrid({
       {/* Boot terminal overlay */}
       {boot < 3 && (
         <div style={{
-          position: "absolute", inset: 0, zIndex: 100, background: "#040608",
+          position: "absolute", inset: 0, zIndex: 100, background: "var(--bg-void)",
           padding: "40px", display: "flex", flexDirection: "column", justifyContent: "center",
         }}>
           <div style={{ maxWidth: 500 }}>
             {bootLines.map((line, i) => (
               <div key={i} style={{
                 fontSize: 11, fontFamily: MATRIX_FONT, marginBottom: 4,
-                color: line.includes("100%") || line.includes("RDY") ? "#4ade80" : "#4ade8088",
+                color: line.includes("100%") || line.includes("RDY") ? "#22C55E" : "rgba(34,197,94,0.53)",
                 animation: "matrixTermLine 0.15s ease",
                 letterSpacing: "0.03em",
               }}>
@@ -373,7 +373,7 @@ export default function MatrixGrid({
               </div>
             ))}
             <span style={{
-              display: "inline-block", width: 8, height: 14, background: "#4ade80",
+              display: "inline-block", width: 8, height: 14, background: "#22C55E",
               animation: "matrixBlink 0.8s step-end infinite", marginTop: 4,
             }} />
           </div>
@@ -391,89 +391,100 @@ export default function MatrixGrid({
         {/* POSITION PULSE */}
         <PositionPulse positions={positions} />
 
-        {/* CONTROLS */}
-        <div style={{ padding: "6px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        {/* CONTROLS / SORT BAR */}
+        <div style={{
+          height: 36,
+          padding: "0 12px",
+          background: "var(--bg-surface)",
+          borderBottom: "1px solid var(--border)",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
+        }}>
           <div style={{ display: "flex", gap: 1, alignItems: "center" }}>
             {/* Portfolio name */}
             {(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios.length === 1 ? portfolios[0] : null) && (
               <span style={{
-                fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", marginRight: 16, paddingRight: 16,
-                borderRight: "1px solid rgba(255,255,255,0.04)",
-                color: (effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#e8ffe8",
-                textShadow: `0 0 20px ${(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#4ade80"}22`,
+                fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", marginRight: 12, paddingRight: 12,
+                borderRight: "1px solid var(--border)",
+                color: (effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#F8FAFC",
               }}>
                 {(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.name}
               </span>
             )}
             {/* Stats inline with sort */}
-            <div style={{ display: "flex", gap: 12, alignItems: "baseline", marginRight: 16, paddingRight: 16, borderRight: "1px solid rgba(255,255,255,0.04)" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "baseline", marginRight: 12, paddingRight: 12, borderRight: "1px solid var(--border)" }}>
               {[
-                { l: "POS", v: String(sorted.length), c: "#e8ffe8" },
-                { l: "INVESTED", v: `$${totalVal.toLocaleString()}`, c: "#e8ffe8" },
+                { l: "POS", v: String(sorted.length), c: "var(--text-secondary)" },
+                { l: "INVESTED", v: `$${totalVal.toLocaleString()}`, c: "var(--text-secondary)" },
                 { l: "AVG P&L", v: `${weightedAvgP}%`, c: pc(parseFloat(weightedAvgP)) },
               ].map((s) => (
-                <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>{s.l}</span>
-                  <span style={{ fontSize: 12, color: s.c, fontWeight: 600 }}>{s.v}</span>
+                <div key={s.l} style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.08em" }}>{s.l}</span>
+                  <span style={{ fontSize: 11, color: s.c, fontWeight: 600 }}>{s.v}</span>
                 </div>
               ))}
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>W/L</span>
-                <span style={{ fontSize: 12, fontWeight: 600 }}>
-                  <span style={{ color: "#4ade80" }}>{wins}</span>
-                  <span style={{ color: "#444" }}>/</span>
-                  <span style={{ color: "#f87171" }}>{positions.length - wins}</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                <span style={{ fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.08em" }}>W/L</span>
+                <span style={{ fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ color: "var(--green)" }}>{wins}</span>
+                  <span style={{ color: "var(--text-dim)" }}>/</span>
+                  <span style={{ color: "var(--red)" }}>{positions.length - wins}</span>
                 </span>
               </div>
               {atRiskSet.size > 0 && (
-                <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                  <span style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em" }}>AT RISK</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171" }}>{atRiskSet.size}</span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                  <span style={{ fontSize: 10, color: "var(--text-dim)", letterSpacing: "0.08em" }}>AT RISK</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--red)" }}>{atRiskSet.size}</span>
                 </div>
               )}
             </div>
-            <span style={{ fontSize: 9, color: "#444", letterSpacing: "0.1em", marginRight: 8 }}>SORT</span>
+            <span style={{ fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.1em", marginRight: 6 }}>SORT</span>
             {(["entry", "value", "perf", "day", "alpha", "portfolio"] as const).map((k) => {
               const SORT_LABELS: Record<string, string> = { entry: "entry", value: "size", perf: "perf", day: "today", alpha: "alpha", portfolio: "portfolio" };
+              const isActive = sortBy === k;
               return (
                 <button key={k} className="matrix-sb" onClick={() => setSortBy(k)} style={{
-                  padding: "3px 8px", fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase",
-                  fontFamily: MATRIX_FONT,
-                  background: sortBy === k ? "rgba(74,222,128,0.07)" : "transparent",
-                  color: sortBy === k ? "#4ade80" : "#333",
-                  border: sortBy === k ? "1px solid rgba(74,222,128,0.15)" : "1px solid transparent",
+                  padding: "3px 8px",
+                  fontSize: 9,
+                  fontWeight: 500,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  fontFamily: "var(--font-mono)",
+                  background: isActive ? "var(--green-dim)" : "transparent",
+                  color: isActive ? "var(--green)" : "var(--text-dim)",
+                  border: isActive ? "1px solid rgba(34,197,94,0.12)" : "1px solid transparent",
                   cursor: "pointer", transition: "all 0.15s",
+                  borderRadius: "var(--radius)",
                 }}>
-                  {sortBy === k && <span style={{ marginRight: 3 }}>&#9658;</span>}
+                  {isActive && <span style={{ marginRight: 3 }}>&#9658;</span>}
                   {SORT_LABELS[k]}
                 </button>
               );
             })}
           </div>
-          <div style={{ display: "flex", gap: 2 }}>
+          <div style={{ display: "flex", gap: 2, alignItems: "center" }}>
             {onBack && (
               <button onClick={onBack} style={{
-                padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
-                background: "transparent", color: "#666",
-                border: "1px solid rgba(255,255,255,0.04)",
+                padding: "2px 7px", fontSize: 7, fontFamily: "var(--font-mono)",
+                background: "transparent", color: "var(--text-muted)",
+                border: "1px solid var(--border)",
                 cursor: "pointer", letterSpacing: "0.08em", marginRight: 8,
               }}>&larr; BACK</button>
             )}
             {filterOverride === undefined && (
               <>
                 <button className="matrix-fb" onClick={() => setFilterP(null)} style={{
-                  padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
-                  background: !filterP ? "rgba(74,222,128,0.05)" : "transparent",
-                  color: !filterP ? "#4ade80" : "#1a1a1a",
-                  border: !filterP ? "1px solid rgba(74,222,128,0.1)" : "1px solid rgba(255,255,255,0.02)",
+                  padding: "2px 7px", fontSize: 7, fontFamily: "var(--font-mono)",
+                  background: !filterP ? "var(--green-dim)" : "transparent",
+                  color: !filterP ? "var(--green)" : "var(--text-dim)",
+                  border: !filterP ? "1px solid rgba(34,197,94,0.12)" : "1px solid var(--border)",
                   cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
                 }}>ALL</button>
                 {portfolios.map((p) => (
                   <button key={p.id} className="matrix-fb" onClick={() => setFilterP(filterP === p.id ? null : p.id)} style={{
-                    padding: "2px 7px", fontSize: 7, fontFamily: MATRIX_FONT,
+                    padding: "2px 7px", fontSize: 7, fontFamily: "var(--font-mono)",
                     background: filterP === p.id ? `${p.color}12` : "transparent",
-                    color: filterP === p.id ? p.color : "#1a1a1a",
-                    border: `1px solid ${filterP === p.id ? p.color + "33" : "rgba(255,255,255,0.02)"}`,
+                    color: filterP === p.id ? p.color : "var(--text-dim)",
+                    border: `1px solid ${filterP === p.id ? p.color + "33" : "var(--border)"}`,
                     cursor: "pointer", letterSpacing: "0.08em", transition: "all 0.15s",
                     display: "flex", alignItems: "center", gap: 3,
                   }}>
@@ -488,10 +499,10 @@ export default function MatrixGrid({
                 ))}
               </>
             )}
-            <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", fontSize: 8, color: "#444", letterSpacing: "0.08em" }}>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.08em" }}>
               <Waveform width={80} height={10} />
               <span>MATRIX::v3.0</span>
-              <span style={{ color: "#4ade8044", letterSpacing: "0.05em" }}>{clock}</span>
+              <span style={{ color: "rgba(34,197,94,0.27)", letterSpacing: "0.05em" }}>{clock}</span>
             </div>
           </div>
         </div>
@@ -522,18 +533,21 @@ export default function MatrixGrid({
 
         {/* TAB BAR */}
         <div style={{
-          padding: "0 20px",
-          borderBottom: "1px solid rgba(74,222,128,0.06)",
+          height: 34,
+          padding: "0 12px",
+          background: "var(--bg-surface)",
+          borderBottom: "1px solid var(--border)",
           display: "flex", alignItems: "flex-end", gap: 0, flexShrink: 0,
           overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none",
         } as React.CSSProperties}>
           {(showSecondaryTabs
-            ? ["grid", "actions", "watchlist", "activity", "logs", "history"] as const
-            : ["grid"] as const
+            ? ["detail", "grid", "actions", "watchlist", "activity", "logs", "history"] as const
+            : ["detail", "grid"] as const
           ).map((tab) => {
             const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
-              grid: `PORTFOLIO [${sorted.length}]`,
+              detail: `POSITIONS [${sorted.length}]`,
+              grid: `GRID [${sorted.length}]`,
               actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${new Set([...analysisResult.approved, ...analysisResult.modified].map(a => `${a.original.ticker}:${a.original.action_type}`)).size}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
               activity: `ACTIVITY [${transactions.length}]`,
@@ -541,37 +555,31 @@ export default function MatrixGrid({
               history: `HISTORY [${snapshots.length}]`,
             };
             const active = viewTab === tab;
-            // Color per tab: grid=green (matrix), actions=violet (AI), watchlist=amber, activity=violet, logs=muted
+            // Color per tab
             const TAB_ACTIVE_COLOR: Record<string, string> = {
-              grid:      "#4ade80",
-              actions:   "#917aff",
-              watchlist: "#fbbf24",
-              activity:  "#917aff",
-              logs:      "#888",
-              history:   "#38bdf8",
+              detail:    "#94A3B8",
+              grid:      "#22C55E",
+              actions:   "#8B5CF6",
+              watchlist: "#F59E0B",
+              activity:  "#8B5CF6",
+              logs:      "#64748B",
+              history:   "#22D3EE",
             };
-            const TAB_ACTIVE_BORDER: Record<string, string> = {
-              grid:      "#4ade80",
-              actions:   "#7c5cfc",
-              watchlist: "#fbbf2466",
-              activity:  "#7c5cfc",
-              logs:      "#555",
-              history:   "#38bdf8",
-            };
-            const activeColor  = TAB_ACTIVE_COLOR[tab]  ?? "#4ade80";
-            const activeBorder = TAB_ACTIVE_BORDER[tab] ?? "#4ade80";
-            // ACTIONS tab: amber pulse when analysis pending, violet when active
-            const pendingColor  = tab === "actions" && hasActions && !active ? "#fbbf24" : null;
-            const displayColor  = active ? activeColor : pendingColor ?? "#555";
-            const borderColor   = active ? activeBorder : pendingColor ? "#facc1566" : "transparent";
+            const activeColor = TAB_ACTIVE_COLOR[tab] ?? "#94A3B8";
+            // ACTIONS tab: amber pulse when analysis pending, accent when active
+            const pendingColor  = tab === "actions" && hasActions && !active ? "#F59E0B" : null;
+            const displayColor  = active ? activeColor : pendingColor ?? "var(--text-dim)";
+            const borderColor   = active ? activeColor : pendingColor ? "rgba(245,158,11,0.4)" : "transparent";
             return (
               <button
                 key={tab}
                 onClick={() => setViewTab(tab)}
                 style={{
-                  padding: "5px 12px 6px",
-                  fontSize: 10, letterSpacing: "0.08em",
-                  fontFamily: MATRIX_FONT,
+                  padding: "5px 12px",
+                  fontSize: 9,
+                  fontWeight: 500,
+                  letterSpacing: "0.08em",
+                  fontFamily: "var(--font-mono)",
                   background: "transparent",
                   color: displayColor,
                   border: "none",
@@ -579,6 +587,7 @@ export default function MatrixGrid({
                   cursor: "pointer",
                   transition: "all 0.12s",
                   marginBottom: -1,
+                  whiteSpace: "nowrap",
                 }}
               >
                 {labels[tab]}
@@ -644,7 +653,7 @@ export default function MatrixGrid({
                       ? "border-color 0.15s, background 0.15s, left 0.35s ease-out, top 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out"
                       : "opacity 0.3s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
-                    borderLeft: `2px solid ${isAtRisk ? "#f87171" : pos.portfolioColor}${isHov ? "cc" : "44"}`,
+                    borderLeft: `2px solid ${isAtRisk ? "#EF4444" : pos.portfolioColor}${isHov ? "cc" : "44"}`,
                   }}
                 >
                   {/* Chromatic aberration on hover */}
@@ -659,7 +668,7 @@ export default function MatrixGrid({
 
                   {/* Reticles on hover */}
                   <div className="matrix-ret" style={{ position: "absolute", inset: 0, opacity: isHov ? 1 : 0, transition: "opacity 0.12s", pointerEvents: "none" }}>
-                    <Reticle color="#4ade80" s={5} />
+                    <Reticle color="#22C55E" s={5} />
                   </div>
 
                   {/* Social heat dot */}
@@ -732,11 +741,11 @@ export default function MatrixGrid({
                   {!tiny && (
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: large ? 8 : 2 }}>
                       {held !== null && !large && (
-                        <span style={{ fontSize: 9, color: held >= 35 ? "#fbbf24" : "#555" }}>
+                        <span style={{ fontSize: 9, color: held >= 35 ? "#F59E0B" : "var(--text-dim)" }}>
                           {held}d
                         </span>
                       )}
-                      <Sparkline data={pos.sparkline} color={(sortBy === "day" ? pos.day : pos.perf) >= 0 ? "#4ade80" : "#f87171"} w={large ? rect.w - 20 : 56} h={large ? 36 : 22} />
+                      <Sparkline data={pos.sparkline} color={(sortBy === "day" ? pos.day : pos.perf) >= 0 ? "#22C55E" : "#EF4444"} w={large ? rect.w - 20 : 56} h={large ? 36 : 22} />
                     </div>
                   )}
 
@@ -744,14 +753,14 @@ export default function MatrixGrid({
                   {large && (held !== null || slDist !== null) && (
                     <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
                       {held !== null && (
-                        <span style={{ fontSize: 10, color: held >= 35 ? "#fbbf24" : "#777", letterSpacing: "0.05em" }}>
+                        <span style={{ fontSize: 10, color: held >= 35 ? "#F59E0B" : "var(--text-muted)", letterSpacing: "0.05em" }}>
                           {held}d held
                         </span>
                       )}
                       {slDist !== null && (
                         <span style={{
                           fontSize: 10, letterSpacing: "0.05em",
-                          color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#777",
+                          color: slDist < 8 ? "#EF4444" : slDist < 15 ? "#F59E0B" : "var(--text-muted)",
                         }}>
                           SL -{slDist.toFixed(1)}%
                         </span>
@@ -764,7 +773,7 @@ export default function MatrixGrid({
                     <div style={{ marginTop: 3 }}>
                       <span style={{
                         fontSize: 8, letterSpacing: "0.05em",
-                        color: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#444",
+                        color: slDist < 8 ? "#EF4444" : slDist < 15 ? "#F59E0B" : "var(--text-dim)",
                       }}>
                         SL -{slDist.toFixed(1)}%
                       </span>
@@ -775,6 +784,18 @@ export default function MatrixGrid({
             })}
           </div>
         </div>
+
+        {/* DETAIL PANEL — positions table list view */}
+        {viewTab === "detail" && (
+          <PositionsDetailPanel
+            positions={sorted}
+            atRiskSet={atRiskSet}
+            onPositionClick={(pos) => {
+              setSelectedPos(prev => prev?.ticker === pos.ticker && prev?.portfolioId === pos.portfolioId ? null : pos);
+              onPositionClick?.(pos);
+            }}
+          />
+        )}
 
         {/* ACTIONS PANEL */}
         {viewTab === "actions" && (
@@ -791,8 +812,8 @@ export default function MatrixGrid({
             // Build a minimal stub so the detail card can fetch company info
             setSelectedPos({
               ticker, portfolioId: portfolios[0]?.id ?? "", portfolioName: portfolios[0]?.name ?? "",
-              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#4ade80",
-              portfolioHex: portfolios[0]?.hex ?? [74,222,128], value: 0, perf: 0, day: 0,
+              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#22C55E",
+              portfolioHex: portfolios[0]?.hex ?? [34,197,94], value: 0, perf: 0, day: 0,
               sparkline: [], sector: "", vol: null, beta: null, mktCap: "",
             });
           }} />
@@ -805,8 +826,8 @@ export default function MatrixGrid({
             if (existing) { setSelectedPos(existing); return; }
             setSelectedPos({
               ticker, portfolioId: portfolios[0]?.id ?? "", portfolioName: portfolios[0]?.name ?? "",
-              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#4ade80",
-              portfolioHex: portfolios[0]?.hex ?? [74,222,128], value: 0, perf: 0, day: 0,
+              portfolioAbbr: portfolios[0]?.abbr ?? "", portfolioColor: portfolios[0]?.color ?? "#22C55E",
+              portfolioHex: portfolios[0]?.hex ?? [34,197,94], value: 0, perf: 0, day: 0,
               sparkline: [], sector: "", vol: null, beta: null, mktCap: "",
             });
           }} />
@@ -830,10 +851,10 @@ export default function MatrixGrid({
           fontSize: 8, color: "#444", letterSpacing: "0.08em", flexShrink: 0,
         }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            {top && <span>&#9650; <span style={{ color: "#4ade80" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
-            {bot && <span>&#9660; <span style={{ color: "#f87171" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
+            {top && <span>&#9650; <span style={{ color: "#22C55E" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
+            {bot && <span>&#9660; <span style={{ color: "#EF4444" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
             {atRiskSet.size > 0 && (
-              <span>&#9474; <span style={{ color: "#f87171" }}>{atRiskSet.size} near stop</span></span>
+              <span>&#9474; <span style={{ color: "#EF4444" }}>{atRiskSet.size} near stop</span></span>
             )}
           </div>
           <div />
@@ -844,8 +865,8 @@ export default function MatrixGrid({
       {hovered && !selectedPos && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
-          background: "rgba(4,6,8,0.95)",
-          borderTop: "1px solid rgba(74,222,128,0.1)",
+          background: "rgba(2,6,23,0.95)",
+          borderTop: "1px solid rgba(34,197,94,0.1)",
           padding: "8px 20px",
           display: "flex", gap: 24, alignItems: "center",
           zIndex: 200, animation: "matrixSlideUp 0.12s ease",
@@ -874,7 +895,7 @@ export default function MatrixGrid({
             </div>
           ))}
           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
-            <Sparkline data={hovered.sparkline} color={hovered.perf >= 0 ? "#4ade80" : "#f87171"} w={110} h={24} />
+            <Sparkline data={hovered.sparkline} color={hovered.perf >= 0 ? "#22C55E" : "#EF4444"} w={110} h={24} />
           </div>
         </div>
       )}
@@ -896,13 +917,105 @@ export default function MatrixGrid({
   );
 }
 
+// ─── Positions Detail Panel ───────────────────────────────────────────────────
+
+function PositionsDetailPanel({
+  positions,
+  atRiskSet,
+  onPositionClick,
+}: {
+  positions: MatrixPosition[];
+  atRiskSet: Set<number>;
+  onPositionClick: (pos: MatrixPosition) => void;
+}) {
+  if (positions.length === 0) {
+    return (
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing: "0.1em" }}>
+        NO POSITIONS
+      </div>
+    );
+  }
+  const COLS = "80px 80px 90px 90px 80px 80px 80px 1fr";
+  return (
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0, fontFamily: "var(--font-mono)" }}>
+      {/* Header */}
+      <div style={{
+        display: "grid", gridTemplateColumns: COLS,
+        padding: "5px 12px",
+        fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.09em",
+        borderBottom: "1px solid var(--border)",
+        position: "sticky", top: 0, background: "var(--bg-surface)", zIndex: 2,
+      }}>
+        <span>TICKER</span>
+        <span>PORTFOLIO</span>
+        <span style={{ textAlign: "right" }}>PRICE</span>
+        <span style={{ textAlign: "right" }}>VALUE</span>
+        <span style={{ textAlign: "right" }}>P&amp;L%</span>
+        <span style={{ textAlign: "right" }}>DAY%</span>
+        <span style={{ textAlign: "right" }}>SL DIST</span>
+        <span>ENTRY</span>
+      </div>
+      {positions.map((pos, i) => {
+        const isAtRisk = atRiskSet.has(i);
+        const slDist = (pos.stopLoss != null && pos.currentPrice != null && pos.currentPrice > 0)
+          ? ((pos.currentPrice - pos.stopLoss) / pos.currentPrice * 100)
+          : null;
+        const held = pos.entryDate
+          ? Math.floor((Date.now() - new Date(pos.entryDate).getTime()) / 864e5)
+          : null;
+        return (
+          <div
+            key={`${pos.ticker}-${pos.portfolioId}-${i}`}
+            onClick={() => onPositionClick(pos)}
+            style={{
+              display: "grid", gridTemplateColumns: COLS,
+              padding: "6px 12px",
+              borderBottom: "1px solid var(--border)",
+              fontSize: 11, alignItems: "center", cursor: "pointer",
+              borderLeft: `2px solid ${isAtRisk ? "var(--red)" : pos.portfolioColor}44`,
+              transition: "background 0.12s",
+            }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(139,92,246,0.04)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
+          >
+            <span style={{ color: "var(--text-primary)", fontWeight: 700, letterSpacing: "0.04em" }}>{pos.ticker}</span>
+            <span style={{ color: pos.portfolioColor, fontSize: 9, letterSpacing: "0.05em" }}>{pos.portfolioAbbr}</span>
+            <span style={{ color: "var(--text-secondary)", textAlign: "right" }}>
+              {pos.currentPrice != null ? `$${pos.currentPrice.toFixed(2)}` : "—"}
+            </span>
+            <span style={{ color: "var(--text-secondary)", textAlign: "right" }}>
+              ${pos.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+            <span style={{ color: pc(pos.perf), fontWeight: 600, textAlign: "right" }}>
+              {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}%
+            </span>
+            <span style={{ color: pc(pos.day), textAlign: "right" }}>
+              {pos.day > 0 ? "+" : ""}{pos.day.toFixed(2)}%
+            </span>
+            <span style={{
+              textAlign: "right", fontSize: 10,
+              color: slDist == null ? "var(--text-dim)" : slDist < 8 ? "var(--red)" : slDist < 15 ? "var(--amber)" : "var(--text-muted)",
+            }}>
+              {slDist != null ? `-${slDist.toFixed(1)}%` : "—"}
+            </span>
+            <span style={{ color: "var(--text-dim)", fontSize: 10 }}>
+              {pos.entryDate ? pos.entryDate.slice(0, 10) : "—"}
+              {held != null && <span style={{ marginLeft: 5, color: held >= 35 ? "var(--amber)" : "var(--text-dim)" }}>{held}d</span>}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Watchlist Panel ──────────────────────────────────────────────────────────
 
 const HEAT_COLOR: Record<string, string> = {
-  SPIKING: "#f87171",
+  SPIKING: "#EF4444",
   HOT: "#fb923c",
-  WARM: "#facc15",
-  COLD: "#555",
+  WARM: "#F59E0B",
+  COLD: "var(--text-dim)",
 };
 
 function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCandidate[]; onTickerClick: (ticker: string) => void }) {
@@ -921,9 +1034,9 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
         display: "grid",
         gridTemplateColumns: "80px 1fr 60px 80px 120px 65px 80px",
         padding: "5px 20px",
-        fontSize: 9, color: "#444", letterSpacing: "0.09em",
-        borderBottom: "1px solid rgba(74,222,128,0.04)",
-        position: "sticky", top: 0, background: "#040608", zIndex: 2,
+        fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.09em",
+        borderBottom: "1px solid var(--border)",
+        position: "sticky", top: 0, background: "var(--bg-surface)", zIndex: 2,
       }}>
         <span>TICKER</span>
         <span>NOTES</span>
@@ -938,19 +1051,19 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
           display: "grid",
           gridTemplateColumns: "80px 1fr 60px 80px 120px 65px 80px",
           padding: "5px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.02)",
-          fontSize: 11, fontFamily: MATRIX_FONT,
+          borderBottom: "1px solid var(--border)",
+          fontSize: 11, fontFamily: "var(--font-mono)",
           alignItems: "center",
         }}>
-          <span onClick={() => onTickerClick(c.ticker)} style={{ color: "#e8ffe8", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}>{c.ticker}</span>
-          <span style={{ color: "#666", fontSize: 10, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
-          <span style={{ color: c.score >= 70 ? "#4ade80" : c.score >= 50 ? "#facc15" : "#888", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
-          <span style={{ color: "#666", fontSize: 10 }}>{c.sector || "—"}</span>
-          <span style={{ color: "#555", fontSize: 10 }}>{c.source || "—"}</span>
-          <span style={{ color: "#555", fontSize: 10 }}>{c.added_date ? new Date(c.added_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>
+          <span onClick={() => onTickerClick(c.ticker)} style={{ color: "var(--text-primary)", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(34,197,94,0.3)" }}>{c.ticker}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 10, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingRight: 8 }}>{c.notes || "—"}</span>
+          <span style={{ color: c.score >= 70 ? "#22C55E" : c.score >= 50 ? "#F59E0B" : "var(--text-muted)", fontWeight: 600 }}>{c.score.toFixed(0)}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{c.sector || "—"}</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{c.source || "—"}</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 10 }}>{c.added_date ? new Date(c.added_date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>
           <span style={{
             fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
-            color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "#555") : "#333",
+            color: c.social_heat ? (HEAT_COLOR[c.social_heat] ?? "var(--text-dim)") : "var(--text-dim)",
           }}>{c.social_heat ?? "—"}</span>
         </div>
       ))}
@@ -988,9 +1101,9 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
         display: "grid",
         gridTemplateColumns: COLS,
         padding: "5px 20px",
-        fontSize: 9, color: "#444", letterSpacing: "0.09em",
-        borderBottom: "1px solid rgba(74,222,128,0.04)",
-        position: "sticky", top: 0, background: "#040608", zIndex: 2,
+        fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.09em",
+        borderBottom: "1px solid var(--border)",
+        position: "sticky", top: 0, background: "var(--bg-surface)", zIndex: 2,
       }}>
         <span>DATE</span>
         <span>ACT</span>
@@ -1003,9 +1116,9 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
       </div>
       {sorted.map((tx) => {
         const isBuy = tx.action === "BUY";
-        const ac = isBuy ? "#4ade80" : "#f87171";
+        const ac = isBuy ? "#22C55E" : "#EF4444";
         const hasPnl = !isBuy && tx.realized_pnl != null && tx.realized_pnl_pct != null;
-        const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "#4ade80" : "#f87171") : "#aaa";
+        const pnlColor = hasPnl ? (tx.realized_pnl! >= 0 ? "#22C55E" : "#EF4444") : "var(--text-secondary)";
         const pnlStr = hasPnl
           ? `${tx.realized_pnl! >= 0 ? "+" : ""}$${Math.abs(tx.realized_pnl!).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
           : `$${tx.total_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -1040,7 +1153,7 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
               <span style={{ color: ac, fontWeight: 700 }}>{tx.action}</span>
               <span
                 onClick={(e) => { e.stopPropagation(); onTickerClick(tx.ticker); }}
-                style={{ color: "#e8ffe8", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(74,222,128,0.3)" }}
+                style={{ color: "var(--text-primary)", fontWeight: 700, cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(34,197,94,0.3)" }}
               >{tx.ticker}</span>
               {/* Entry price (sells) or qty (buys) */}
               {!isBuy && tx.entry_price != null
@@ -1057,8 +1170,8 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
                   <span style={{
                     marginLeft: 5, fontSize: 7, fontWeight: 700,
                     padding: "1px 3px",
-                    background: tx.realized_pnl! >= 0 ? "rgba(74,222,128,0.12)" : "rgba(248,113,113,0.12)",
-                    color: tx.realized_pnl! >= 0 ? "#4ade80" : "#f87171",
+                    background: tx.realized_pnl! >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)",
+                    color: tx.realized_pnl! >= 0 ? "#22C55E" : "#EF4444",
                   }}>
                     {tx.realized_pnl! >= 0 ? "P" : "L"}
                   </span>
@@ -1080,13 +1193,13 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
               <div style={{
                 padding: "8px 20px 10px 20px",
                 borderBottom: "1px solid rgba(255,255,255,0.03)",
-                borderLeft: "2px solid rgba(74,222,128,0.3)",
-                background: "rgba(74,222,128,0.02)",
+                borderLeft: "2px solid rgba(34,197,94,0.3)",
+                background: "rgba(34,197,94,0.02)",
               }}>
-                <div style={{ fontSize: 9, color: "#3a5a3a", letterSpacing: "0.08em", marginBottom: 4, textTransform: "uppercase" }}>
+                <div style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.08em", marginBottom: 4, textTransform: "uppercase" }}>
                   {isBuy ? "Buy Reasoning" : "Sell Reasoning"}
                 </div>
-                <div style={{ fontSize: 11, color: "#888", lineHeight: 1.6, fontFamily: MATRIX_FONT }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.6, fontFamily: "var(--font-mono)" }}>
                   {reasoning}
                 </div>
               </div>
@@ -1101,34 +1214,34 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
 // ─── Logs Panel ───────────────────────────────────────────────────────────────
 
 function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
-  const statusColor: Record<string, string> = { idle: "#555", running: "#facc15", complete: "#4ade80", error: "#f87171" };
+  const statusColor: Record<string, string> = { idle: "var(--text-dim)", running: "#F59E0B", complete: "#22C55E", error: "#EF4444" };
   const sc = scanStatus?.status ?? "idle";
   return (
-    <div style={{ flex: 1, overflow: "auto", minHeight: 0, padding: "16px 20px", fontFamily: MATRIX_FONT }}>
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0, padding: "16px 20px", fontFamily: "var(--font-mono)" }}>
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>SCAN STATUS</div>
+        <div style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.09em", marginBottom: 8 }}>SCAN STATUS</div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <span style={{
-            fontSize: 11, fontWeight: 700, color: statusColor[sc] ?? "#555",
+            fontSize: 11, fontWeight: 700, color: statusColor[sc] ?? "var(--text-dim)",
             letterSpacing: "0.08em",
-            textShadow: sc === "running" ? "0 0 8px rgba(250,204,21,0.4)" : sc === "complete" ? "0 0 8px rgba(74,222,128,0.3)" : "none",
+            textShadow: sc === "running" ? "0 0 8px rgba(245,158,11,0.4)" : sc === "complete" ? "0 0 8px rgba(34,197,94,0.3)" : "none",
           }}>
             {sc === "running" ? "● SCANNING" : sc === "complete" ? "✓ COMPLETE" : sc === "error" ? "✗ ERROR" : "○ IDLE"}
           </span>
           {scanStatus?.started_at && (
-            <span style={{ fontSize: 10, color: "#555" }}>started {scanStatus.started_at.slice(0, 19).replace("T", " ")}</span>
+            <span style={{ fontSize: 10, color: "var(--text-dim)" }}>started {scanStatus.started_at.slice(0, 19).replace("T", " ")}</span>
           )}
           {scanStatus?.finished_at && (
-            <span style={{ fontSize: 10, color: "#555" }}>finished {scanStatus.finished_at.slice(0, 19).replace("T", " ")}</span>
+            <span style={{ fontSize: 10, color: "var(--text-dim)" }}>finished {scanStatus.finished_at.slice(0, 19).replace("T", " ")}</span>
           )}
         </div>
         {scanStatus?.error && (
-          <div style={{ marginTop: 8, fontSize: 11, color: "#f87171", background: "rgba(248,113,113,0.06)", padding: "6px 10px", border: "1px solid rgba(248,113,113,0.12)" }}>
+          <div style={{ marginTop: 8, fontSize: 11, color: "#EF4444", background: "rgba(239,68,68,0.06)", padding: "6px 10px", border: "1px solid rgba(239,68,68,0.12)" }}>
             {scanStatus.error}
           </div>
         )}
         {scanStatus?.message && (
-          <div style={{ marginTop: 8, fontSize: 11, color: "#888" }}>{scanStatus.message}</div>
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--text-muted)" }}>{scanStatus.message}</div>
         )}
       </div>
 
@@ -1147,15 +1260,15 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                 ? [{ l: "ELAPSED", v: `${scanStatus.result.elapsed_seconds.toFixed(1)}s` }]
                 : []),
             ].map((s) => (
-              <div key={s.l} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(74,222,128,0.06)", padding: "8px 10px" }}>
-                <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 4 }}>{s.l}</div>
-                <div style={{ fontSize: 15, color: "#e8ffe8", fontWeight: 700 }}>{s.v}</div>
+              <div key={s.l} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", padding: "8px 10px" }}>
+                <div style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.08em", marginBottom: 4 }}>{s.l}</div>
+                <div style={{ fontSize: 15, color: "var(--text-primary)", fontWeight: 700 }}>{s.v}</div>
               </div>
             ))}
           </div>
           {Object.keys(scanStatus.result.sector_balanced).length > 0 && (
             <>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>SECTOR DISTRIBUTION</div>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.09em", marginBottom: 8 }}>SECTOR DISTRIBUTION</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {Object.entries(scanStatus.result.sector_balanced)
                   .sort((a, b) => b[1] - a[1])
@@ -1163,12 +1276,12 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                     const maxCount = Math.max(...Object.values(scanStatus.result!.sector_balanced));
                     return (
                       <div key={sector} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 10, color: "#666", width: 160, flexShrink: 0 }}>{sector}</span>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", width: 160, flexShrink: 0 }}>{sector}</span>
                         <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.04)", position: "relative" }}>
                           <div style={{
                             position: "absolute", left: 0, top: 0, bottom: 0,
                             width: `${(count / maxCount) * 100}%`,
-                            background: "rgba(74,222,128,0.3)",
+                            background: "rgba(34,197,94,0.3)",
                           }} />
                         </div>
                         <span style={{ fontSize: 10, color: "#888", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
@@ -1212,23 +1325,23 @@ function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: 
 
   const fmt$ = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-  const pc = (n: number) => n >= 0 ? "#4ade80" : "#f87171";
+  const pc = (n: number) => n >= 0 ? "#22C55E" : "#EF4444";
 
   return (
-    <div style={{ flex: 1, overflow: "auto", minHeight: 0, fontFamily: MATRIX_FONT, padding: "16px 20px" }}>
+    <div style={{ flex: 1, overflow: "auto", minHeight: 0, fontFamily: "var(--font-mono)", padding: "16px 20px" }}>
 
       {/* Summary cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 20 }}>
         {[
-          { label: "STARTING", value: fmt$(start), color: "#888" },
-          { label: "CURRENT", value: current ? fmt$(current.total_equity) : "—", color: "#ccc" },
+          { label: "STARTING", value: fmt$(start), color: "var(--text-muted)" },
+          { label: "CURRENT", value: current ? fmt$(current.total_equity) : "—", color: "var(--text-secondary)" },
           { label: "RETURN", value: fmtPct(returnPct), color: pc(returnPct) },
           { label: "PEAK", value: peak ? fmt$(peak.total_equity) : "—", color: col, sub: peak?.date },
         ].map(({ label, value, color, sub }) => (
           <div key={label} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(56,189,248,0.12)", padding: "10px 12px" }}>
-            <div style={{ fontSize: 8, color: "#555", letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
+            <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.1em", marginBottom: 4 }}>{label}</div>
             <div style={{ fontSize: 14, fontWeight: 700, color }}>{value}</div>
-            {sub && <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>{sub}</div>}
+            {sub && <div style={{ fontSize: 9, color: "var(--text-dim)", marginTop: 2 }}>{sub}</div>}
           </div>
         ))}
       </div>
@@ -1238,9 +1351,9 @@ function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: 
         {/* Header */}
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr 1fr",
-          padding: "5px 14px", fontSize: 8, color: "#444", letterSpacing: "0.1em",
+          padding: "5px 14px", fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.1em",
           borderBottom: "1px solid rgba(56,189,248,0.08)",
-          position: "sticky", top: 0, background: "#040608", zIndex: 2,
+          position: "sticky", top: 0, background: "var(--bg-surface)", zIndex: 2,
         }}>
           <span>DATE</span><span>EQUITY</span><span>DAY P&L</span><span>DAY %</span>
         </div>
@@ -1248,11 +1361,11 @@ function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: 
           <div key={s.date} style={{
             display: "grid", gridTemplateColumns: "1fr 1.4fr 1fr 1fr",
             padding: "6px 14px", fontSize: 11,
-            borderBottom: "1px solid rgba(255,255,255,0.02)",
+            borderBottom: "1px solid var(--border)",
             alignItems: "center",
           }}>
-            <span style={{ color: "#666", fontSize: 10 }}>{s.date}</span>
-            <span style={{ color: "#ccc", fontWeight: 600 }}>{fmt$(s.total_equity)}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: 10 }}>{s.date}</span>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{fmt$(s.total_equity)}</span>
             <span style={{ color: pc(s.day_pnl) }}>{s.day_pnl >= 0 ? "+" : ""}{fmt$(s.day_pnl)}</span>
             <span style={{ color: pc(s.day_pnl_pct), fontWeight: 600 }}>{fmtPct(s.day_pnl_pct)}</span>
           </div>
@@ -1262,13 +1375,13 @@ function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: 
       {/* Closed trades */}
       {closedTrades.length > 0 && (
         <div style={{ marginTop: 20 }}>
-          <div style={{ fontSize: 8, color: "#444", letterSpacing: "0.1em", marginBottom: 10 }}>
+          <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.1em", marginBottom: 10 }}>
             CLOSED TRADES ({closedTrades.length})
           </div>
           <div style={{ border: "1px solid rgba(56,189,248,0.08)" }}>
             <div style={{
               display: "grid", gridTemplateColumns: "60px 1fr 50px 60px 70px",
-              padding: "5px 14px", fontSize: 8, color: "#444", letterSpacing: "0.1em",
+              padding: "5px 14px", fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.1em",
               borderBottom: "1px solid rgba(56,189,248,0.08)",
             }}>
               <span>TICKER</span><span>CLOSE</span><span>HOLD</span><span>P&L%</span><span>EXIT</span>
@@ -1290,19 +1403,19 @@ function HistoryPanel({ snapshots, startingCapital, portfolioId }: { snapshots: 
                   style={{
                     display: "grid", gridTemplateColumns: "60px 1fr 50px 60px 70px",
                     padding: "6px 14px", fontSize: 11, cursor: "pointer",
-                    borderBottom: "1px solid rgba(255,255,255,0.02)",
+                    borderBottom: "1px solid var(--border)",
                     alignItems: "center", transition: "background 0.12s",
                   }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(56,189,248,0.04)"}
                   onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}
                 >
-                  <span style={{ color: "#ccc", fontWeight: 700 }}>{trade.ticker}</span>
-                  <span style={{ color: "#555" }}>{trade.exit_date}</span>
-                  <span style={{ color: "#555" }}>{trade.holding_days}d</span>
-                  <span style={{ color: pnl >= 0 ? "#4ade80" : "#f87171", fontWeight: 700 }}>
+                  <span style={{ color: "var(--text-secondary)", fontWeight: 700 }}>{trade.ticker}</span>
+                  <span style={{ color: "var(--text-dim)" }}>{trade.exit_date}</span>
+                  <span style={{ color: "var(--text-dim)" }}>{trade.holding_days}d</span>
+                  <span style={{ color: pnl >= 0 ? "#22C55E" : "#EF4444", fontWeight: 700 }}>
                     {pnl >= 0 ? "+" : ""}{pnl.toFixed(1)}%
                   </span>
-                  <span style={{ fontSize: 9, color: trade.exit_reason === "STOP_LOSS" ? "#f87171" : trade.exit_reason === "TAKE_PROFIT" ? "#4ade80" : "#818cf8" }}>
+                  <span style={{ fontSize: 9, color: trade.exit_reason === "STOP_LOSS" ? "#EF4444" : trade.exit_reason === "TAKE_PROFIT" ? "#22C55E" : "#818cf8" }}>
                     {trade.exit_reason.replace(/_/g, " ")}
                   </span>
                 </div>
