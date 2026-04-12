@@ -18,7 +18,7 @@ function ConfidenceDot({ confidence }: { confidence: number }) {
         : "var(--red)";
   return (
     <span
-      style={{ background: color }}
+      style={{ background: color, flexShrink: 0 }}
       className="inline-block w-2 h-2 rounded-full"
       title={`${(confidence * 100).toFixed(0)}% confidence`}
     />
@@ -28,23 +28,29 @@ function ConfidenceDot({ confidence }: { confidence: number }) {
 function DecisionBadge({ decision }: { decision: string }) {
   const styleMap: Record<string, React.CSSProperties> = {
     APPROVE: {
-      background: "rgba(124,92,252,0.15)",
-      color: "var(--accent-bright)",
+      background: "var(--green-dim)",
+      color: "var(--green)",
     },
     MODIFY: {
-      background: "rgba(251,191,36,0.15)",
+      background: "var(--amber-dim)",
       color: "var(--amber)",
     },
     VETO: {
-      background: "rgba(248,113,113,0.15)",
+      background: "var(--red-dim)",
       color: "var(--red)",
     },
   };
-  const style = styleMap[decision] ?? { background: "rgba(255,255,255,0.06)", color: "var(--text-1)" };
+  const style = styleMap[decision] ?? { background: "rgba(148,163,184,0.08)", color: "var(--text-secondary)" };
   return (
     <span
-      style={style}
-      className="px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wider"
+      style={{
+        ...style,
+        padding: "2px 6px",
+        borderRadius: 4,
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+      }}
     >
       {decision}
     </span>
@@ -70,24 +76,27 @@ function ActionCard({ action }: { action: ReviewedAction }) {
     <div
       className="card-hover p-3"
       style={{
-        background: "var(--surface-1)",
-        border: "1px solid var(--border-0)",
-        borderRadius: 8,
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
       }}
     >
       {/* Header row */}
       <div className="flex items-center gap-2 mb-2">
         <span
-          className="text-xs font-bold px-1.5 py-0.5 rounded"
-          style={
-            isBuy
-              ? { background: "rgba(124,92,252,0.15)", color: "var(--accent-bright)" }
-              : { background: "rgba(251,191,36,0.15)", color: "var(--amber)" }
-          }
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            padding: "2px 6px",
+            borderRadius: 4,
+            ...(isBuy
+              ? { background: "var(--green-dim)", color: "var(--green)" }
+              : { background: "var(--red-dim)", color: "var(--red)" }),
+          }}
         >
           {original.action_type}
         </span>
-        <span className="font-semibold" style={{ color: "var(--text-4)" }}>
+        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
           {original.ticker}
         </span>
         {/* P/L badge + days held for sells */}
@@ -104,14 +113,14 @@ function ActionCard({ action }: { action: ReviewedAction }) {
           </span>
         )}
         {!isBuy && daysHeld != null && (
-          <span className="text-xs" style={{ color: "var(--text-0)" }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
             {daysHeld}d held
           </span>
         )}
-        <span className="font-mono text-xs" style={{ color: "var(--text-1)" }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>
           {action.modified_shares ?? original.shares} shares @
           ${original.price.toFixed(2)}
-          <span style={{ color: "var(--text-0)", marginLeft: "6px" }}>
+          <span style={{ color: "var(--text-dim)", marginLeft: "6px" }}>
             ${((action.modified_shares ?? original.shares) * original.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
         </span>
@@ -124,17 +133,27 @@ function ActionCard({ action }: { action: ReviewedAction }) {
       {isBuy && original.quant_score > 0 && (
         <div className="flex items-center gap-3 mb-2">
           <span
-            className="font-mono text-sm font-semibold tabular-nums"
-            style={{ color: "var(--accent-bright)" }}
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--accent)",
+            }}
           >
             {original.quant_score.toFixed(0)}/100
           </span>
-          <div className="flex gap-1.5 text-[10px]" style={{ color: "var(--text-0)" }}>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {Object.entries(original.factor_scores).map(([k, v]) => (
               <span
                 key={k}
-                className="px-1 py-0.5 rounded"
-                style={{ background: "var(--void)" }}
+                style={{
+                  fontSize: 9,
+                  padding: "1px 5px",
+                  borderRadius: 3,
+                  background: "var(--bg-void)",
+                  color: "var(--text-muted)",
+                  fontFamily: "var(--font-mono)",
+                }}
               >
                 {k.slice(0, 3)} {typeof v === "number" ? v.toFixed(0) : v}
               </span>
@@ -145,16 +164,16 @@ function ActionCard({ action }: { action: ReviewedAction }) {
 
       {/* Stops — only relevant for buys */}
       {isBuy && (
-        <div className="flex gap-3 mb-2 text-xs" style={{ color: "var(--text-1)" }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 11, color: "var(--text-secondary)" }}>
           <span>
             Stop:{" "}
-            <span className="font-mono tabular-nums" style={{ color: "var(--red)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", color: "var(--red)" }}>
               ${(action.modified_stop ?? original.stop_loss).toFixed(2)}
             </span>
           </span>
           <span>
             Target:{" "}
-            <span className="font-mono tabular-nums" style={{ color: "var(--green)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", color: "var(--green)" }}>
               ${(action.modified_target ?? original.take_profit).toFixed(2)}
             </span>
           </span>
@@ -162,7 +181,7 @@ function ActionCard({ action }: { action: ReviewedAction }) {
       )}
 
       {/* AI reasoning */}
-      <p className="text-xs leading-relaxed" style={{ color: "var(--text-2)", lineHeight: 1.65 }}>
+      <p style={{ fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.6 }}>
         {ai_reasoning}
       </p>
     </div>
@@ -175,7 +194,7 @@ const sectionHeaderStyle: React.CSSProperties = {
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.08em",
-  color: "var(--text-0)",
+  color: "var(--text-muted)",
 };
 
 // ---------------------------------------------------------------------------
@@ -195,9 +214,9 @@ function SourceBadge({ source }: { source: string }) {
   const label = SOURCE_LABELS[source] ?? source.slice(0, 3);
   return (
     <span style={{
-      fontSize: "8px", fontWeight: 700, letterSpacing: "0.05em",
-      padding: "1px 4px", borderRadius: "3px",
-      background: "rgba(124,92,252,0.15)", color: "var(--accent-bright)",
+      fontSize: 8, fontWeight: 700, letterSpacing: "0.05em",
+      padding: "1px 4px", borderRadius: 3,
+      background: "var(--accent-dim)", color: "var(--accent)",
     }}>
       {label}
     </span>
@@ -234,21 +253,21 @@ function SocialHeatBadge({ heat }: { heat?: string }) {
 }
 
 function CandidateRow({ c }: { c: WatchlistCandidate }) {
-  const scoreColor = c.score >= 80 ? "var(--green)" : c.score >= 60 ? "var(--amber)" : "var(--text-1)";
+  const scoreColor = c.score >= 80 ? "var(--green)" : c.score >= 60 ? "var(--amber)" : "var(--text-secondary)";
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: "6px",
-      padding: "5px 0", borderBottom: "1px solid var(--border-0)",
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "5px 0", borderBottom: "1px solid var(--border)",
     }}>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "var(--text-4)", width: "36px", flexShrink: 0 }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-primary)", width: 36, flexShrink: 0 }}>
         {c.ticker}
       </span>
-      <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, color: scoreColor, width: "28px", flexShrink: 0 }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: scoreColor, width: 28, flexShrink: 0 }}>
         {c.score}
       </span>
       <SourceBadge source={c.source} />
       <SocialHeatBadge heat={c.social_heat} />
-      <span style={{ flex: 1, fontSize: "9.5px", color: "var(--text-1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span style={{ flex: 1, fontSize: 9.5, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {c.sector}
       </span>
     </div>
@@ -302,12 +321,12 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: "9px", fontWeight: 700, textTransform: "uppercase",
-    letterSpacing: "0.10em", color: "var(--text-0)", marginBottom: "8px",
+    fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+    letterSpacing: "0.10em", color: "var(--text-muted)", marginBottom: 8,
   };
   const sectionStyle: React.CSSProperties = {
     padding: "10px 14px",
-    borderBottom: "1px solid var(--border-0)",
+    borderBottom: "1px solid var(--border)",
   };
 
   return (
@@ -324,15 +343,15 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
             </div>
           )}
           {indices?.sp500 && (
-            <span style={{ fontSize: "10.5px", color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: 10.5, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
               S&P <span style={{ color: indices.sp500.change_pct >= 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
                 {indices.sp500.change_pct >= 0 ? "+" : ""}{indices.sp500.change_pct.toFixed(2)}%
               </span>
             </span>
           )}
           {indices?.vix && (
-            <span style={{ fontSize: "10.5px", color: "var(--text-1)", fontFamily: "var(--font-mono)" }}>
-              VIX <span style={{ fontWeight: 600, color: "var(--text-3)" }}>{indices.vix.value.toFixed(1)}</span>
+            <span style={{ fontSize: 10.5, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
+              VIX <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{indices.vix.value.toFixed(1)}</span>
             </span>
           )}
         </div>
@@ -341,28 +360,28 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
       {/* Portfolio capacity */}
       <div style={sectionStyle}>
         <p style={labelStyle}>Portfolio</p>
-        <div style={{ display: "flex", gap: "16px" }}>
+        <div style={{ display: "flex", gap: 16 }}>
           <div>
-            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Positions</p>
-            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>{numPositions}</p>
+            <p style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>Positions</p>
+            <p style={{ fontSize: 15, fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>{numPositions}</p>
           </div>
           <div>
-            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Deployed</p>
-            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>{deployedPct}%</p>
+            <p style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>Deployed</p>
+            <p style={{ fontSize: 15, fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>{deployedPct}%</p>
           </div>
           <div>
-            <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "2px" }}>Cash</p>
-            <p style={{ fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-3)" }}>
+            <p style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 2 }}>Cash</p>
+            <p style={{ fontSize: 15, fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
               ${cash.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </p>
           </div>
         </div>
         {staleAlerts.length > 0 && (
-          <div style={{ marginTop: "8px", display: "flex", flexWrap: "wrap", gap: "4px" }}>
+          <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
             {staleAlerts.slice(0, 6).map((t) => (
               <span key={t} style={{
-                fontSize: "9px", padding: "2px 6px", borderRadius: "3px",
-                background: "rgba(251,191,36,0.12)", color: "var(--amber)",
+                fontSize: 9, padding: "2px 6px", borderRadius: 3,
+                background: "var(--amber-dim)", color: "var(--amber)",
                 fontFamily: "var(--font-mono)", fontWeight: 600,
               }}>
                 {t} stale
@@ -376,7 +395,7 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
       <div style={{ ...sectionStyle, flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
           <p style={{ ...labelStyle, marginBottom: 0 }}>Watchlist Candidates</p>
-          <span style={{ fontSize: "9px", color: "var(--text-0)" }}>
+          <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
             {totalCandidates > 0 ? `${totalCandidates} active` : "—"}
             {scanStatus?.status === "complete" && scanStatus.finished_at && (
               <> · {relTime(scanStatus.finished_at)}</>
@@ -385,12 +404,12 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
         </div>
 
         {candidates.length === 0 ? (
-          <p style={{ fontSize: "11px", color: "var(--text-0)" }}>
+          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
             No watchlist data. Run SCAN first to discover candidates.
           </p>
         ) : (
           <div>
-            <div style={{ display: "flex", gap: "6px", marginBottom: "6px", fontSize: "9px", color: "var(--text-0)", fontWeight: 600, letterSpacing: "0.05em" }}>
+            <div style={{ display: "flex", gap: 6, marginBottom: 6, fontSize: 9, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.05em" }}>
               <span style={{ width: "36px" }}>TICKER</span>
               <span style={{ width: "28px" }}>SCORE</span>
               <span>SRC</span>
@@ -402,14 +421,14 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
       </div>
 
       {/* CTA */}
-      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border-0)", background: "var(--surface-0)" }}>
+      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-void)" }}>
         {lastAnalyzedAt && (
-          <p style={{ fontSize: "9px", color: "var(--text-0)", marginBottom: "8px" }}>
+          <p style={{ fontSize: 9, color: "var(--text-muted)", marginBottom: 8 }}>
             Last run: {lastAnalyzedAt}
           </p>
         )}
         {error && (
-          <p style={{ fontSize: "9px", color: "var(--red)", marginBottom: "6px" }}>{error}</p>
+          <p style={{ fontSize: 9, color: "var(--red)", marginBottom: 6 }}>{error}</p>
         )}
         <button
           onClick={onAnalyze}
@@ -457,12 +476,12 @@ export default function ActionsTab() {
         <div
           className="w-8 h-8 border-2 rounded-full animate-spin"
           style={{
-            borderColor: "rgba(124,92,252,0.3)",
+            borderColor: "var(--accent-dim)",
             borderTopColor: "var(--accent)",
           }}
         />
-        <p className="text-sm" style={{ color: "var(--text-4)" }}>GScott's analyzing the market...</p>
-        <p className="text-xs" style={{ color: "var(--text-2)" }}>Scoring candidates, running AI review</p>
+        <p style={{ fontSize: 13, color: "var(--text-primary)" }}>GScott's analyzing the market...</p>
+        <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Scoring candidates, running AI review</p>
       </div>
     );
   }
@@ -485,35 +504,39 @@ export default function ActionsTab() {
   // Analysis ran but found nothing
   if (summary.total_proposed === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: "var(--text-1)" }}>
+      <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: "var(--text-secondary)" }}>
         <div className="text-4xl">&#x1F937;</div>
-        <p className="text-sm font-medium" style={{ color: "var(--text-2)" }}>No opportunities found</p>
-        <p className="text-xs text-center max-w-xs">
+        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>No opportunities found</p>
+        <p style={{ fontSize: 11, textAlign: "center", maxWidth: 260, color: "var(--text-secondary)" }}>
           GScott scanned the watchlist but didn't find any trades worth making right now.
           Try running SCAN first to refresh candidates.
         </p>
         {lastAnalyzedAt && (
-          <p className="text-xs" style={{ color: "var(--text-0)" }}>
+          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
             Analyzed at {lastAnalyzedAt}
           </p>
         )}
         <button
           onClick={handleAnalyze}
-          className="px-3 py-1 text-xs font-medium rounded transition-colors"
           style={{
-            background: "var(--surface-1)",
-            color: "var(--text-2)",
-            border: "1px solid var(--border-0)",
+            padding: "4px 12px",
+            fontSize: 11,
+            fontWeight: 500,
+            borderRadius: "var(--radius)",
+            background: "var(--bg-surface)",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border)",
+            cursor: "pointer",
           }}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
             el.style.borderColor = "var(--accent)";
-            el.style.color = "var(--accent-bright)";
+            el.style.color = "var(--accent)";
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--border-0)";
-            el.style.color = "var(--text-2)";
+            el.style.borderColor = "var(--border)";
+            el.style.color = "var(--text-secondary)";
           }}
         >
           Re-analyze
@@ -526,25 +549,29 @@ export default function ActionsTab() {
     <div className="flex flex-col h-full">
       {/* Summary bar */}
       <div
-        className="flex items-center gap-3 px-4 py-2"
         style={{
-          borderBottom: "1px solid var(--border-0)",
-          background: "rgba(20,20,22,0.3)",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "6px 16px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg-surface)",
+          flexWrap: "wrap",
         }}
       >
-        <span className="text-xs" style={{ color: "var(--text-1)" }}>
+        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
           {summary.total_proposed} proposed
         </span>
-        <span className="text-xs" style={{ color: "var(--green)" }}>
+        <span style={{ fontSize: 11, color: "var(--green)" }}>
           {summary.approved} approved
         </span>
         {summary.modified > 0 && (
-          <span className="text-xs" style={{ color: "var(--amber)" }}>
+          <span style={{ fontSize: 11, color: "var(--amber)" }}>
             {summary.modified} modified
           </span>
         )}
         {summary.vetoed > 0 && (
-          <span className="text-xs" style={{ color: "var(--red)" }}>{summary.vetoed} vetoed</span>
+          <span style={{ fontSize: 11, color: "var(--red)" }}>{summary.vetoed} vetoed</span>
         )}
         {result.ai_mode && (
           <span style={{
@@ -571,10 +598,16 @@ export default function ActionsTab() {
           <button
             onClick={handleExecute}
             disabled={isExecuting}
-            className="px-3 py-1 text-xs font-semibold rounded transition-all disabled:opacity-50"
             style={{
-              background: "rgba(52,211,153,0.15)",
+              padding: "3px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: "var(--radius)",
+              background: "var(--green-dim)",
               color: "var(--green)",
+              border: "none",
+              cursor: isExecuting ? "default" : "pointer",
+              opacity: isExecuting ? 0.5 : 1,
             }}
           >
             {isExecuting ? "Executing..." : `EXECUTE ${actionable.length}`}
@@ -582,21 +615,25 @@ export default function ActionsTab() {
         )}
         <button
           onClick={handleAnalyze}
-          className="px-3 py-1 text-xs font-medium rounded transition-colors"
           style={{
-            background: "var(--surface-1)",
-            color: "var(--text-2)",
-            border: "1px solid var(--border-0)",
+            padding: "3px 10px",
+            fontSize: 11,
+            fontWeight: 500,
+            borderRadius: "var(--radius)",
+            background: "var(--bg-elevated)",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border)",
+            cursor: "pointer",
           }}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
             el.style.borderColor = "var(--accent)";
-            el.style.color = "var(--accent-bright)";
+            el.style.color = "var(--accent)";
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--border-0)";
-            el.style.color = "var(--text-2)";
+            el.style.borderColor = "var(--border)";
+            el.style.color = "var(--text-secondary)";
           }}
         >
           Re-analyze
@@ -605,11 +642,12 @@ export default function ActionsTab() {
 
       {error && (
         <div
-          className="px-4 py-2 text-xs"
           style={{
+            padding: "6px 16px",
+            fontSize: 11,
             color: "var(--red)",
-            background: "rgba(248,113,113,0.1)",
-            borderBottom: "1px solid rgba(248,113,113,0.2)",
+            background: "var(--red-dim)",
+            borderBottom: "1px solid rgba(239,68,68,0.2)",
           }}
         >
           {error}

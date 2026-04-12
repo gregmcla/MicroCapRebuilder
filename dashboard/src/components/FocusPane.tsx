@@ -24,8 +24,11 @@ function TabBar() {
 
   return (
     <div
-      className="flex items-center shrink-0 border-b"
-      style={{ borderColor: "var(--border-0)" }}
+      className="flex items-center shrink-0"
+      style={{
+        borderBottom: "1px solid var(--border)",
+        height: 38,
+      }}
     >
       {TABS.map(({ tab, label }) => {
         const active = rightTab === tab;
@@ -33,21 +36,19 @@ function TabBar() {
           <button
             key={tab}
             onClick={() => setRightTab(tab)}
-            className="px-4 py-2.5 text-xs font-medium transition-colors relative"
             style={{
-              color: active ? "var(--accent-bright)" : "var(--text-1)",
-              background: "none",
+              padding: "6px 12px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 500,
+              color: active ? "var(--text-primary)" : "var(--text-muted)",
+              background: active ? "var(--accent-dim)" : "none",
               border: "none",
               cursor: "pointer",
+              transition: "color 0.15s, background 0.15s",
             }}
           >
             {label}
-            {active && (
-              <span
-                className="absolute bottom-0 left-0 right-0 h-[2px]"
-                style={{ background: "var(--accent)" }}
-              />
-            )}
           </button>
         );
       })}
