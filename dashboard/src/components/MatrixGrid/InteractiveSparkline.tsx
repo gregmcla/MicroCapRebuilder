@@ -151,7 +151,7 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
       // Tooltip
       const valStr   = `$${val.toFixed(2)}`;
       const pctStr   = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
-      const pctColor = pct >= 0 ? "#4ade80" : "#f87171";
+      const pctColor = pct >= 0 ? "#22C55E" : "#EF4444";
       const dateStr  = timestamps?.[idx]
         ? new Date(timestamps[idx]).toLocaleDateString("en-US", { month: "short", day: "numeric" })
         : null;

@@ -41,7 +41,7 @@ export default function AllocRing({ positions, portfolios }: AllocRingProps) {
 
     ctx.beginPath();
     ctx.arc(cx, cy, inner - 1, 0, Math.PI * 2);
-    ctx.fillStyle = "#06080a";
+    ctx.fillStyle = "#020617";
     ctx.fill();
   }, [positions, portfolios]);
 

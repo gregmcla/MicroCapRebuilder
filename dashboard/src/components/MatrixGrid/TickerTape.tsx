@@ -18,9 +18,9 @@ export default function TickerTape({ positions }: TickerTapeProps) {
   return (
     <div style={{
       overflow: "hidden", whiteSpace: "nowrap",
-      background: "linear-gradient(90deg, #040608 0%, rgba(4,6,8,0) 4%, rgba(4,6,8,0) 96%, #040608 100%), rgba(74,222,128,0.015)",
-      borderTop: "1px solid rgba(74,222,128,0.08)",
-      borderBottom: "1px solid rgba(74,222,128,0.08)",
+      background: "linear-gradient(90deg, #020617 0%, rgba(2,6,23,0) 4%, rgba(2,6,23,0) 96%, #020617 100%), rgba(34,197,94,0.015)",
+      borderTop: "1px solid var(--border)",
+      borderBottom: "1px solid var(--border)",
       padding: "5px 0",
       position: "relative",
     }}>
@@ -32,13 +32,13 @@ export default function TickerTape({ positions }: TickerTapeProps) {
       <div style={{ display: "inline-block", animation: "matrixTicker 30s linear infinite" }}>
         {doubled.map((item, i) => {
           const pos = item.day > 0;
-          const dayColor = pos ? "#4ade80" : "#f87171";
-          const glow = pos ? "rgba(74,222,128,0.6)" : "rgba(248,113,113,0.6)";
+          const dayColor = pos ? "#22C55E" : "#EF4444";
+          const glow = pos ? "rgba(34,197,94,0.6)" : "rgba(239,68,68,0.6)";
           return (
             <span key={i} style={{ marginRight: 28, display: "inline-flex", alignItems: "baseline", gap: 5 }}>
               {/* Separator */}
               {i > 0 && (
-                <span style={{ color: "rgba(74,222,128,0.12)", marginRight: 8, fontSize: 8 }}>◆</span>
+                <span style={{ color: "rgba(34,197,94,0.12)", marginRight: 8, fontSize: 8 }}>◆</span>
               )}
               {/* Ticker in portfolio color */}
               <span style={{

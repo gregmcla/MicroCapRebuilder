@@ -47,7 +47,7 @@ export default function BackgroundCanvas({ mouseX, mouseY, tickers }: Background
         vy: (Math.random() - 0.5) * 0.2,
         size: 0.5 + Math.random() * 1.5,
         opacity: 0.05 + Math.random() * 0.15,
-        color: (Math.random() > 0.5 ? [74, 222, 128] : [248, 113, 113]) as [number, number, number],
+        color: (Math.random() > 0.5 ? [34, 197, 94] : [239, 68, 68]) as [number, number, number],
       }));
     };
 
@@ -63,7 +63,7 @@ export default function BackgroundCanvas({ mouseX, mouseY, tickers }: Background
       ctx.clearRect(0, 0, w, h);
       t += 0.016;
 
-      ctx.strokeStyle = "rgba(74,222,128,0.008)";
+      ctx.strokeStyle = "rgba(34,197,94,0.008)";
       ctx.lineWidth = 0.5;
       for (let x = 0; x < w; x += 50) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
@@ -99,7 +99,7 @@ export default function BackgroundCanvas({ mouseX, mouseY, tickers }: Background
           if (d < 60) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(74,222,128,${(1 - d / 60) * 0.02})`;
+            ctx.strokeStyle = `rgba(34,197,94,${(1 - d / 60) * 0.02})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -108,7 +108,7 @@ export default function BackgroundCanvas({ mouseX, mouseY, tickers }: Background
 
       ctx.font = "8px monospace";
       dropsRef.current.forEach((d) => {
-        ctx.fillStyle = `rgba(74,222,128,${d.opacity})`;
+        ctx.fillStyle = `rgba(34,197,94,${d.opacity})`;
         ctx.fillText(d.char, d.x, d.y);
         d.y += d.speed;
         if (d.y > h + 20) {
@@ -120,13 +120,13 @@ export default function BackgroundCanvas({ mouseX, mouseY, tickers }: Background
 
       const sy = (t * 30) % (h + 60) - 30;
       const sg = ctx.createLinearGradient(0, sy - 20, 0, sy + 20);
-      sg.addColorStop(0, "rgba(74,222,128,0)");
-      sg.addColorStop(0.5, "rgba(74,222,128,0.025)");
-      sg.addColorStop(1, "rgba(74,222,128,0)");
+      sg.addColorStop(0, "rgba(34,197,94,0)");
+      sg.addColorStop(0.5, "rgba(34,197,94,0.025)");
+      sg.addColorStop(1, "rgba(34,197,94,0)");
       ctx.fillStyle = sg;
       ctx.fillRect(0, sy - 20, w, 40);
       ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(w, sy);
-      ctx.strokeStyle = "rgba(74,222,128,0.04)"; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = "rgba(34,197,94,0.04)"; ctx.lineWidth = 1; ctx.stroke();
 
       const sx = (t * 15) % (w + 60) - 30;
       const sg2 = ctx.createLinearGradient(sx - 20, 0, sx + 20, 0);

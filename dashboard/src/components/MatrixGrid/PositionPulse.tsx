@@ -24,7 +24,7 @@ function marketState(): { label: string; color: string } {
   const mins = et.getHours() * 60 + et.getMinutes();
   if (day === 0 || day === 6)                       return { label: "closed",    color: "#444" };
   if (mins >= 4 * 60 && mins < 9 * 60 + 30)        return { label: "pre-mkt",   color: "#fbbf24" };
-  if (mins >= 9 * 60 + 30 && mins < 16 * 60)       return { label: "open",      color: "#4ade80" };
+  if (mins >= 9 * 60 + 30 && mins < 16 * 60)       return { label: "open",      color: "#22C55E" };
   if (mins >= 16 * 60 && mins < 20 * 60)            return { label: "after-hrs", color: "#fbbf24" };
   return { label: "closed", color: "#444" };
 }
@@ -120,7 +120,7 @@ function GlyphTooltip({
         bottom,
         left,
         width:      TW,
-        background: "rgba(4,6,9,0.97)",
+        background: "rgba(2,6,23,0.97)",
         border:     `1px solid ${col}55`,
         padding:    "10px 12px",
         zIndex:     9999,
@@ -131,7 +131,7 @@ function GlyphTooltip({
     >
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: "0.05em" }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "#F8FAFC", letterSpacing: "0.05em" }}>
           {pos.ticker}
         </span>
         <span style={{ fontSize: 9, color: col, letterSpacing: "0.06em" }}>
@@ -149,7 +149,7 @@ function GlyphTooltip({
           <polyline
             points={sparkPoints}
             fill="none"
-            stroke={pos.perf >= 0 ? "#4ade80" : "#f87171"}
+            stroke={pos.perf >= 0 ? "#22C55E" : "#EF4444"}
             strokeWidth="1.5"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -167,19 +167,19 @@ function GlyphTooltip({
           { l: "TODAY", v: `${pos.day >= 0 ? "+" : ""}${pos.day.toFixed(2)}%`, c: pc(pos.day) },
           { l: "ALL-TIME", v: `${pos.perf >= 0 ? "+" : ""}${pos.perf.toFixed(1)}%`, c: pc(pos.perf) },
           days !== null
-            ? { l: "HELD", v: `${days}d`, c: days >= 35 ? "#fbbf24" : "#888" }
+            ? { l: "HELD", v: `${days}d`, c: days >= 35 ? "#F59E0B" : "#64748B" }
             : null,
           slDist !== null
-            ? { l: "SL DIST", v: `-${slDist.toFixed(1)}%`, c: slDist < 8 ? "#f87171" : slDist < 15 ? "#fbbf24" : "#666" }
+            ? { l: "SL DIST", v: `-${slDist.toFixed(1)}%`, c: slDist < 8 ? "#EF4444" : slDist < 15 ? "#F59E0B" : "#64748B" }
             : null,
           tpDist !== null
-            ? { l: "TP DIST", v: `+${tpDist.toFixed(1)}%`, c: "#4ade80" }
+            ? { l: "TP DIST", v: `+${tpDist.toFixed(1)}%`, c: "#22C55E" }
             : null,
         ]
           .filter(Boolean)
           .map((s) => (
             <div key={s!.l}>
-              <div style={{ fontSize: 7, color: "#555", letterSpacing: "0.1em", marginBottom: 1 }}>{s!.l}</div>
+              <div style={{ fontSize: 7, color: "#475569", letterSpacing: "0.1em", marginBottom: 1 }}>{s!.l}</div>
               <div style={{ fontSize: 11, fontWeight: 600, color: s!.c }}>{s!.v}</div>
             </div>
           ))}
@@ -243,14 +243,14 @@ export default function PositionPulse({
   }, []);
 
   // Beta color
-  const betaColor = avgBeta == null ? "#444"
-    : avgBeta > 2.0 ? "#f87171"
-    : avgBeta > 1.5 ? "#fbbf24"
-    : "#4ade80";
+  const betaColor = avgBeta == null ? "#475569"
+    : avgBeta > 2.0 ? "#EF4444"
+    : avgBeta > 1.5 ? "#F59E0B"
+    : "#22C55E";
 
-  const beatColor = beats / Math.max(positions.length, 1) > 0.6 ? "#4ade80"
-    : beats / Math.max(positions.length, 1) > 0.4 ? "#fbbf24"
-    : "#f87171";
+  const beatColor = beats / Math.max(positions.length, 1) > 0.6 ? "#22C55E"
+    : beats / Math.max(positions.length, 1) > 0.4 ? "#F59E0B"
+    : "#EF4444";
 
   return (
     <>
@@ -258,8 +258,8 @@ export default function PositionPulse({
         style={{
           height:       36,
           flexShrink:   0,
-          background:   "#040608",
-          borderBottom: "1px solid rgba(74,222,128,0.07)",
+          background:   "rgba(2,6,23,0.8)",
+          borderBottom: "1px solid rgba(34,197,94,0.04)",
           display:      "flex",
           alignItems:   "stretch",
           fontFamily:   MATRIX_FONT,
@@ -272,7 +272,7 @@ export default function PositionPulse({
           style={{
             width:        180,
             flexShrink:   0,
-            borderRight:  "1px solid rgba(74,222,128,0.07)",
+            borderRight:  "1px solid rgba(34,197,94,0.04)",
             display:      "flex",
             alignItems:   "center",
             gap:          0,
@@ -282,7 +282,7 @@ export default function PositionPulse({
         >
           {/* P&L */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 7, color: "#444", letterSpacing: "0.1em", marginBottom: 1 }}>P&L</div>
+            <div style={{ fontSize: 7, color: "#475569", letterSpacing: "0.1em", marginBottom: 1 }}>P&L</div>
             <div style={{ fontSize: 11, fontWeight: 700, color: pc(wPnl), letterSpacing: "0.02em" }}>
               {wPnl >= 0 ? "▲" : "▼"} {wPnl >= 0 ? "+" : ""}{wPnl.toFixed(1)}%
             </div>
@@ -292,7 +292,7 @@ export default function PositionPulse({
 
           {/* VOL σ */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 7, color: "#444", letterSpacing: "0.1em", marginBottom: 1 }}>VOL</div>
+            <div style={{ fontSize: 7, color: "#475569", letterSpacing: "0.1em", marginBottom: 1 }}>VOL</div>
             <div style={{ fontSize: 11, fontWeight: 600, color: betaColor }}>
               {avgBeta != null ? `${avgBeta.toFixed(1)}β` : "—"}
             </div>
@@ -302,10 +302,10 @@ export default function PositionPulse({
 
           {/* BEAT */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 7, color: "#444", letterSpacing: "0.1em", marginBottom: 1 }}>BEAT</div>
+            <div style={{ fontSize: 7, color: "#475569", letterSpacing: "0.1em", marginBottom: 1 }}>BEAT</div>
             <div style={{ fontSize: 11, fontWeight: 600 }}>
               <span style={{ color: beatColor }}>{beats}</span>
-              <span style={{ color: "#333" }}>/{positions.length}</span>
+              <span style={{ color: "#475569" }}>/{positions.length}</span>
             </div>
           </div>
         </div>
@@ -325,7 +325,7 @@ export default function PositionPulse({
           {glyphs.map((pos) => {
             const key      = `${pos.ticker}:${pos.portfolioId}`;
             const isHov    = hovKey === key;
-            const dayColor = pos.perf >= 0 ? "#4ade80" : "#f87171";
+            const dayColor = pos.perf >= 0 ? "#22C55E" : "#EF4444";
             const label    = pos.ticker.length > 4
               ? pos.ticker.slice(0, 4)
               : pos.ticker;
@@ -361,7 +361,7 @@ export default function PositionPulse({
                   <span style={{
                     fontSize:   8,
                     fontWeight: 700,
-                    color:      isHov ? "#fff" : "#aaa",
+                    color:      isHov ? "#F8FAFC" : "#94A3B8",
                     letterSpacing: "0.04em",
                     transition: "color 0.1s",
                     overflow:   "hidden",
@@ -377,7 +377,7 @@ export default function PositionPulse({
                 {/* Sparkline */}
                 <MiniSparkline
                   data={pos.sparkline}
-                  color={pos.perf >= 0 ? "#4ade80" : "#f87171"}
+                  color={pos.perf >= 0 ? "#22C55E" : "#EF4444"}
                   w={cellW - 8}
                   h={7}
                 />
@@ -391,7 +391,7 @@ export default function PositionPulse({
           style={{
             width:       130,
             flexShrink:  0,
-            borderLeft:  "1px solid rgba(74,222,128,0.07)",
+            borderLeft:  "1px solid rgba(34,197,94,0.04)",
             display:     "flex",
             flexDirection:"column",
             justifyContent:"center",
@@ -402,7 +402,7 @@ export default function PositionPulse({
         >
           {/* Clock + market state */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 10, color: "#666", letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>
+            <span style={{ fontSize: 10, color: "#475569", letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>
               {clock}
             </span>
             <span style={{ fontSize: 7, color: mkt.color, letterSpacing: "0.08em" }}>
@@ -412,11 +412,11 @@ export default function PositionPulse({
 
           {/* ΔDAY */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 7, color: "#444", letterSpacing: "0.1em" }}>ΔDAY</span>
+            <span style={{ fontSize: 7, color: "#475569", letterSpacing: "0.1em" }}>ΔDAY</span>
             <span style={{
               fontSize:   10,
               fontWeight: 700,
-              color:      deltaDay >= 0 ? "#4ade80" : "#f87171",
+              color:      deltaDay >= 0 ? "#22C55E" : "#EF4444",
               letterSpacing: "0.02em",
             }}>
               {deltaDay >= 0 ? "▲" : "▼"} {deltaDay >= 0 ? "+" : ""}${Math.abs(deltaDay).toLocaleString(undefined, { maximumFractionDigits: 0 })}

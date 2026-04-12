@@ -8,7 +8,7 @@ import TradeThesis from "./TradeThesis";
 import { pc, MATRIX_FONT } from "./constants";
 
 const HEAT_COLOR: Record<string, string> = {
-  SPIKING: "#f87171", HOT: "#fb923c", WARM: "#facc15", COLD: "#555",
+  SPIKING: "#EF4444", HOT: "#fb923c", WARM: "#F59E0B", COLD: "#64748B",
 };
 
 interface DetailCardProps {
@@ -49,7 +49,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 500,
-        background: "rgba(3,3,6,0.7)", backdropFilter: "blur(8px)",
+        background: "rgba(2,6,23,0.7)", backdropFilter: "blur(8px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         animation: "matrixFadeIn 0.2s ease", cursor: "pointer",
       }}
@@ -57,9 +57,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "rgba(8,10,14,0.95)",
+          background: "var(--bg-surface)",
           border: `1px solid ${col}33`,
-          borderRadius: 2, padding: 0, width: 480, maxHeight: "90vh",
+          borderRadius: "var(--radius-lg)", padding: 0, width: 480, maxHeight: "90vh",
           overflowY: "auto",
           position: "relative",
           boxShadow: `0 0 60px ${col}11, 0 0 120px rgba(0,0,0,0.8)`,
@@ -75,7 +75,8 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               <div style={{ position: "relative", display: "inline-block", padding: "2px 8px" }}>
                 <Reticle color={col} s={8} />
                 <span style={{
-                  fontSize: 24, fontWeight: 700, color: "#fff", letterSpacing: "0.06em",
+                  fontSize: 24, fontWeight: 700, color: "#F8FAFC", letterSpacing: "0.06em",
+                  fontFamily: "var(--font-mono)",
                   textShadow: `0 0 20px ${col}44`,
                 }}>{pos.ticker}</span>
               </div>
@@ -85,7 +86,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
                 {pos.mktCap && pos.mktCap !== "N/A" && pos.mktCap !== "" && ` · ${pos.mktCap}`}
               </div>
               {pos.entryDate && (
-                <div style={{ fontSize: 8, color: "#555", marginTop: 3, marginLeft: 8, letterSpacing: "0.08em" }}>
+                <div style={{ fontSize: 8, color: "#475569", marginTop: 3, marginLeft: 8, letterSpacing: "0.08em" }}>
                   ENTERED {pos.entryDate.slice(0, 10)}
                 </div>
               )}
@@ -97,7 +98,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               }}>
                 {pos.perf > 0 ? "+" : ""}{pos.perf.toFixed(1)}%
               </div>
-              <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>ALL-TIME P&L</div>
+              <div style={{ fontSize: 10, color: "#64748B", marginTop: 2 }}>ALL-TIME P&L</div>
               {pos.unrealizedPnl != null && (
                 <div style={{ fontSize: 12, color: pc(pos.perf), marginTop: 4, fontWeight: 600 }}>
                   {pos.unrealizedPnl >= 0 ? "+" : ""}${pos.unrealizedPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -115,7 +116,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               border: `1px solid ${HEAT_COLOR[social.social_heat] ?? "#555"}22`,
             }}>
               <div>
-                <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL HEAT</div>
+                <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em", marginBottom: 2 }}>SOCIAL HEAT</div>
                 <div style={{
                   fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                   color: HEAT_COLOR[social.social_heat] ?? "#555",
@@ -126,20 +127,20 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               </div>
               {social.social_rank != null && (
                 <div>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 2 }}>RANK</div>
+                  <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em", marginBottom: 2 }}>RANK</div>
                   <div style={{ fontSize: 10, color: "#aaa" }}>#{social.social_rank}</div>
                 </div>
               )}
               {social.social_bullish_pct != null && (
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em", marginBottom: 4 }}>
+                  <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em", marginBottom: 4 }}>
                     BULLISH SENTIMENT — {social.social_bullish_pct.toFixed(0)}%
                   </div>
                   <div style={{ height: 3, background: "rgba(255,255,255,0.06)", position: "relative" }}>
                     <div style={{
                       position: "absolute", left: 0, top: 0, bottom: 0,
                       width: `${social.social_bullish_pct}%`,
-                      background: social.social_bullish_pct >= 60 ? "#4ade80" : social.social_bullish_pct >= 40 ? "#facc15" : "#f87171",
+                      background: social.social_bullish_pct >= 60 ? "#22C55E" : social.social_bullish_pct >= 40 ? "#F59E0B" : "#EF4444",
                       transition: "width 0.4s",
                     }} />
                   </div>
@@ -152,9 +153,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
           {pos.sparkline.length > 0 && (
             <div style={{
               margin: "16px 0 14px", padding: "12px",
-              background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.03)",
+              background: "var(--bg-void)", border: "1px solid var(--border)",
             }}>
-              <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#4ade80" : "#f87171"} w={424} h={60} />
+              <Sparkline data={pos.sparkline} color={pos.perf >= 0 ? "#22C55E" : "#EF4444"} w={424} h={60} />
             </div>
           )}
 
@@ -162,18 +163,18 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
           <div style={{
             margin: "4px 0 12px",
             padding: "10px 12px",
-            background: "rgba(255,255,255,0.015)",
-            border: `1px solid ${col}22`,
+            background: "rgba(139,92,246,0.03)",
+            border: `1px solid rgba(139,92,246,0.08)`,
           }}>
             {rationale ? (
               <TradeThesis rationale={rationale} accentColor={col} />
             ) : (
               <>
-                <div style={{ fontSize: 6, color: "#333", letterSpacing: "0.14em", fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.14em", fontWeight: 700, marginBottom: 4 }}>
                   TRADE THESIS
                 </div>
                 <div style={{ height: 1, background: "rgba(255,255,255,0.04)", marginBottom: 6 }} />
-                <div style={{ fontSize: 7, color: "#333" }}>
+                <div style={{ fontSize: 7, color: "#475569" }}>
                   {rationale === undefined ? "Loading..." : "No rationale captured for this position"}
                 </div>
               </>
@@ -184,9 +185,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
           {info && (
             <div style={{ marginBottom: 12 }}>
               {info.name && (
-                <div style={{ fontSize: 9, color: "#aaa", fontWeight: 600, marginBottom: 4, letterSpacing: "0.04em" }}>
+                <div style={{ fontSize: 9, color: "#94A3B8", fontWeight: 600, marginBottom: 4, letterSpacing: "0.04em" }}>
                   {info.name}
-                  {info.industry && <span style={{ color: "#555", fontWeight: 400 }}> · {info.industry}</span>}
+                  {info.industry && <span style={{ color: "#64748B", fontWeight: 400 }}> · {info.industry}</span>}
                   {info.website && (
                     <a href={info.website} target="_blank" rel="noreferrer"
                       style={{ color: col, marginLeft: 8, fontSize: 8, textDecoration: "none", opacity: 0.7 }}>
@@ -197,7 +198,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               )}
               {info.description && (
                 <div style={{
-                  fontSize: 8, color: "#666", lineHeight: 1.6,
+                  fontSize: 8, color: "#64748B", lineHeight: 1.6,
                   overflow: "visible",
                   fontFamily: MATRIX_FONT,
                 }}>
@@ -208,36 +209,36 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
               <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" as const }}>
                 {info.market_cap != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>MKT CAP</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em" }}>MKT CAP</div>
+                    <div style={{ fontSize: 9, color: "#64748B" }}>
                       {info.market_cap >= 1e9 ? `$${(info.market_cap / 1e9).toFixed(1)}B` : `$${(info.market_cap / 1e6).toFixed(0)}M`}
                     </div>
                   </div>
                 )}
                 {info.trailing_pe != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>P/E</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>{info.trailing_pe.toFixed(1)}</div>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em" }}>P/E</div>
+                    <div style={{ fontSize: 9, color: "#64748B" }}>{info.trailing_pe.toFixed(1)}</div>
                   </div>
                 )}
                 {info.week_52_high != null && info.week_52_low != null && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>52W</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em" }}>52W</div>
+                    <div style={{ fontSize: 9, color: "#64748B" }}>${info.week_52_low.toFixed(0)}–${info.week_52_high.toFixed(0)}</div>
                   </div>
                 )}
                 {info.analyst_rating && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>ANALYST</div>
-                    <div style={{ fontSize: 9, color: "#888" }}>{info.analyst_rating}
-                      {info.analyst_count != null && <span style={{ color: "#555" }}> ({info.analyst_count})</span>}
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em" }}>ANALYST</div>
+                    <div style={{ fontSize: 9, color: "#64748B" }}>{info.analyst_rating}
+                      {info.analyst_count != null && <span style={{ color: "#475569" }}> ({info.analyst_count})</span>}
                     </div>
                   </div>
                 )}
                 {info.dividend_yield != null && info.dividend_yield > 0 && (
                   <div>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.12em" }}>DIV YIELD</div>
-                    <div style={{ fontSize: 9, color: "#4ade80" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.12em" }}>DIV YIELD</div>
+                    <div style={{ fontSize: 9, color: "#22C55E" }}>{(info.dividend_yield * 100).toFixed(2)}%</div>
                   </div>
                 )}
               </div>
@@ -256,9 +257,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
             return (
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 10, marginBottom: 12 }}>
                 {items.map((s) => (
-                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 13, color: "#ccc", fontWeight: 500 }}>{s.val}</div>
+                  <div key={s.label} style={{ background: "var(--bg-void)", padding: "8px 10px", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 13, color: "#94A3B8", fontWeight: 500 }}>{s.val}</div>
                   </div>
                 ))}
               </div>
@@ -280,9 +281,9 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
             return (
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 10, marginBottom: 12 }}>
                 {items.map((s) => (
-                  <div key={s.label} style={{ background: "rgba(255,255,255,0.015)", padding: "8px 10px", border: "1px solid rgba(255,255,255,0.03)" }}>
-                    <div style={{ fontSize: 6, color: "#555", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 13, color: s.color ?? "#ccc", fontWeight: 500 }}>{s.val}</div>
+                  <div key={s.label} style={{ background: "var(--bg-void)", padding: "8px 10px", border: "1px solid var(--border)" }}>
+                    <div style={{ fontSize: 6, color: "#475569", letterSpacing: "0.14em", marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 13, color: s.color ?? "#94A3B8", fontWeight: 500 }}>{s.val}</div>
                   </div>
                 ))}
               </div>
@@ -293,22 +294,22 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
           {(pos.stopLoss != null || pos.takeProfit != null) && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
               {pos.stopLoss != null && (
-                <div style={{ background: "rgba(248,113,113,0.04)", padding: "8px 10px", border: "1px solid rgba(248,113,113,0.1)" }}>
-                  <div style={{ fontSize: 6, color: "#f87171", letterSpacing: "0.14em", marginBottom: 4 }}>STOP LOSS</div>
-                  <div style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
+                <div style={{ background: "var(--red-dim)", padding: "8px 10px", border: "1px solid rgba(239,68,68,0.1)" }}>
+                  <div style={{ fontSize: 6, color: "var(--red)", letterSpacing: "0.14em", marginBottom: 4 }}>STOP LOSS</div>
+                  <div style={{ fontSize: 13, color: "var(--red)", fontWeight: 600 }}>${pos.stopLoss.toFixed(2)}</div>
                   {pos.currentPrice != null && (
-                    <div style={{ fontSize: 8, color: "#666", marginTop: 2 }}>
+                    <div style={{ fontSize: 8, color: "#64748B", marginTop: 2 }}>
                       {((pos.stopLoss - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}% from current
                     </div>
                   )}
                 </div>
               )}
               {pos.takeProfit != null && (
-                <div style={{ background: "rgba(74,222,128,0.04)", padding: "8px 10px", border: "1px solid rgba(74,222,128,0.1)" }}>
-                  <div style={{ fontSize: 6, color: "#4ade80", letterSpacing: "0.14em", marginBottom: 4 }}>TAKE PROFIT</div>
-                  <div style={{ fontSize: 13, color: "#4ade80", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
+                <div style={{ background: "var(--green-dim)", padding: "8px 10px", border: "1px solid rgba(34,197,94,0.1)" }}>
+                  <div style={{ fontSize: 6, color: "var(--green)", letterSpacing: "0.14em", marginBottom: 4 }}>TAKE PROFIT</div>
+                  <div style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>${pos.takeProfit.toFixed(2)}</div>
                   {pos.currentPrice != null && (
-                    <div style={{ fontSize: 8, color: "#666", marginTop: 2 }}>
+                    <div style={{ fontSize: 8, color: "#64748B", marginTop: 2 }}>
                       {((pos.takeProfit - pos.currentPrice) / pos.currentPrice * 100).toFixed(1)}% from current
                     </div>
                   )}
@@ -325,8 +326,8 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
                 <div key={i} style={{
                   width: 5, height: h2,
                   background: pos.perf >= 0
-                    ? `rgba(74,222,128,${0.15 + (h2 / 20) * 0.35})`
-                    : `rgba(248,113,113,${0.15 + (h2 / 20) * 0.35})`,
+                    ? `rgba(34,197,94,${0.15 + (h2 / 20) * 0.35})`
+                    : `rgba(239,68,68,${0.15 + (h2 / 20) * 0.35})`,
                 }} />
               );
             })}
@@ -335,7 +336,7 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
 
         <div style={{ height: 1, background: `linear-gradient(90deg,transparent,${col}33,transparent)` }} />
         <div style={{
-          padding: "6px 0", textAlign: "center", fontSize: 8, color: "#555",
+          padding: "6px 0", textAlign: "center", fontSize: 8, color: "#475569",
           letterSpacing: "0.12em", background: "rgba(255,255,255,0.01)",
           position: "sticky", bottom: 0,
         }}>

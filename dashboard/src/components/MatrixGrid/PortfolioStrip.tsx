@@ -78,8 +78,8 @@ export default function PortfolioStrip({
         alignItems: "stretch",
         height: 52,
         flexShrink: 0,
-        background: "#040608",
-        borderBottom: "1px solid rgba(74,222,128,0.08)",
+        background: "var(--bg-void)",
+        borderBottom: "1px solid var(--border)",
         overflow: "hidden",
       }}
     >
@@ -92,23 +92,23 @@ export default function PortfolioStrip({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: !activeFilter ? "rgba(74,222,128,0.06)" : "transparent",
+          background: !activeFilter ? "rgba(34,197,94,0.06)" : "transparent",
           border: "none",
-          borderRight: "1px solid rgba(74,222,128,0.06)",
-          color: !activeFilter ? "#4ade80" : "#333",
+          borderRight: "1px solid rgba(34,197,94,0.06)",
+          color: !activeFilter ? "#22C55E" : "#475569",
           fontSize: 8,
           fontFamily: "'Azeret Mono', 'JetBrains Mono', monospace",
           fontWeight: 700,
           letterSpacing: "0.12em",
           cursor: "pointer",
           transition: "all 0.15s",
-          boxShadow: !activeFilter ? "inset 0 -2px 0 #4ade80" : "none",
+          boxShadow: !activeFilter ? "inset 0 -2px 0 #22C55E" : "none",
         }}
         onMouseEnter={(e) => {
-          if (activeFilter !== null) e.currentTarget.style.color = "#4ade8066";
+          if (activeFilter !== null) e.currentTarget.style.color = "#22C55E66";
         }}
         onMouseLeave={(e) => {
-          if (activeFilter !== null) e.currentTarget.style.color = "#333";
+          if (activeFilter !== null) e.currentTarget.style.color = "#475569";
         }}
       >
         ALL
@@ -117,7 +117,7 @@ export default function PortfolioStrip({
       {/* Proportional portfolio tiles */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {valid.map((s) => {
-          const color = colorMap.get(s.id) ?? "#4ade80";
+          const color = colorMap.get(s.id) ?? "#22C55E";
           const pct = totalEquity > 0 ? (s.equity / totalEquity) * 100 : 100 / valid.length;
           const active = activeFilter === s.id;
           const ret = s.total_return_pct ?? 0;
@@ -168,12 +168,12 @@ export default function PortfolioStrip({
                     position: "absolute", top: 4, right: 4, zIndex: 10,
                     background: "none", border: "none", padding: "1px 4px",
                     fontSize: 9, cursor: "pointer", lineHeight: 1,
-                    color: confirmId === s.id ? "#f87171" : "transparent",
+                    color: confirmId === s.id ? "#EF4444" : "transparent",
                     fontWeight: confirmId === s.id ? 700 : 400,
                     transition: "color 0.1s",
                   }}
                   onMouseEnter={(e) => {
-                    if (confirmId !== s.id) e.currentTarget.style.color = "rgba(248,113,113,0.5)";
+                    if (confirmId !== s.id) e.currentTarget.style.color = "rgba(239,68,68,0.5)";
                   }}
                   onMouseLeave={(e) => {
                     if (confirmId !== s.id) e.currentTarget.style.color = "transparent";
@@ -215,8 +215,8 @@ export default function PortfolioStrip({
                 {scanResult && (
                   <span style={{
                     width: 4, height: 4, borderRadius: "50%", flexShrink: 0,
-                    background: scanResult.status === "complete" ? "#4ade80"
-                      : scanResult.status === "error" ? "#f87171" : "#fbbf24",
+                    background: scanResult.status === "complete" ? "#22C55E"
+                      : scanResult.status === "error" ? "#EF4444" : "#F59E0B",
                     animation: scanResult.status === "running" ? "pulse 1s ease-in-out infinite" : "none",
                   }} />
                 )}
@@ -228,7 +228,7 @@ export default function PortfolioStrip({
                   fontSize: 11,
                   fontFamily: "'Azeret Mono', monospace",
                   fontWeight: 600,
-                  color: active ? "#e8ffe8" : "#555",
+                  color: active ? "#F8FAFC" : "#475569",
                   transition: "color 0.15s",
                 }}>
                   {fmtCompact(s.equity)}
@@ -237,7 +237,7 @@ export default function PortfolioStrip({
                   fontSize: 8,
                   fontFamily: "'Azeret Mono', monospace",
                   fontWeight: 600,
-                  color: ret >= 0 ? "#4ade8099" : "#f8717199",
+                  color: ret >= 0 ? "#22C55E99" : "#EF444499",
                 }}>
                   {fmtPct(ret)}
                 </span>
@@ -248,7 +248,7 @@ export default function PortfolioStrip({
                 position: "absolute",
                 left: 0, right: 0, bottom: 0,
                 height: 2,
-                background: dayUp ? "rgba(74,222,128,0.35)" : "rgba(248,113,113,0.35)",
+                background: dayUp ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
               }} />
             </div>
           );
@@ -262,7 +262,7 @@ export default function PortfolioStrip({
         alignItems: "center",
         gap: 6,
         padding: "0 12px",
-        borderLeft: "1px solid rgba(74,222,128,0.06)",
+        borderLeft: "1px solid var(--border)",
       }}>
         <ActionBtn
           onClick={() => { play("update"); onUpdateAll(); }}
@@ -309,9 +309,9 @@ function ActionBtn({
         padding: "0 9px",
         height: 22,
         background: "transparent",
-        border: "1px solid rgba(255,255,255,0.06)",
+        border: "1px solid var(--border)",
         borderRadius: 4,
-        color: disabled ? "#4ade80" : "#555",
+        color: disabled ? "#22C55E" : "#475569",
         fontSize: 8,
         fontFamily: "'Azeret Mono', monospace",
         fontWeight: 700,
@@ -324,14 +324,14 @@ function ActionBtn({
       }}
       onMouseEnter={(e) => {
         if (!disabled) {
-          e.currentTarget.style.borderColor = "#4ade8066";
-          e.currentTarget.style.color = "#4ade80";
+          e.currentTarget.style.borderColor = "#22C55E66";
+          e.currentTarget.style.color = "#22C55E";
         }
       }}
       onMouseLeave={(e) => {
         if (!disabled) {
-          e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-          e.currentTarget.style.color = "#555";
+          e.currentTarget.style.borderColor = "rgba(148,163,184,0.08)";
+          e.currentTarget.style.color = "#475569";
         }
       }}
     >

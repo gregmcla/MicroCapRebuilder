@@ -1,10 +1,9 @@
 import type { TradeRationale } from "../../lib/types";
-import { MATRIX_FONT } from "./constants";
 
 const DECISION_COLOR: Record<string, string> = {
-  APPROVE: "#4ade80",
-  MODIFY:  "#facc15",
-  VETO:    "#f87171",
+  APPROVE: "#22C55E",
+  MODIFY:  "#F59E0B",
+  VETO:    "#EF4444",
 };
 
 const FACTOR_LABEL: Record<string, string> = {
@@ -22,15 +21,15 @@ interface TradeThesisProps {
   sellReasoning?: string;
 }
 
-export default function TradeThesis({ rationale, accentColor = "#4ade80", sellReasoning }: TradeThesisProps) {
+export default function TradeThesis({ rationale, accentColor = "#22C55E", sellReasoning }: TradeThesisProps) {
   const decisionColor = DECISION_COLOR[rationale.ai_decision] ?? "#888";
 
   return (
-    <div style={{ fontFamily: MATRIX_FONT, display: "flex", flexDirection: "column", gap: 7 }}>
+    <div style={{ fontFamily: "var(--font-mono)", display: "flex", flexDirection: "column", gap: 7 }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: 9, color: sellReasoning ? "#f87171" : accentColor, letterSpacing: "0.1em", fontWeight: 700 }}>
+        <div style={{ fontSize: 9, color: sellReasoning ? "#EF4444" : accentColor, letterSpacing: "0.1em", fontWeight: 700 }}>
           {sellReasoning ? "EXIT THESIS" : "TRADE THESIS"}
         </div>
         {rationale.ai_decision && (
@@ -47,15 +46,15 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
       </div>
 
       {/* Divider */}
-      <div style={{ height: 1, background: `linear-gradient(90deg, ${sellReasoning ? "#f87171" : accentColor}33, transparent)` }} />
+      <div style={{ height: 1, background: `linear-gradient(90deg, ${sellReasoning ? "#EF4444" : accentColor}33, transparent)` }} />
 
       {/* Pending sell reasoning — shown prominently when there's an active sell proposal */}
       {sellReasoning && (
         <div style={{
           fontSize: 11, color: "#ddd", lineHeight: 1.6,
           padding: "6px 8px",
-          background: "rgba(248,113,113,0.06)",
-          border: "1px solid rgba(248,113,113,0.18)",
+          background: "rgba(239,68,68,0.06)",
+          border: "1px solid rgba(239,68,68,0.18)",
         }}>
           {sellReasoning}
         </div>
@@ -66,7 +65,7 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {rationale.top_factors.map(f => (
             <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.06em", width: 64, flexShrink: 0 }}>
+              <div style={{ fontSize: 9, color: "#475569", letterSpacing: "0.06em", width: 64, flexShrink: 0 }}>
                 {FACTOR_LABEL[f.name] ?? f.name.toUpperCase().slice(0, 8)}
               </div>
               <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.05)", position: "relative" }}>
@@ -77,7 +76,7 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
                   opacity: 0.4 + (f.score / 100) * 0.5,
                 }} />
               </div>
-              <div style={{ fontSize: 10, color: "#777", width: 22, textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontSize: 10, color: "#64748B", width: 22, textAlign: "right", flexShrink: 0 }}>
                 {f.score.toFixed(0)}
               </div>
             </div>
@@ -90,14 +89,14 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
         <div style={{ display: "flex", gap: 14 }}>
           {rationale.regime && (
             <div>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 2 }}>REGIME</div>
-              <div style={{ fontSize: 10, color: "#888" }}>{rationale.regime}</div>
+              <div style={{ fontSize: 9, color: "#475569", letterSpacing: "0.08em", marginBottom: 2 }}>REGIME</div>
+              <div style={{ fontSize: 10, color: "#64748B" }}>{rationale.regime}</div>
             </div>
           )}
           {rationale.ai_confidence > 0 && (
             <div>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.08em", marginBottom: 2 }}>AI CONF</div>
-              <div style={{ fontSize: 10, color: "#888" }}>{(rationale.ai_confidence * 100).toFixed(0)}%</div>
+              <div style={{ fontSize: 9, color: "#475569", letterSpacing: "0.08em", marginBottom: 2 }}>AI CONF</div>
+              <div style={{ fontSize: 10, color: "#64748B" }}>{(rationale.ai_confidence * 100).toFixed(0)}%</div>
             </div>
           )}
         </div>
@@ -106,7 +105,7 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
       {/* AI reasoning — primary display when no sell pending */}
       {!sellReasoning && rationale.ai_reasoning && (
         <div style={{
-          fontSize: 11, color: "#aaa", lineHeight: 1.6,
+          fontSize: 11, color: "#94A3B8", lineHeight: 1.6,
           overflowY: "auto",
         }}>
           {rationale.ai_reasoning}
@@ -114,7 +113,7 @@ export default function TradeThesis({ rationale, accentColor = "#4ade80", sellRe
       )}
       {/* De-emphasized buy entry context when sell reasoning is showing */}
       {sellReasoning && rationale.ai_reasoning && (
-        <div style={{ fontSize: 9, color: "#383838", lineHeight: 1.6, marginTop: 2 }}>
+        <div style={{ fontSize: 9, color: "#475569", lineHeight: 1.6, marginTop: 2 }}>
           <span style={{ letterSpacing: "0.08em", fontSize: 9 }}>ENTRY: </span>
           {rationale.ai_reasoning}
         </div>

@@ -3,7 +3,7 @@ interface ReticleProps {
   s?: number;
 }
 
-export default function Reticle({ color = "#4ade80", s = 7 }: ReticleProps) {
+export default function Reticle({ color = "#22C55E", s = 7 }: ReticleProps) {
   const b = `1px solid ${color}55`;
   return (
     <>

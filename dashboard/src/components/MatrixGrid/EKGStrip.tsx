@@ -50,7 +50,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
     }, null);
     const curve = best?.equityCurve;
     if (curve && curve.length >= 2) {
-      realRef.current = { pts: buildBuffer(curve), pos: 0, color: best?.color ?? "#4ade80" };
+      realRef.current = { pts: buildBuffer(curve), pos: 0, color: best?.color ?? "#22C55E" };
     } else {
       realRef.current = null;
     }
@@ -124,7 +124,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
           const isGain = pct >  0.05;
           const isLoss = pct < -0.05;
           const isBig  = Math.abs(pct) >= 1.0;
-          const col    = isGain ? "#4ade80" : isLoss ? "#f87171" : color;
+          const col    = isGain ? "#22C55E" : isLoss ? "#EF4444" : color;
           const alpha  = isBig             ? "ee"
                        : Math.abs(pct) > 0.4 ? "bb"
                        : Math.abs(pct) > 0.1 ? "77"
@@ -153,7 +153,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
         const last   = slice[slice.length - 1];
         const cx     = Math.min((slice.length - 1) * step, w - 2);
         const cy     = y0 - last.v * range;
-        const dotCol = last.pct > 0 ? "#4ade80" : last.pct < 0 ? "#f87171" : "#4ade80";
+        const dotCol = last.pct > 0 ? "#22C55E" : last.pct < 0 ? "#EF4444" : "#22C55E";
         ctx.beginPath();
         ctx.arc(cx, cy, 2, 0, Math.PI * 2);
         ctx.fillStyle = dotCol + "cc";
