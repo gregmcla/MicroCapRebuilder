@@ -46,7 +46,7 @@ const ACCENT_STYLE: React.CSSProperties = {
 
 const EXECUTE_STYLE: React.CSSProperties = {
   ...BTN_BASE,
-  color: "#C4B5FD",
+  color: "var(--accent-bright)",
   background: "rgba(139,92,246,0.2)",
   borderColor: "rgba(139,92,246,0.3)",
 };
@@ -265,8 +265,8 @@ export default function CommandBar() {
       className="flex items-center justify-center gap-3 shrink-0"
       style={{
         height: "44px",
-        background: "var(--surface-1)",
-        borderBottom: "1px solid var(--border-0)",
+        background: "var(--bg-elevated)",
+        borderBottom: "1px solid var(--border)",
       }}
     >
       {/* Operational buttons */}
@@ -277,7 +277,7 @@ export default function CommandBar() {
       <div
         style={{
           width: "1px", height: "18px",
-          background: "var(--border-1)",
+          background: "var(--border)",
           flexShrink: 0,
         }}
       />

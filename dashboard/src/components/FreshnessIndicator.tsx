@@ -38,7 +38,7 @@ export default function FreshnessIndicator() {
         style={{
           fontSize: "9px",
           letterSpacing: "0.03em",
-          ...(severityStyle[severity] ?? { color: "var(--text-1)" }),
+          ...(severityStyle[severity] ?? { color: "var(--text-secondary)" }),
         }}
       >
         Updated {timeAgo}
