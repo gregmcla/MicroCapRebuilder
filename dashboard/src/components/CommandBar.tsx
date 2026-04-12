@@ -1,6 +1,6 @@
 /** Command bar — UPDATE · SCAN · ANALYZE · EXECUTE. Sits below TopBar. */
 
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
 import type { ScanResult } from "../lib/types";
@@ -11,22 +11,45 @@ import { play } from "../lib/sounds";
 // Shared styles
 // ---------------------------------------------------------------------------
 
-const BASE = "inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed";
+const BASE = "inline-flex items-center gap-1.5 tracking-widest uppercase disabled:opacity-40 disabled:cursor-not-allowed";
 
-// UPDATE — blue
-const BLUE_BTN = BASE
-  + " border border-sky-400/40 bg-sky-400/[0.07] text-sky-400"
-  + " hover:border-sky-400/70 hover:bg-sky-400/[0.13]";
+const BTN_BASE: React.CSSProperties = {
+  height: "30px",
+  fontSize: 11,
+  fontWeight: 600,
+  borderRadius: 6,
+  border: "1px solid",
+  transition: "all 150ms ease",
+  padding: "0 12px",
+};
 
-// SCAN — amber
-const AMBER_BTN = BASE
-  + " border border-amber-400/40 bg-amber-400/[0.07] text-amber-400"
-  + " hover:border-amber-400/70 hover:bg-amber-400/[0.13]";
+const BLUE_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  color: "var(--blue)",
+  background: "rgba(59,130,246,0.1)",
+  borderColor: "rgba(59,130,246,0.2)",
+};
 
-// ANALYZE / EXECUTE — green accent
-const ACCENT_BTN = BASE
-  + " border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)]"
-  + " hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]";
+const AMBER_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  color: "var(--amber)",
+  background: "var(--amber-dim)",
+  borderColor: "rgba(245,158,11,0.2)",
+};
+
+const ACCENT_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  color: "var(--accent)",
+  background: "var(--accent-dim)",
+  borderColor: "rgba(139,92,246,0.2)",
+};
+
+const EXECUTE_STYLE: React.CSSProperties = {
+  ...BTN_BASE,
+  color: "#C4B5FD",
+  background: "rgba(139,92,246,0.2)",
+  borderColor: "rgba(139,92,246,0.3)",
+};
 
 
 // ---------------------------------------------------------------------------
@@ -63,9 +86,9 @@ export function UpdateButton() {
     <button
       onClick={handle}
       disabled={updating}
-      className={BLUE_BTN}
+      className={BASE}
       title={result || undefined}
-      style={{ fontSize: "10px", height: "28px", padding: "0 12px" }}
+      style={BLUE_STYLE}
     >
       {/* Refresh icon */}
       <svg
@@ -172,9 +195,9 @@ export function ScanButton() {
     <button
       onClick={handle}
       disabled={scanning}
-      className={AMBER_BTN}
+      className={BASE}
       title={resultText || undefined}
-      style={{ fontSize: "10px", height: "28px", padding: "0 12px", ...errorStyle }}
+      style={{ ...AMBER_STYLE, ...errorStyle }}
     >
       <span
         style={{
@@ -201,8 +224,8 @@ export function AnalyzeExecute() {
       <button
         onClick={() => { play("analyze"); runAnalysis(); }}
         disabled={isAnalyzing}
-        className={ACCENT_BTN}
-        style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
+        className={BASE}
+        style={ACCENT_STYLE}
       >
         {/* Sparkle */}
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
@@ -218,8 +241,8 @@ export function AnalyzeExecute() {
         <button
           onClick={() => { play("execute"); runExecute(); }}
           disabled={isExecuting}
-          className={ACCENT_BTN}
-          style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
+          className={BASE}
+          style={EXECUTE_STYLE}
         >
           {/* Play icon */}
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" style={{ flexShrink: 0 }}>

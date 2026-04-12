@@ -18,7 +18,7 @@ export default function FreshnessIndicator() {
 
   // Map severity to design token colors and animations
   const severityStyle: Record<string, React.CSSProperties> = {
-    fresh: { color: "var(--text-1)" },
+    fresh: { color: "var(--green)" },
     stale: { color: "var(--amber)" },
     "very-stale": { color: "var(--amber)" },
     critical: { color: "var(--red)" },
