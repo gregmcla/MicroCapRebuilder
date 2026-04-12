@@ -5,7 +5,7 @@ export const PORTFOLIO_COLORS: Array<{ color: string; hex: [number, number, numb
   { color: "#f59e0b", hex: [245, 158, 11] },
   { color: "#a78bfa", hex: [167, 139, 250] },
   { color: "#34d399", hex: [52, 211, 153] },
-  { color: "#f87171", hex: [248, 113, 113] },
+  { color: "#EF4444", hex: [239, 68, 68] },
   { color: "#fb923c", hex: [251, 146, 60] },
   { color: "#f472b6", hex: [244, 114, 182] },
   { color: "#bef264", hex: [190, 242, 100] },
