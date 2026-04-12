@@ -20,12 +20,26 @@ function DetailRow({ label, value, color }: { label: string; value: string; colo
   return (
     <div
       className="flex items-center justify-between py-1.5"
-      style={{ borderBottom: "1px solid var(--border-0)" }}
+      style={{ borderBottom: "1px solid var(--border)" }}
     >
-      <span className="text-xs" style={{ color: "var(--text-1)" }}>{label}</span>
       <span
-        className="font-mono text-sm"
-        style={{ color: color ? undefined : "var(--text-3)" }}
+        className="text-xs"
+        style={{
+          color: "var(--text-dim)",
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: "13px",
+          fontWeight: 600,
+          color: color ?? "var(--text-primary)",
+        }}
       >
         {color ? <span style={{ color }}>{value}</span> : value}
       </span>
@@ -42,24 +56,24 @@ function ProgressVisualization({ pos }: { pos: Position }) {
     <div className="mt-3 mb-2">
       <div
         className="flex justify-between mb-1"
-        style={{ fontSize: "10px", color: "var(--text-1)" }}
+        style={{ fontSize: "10px", color: "var(--text-muted)" }}
       >
         <span>Stop ${pos.stop_loss.toFixed(2)}</span>
         <span>Target ${pos.take_profit.toFixed(2)}</span>
       </div>
       <div
         className="relative h-3 rounded-full overflow-hidden"
-        style={{ background: "var(--surface-2)" }}
+        style={{ background: "var(--bg-elevated)" }}
       >
         {/* Danger zone (0-20%) */}
         <div
           className="absolute left-0 top-0 h-full w-[20%] rounded-l-full"
-          style={{ background: "rgba(248,113,113,0.10)" }}
+          style={{ background: "var(--red-dim)" }}
         />
         {/* Target zone (80-100%) */}
         <div
           className="absolute right-0 top-0 h-full w-[20%] rounded-r-full"
-          style={{ background: "rgba(52,211,153,0.10)" }}
+          style={{ background: "var(--green-dim)" }}
         />
         {/* Current price marker — accent fill */}
         <div
@@ -67,7 +81,7 @@ function ProgressVisualization({ pos }: { pos: Position }) {
           style={{
             left: `calc(${clamped}% - 3px)`,
             background: "var(--accent)",
-            boxShadow: "0 0 6px rgba(124,92,252,0.5)",
+            boxShadow: "0 0 6px rgba(139,92,246,0.5)",
           }}
         />
       </div>
@@ -75,7 +89,7 @@ function ProgressVisualization({ pos }: { pos: Position }) {
         <span style={{ color: "var(--red)" }}>
           {((pos.stop_loss / pos.current_price - 1) * 100).toFixed(1)}%
         </span>
-        <span className="font-mono" style={{ color: "var(--accent)" }}>
+        <span style={{ fontFamily: "var(--font-mono)", color: "var(--accent)" }}>
           ${pos.current_price.toFixed(2)}
         </span>
         <span style={{ color: "var(--green)" }}>
@@ -97,19 +111,17 @@ function SellButton({ pos }: { pos: Position }) {
         style={{
           fontSize: "11px",
           fontWeight: 600,
-          border: "1px solid rgba(248,113,113,0.30)",
-          color: "rgba(248,113,113,0.70)",
-          background: "transparent",
+          border: "1px solid rgba(239,68,68,0.2)",
+          color: "var(--red)",
+          background: "var(--red-dim)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(248,113,113,0.08)";
-          e.currentTarget.style.borderColor = "rgba(248,113,113,0.50)";
-          e.currentTarget.style.color = "var(--red)";
+          e.currentTarget.style.background = "rgba(239,68,68,0.12)";
+          e.currentTarget.style.borderColor = "rgba(239,68,68,0.4)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.borderColor = "rgba(248,113,113,0.30)";
-          e.currentTarget.style.color = "rgba(248,113,113,0.70)";
+          e.currentTarget.style.background = "var(--red-dim)";
+          e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)";
         }}
       >
         SELL
@@ -152,12 +164,12 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
     : null;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ background: "var(--bg-void)" }}>
 
       {/* Row 1 — hero header */}
       <div
         className="flex items-center justify-between px-4 shrink-0"
-        style={{ borderBottom: "1px solid var(--border-0)", minHeight: "52px" }}
+        style={{ borderBottom: "1px solid var(--border)", minHeight: "52px" }}
       >
         {/* Left: ticker + company name + P&L numbers */}
         <div className="flex items-baseline gap-3">
@@ -167,29 +179,29 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
             title="Company info"
           >
             <span
-              className="font-mono font-bold transition-colors group-hover:text-accent"
-              style={{ fontSize: "22px", color: "var(--text-4)", letterSpacing: "-0.01em" }}
+              className="transition-colors group-hover:text-accent"
+              style={{ fontFamily: "var(--font-mono)", fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-0.01em" }}
             >
               {pos.ticker}
             </span>
-            <span style={{ fontSize: "11px", color: "var(--text-1)", marginTop: "2px" }}>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
               {tickerInfo?.name && tickerInfo.name !== pos.ticker ? tickerInfo.name : "View company info"}
             </span>
           </button>
-          <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "16px", fontWeight: 600, color: pnlColor }}>
             {pos.unrealized_pnl_pct >= 0 ? "+" : ""}{pos.unrealized_pnl_pct.toFixed(2)}%
           </span>
-          <span className="font-mono text-base font-semibold" style={{ color: pnlColor }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "16px", fontWeight: 600, color: pnlColor }}>
             {pos.unrealized_pnl >= 0 ? "+" : ""}${pos.unrealized_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </span>
           {dayStr && (
             <>
-              <span style={{ color: "var(--border-2)" }}>·</span>
-              <span className="font-mono text-sm" style={{ color: dayColor }}>{dayStr} today</span>
+              <span style={{ color: "var(--border-hover)" }}>·</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "14px", color: dayColor }}>{dayStr} today</span>
             </>
           )}
-          <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="font-mono text-sm" style={{ color: "var(--text-1)" }}>
+          <span style={{ color: "var(--border-hover)" }}>·</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "14px", color: "var(--text-secondary)" }}>
             ${pos.market_value.toLocaleString(undefined, { maximumFractionDigits: 0 })} value
           </span>
         </div>
@@ -204,8 +216,8 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
                 className="px-2 py-1 text-xs rounded transition-colors"
                 style={
                   range === r
-                    ? { color: "var(--accent)", background: "rgba(124,92,252,0.12)", border: "1px solid var(--border-2)", fontWeight: 600 }
-                    : { color: "var(--text-1)", background: "transparent", border: "1px solid var(--border-1)" }
+                    ? { color: "var(--accent)", background: "var(--bg-elevated)", border: "1px solid var(--border-hover)", fontWeight: 600 }
+                    : { color: "var(--text-dim)", background: "transparent", border: "1px solid var(--border)" }
                 }
               >
                 {r}
@@ -216,9 +228,9 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
           <button
             onClick={() => clearSelection(null)}
             className="text-xs rounded transition-colors px-2 py-1"
-            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
+            style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; e.currentTarget.style.color = "var(--text-1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}
           >
             Back
           </button>
@@ -228,7 +240,7 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
       {/* Row 2 — stat chips + progress bar */}
       <div
         className="flex items-center gap-5 px-4 shrink-0"
-        style={{ borderBottom: "1px solid var(--border-0)", background: "var(--surface-0)", minHeight: "44px" }}
+        style={{ borderBottom: "1px solid var(--border)", background: "var(--bg-surface)", minHeight: "44px" }}
       >
         {[
           { label: "Shares", value: String(pos.shares), color: undefined },
@@ -239,10 +251,10 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
           { label: "Held", value: `${daysHeld}d`, color: undefined },
         ].map(({ label, value, color }) => (
           <div key={label} className="shrink-0">
-            <div style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
+            <div style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-dim)", fontWeight: 500 }}>
               {label}
             </div>
-            <div className="font-mono text-sm font-semibold" style={{ color: color ?? "var(--text-3)" }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: 600, color: color ?? "var(--text-primary)" }}>
               {value}
             </div>
           </div>
@@ -289,15 +301,15 @@ export function PositionDetailInfo({ pos }: { pos: Position }) {
         <div className="flex items-center gap-2">
           <button
             className="text-sm font-bold transition-colors"
-            style={{ color: "var(--text-4)" }}
+            style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}
             onClick={() => setShowCompanyModal(true)}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-4)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-primary)"; }}
             title="Company info"
           >
             {pos.ticker}
           </button>
-          <span className="font-mono text-xs font-semibold" style={{ color: pnlColor }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", fontWeight: 600, color: pnlColor }}>
             {pos.unrealized_pnl_pct >= 0 ? "+" : ""}
             {pos.unrealized_pnl_pct.toFixed(2)}%
           </span>

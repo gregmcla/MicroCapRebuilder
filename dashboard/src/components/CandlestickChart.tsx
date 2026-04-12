@@ -32,23 +32,23 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
     // Create main chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#000000' },
-        textColor: '#FFFFFF',
+        background: { type: ColorType.Solid, color: '#020617' },
+        textColor: '#94A3B8',
       },
       grid: {
-        vertLines: { color: 'rgba(0, 212, 136, 0.1)' },
-        horzLines: { color: 'rgba(0, 212, 136, 0.1)' },
+        vertLines: { color: 'rgba(148,163,184,0.04)' },
+        horzLines: { color: 'rgba(148,163,184,0.04)' },
       },
       width: chartContainerRef.current.clientWidth,
       height: resolvedHeight,
       crosshair: {
         vertLine: {
-          color: '#00D488',
+          color: '#8B5CF6',
           width: 1,
           style: LineStyle.Dashed,
         },
         horzLine: {
-          color: '#00D488',
+          color: '#8B5CF6',
           width: 1,
           style: LineStyle.Dashed,
         },
@@ -57,11 +57,11 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
 
     // Add candlestick series
     const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#10B981',
+      upColor: '#22C55E',
       downColor: '#EF4444',
-      borderUpColor: '#10B981',
+      borderUpColor: '#22C55E',
       borderDownColor: '#EF4444',
-      wickUpColor: '#10B981',
+      wickUpColor: '#22C55E',
       wickDownColor: '#EF4444',
     });
 
@@ -78,7 +78,7 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
 
     // Add volume series
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: '#26a69a',
+      color: 'rgba(34,197,94,0.4)',
       priceFormat: {
         type: 'volume',
       },
@@ -95,7 +95,7 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
     const volumeData = data.data.map((d, i) => ({
       time: Math.floor(d.time) as any,
       value: d.volume,
-      color: candleData[i].close >= candleData[i].open ? '#10B981' : '#EF4444',
+      color: candleData[i].close >= candleData[i].open ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)',
     }));
 
     volumeSeries.setData(volumeData);
