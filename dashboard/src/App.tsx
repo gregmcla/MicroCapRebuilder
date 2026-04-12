@@ -35,21 +35,21 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
         style={{
           flex: 1, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          background: "var(--surface-0)", padding: "40px",
+          background: "var(--bg-surface)", padding: "40px",
         }}
       >
         <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--red)", marginBottom: "8px" }}>
           Render error
         </p>
-        <p style={{ fontSize: "11px", color: "var(--text-1)", marginBottom: "16px", maxWidth: "480px", textAlign: "center" }}>
+        <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "16px", maxWidth: "480px", textAlign: "center" }}>
           {error.message}
         </p>
         <button
           onClick={() => this.setState({ error: null })}
           style={{
             fontSize: "11px", padding: "6px 16px", borderRadius: "6px",
-            background: "transparent", border: "1px solid var(--border-1)",
-            color: "var(--text-2)", cursor: "pointer",
+            background: "var(--accent-dim)", border: "1px solid var(--accent)",
+            color: "var(--accent)", cursor: "pointer",
           }}
         >
           Try again
