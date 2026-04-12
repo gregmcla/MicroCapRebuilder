@@ -405,7 +405,7 @@ export default function MatrixGrid({
               <span style={{
                 fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", marginRight: 12, paddingRight: 12,
                 borderRight: "1px solid var(--border)",
-                color: (effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "#F8FAFC",
+                color: (effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.color ?? "var(--text-primary)",
               }}>
                 {(effectiveFilter ? portfolios.find(p => p.id === effectiveFilter) : portfolios[0])?.name}
               </span>
@@ -557,13 +557,13 @@ export default function MatrixGrid({
             const active = viewTab === tab;
             // Color per tab
             const TAB_ACTIVE_COLOR: Record<string, string> = {
-              detail:    "#94A3B8",
-              grid:      "#22C55E",
-              actions:   "#8B5CF6",
-              watchlist: "#F59E0B",
-              activity:  "#8B5CF6",
-              logs:      "#64748B",
-              history:   "#22D3EE",
+              detail:    "var(--text-secondary)",
+              grid:      "var(--green)",
+              actions:   "var(--accent)",
+              watchlist: "var(--amber)",
+              activity:  "var(--accent)",
+              logs:      "var(--text-muted)",
+              history:   "var(--accent-cyan)",
             };
             const activeColor = TAB_ACTIVE_COLOR[tab] ?? "#94A3B8";
             // ACTIONS tab: amber pulse when analysis pending, accent when active
