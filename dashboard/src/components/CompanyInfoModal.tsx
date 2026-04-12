@@ -25,13 +25,30 @@ function fmt_rating(r: string | null): string {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div
-      className="flex flex-col gap-0.5 rounded-lg px-3 py-2"
-      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        borderRadius: "var(--radius)",
+        padding: "8px 12px",
+        background: "var(--bg-void)",
+        border: "1px solid var(--border)",
+      }}
     >
-      <span style={{ fontSize: "9.5px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)" }}>
+      <span style={{
+        fontSize: "9.5px",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        color: "var(--text-dim)",
+      }}>
         {label}
       </span>
-      <span className="font-mono text-sm font-semibold" style={{ color: "var(--text-3)" }}>
+      <span style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "13px",
+        fontWeight: 600,
+        color: "var(--text-primary)",
+      }}>
         {value}
       </span>
     </div>
@@ -63,26 +80,27 @@ export default function CompanyInfoModal({
   }, [onClose]);
 
   const ratingColor = (r: string | null) => {
-    if (!r) return "var(--text-2)";
+    if (!r) return "var(--text-secondary)";
     const l = r.toLowerCase();
     if (l.includes("strongbuy") || l.includes("buy")) return "var(--green)";
     if (l.includes("sell")) return "var(--red)";
-    return "var(--text-2)";
+    return "var(--text-secondary)";
   };
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(2,6,23,0.7)", backdropFilter: "blur(12px)" }}
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-md mx-4 rounded-2xl p-5"
+        className="relative w-full max-w-md mx-4"
         style={{
-          background: "rgba(18,18,28,0.92)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
-          backdropFilter: "blur(24px)",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-hover)",
+          borderRadius: "var(--radius-lg)",
+          padding: "20px",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -90,31 +108,43 @@ export default function CompanyInfoModal({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-xs rounded-full w-6 h-6 flex items-center justify-center transition-colors"
-          style={{ color: "var(--text-1)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+          style={{
+            color: "var(--text-muted)",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-hover)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-elevated)"; }}
         >
           ✕
         </button>
 
         {isLoading ? (
           <div className="space-y-3 animate-pulse">
-            <div className="h-5 w-24 rounded bg-white/10" />
-            <div className="h-3 w-48 rounded bg-white/10" />
-            <div className="h-16 w-full rounded bg-white/10" />
+            <div className="h-5 w-24 rounded" style={{ background: "var(--bg-elevated)" }} />
+            <div className="h-3 w-48 rounded" style={{ background: "var(--bg-elevated)" }} />
+            <div className="h-16 w-full rounded" style={{ background: "var(--bg-elevated)" }} />
           </div>
         ) : (
           <>
             {/* Header */}
-            <div className="mb-3 pr-6">
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="font-mono font-bold text-lg" style={{ color: "var(--text-4)" }}>
+            <div style={{ marginBottom: "12px", paddingRight: "24px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", marginBottom: "2px" }}>
+                <span style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "24px",
+                  fontWeight: 700,
+                  color: "var(--text-primary)",
+                }}>
                   {ticker}
                 </span>
                 {info?.analyst_rating && (
                   <span
-                    className="text-xs font-semibold px-2 py-0.5 rounded-full"
                     style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: "4px",
                       color: ratingColor(info.analyst_rating),
                       background: `${ratingColor(info.analyst_rating)}18`,
                       border: `1px solid ${ratingColor(info.analyst_rating)}30`,
@@ -125,23 +155,41 @@ export default function CompanyInfoModal({
                   </span>
                 )}
               </div>
-              <div className="text-sm font-semibold mb-1" style={{ color: "var(--text-3)" }}>
+              <div style={{
+                fontFamily: "var(--font-sans)",
+                fontSize: "16px",
+                fontWeight: 600,
+                color: "var(--text-primary)",
+                marginBottom: "6px",
+              }}>
                 {info?.name ?? ticker}
               </div>
               {(info?.sector || info?.industry) && (
-                <div className="flex gap-1.5 flex-wrap">
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                   {info.sector && (
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: "rgba(124,92,252,0.15)", color: "var(--accent)", border: "1px solid rgba(124,92,252,0.25)" }}
+                      style={{
+                        fontSize: "11px",
+                        padding: "3px 8px",
+                        borderRadius: "4px",
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border)",
+                      }}
                     >
                       {info.sector}
                     </span>
                   )}
                   {info.industry && info.industry !== info.sector && (
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: "rgba(255,255,255,0.05)", color: "var(--text-1)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      style={{
+                        fontSize: "11px",
+                        padding: "3px 8px",
+                        borderRadius: "4px",
+                        background: "var(--bg-elevated)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border)",
+                      }}
                     >
                       {info.industry}
                     </span>
@@ -152,13 +200,23 @@ export default function CompanyInfoModal({
 
             {/* Description */}
             {info?.description && (
-              <p className="text-xs leading-relaxed mb-4" style={{ color: "var(--text-1)" }}>
+              <p style={{
+                fontSize: "13px",
+                color: "var(--text-secondary)",
+                lineHeight: 1.6,
+                marginBottom: "16px",
+              }}>
                 {info.description}
               </p>
             )}
 
             {/* Stats grid */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "8px",
+              marginBottom: "12px",
+            }}>
               {holdingValue != null && (
                 <Stat label="Holding Value" value={`$${holdingValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
               )}
@@ -203,10 +261,9 @@ export default function CompanyInfoModal({
                 href={info.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs transition-colors"
-                style={{ color: "var(--text-1)" }}
+                style={{ fontSize: "12px", color: "var(--text-secondary)", transition: "color 0.15s" }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-secondary)"; }}
               >
                 {info.website.replace(/^https?:\/\//, "")} ↗
               </a>

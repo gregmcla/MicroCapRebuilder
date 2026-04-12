@@ -52,36 +52,43 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(2,6,23,0.6)", backdropFilter: "blur(8px)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         style={{
           width: "600px",
-          background: "var(--bg-elevated)",
-          border: "1px solid var(--border-1)",
-          borderRadius: "10px",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-hover)",
+          borderRadius: "var(--radius-lg)",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
         }}
       >
         {/* Header */}
         <div
           style={{
             padding: "14px 18px",
-            borderBottom: "1px solid var(--border-0)",
+            borderBottom: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
           <div>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-1)" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
               Strategy DNA
             </div>
-            <div style={{ fontSize: "10px", color: "var(--text-0)", marginTop: "2px" }}>
+            <div style={{
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: "var(--text-dim)",
+              marginTop: "2px",
+            }}>
               Claude uses this thesis when picking and sizing positions.
             </div>
           </div>
@@ -91,7 +98,7 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
               background: "none",
               border: "none",
               cursor: "pointer",
-              color: "var(--text-0)",
+              color: "var(--text-muted)",
               fontSize: "18px",
               lineHeight: 1,
               padding: "2px 4px",
@@ -102,7 +109,7 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
         </div>
 
         {/* Body */}
-        <div style={{ padding: "16px 18px" }}>
+        <div style={{ padding: "16px 18px", background: "var(--bg-surface)" }}>
           {isLoading ? (
             <div
               style={{
@@ -111,7 +118,7 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "12px",
-                color: "var(--text-0)",
+                color: "var(--text-dim)",
               }}
               className="animate-pulse"
             >
@@ -126,25 +133,26 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
                 style={{
                   width: "100%",
                   resize: "vertical",
-                  background: "var(--surface-0)",
-                  border: "1px solid var(--border-1)",
-                  borderRadius: "6px",
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
                   padding: "10px 12px",
                   fontSize: "12px",
-                  fontFamily: "var(--font-mono, monospace)",
-                  color: "var(--text-1)",
+                  fontFamily: "var(--font-mono)",
+                  color: "var(--text-primary)",
                   lineHeight: 1.6,
                   outline: "none",
                   boxSizing: "border-box",
+                  transition: "border-color 0.15s",
                 }}
                 onFocus={e => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                onBlur={e => { e.currentTarget.style.borderColor = "var(--border-1)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }}
                 placeholder="Describe the investment thesis — sectors, catalysts, macro view, position sizing philosophy…"
               />
               <div
                 style={{
                   fontSize: "10px",
-                  color: "var(--text-0)",
+                  color: "var(--text-dim)",
                   textAlign: "right",
                   marginTop: "4px",
                 }}
@@ -159,14 +167,14 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
         <div
           style={{
             padding: "12px 18px",
-            borderTop: "1px solid var(--border-0)",
+            borderTop: "1px solid var(--border)",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: "var(--surface-0)",
+            background: "var(--bg-elevated)",
           }}
         >
-          <span style={{ fontSize: "10px", color: mutation.isError ? "var(--red)" : "var(--text-0)" }}>
+          <span style={{ fontSize: "10px", color: mutation.isError ? "var(--red)" : "var(--text-dim)" }}>
             {mutation.isError
               ? "Save failed — check API logs"
               : saved
@@ -180,10 +188,10 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
                 padding: "6px 14px",
                 fontSize: "11px",
                 fontWeight: 600,
-                background: "transparent",
-                border: "1px solid var(--border-1)",
-                borderRadius: "6px",
-                color: "var(--text-1)",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                color: "var(--text-secondary)",
                 cursor: "pointer",
               }}
             >
@@ -196,10 +204,12 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
                 padding: "6px 18px",
                 fontSize: "11px",
                 fontWeight: 700,
-                background: saved ? "var(--green)" : "var(--accent)",
-                border: "none",
-                borderRadius: "6px",
-                color: "white",
+                background: saved ? "var(--green-dim)" : "var(--green-dim)",
+                border: saved
+                  ? "1px solid rgba(34,197,94,0.2)"
+                  : "1px solid rgba(34,197,94,0.2)",
+                borderRadius: "var(--radius)",
+                color: "var(--green)",
                 cursor: mutation.isPending ? "wait" : "pointer",
                 opacity: mutation.isPending ? 0.7 : 1,
                 transition: "background 0.2s",
