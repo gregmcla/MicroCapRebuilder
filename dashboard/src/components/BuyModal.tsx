@@ -94,30 +94,31 @@ export default function BuyModal({ onClose }: BuyModalProps) {
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(2,6,23,0.6)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
       <div
         className="rounded-xl p-5 w-full"
         style={{
           maxWidth: "400px",
-          background: "var(--surface-1)",
-          border: "1px solid var(--border-2)",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-hover)",
+          borderRadius: "var(--radius-lg)",
           boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <span className="font-mono font-bold" style={{ fontSize: "18px", color: "var(--text-4)" }}>
+          <span style={{ fontFamily: "var(--font-sans)", fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
             {quote ? `Buy ${quote.ticker}` : "Manual Buy"}
           </span>
           <button
             onClick={onClose}
             className="text-xs rounded px-2 py-1 transition-colors"
-            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-1)"; }}
+            style={{ color: "var(--text-dim)", border: "1px solid var(--border)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-secondary)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
           >
             ESC
           </button>
@@ -127,11 +128,11 @@ export default function BuyModal({ onClose }: BuyModalProps) {
           <div
             className="rounded-lg p-4 text-center"
             style={{
-              background: result.success ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
-              border: `1px solid ${result.success ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+              background: result.success ? "var(--green-dim)" : "var(--red-dim)",
+              border: `1px solid ${result.success ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
             }}
           >
-            <span className="text-sm font-medium" style={{ color: result.success ? "var(--green)" : "var(--red)" }}>
+            <span className="text-sm font-medium" style={{ color: result.success ? "var(--green)" : "var(--red)", fontFamily: "var(--font-mono)" }}>
               {result.message}
             </span>
           </div>
@@ -139,7 +140,7 @@ export default function BuyModal({ onClose }: BuyModalProps) {
           <div>
             <label
               className="block mb-1.5"
-              style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-1)" }}
+              style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}
             >
               Ticker
             </label>
@@ -150,14 +151,16 @@ export default function BuyModal({ onClose }: BuyModalProps) {
               onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
               onKeyDown={(e) => { if (e.key === "Enter") fetchQuote(); }}
               placeholder="e.g. AAPL"
-              className="w-full font-mono text-sm rounded px-3 py-2 outline-none transition-colors mb-3"
+              className="w-full text-sm rounded px-3 py-2 outline-none transition-colors mb-3"
               style={{
-                background: "var(--surface-2)",
-                border: "1px solid var(--border-1)",
-                color: "var(--text-4)",
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                fontFamily: "var(--font-mono)",
+                color: "var(--text-primary)",
               }}
               onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
             />
             {error && (
               <div className="text-xs mb-3" style={{ color: "var(--red)" }}>{error}</div>
@@ -167,19 +170,19 @@ export default function BuyModal({ onClose }: BuyModalProps) {
               disabled={!tickerInput.trim() || loading}
               className="w-full py-2 rounded text-xs font-semibold transition-colors disabled:opacity-40"
               style={{
-                background: "rgba(74,222,128,0.10)",
-                color: "rgba(74,222,128,0.90)",
-                border: "1px solid rgba(74,222,128,0.35)",
+                background: "var(--green-dim)",
+                color: "var(--green)",
+                border: "1px solid rgba(34,197,94,0.2)",
               }}
               onMouseEnter={(e) => {
                 if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.background = "rgba(74,222,128,0.18)";
-                  e.currentTarget.style.borderColor = "rgba(74,222,128,0.55)";
+                  e.currentTarget.style.background = "rgba(34,197,94,0.14)";
+                  e.currentTarget.style.borderColor = "rgba(34,197,94,0.35)";
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(74,222,128,0.10)";
-                e.currentTarget.style.borderColor = "rgba(74,222,128,0.35)";
+                e.currentTarget.style.background = "var(--green-dim)";
+                e.currentTarget.style.borderColor = "rgba(34,197,94,0.2)";
               }}
             >
               {loading ? "Looking up..." : "Get Quote"}
@@ -189,17 +192,17 @@ export default function BuyModal({ onClose }: BuyModalProps) {
           <>
             <div
               className="rounded-lg p-3 mb-3"
-              style={{ background: "var(--surface-2)", border: "1px solid var(--border-0)" }}
+              style={{ background: "var(--bg-void)", border: "1px solid var(--border)" }}
             >
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="font-mono font-bold text-sm" style={{ color: "var(--text-4)" }}>{quote.ticker}</span>
-                  <span className="text-xs ml-2" style={{ color: "var(--text-1)" }}>{quote.name}</span>
+                  <span className="font-bold text-sm" style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>{quote.ticker}</span>
+                  <span className="text-xs ml-2" style={{ color: "var(--text-secondary)" }}>{quote.name}</span>
                 </div>
-                <span className="font-mono font-bold text-sm" style={{ color: "var(--green)" }}>${quote.price.toFixed(2)}</span>
+                <span className="font-bold text-sm" style={{ fontFamily: "var(--font-mono)", color: "var(--green)" }}>${quote.price.toFixed(2)}</span>
               </div>
               {quote.sector && (
-                <div className="text-xs mt-1" style={{ color: "var(--text-0)" }}>{quote.sector}</div>
+                <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{quote.sector}</div>
               )}
               <button
                 onClick={() => { setQuote(null); setError(null); }}
@@ -213,7 +216,7 @@ export default function BuyModal({ onClose }: BuyModalProps) {
             <div className="mb-3">
               <label
                 className="block mb-1.5"
-                style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-1)" }}
+                style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}
               >
                 Shares
               </label>
@@ -224,16 +227,18 @@ export default function BuyModal({ onClose }: BuyModalProps) {
                   value={shares}
                   onChange={(e) => setShares(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleBuy(); }}
-                  className="flex-1 font-mono text-sm rounded px-3 py-2 outline-none transition-colors"
+                  className="flex-1 text-sm rounded px-3 py-2 outline-none transition-colors"
                   style={{
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border-1)",
-                    color: "var(--text-4)",
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-primary)",
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                 />
-                <span className="flex items-center text-xs font-mono" style={{ color: "var(--text-1)" }}>
+                <span className="flex items-center text-xs" style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
                   suggested: {quote.suggested_shares.toLocaleString()}
                 </span>
               </div>
@@ -252,11 +257,13 @@ export default function BuyModal({ onClose }: BuyModalProps) {
                   step="0.1"
                   value={stopPct}
                   onChange={(e) => setStopPct(e.target.value)}
-                  className="w-full font-mono text-sm rounded px-3 py-2 outline-none transition-colors"
+                  className="w-full text-sm rounded px-3 py-2 outline-none transition-colors"
                   style={{
-                    background: "var(--surface-2)",
-                    border: "1px solid rgba(248,113,113,0.20)",
-                    color: "var(--text-4)",
+                    background: "var(--bg-elevated)",
+                    border: "1px solid rgba(239,68,68,0.2)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-primary)",
                   }}
                 />
               </div>
@@ -272,11 +279,13 @@ export default function BuyModal({ onClose }: BuyModalProps) {
                   step="0.1"
                   value={takePct}
                   onChange={(e) => setTakePct(e.target.value)}
-                  className="w-full font-mono text-sm rounded px-3 py-2 outline-none transition-colors"
+                  className="w-full text-sm rounded px-3 py-2 outline-none transition-colors"
                   style={{
-                    background: "var(--surface-2)",
-                    border: "1px solid rgba(74,222,128,0.20)",
-                    color: "var(--text-4)",
+                    background: "var(--bg-elevated)",
+                    border: "1px solid rgba(34,197,94,0.2)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-primary)",
                   }}
                 />
               </div>
@@ -285,38 +294,38 @@ export default function BuyModal({ onClose }: BuyModalProps) {
             {isValid && (
               <div
                 className="rounded-lg p-3 mb-4 space-y-1.5"
-                style={{ background: "var(--surface-2)", border: "1px solid var(--border-0)" }}
+                style={{ background: "var(--bg-void)", border: "1px solid var(--border)" }}
               >
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: "var(--text-1)" }}>Total Cost</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Total Cost</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     ${totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: "var(--text-1)" }}>% of Cash</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>% of Cash</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     {((totalCost / quote.available_cash) * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span style={{ color: "var(--red)" }}>Stop</span>
-                  <span className="font-mono" style={{ color: "var(--red)" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--red)" }}>
                     ${stopPrice.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span style={{ color: "var(--green)" }}>Target</span>
-                  <span className="font-mono" style={{ color: "var(--green)" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--green)" }}>
                     ${targetPrice.toFixed(2)}
                   </span>
                 </div>
                 <div
                   className="flex justify-between text-xs pt-1.5 mt-1.5"
-                  style={{ borderTop: "1px solid var(--border-1)" }}
+                  style={{ borderTop: "1px solid var(--border)" }}
                 >
-                  <span style={{ color: "var(--text-1)" }}>Remaining Cash</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Remaining Cash</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     ${(quote.available_cash - totalCost).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
@@ -334,9 +343,9 @@ export default function BuyModal({ onClose }: BuyModalProps) {
                 onClick={onClose}
                 className="flex-1 py-2 rounded text-xs font-semibold transition-colors"
                 style={{
-                  background: "var(--surface-3)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-1)",
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 Cancel
@@ -346,19 +355,19 @@ export default function BuyModal({ onClose }: BuyModalProps) {
                 disabled={!isValid || buying}
                 className="flex-1 py-2 rounded text-xs font-semibold transition-colors disabled:opacity-40"
                 style={{
-                  background: "rgba(74,222,128,0.10)",
-                  color: "rgba(74,222,128,0.90)",
-                  border: "1px solid rgba(74,222,128,0.35)",
+                  background: "var(--green-dim)",
+                  color: "var(--green)",
+                  border: "1px solid rgba(34,197,94,0.2)",
                 }}
                 onMouseEnter={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.background = "rgba(74,222,128,0.18)";
-                    e.currentTarget.style.borderColor = "rgba(74,222,128,0.55)";
+                    e.currentTarget.style.background = "rgba(34,197,94,0.14)";
+                    e.currentTarget.style.borderColor = "rgba(34,197,94,0.35)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(74,222,128,0.10)";
-                  e.currentTarget.style.borderColor = "rgba(74,222,128,0.35)";
+                  e.currentTarget.style.background = "var(--green-dim)";
+                  e.currentTarget.style.borderColor = "rgba(34,197,94,0.2)";
                 }}
               >
                 {buying ? "Buying..." : `Buy ${numShares.toLocaleString()} ${quote.ticker}`}

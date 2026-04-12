@@ -68,15 +68,16 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+      style={{ background: "rgba(2,6,23,0.6)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
       <div
         className="rounded-xl p-5 w-full"
         style={{
           maxWidth: "380px",
-          background: "var(--surface-1)",
-          border: "1px solid var(--border-2)",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border-hover)",
+          borderRadius: "var(--radius-lg)",
           boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -85,14 +86,12 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span
-              className="font-mono font-bold"
-              style={{ fontSize: "18px", color: "var(--text-4)" }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}
             >
               Sell {pos.ticker}
             </span>
             <span
-              className="font-mono text-xs font-semibold"
-              style={{ color: pnlColor }}
+              style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", fontWeight: 600, color: pnlColor }}
             >
               {sellPnlPct >= 0 ? "+" : ""}{sellPnlPct.toFixed(1)}%
             </span>
@@ -100,9 +99,9 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
           <button
             onClick={onClose}
             className="text-xs rounded px-2 py-1 transition-colors"
-            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-1)"; }}
+            style={{ color: "var(--text-dim)", border: "1px solid var(--border)" }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-secondary)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
           >
             ESC
           </button>
@@ -112,13 +111,13 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
           <div
             className="rounded-lg p-4 text-center"
             style={{
-              background: result.success ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)",
-              border: `1px solid ${result.success ? "rgba(74,222,128,0.25)" : "rgba(248,113,113,0.25)"}`,
+              background: result.success ? "var(--green-dim)" : "var(--red-dim)",
+              border: `1px solid ${result.success ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
             }}
           >
             <span
               className="text-sm font-medium"
-              style={{ color: result.success ? "var(--green)" : "var(--red)" }}
+              style={{ fontFamily: "var(--font-mono)", color: result.success ? "var(--green)" : "var(--red)" }}
             >
               {result.message}
             </span>
@@ -129,7 +128,7 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
             <div className="mb-3">
               <label
                 className="block mb-1.5"
-                style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-1)" }}
+                style={{ fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-muted)" }}
               >
                 Shares to sell
               </label>
@@ -142,18 +141,20 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
                   value={shares}
                   onChange={(e) => setShares(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSell(); }}
-                  className="flex-1 font-mono text-sm rounded px-3 py-2 outline-none transition-colors"
+                  className="flex-1 text-sm rounded px-3 py-2 outline-none transition-colors"
                   style={{
-                    background: "var(--surface-2)",
-                    border: "1px solid var(--border-1)",
-                    color: "var(--text-4)",
+                    background: "var(--bg-elevated)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    fontFamily: "var(--font-mono)",
+                    color: "var(--text-primary)",
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-1)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                 />
                 <span
-                  className="flex items-center text-xs font-mono"
-                  style={{ color: "var(--text-1)" }}
+                  className="flex items-center text-xs"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}
                 >
                   / {pos.shares.toLocaleString()}
                 </span>
@@ -173,14 +174,14 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
                     style={
                       active
                         ? {
-                            background: pct === 100 ? "rgba(248,113,113,0.12)" : "rgba(124,92,252,0.12)",
-                            border: `1px solid ${pct === 100 ? "rgba(248,113,113,0.40)" : "var(--border-2)"}`,
+                            background: pct === 100 ? "var(--red-dim)" : "var(--accent-dim)",
+                            border: `1px solid ${pct === 100 ? "rgba(239,68,68,0.2)" : "rgba(139,92,246,0.2)"}`,
                             color: pct === 100 ? "var(--red)" : "var(--accent)",
                           }
                         : {
-                            background: "var(--surface-2)",
-                            border: "1px solid var(--border-1)",
-                            color: "var(--text-2)",
+                            background: "var(--bg-elevated)",
+                            border: "1px solid var(--border)",
+                            color: "var(--text-secondary)",
                           }
                     }
                   >
@@ -194,39 +195,39 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
             {isValid && (
               <div
                 className="rounded-lg p-3 mb-4 space-y-1.5"
-                style={{ background: "var(--surface-2)", border: "1px solid var(--border-0)" }}
+                style={{ background: "var(--bg-void)", border: "1px solid var(--border)" }}
               >
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: "var(--text-1)" }}>Shares</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Shares</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     {numShares.toLocaleString()}{isAll ? "" : ` of ${pos.shares.toLocaleString()}`}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: "var(--text-1)" }}>Price</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Price</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     ${pos.current_price.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span style={{ color: "var(--text-1)" }}>Total Value</span>
-                  <span className="font-mono" style={{ color: "var(--text-3)" }}>
+                  <span style={{ color: "var(--text-secondary)" }}>Total Value</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                     ${sellValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div
                   className="flex justify-between text-xs pt-1.5 mt-1.5"
-                  style={{ borderTop: "1px solid var(--border-1)" }}
+                  style={{ borderTop: "1px solid var(--border)" }}
                 >
-                  <span style={{ color: "var(--text-1)" }}>P&L</span>
-                  <span className="font-mono font-semibold" style={{ color: pnlColor }}>
+                  <span style={{ color: "var(--text-secondary)" }}>P&L</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: 600, color: pnlColor }}>
                     {sellPnl >= 0 ? "+" : ""}${sellPnl.toLocaleString(undefined, { maximumFractionDigits: 2 })} ({sellPnlPct >= 0 ? "+" : ""}{sellPnlPct.toFixed(1)}%)
                   </span>
                 </div>
                 {!isAll && (
-                  <div className="flex justify-between text-xs" style={{ color: "var(--text-1)" }}>
+                  <div className="flex justify-between text-xs" style={{ color: "var(--text-secondary)" }}>
                     <span>Remaining</span>
-                    <span className="font-mono">
+                    <span style={{ fontFamily: "var(--font-mono)" }}>
                       {(pos.shares - numShares).toLocaleString()} shares · ${((pos.shares - numShares) * pos.current_price).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </span>
                   </div>
@@ -240,9 +241,9 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
                 onClick={onClose}
                 className="flex-1 py-2 rounded text-xs font-semibold transition-colors"
                 style={{
-                  background: "var(--surface-3)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-1)",
+                  background: "var(--bg-elevated)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border)",
                 }}
               >
                 Cancel
@@ -252,19 +253,19 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
                 disabled={!isValid || selling}
                 className="flex-1 py-2 rounded text-xs font-semibold transition-colors disabled:opacity-40"
                 style={{
-                  background: "rgba(248,113,113,0.10)",
-                  color: "rgba(248,113,113,0.90)",
-                  border: "1px solid rgba(248,113,113,0.35)",
+                  background: "var(--red-dim)",
+                  color: "var(--red)",
+                  border: "1px solid rgba(239,68,68,0.2)",
                 }}
                 onMouseEnter={(e) => {
                   if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.background = "rgba(248,113,113,0.18)";
-                    e.currentTarget.style.borderColor = "rgba(248,113,113,0.55)";
+                    e.currentTarget.style.background = "rgba(239,68,68,0.12)";
+                    e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(248,113,113,0.10)";
-                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.35)";
+                  e.currentTarget.style.background = "var(--red-dim)";
+                  e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)";
                 }}
               >
                 {selling ? "Selling..." : isAll ? `Sell All ${pos.ticker}` : `Sell ${numShares.toLocaleString()} ${pos.ticker}`}
