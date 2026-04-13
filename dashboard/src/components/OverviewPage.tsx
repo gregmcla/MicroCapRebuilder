@@ -6,7 +6,7 @@ import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
-import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
+import type { PortfolioSummary, CrossPortfolioMover, OverviewData } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import { play } from "../lib/sounds";
@@ -32,7 +32,7 @@ interface ScanAllState {
 }
 
 type SortKey = "day_pnl" | "total_return_pct" | "equity" | "deployed_pct" | "name";
-type ViewMode = "grid" | "map" | "chart";
+type ViewMode = "briefing" | "grid" | "map" | "chart";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -268,6 +268,400 @@ function MorningBriefing({
 }
 
 // ---------------------------------------------------------------------------
+// Morning Briefing — narrative full-page view (default overview layout)
+// ---------------------------------------------------------------------------
+
+function MorningBriefingView({
+  overview,
+  sorted,
+  totalEquity,
+  onNavigate,
+  onNewPortfolio,
+}: {
+  overview: OverviewData;
+  sorted: PortfolioSummary[];
+  totalEquity: number;
+  onNavigate: (id: string) => void;
+  onNewPortfolio: () => void;
+}) {
+  const dayPnl = overview.total_day_pnl;
+  const positions = overview.total_positions;
+  const portfolioCount = sorted.length;
+
+  // Date string
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+
+  // Best day performer (top mover by day change pct)
+  const topMover = overview.top_movers.find(m => (m.day_change_pct ?? 0) > 0) ?? overview.top_movers[0];
+  // At-risk: bottom movers with significant loss today
+  const atRisk = overview.bottom_movers.filter(m => (m.day_change_pct ?? 0) < -2);
+  // Portfolios in trouble (any with error)
+  const errorPortfolios = sorted.filter(p => p.error);
+
+  // Combined equity sparkline — sum of equity_curve values across portfolios
+  const combinedSparkline = useMemo(() => {
+    const curves = sorted.map(p => p.equity_curve ?? p.sparkline ?? []).filter(c => c.length > 4);
+    if (curves.length === 0) return [];
+    const minLen = Math.min(...curves.map(c => c.length));
+    return Array.from({ length: minLen }, (_, i) =>
+      curves.reduce((sum, c) => sum + (c[i] ?? 0), 0)
+    );
+  }, [sorted]);
+
+  const sparkMin = combinedSparkline.length > 0 ? Math.min(...combinedSparkline) : 0;
+  const sparkMax = combinedSparkline.length > 0 ? Math.max(...combinedSparkline) : 0;
+  const sparkRange = sparkMax - sparkMin;
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", background: "var(--bg-void)" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "36px 24px 80px" }}>
+
+        {/* ── DATE GREETING ─────────────────────────────────── */}
+        <div style={{
+          fontSize: 12, color: "var(--text-dim)",
+          marginBottom: 8, fontFamily: "var(--font-sans)",
+        }}>
+          {dateStr}
+        </div>
+
+        {/* ── NARRATIVE HEADLINE ────────────────────────────── */}
+        <div style={{
+          fontSize: 20, fontWeight: 500, lineHeight: 1.55,
+          color: "var(--text-secondary)",
+          marginBottom: 28,
+          fontFamily: "var(--font-sans)",
+        }}>
+          {portfolioCount === 0 ? (
+            <>No portfolios yet. <span style={{ color: "var(--accent)", cursor: "pointer" }} onClick={onNewPortfolio}>Create one to get started.</span></>
+          ) : (
+            <>
+              Your {portfolioCount} portfolio{portfolioCount !== 1 ? "s" : ""} are{" "}
+              {dayPnl !== 0 ? (
+                <>
+                  <span style={{ color: dayPnl > 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>
+                    {dayPnl > 0 ? "up" : "down"} ${Math.abs(dayPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
+                  {" "}today
+                </>
+              ) : (
+                "flat today"
+              )}
+              {topMover && (
+                <>.{" "}
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)", fontWeight: 500 }}>
+                    {topMover.ticker}
+                  </span>{" "}
+                  is leading at{" "}
+                  <span style={{ color: "var(--green)", fontWeight: 600 }}>
+                    +{(topMover.day_change_pct ?? topMover.pnl_pct).toFixed(1)}%
+                  </span>
+                </>
+              )}
+              {atRisk.length > 0 && (
+                <>.{" "}
+                  <strong style={{ color: "var(--text-primary)" }}>
+                    {atRisk.length} position{atRisk.length !== 1 ? "s need" : " needs"} your attention.
+                  </strong>
+                </>
+              )}
+              {atRisk.length === 0 && "."}
+            </>
+          )}
+        </div>
+
+        {/* ── ACTION CARDS ─────────────────────────────────── */}
+        {atRisk.length > 0 && atRisk.slice(0, 3).map((m) => (
+          <div
+            key={m.ticker}
+            onClick={() => onNavigate(m.portfolio_id)}
+            style={{
+              background: "rgba(239,68,68,0.04)",
+              border: "1px solid rgba(239,68,68,0.12)",
+              borderRadius: 12,
+              padding: "16px 20px",
+              marginBottom: 10,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(239,68,68,0.07)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(239,68,68,0.04)"; }}
+          >
+            <div>
+              <div style={{
+                fontSize: 10, textTransform: "uppercase" as const,
+                letterSpacing: "0.08em", marginBottom: 4,
+                fontWeight: 500, color: "var(--red)",
+                fontFamily: "var(--font-sans)",
+              }}>
+                Needs Review
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+                <span style={{ fontFamily: "var(--font-mono)" }}>{m.ticker}</span>
+                {" — "}{m.portfolio_name}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "var(--font-sans)" }}>
+                {(m.day_change_pct ?? 0) < 0 && `Down ${Math.abs(m.day_change_pct ?? 0).toFixed(1)}% today · `}
+                P&L {m.pnl_pct >= 0 ? "+" : ""}{m.pnl_pct.toFixed(1)}%
+              </div>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onNavigate(m.portfolio_id); }}
+              style={{
+                padding: "7px 14px", borderRadius: 8,
+                background: "rgba(255,255,255,0.04)",
+                color: "var(--text-secondary)", fontSize: 12,
+                border: "1px solid var(--border)", cursor: "pointer",
+                fontFamily: "var(--font-sans)",
+                transition: "all 0.15s",
+              }}
+            >
+              Review →
+            </button>
+          </div>
+        ))}
+
+        {/* New candidates action card (static — discovery context) */}
+        {sorted.length > 0 && (
+          <div style={{
+            background: "rgba(139,92,246,0.04)",
+            border: "1px solid rgba(139,92,246,0.12)",
+            borderRadius: 12,
+            padding: "16px 20px",
+            marginBottom: 28,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
+            <div>
+              <div style={{
+                fontSize: 10, textTransform: "uppercase" as const,
+                letterSpacing: "0.08em", marginBottom: 4,
+                fontWeight: 500, color: "var(--accent)",
+                fontFamily: "var(--font-sans)",
+              }}>
+                Portfolio Activity
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>
+                {positions} active positions across {portfolioCount} portfolio{portfolioCount !== 1 ? "s" : ""}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2, fontFamily: "var(--font-sans)" }}>
+                ${totalEquity.toLocaleString(undefined, { maximumFractionDigits: 0 })} total equity deployed
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STAT CARDS ROW ───────────────────────────────── */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+          {[
+            {
+              label: "Total Equity",
+              value: `$${totalEquity.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+              sub: `${portfolioCount} portfolio${portfolioCount !== 1 ? "s" : ""}`,
+              color: "var(--text-primary)",
+            },
+            {
+              label: "Today's P&L",
+              value: `${dayPnl >= 0 ? "+" : ""}$${Math.abs(dayPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+              sub: totalEquity > 0 ? `${dayPnl >= 0 ? "+" : ""}${((dayPnl / totalEquity) * 100).toFixed(1)}% overall` : "",
+              color: pnlColor(dayPnl),
+            },
+            {
+              label: "All-Time Return",
+              value: `${overview.total_return_pct >= 0 ? "+" : ""}${overview.total_return_pct.toFixed(1)}%`,
+              sub: `$${Math.abs(overview.total_all_time_pnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} unrealized`,
+              color: pnlColor(overview.total_return_pct),
+            },
+            {
+              label: "Positions",
+              value: positions.toString(),
+              sub: atRisk.length > 0 ? `${atRisk.length} flagged` : "all clear",
+              color: "var(--text-primary)",
+            },
+          ].map(({ label, value, sub, color }) => (
+            <div
+              key={label}
+              style={{
+                flex: 1,
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: 10,
+                padding: "16px 18px",
+              }}
+            >
+              <div style={{
+                fontSize: 10, textTransform: "uppercase" as const,
+                letterSpacing: "0.08em", color: "var(--text-dim)",
+                marginBottom: 6, fontWeight: 500, fontFamily: "var(--font-sans)",
+              }}>
+                {label}
+              </div>
+              <div style={{
+                fontFamily: "var(--font-mono)", fontSize: 22,
+                fontWeight: 600, color,
+                letterSpacing: "-0.02em", lineHeight: 1,
+              }}>
+                {value}
+              </div>
+              <div style={{
+                fontSize: 11, color: "var(--text-dim)", marginTop: 4,
+                fontFamily: "var(--font-sans)",
+              }}>
+                {sub}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── COMBINED EQUITY CURVE ────────────────────────── */}
+        {combinedSparkline.length > 4 && (
+          <div style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.04)",
+            borderRadius: 12,
+            padding: "18px 20px",
+            marginBottom: 28,
+          }}>
+            <div style={{
+              fontSize: 10, textTransform: "uppercase" as const,
+              letterSpacing: "0.08em", color: "var(--text-dim)",
+              marginBottom: 12, fontWeight: 500, fontFamily: "var(--font-sans)",
+            }}>
+              Combined Equity
+            </div>
+            <svg
+              width="100%" height="120"
+              viewBox={`0 0 ${combinedSparkline.length} 100`}
+              preserveAspectRatio="none"
+              style={{ display: "block" }}
+            >
+              <defs>
+                <linearGradient id="briefingCurve" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={dayPnl >= 0 ? "#34d399" : "#f87171"} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={dayPnl >= 0 ? "#34d399" : "#f87171"} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polyline
+                points={combinedSparkline.map((v, i) => {
+                  const x = (i / (combinedSparkline.length - 1)) * combinedSparkline.length;
+                  const y = sparkRange > 0 ? 100 - ((v - sparkMin) / sparkRange) * 90 : 50;
+                  return `${x},${y}`;
+                }).join(" ")}
+                fill="none"
+                stroke={dayPnl >= 0 ? "#34d399" : "#f87171"}
+                strokeWidth="0.8"
+                opacity="0.8"
+                vectorEffect="non-scaling-stroke"
+              />
+              <polygon
+                points={[
+                  ...combinedSparkline.map((v, i) => {
+                    const x = (i / (combinedSparkline.length - 1)) * combinedSparkline.length;
+                    const y = sparkRange > 0 ? 100 - ((v - sparkMin) / sparkRange) * 90 : 50;
+                    return `${x},${y}`;
+                  }),
+                  `${combinedSparkline.length},100`,
+                  "0,100",
+                ].join(" ")}
+                fill="url(#briefingCurve)"
+              />
+            </svg>
+          </div>
+        )}
+
+        {/* ── PORTFOLIO GRID ───────────────────────────────── */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: 12,
+        }}>
+          <div style={{
+            fontSize: 11, textTransform: "uppercase" as const,
+            letterSpacing: "0.08em", color: "var(--text-dim)",
+            fontWeight: 500, fontFamily: "var(--font-sans)",
+          }}>
+            Your Portfolios
+          </div>
+          <button
+            onClick={onNewPortfolio}
+            style={{
+              fontSize: 11, color: "var(--accent)", cursor: "pointer",
+              background: "none", border: "none", fontFamily: "var(--font-sans)",
+              padding: "4px 8px",
+            }}
+          >
+            + New
+          </button>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}>
+          {sorted.map((p) => (
+            <div
+              key={p.id}
+              onClick={() => onNavigate(p.id)}
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.05)",
+                borderRadius: 10,
+                padding: "16px 18px",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.04)";
+                (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)";
+                (e.currentTarget as HTMLDivElement).style.transform = "";
+              }}
+            >
+              <div style={{
+                display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                marginBottom: 8,
+              }}>
+                <div style={{
+                  fontSize: 13, fontWeight: 500,
+                  color: "var(--text-primary)", fontFamily: "var(--font-sans)",
+                }}>
+                  {p.name}
+                </div>
+                <div style={{
+                  fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 500,
+                  color: pnlColor(p.total_return_pct),
+                }}>
+                  {p.total_return_pct >= 0 ? "+" : ""}{p.total_return_pct.toFixed(1)}%
+                </div>
+              </div>
+              <div style={{
+                display: "flex", gap: 14, fontSize: 11,
+                color: "var(--text-dim)", fontFamily: "var(--font-sans)",
+              }}>
+                <span>{p.num_positions} position{p.num_positions !== 1 ? "s" : ""}</span>
+                <span>${p.equity.toLocaleString(undefined, { maximumFractionDigits: 0 })} equity</span>
+                {p.day_pnl !== 0 && (
+                  <span style={{ color: pnlColor(p.day_pnl), marginLeft: "auto" }}>
+                    {p.day_pnl >= 0 ? "+" : ""}${Math.abs(p.day_pnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} today
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Aggregate header bar (kept for backwards compat reference — not rendered)
 // ---------------------------------------------------------------------------
 
@@ -473,9 +867,10 @@ function ControlsBar({
     { key: "name",             label: "Name" },
   ];
   const viewOptions: { key: ViewMode; label: string }[] = [
-    { key: "grid",  label: "Grid" },
-    { key: "map",   label: "Map" },
-    { key: "chart", label: "Chart" },
+    { key: "briefing", label: "Briefing" },
+    { key: "grid",     label: "Grid" },
+    { key: "map",      label: "Map" },
+    { key: "chart",    label: "Chart" },
   ];
 
   return (
@@ -952,7 +1347,7 @@ export default function OverviewPage() {
   const [updatingAll, setUpdatingAll] = useState(false);
   const [updateResult, setUpdateResult] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("day_pnl");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>("briefing");
   const queryClient = useQueryClient();
   const { data: overview, isLoading } = useOverview();
   const { data: portfolioList } = usePortfolios();
@@ -1191,8 +1586,8 @@ export default function OverviewPage() {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg-void)" }}>
-      {/* Morning Briefing headline + stats */}
-      <MorningBriefing
+      {/* Stats header — hidden in briefing mode (briefing view has its own stats section) */}
+      {viewMode !== "briefing" && <MorningBriefing
         totalEquity={totalEquity}
         totalDayPnl={overview?.total_day_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
@@ -1205,7 +1600,7 @@ export default function OverviewPage() {
         onScanAll={handleScanAll}
         scanAllRunning={scanAll.running}
         scanAllLabel={scanAllLabel}
-      />
+      />}
 
       {/* Controls bar: sort + view toggle */}
       <ControlsBar
@@ -1239,6 +1634,15 @@ export default function OverviewPage() {
             </button>
           </div>
         </div>
+      ) : viewMode === "briefing" ? (
+        <MorningBriefingView
+          key="briefing"
+          overview={overview ?? { total_equity: 0, total_cash: 0, total_day_pnl: 0, total_unrealized_pnl: 0, total_all_time_pnl: 0, total_return_pct: 0, total_positions: 0, top_movers: [], bottom_movers: [], all_positions: [], portfolios: [] }}
+          sorted={sorted}
+          totalEquity={totalEquity}
+          onNavigate={setPortfolio}
+          onNewPortfolio={() => setShowCreate(true)}
+        />
       ) : viewMode === "grid" ? (
         <div key="grid" style={{ flex: 1, overflow: "hidden", display: "flex", animation: "fadeIn 0.15s ease" }}>
           {/* Left side panel: attention + movers */}
