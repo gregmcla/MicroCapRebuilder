@@ -1,6 +1,6 @@
 /** Actions tab — ANALYZE results, EXECUTE flow, and pre-flight dashboard. */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAnalysisStore, usePortfolioStore } from "../lib/store";
 import { play } from "../lib/sounds";
@@ -9,193 +9,7 @@ import { useMarketIndices } from "../hooks/useMarketIndices";
 import { api } from "../lib/api";
 import type { ReviewedAction, WatchlistCandidate } from "../lib/types";
 
-function ConfidenceDot({ confidence }: { confidence: number }) {
-  const color =
-    confidence >= 0.8
-      ? "var(--green)"
-      : confidence >= 0.5
-        ? "var(--amber)"
-        : "var(--red)";
-  return (
-    <span
-      style={{ background: color, flexShrink: 0 }}
-      className="inline-block w-2 h-2 rounded-full"
-      title={`${(confidence * 100).toFixed(0)}% confidence`}
-    />
-  );
-}
 
-function DecisionBadge({ decision }: { decision: string }) {
-  const styleMap: Record<string, React.CSSProperties> = {
-    APPROVE: {
-      background: "var(--green-dim)",
-      color: "var(--green)",
-    },
-    MODIFY: {
-      background: "var(--amber-dim)",
-      color: "var(--amber)",
-    },
-    VETO: {
-      background: "var(--red-dim)",
-      color: "var(--red)",
-    },
-  };
-  const style = styleMap[decision] ?? { background: "rgba(148,163,184,0.08)", color: "var(--text-secondary)" };
-  return (
-    <span
-      style={{
-        ...style,
-        padding: "2px 6px",
-        borderRadius: 4,
-        fontSize: 10,
-        fontWeight: 700,
-        letterSpacing: "0.06em",
-      }}
-    >
-      {decision}
-    </span>
-  );
-}
-
-function ActionCard({ action }: { action: ReviewedAction }) {
-  const { original, decision, ai_reasoning, confidence } = action;
-  const isBuy = original.action_type === "BUY";
-  const { data: state } = usePortfolioState();
-
-  // For sell proposals: look up position to compute P/L and days held
-  const position = !isBuy ? (state?.positions.find(p => p.ticker === original.ticker) ?? null) : null;
-  const pnlPct = position != null
-    ? (original.price - position.avg_cost_basis) / position.avg_cost_basis * 100
-    : null;
-  const isProfit = pnlPct != null ? pnlPct >= 0 : null;
-  const daysHeld = position?.entry_date
-    ? Math.floor((Date.now() - new Date(position.entry_date).getTime()) / (1000 * 60 * 60 * 24))
-    : null;
-
-  return (
-    <div
-      className="card-hover p-3"
-      style={{
-        background: "var(--bg-surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-      }}
-    >
-      {/* Header row */}
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            padding: "2px 6px",
-            borderRadius: 4,
-            ...(isBuy
-              ? { background: "var(--green-dim)", color: "var(--green)" }
-              : { background: "var(--red-dim)", color: "var(--red)" }),
-          }}
-        >
-          {original.action_type}
-        </span>
-        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-          {original.ticker}
-        </span>
-        {/* P/L badge + days held for sells */}
-        {!isBuy && isProfit != null && (
-          <span
-            className="font-bold px-1.5 py-0.5 rounded"
-            style={{
-              fontSize: "10px",
-              background: isProfit ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)",
-              color: isProfit ? "var(--green)" : "var(--red)",
-            }}
-          >
-            {isProfit ? "P" : "L"} {pnlPct != null ? `${pnlPct > 0 ? "+" : ""}${pnlPct.toFixed(1)}%` : ""}
-          </span>
-        )}
-        {!isBuy && daysHeld != null && (
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            {daysHeld}d held
-          </span>
-        )}
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>
-          {action.modified_shares ?? original.shares} shares @
-          ${original.price.toFixed(2)}
-          <span style={{ color: "var(--text-dim)", marginLeft: "6px" }}>
-            ${((action.modified_shares ?? original.shares) * original.price).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-          </span>
-        </span>
-        <div className="flex-1" />
-        <ConfidenceDot confidence={confidence} />
-        <DecisionBadge decision={decision} />
-      </div>
-
-      {/* Quant score + factor breakdown for buys */}
-      {isBuy && original.quant_score > 0 && (
-        <div className="flex items-center gap-3 mb-2">
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "var(--accent)",
-            }}
-          >
-            {original.quant_score.toFixed(0)}/100
-          </span>
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-            {Object.entries(original.factor_scores).map(([k, v]) => (
-              <span
-                key={k}
-                style={{
-                  fontSize: 9,
-                  padding: "1px 5px",
-                  borderRadius: 3,
-                  background: "var(--bg-void)",
-                  color: "var(--text-muted)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                {k.slice(0, 3)} {typeof v === "number" ? v.toFixed(0) : v}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Stops — only relevant for buys */}
-      {isBuy && (
-        <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 11, color: "var(--text-secondary)" }}>
-          <span>
-            Stop:{" "}
-            <span style={{ fontFamily: "var(--font-mono)", color: "var(--red)" }}>
-              ${(action.modified_stop ?? original.stop_loss).toFixed(2)}
-            </span>
-          </span>
-          <span>
-            Target:{" "}
-            <span style={{ fontFamily: "var(--font-mono)", color: "var(--green)" }}>
-              ${(action.modified_target ?? original.take_profit).toFixed(2)}
-            </span>
-          </span>
-        </div>
-      )}
-
-      {/* AI reasoning */}
-      <p style={{ fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.6 }}>
-        {ai_reasoning}
-      </p>
-    </div>
-  );
-}
-
-const sectionHeaderStyle: React.CSSProperties = {
-  fontFamily: "var(--font-sans)",
-  fontSize: "9.5px",
-  fontWeight: 600,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  color: "var(--text-muted)",
-};
 
 // ---------------------------------------------------------------------------
 // Source badge for watchlist candidates
@@ -450,19 +264,248 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
   );
 }
 
+// ─── Compact expandable action row ────────────────────────────────────────────
+
+function ActionRow({
+  action,
+  expanded,
+  onToggle,
+}: {
+  action: ReviewedAction;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const { original, decision, ai_reasoning, confidence } = action;
+  const isBuy = original.action_type === "BUY";
+  const { data: state } = usePortfolioState();
+
+  const position = !isBuy ? (state?.positions.find(p => p.ticker === original.ticker) ?? null) : null;
+  const pnlPct = position != null
+    ? (original.price - position.avg_cost_basis) / position.avg_cost_basis * 100
+    : null;
+
+  const decisionColor = decision === "APPROVE" ? "var(--green)"
+    : decision === "MODIFY" ? "var(--amber)"
+    : "var(--text-dim)";
+
+  const actionColor = isBuy ? "var(--green)" : "var(--red)";
+  const actionBg = isBuy ? "var(--green-dim)" : "var(--red-dim)";
+
+  const stop = action.modified_stop ?? original.stop_loss;
+  const target = action.modified_target ?? original.take_profit;
+  const shares = action.modified_shares ?? original.shares;
+  const total = shares * original.price;
+
+  return (
+    <div
+      style={{
+        borderBottom: "1px solid var(--border)",
+        background: expanded ? "rgba(255,255,255,0.02)" : "transparent",
+        transition: "background 0.1s",
+      }}
+    >
+      {/* Compact row — always visible */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "0 12px",
+          height: 36,
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+        onMouseEnter={e => { if (!expanded) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)"; }}
+        onMouseLeave={e => { if (!expanded) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+      >
+        {/* Action chip */}
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+          padding: "1px 5px", borderRadius: 3,
+          background: actionBg, color: actionColor, flexShrink: 0,
+        }}>
+          {original.action_type}
+        </span>
+
+        {/* Ticker */}
+        <span style={{
+          fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700,
+          color: "var(--text-primary)", width: 38, flexShrink: 0, letterSpacing: "0.02em",
+        }}>
+          {original.ticker}
+        </span>
+
+        {/* Score for buys */}
+        {isBuy && original.quant_score > 0 && (
+          <span style={{
+            fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 600,
+            color: original.quant_score >= 75 ? "var(--green)" : original.quant_score >= 55 ? "var(--amber)" : "var(--text-secondary)",
+            width: 24, flexShrink: 0,
+          }}>
+            {original.quant_score.toFixed(0)}
+          </span>
+        )}
+
+        {/* P&L for sells */}
+        {!isBuy && pnlPct != null && (
+          <span style={{
+            fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 600,
+            color: pnlPct >= 0 ? "var(--green)" : "var(--red)", flexShrink: 0,
+          }}>
+            {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%
+          </span>
+        )}
+
+        {/* Shares + price */}
+        <span style={{
+          fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)",
+          flexShrink: 0,
+        }}>
+          {shares}sh·${original.price.toFixed(2)}
+        </span>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Confidence dots */}
+        <span style={{ display: "flex", gap: 2, flexShrink: 0 }}>
+          {[0, 1, 2].map(i => (
+            <span key={i} style={{
+              width: 4, height: 4, borderRadius: "50%", flexShrink: 0,
+              background: i < Math.round(confidence * 3) ? decisionColor : "var(--border)",
+            }} />
+          ))}
+        </span>
+
+        {/* Decision label */}
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "0.04em",
+          color: decisionColor, flexShrink: 0, width: 44, textAlign: "right",
+        }}>
+          {decision}
+        </span>
+
+        {/* Chevron */}
+        <span style={{
+          fontSize: 10, color: "var(--text-dim)", flexShrink: 0,
+          transform: expanded ? "rotate(180deg)" : "none",
+          transition: "transform 0.15s",
+          marginLeft: 2,
+        }}>
+          ▾
+        </span>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div style={{ padding: "0 12px 12px 12px" }}>
+
+          {/* Stops / target for buys */}
+          {isBuy && (
+            <div style={{
+              display: "flex", gap: 10, marginBottom: 8, paddingBottom: 8,
+              borderBottom: "1px solid var(--border)",
+            }}>
+              <div>
+                <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.08em", marginBottom: 2 }}>STOP</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "var(--red)" }}>
+                  ${stop.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.08em", marginBottom: 2 }}>TARGET</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "var(--green)" }}>
+                  ${target.toFixed(2)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.08em", marginBottom: 2 }}>TOTAL</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "var(--text-secondary)" }}>
+                  ${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI reasoning */}
+          {ai_reasoning && (
+            <p style={{
+              fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.55,
+              marginBottom: isBuy && Object.keys(original.factor_scores ?? {}).length > 0 ? 8 : 0,
+            }}>
+              {ai_reasoning}
+            </p>
+          )}
+
+          {/* Factor chips — buys only */}
+          {isBuy && original.factor_scores && Object.keys(original.factor_scores).length > 0 && (
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+              {Object.entries(original.factor_scores).map(([k, v]) => (
+                <span key={k} style={{
+                  fontSize: 9, padding: "1px 5px", borderRadius: 3,
+                  background: "var(--bg-void)", color: "var(--text-dim)",
+                  fontFamily: "var(--font-mono)",
+                }}>
+                  {k.slice(0, 3)} {typeof v === "number" ? v.toFixed(0) : v}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Section divider ─────────────────────────────────────────────────────────
+
+function SectionDivider({ label, count, right }: { label: string; count: number; right?: React.ReactNode }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8,
+      padding: "6px 12px",
+      background: "var(--bg-void)",
+      borderBottom: "1px solid var(--border)",
+      borderTop: "1px solid var(--border)",
+    }}>
+      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.09em", color: "var(--text-muted)", textTransform: "uppercase" }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: 9, fontWeight: 600, fontFamily: "var(--font-mono)",
+        padding: "0 5px", borderRadius: 3, background: "var(--border)", color: "var(--text-dim)",
+      }}>
+        {count}
+      </span>
+      {right && <div style={{ marginLeft: "auto" }}>{right}</div>}
+    </div>
+  );
+}
+
 export default function ActionsTab() {
   const { result, isAnalyzing, isExecuting, error, lastAnalyzedAt, runAnalysis, runExecute } =
     useAnalysisStore();
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [showVetoed, setShowVetoed] = useState(false);
 
-  // Detect analyze complete → play sound
+  // Detect analyze complete → play sound, auto-expand first actionable
   const wasAnalyzing = useRef(false);
   useEffect(() => {
-    if (wasAnalyzing.current && !isAnalyzing && result) play("analyzeComplete");
+    if (wasAnalyzing.current && !isAnalyzing && result) {
+      play("analyzeComplete");
+      setExpandedKey(null);
+      setShowVetoed(false);
+    }
     wasAnalyzing.current = isAnalyzing;
   }, [isAnalyzing, result]);
 
   const handleAnalyze = () => { play("analyze"); runAnalysis(); };
   const handleExecute = () => { play("execute"); runExecute(); };
+
+  const toggleRow = (key: string) => setExpandedKey(prev => prev === key ? null : key);
 
   // No analysis yet → show pre-flight dashboard
   if (!result && !isAnalyzing) {
@@ -475,12 +518,9 @@ export default function ActionsTab() {
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <div
           className="w-8 h-8 border-2 rounded-full animate-spin"
-          style={{
-            borderColor: "var(--accent-dim)",
-            borderTopColor: "var(--accent)",
-          }}
+          style={{ borderColor: "var(--accent-dim)", borderTopColor: "var(--accent)" }}
         />
-        <p style={{ fontSize: 13, color: "var(--text-primary)" }}>GScott's analyzing the market...</p>
+        <p style={{ fontSize: 13, color: "var(--text-primary)" }}>GScott's analyzing...</p>
         <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Scoring candidates, running AI review</p>
       </div>
     );
@@ -489,7 +529,8 @@ export default function ActionsTab() {
   if (!result) return null;
 
   const { approved, modified, vetoed, summary } = result;
-  // Deduplicate by ticker+action_type — keep the entry with the richest reasoning
+
+  // Deduplicate by ticker+action_type
   const allActionable = [...approved, ...modified];
   const seen = new Map<string, ReviewedAction>();
   for (const a of allActionable) {
@@ -505,38 +546,16 @@ export default function ActionsTab() {
   if (summary.total_proposed === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: "var(--text-secondary)" }}>
-        <div className="text-4xl">&#x1F937;</div>
-        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>No opportunities found</p>
-        <p style={{ fontSize: 11, textAlign: "center", maxWidth: 260, color: "var(--text-secondary)" }}>
-          GScott scanned the watchlist but didn't find any trades worth making right now.
-          Try running SCAN first to refresh candidates.
+        <p style={{ fontSize: 13, fontWeight: 500 }}>No opportunities</p>
+        <p style={{ fontSize: 11, textAlign: "center", maxWidth: 240, color: "var(--text-muted)" }}>
+          Nothing worth trading right now. Try running SCAN first.
         </p>
-        {lastAnalyzedAt && (
-          <p style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            Analyzed at {lastAnalyzedAt}
-          </p>
-        )}
         <button
           onClick={handleAnalyze}
           style={{
-            padding: "4px 12px",
-            fontSize: 11,
-            fontWeight: 500,
-            borderRadius: "var(--radius)",
-            background: "var(--bg-surface)",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border)",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--accent)";
-            el.style.color = "var(--accent)";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--border)";
-            el.style.color = "var(--text-secondary)";
+            padding: "4px 12px", fontSize: 11, fontWeight: 500,
+            borderRadius: "var(--radius)", background: "var(--bg-surface)",
+            color: "var(--text-secondary)", border: "1px solid var(--border)", cursor: "pointer",
           }}
         >
           Re-analyze
@@ -546,134 +565,121 @@ export default function ActionsTab() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+
       {/* Summary bar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "6px 16px",
-          borderBottom: "1px solid var(--border)",
-          background: "var(--bg-surface)",
-          flexWrap: "wrap",
-        }}
-      >
-        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-          {summary.total_proposed} proposed
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "0 12px", height: 38,
+        borderBottom: "1px solid var(--border)",
+        background: "var(--bg-surface)", flexShrink: 0,
+      }}>
+        {/* Counts */}
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--green)" }}>
+          {summary.approved + summary.modified}✓
         </span>
-        <span style={{ fontSize: 11, color: "var(--green)" }}>
-          {summary.approved} approved
-        </span>
-        {summary.modified > 0 && (
-          <span style={{ fontSize: 11, color: "var(--amber)" }}>
-            {summary.modified} modified
-          </span>
-        )}
         {summary.vetoed > 0 && (
-          <span style={{ fontSize: 11, color: "var(--red)" }}>{summary.vetoed} vetoed</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--red)" }}>
+            {summary.vetoed}✗
+          </span>
         )}
         {result.ai_mode && (
           <span style={{
-            fontSize: "9px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            padding: "2px 8px",
-            borderRadius: "3px",
-            background: result.ai_mode === "claude"
-              ? "rgba(74,222,128,0.12)"
-              : "rgba(248,113,113,0.15)",
-            color: result.ai_mode === "claude"
-              ? "var(--green)"
-              : "var(--red)",
-            border: `1px solid ${result.ai_mode === "claude"
-              ? "rgba(74,222,128,0.25)"
-              : "rgba(248,113,113,0.3)"}`,
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.06em",
+            padding: "1px 5px", borderRadius: 3,
+            background: result.ai_mode === "claude" ? "rgba(74,222,128,0.10)" : "var(--red-dim)",
+            color: result.ai_mode === "claude" ? "var(--green)" : "var(--red)",
           }}>
-            {result.ai_mode === "claude" ? "AI MODE" : "FALLBACK"}
+            {result.ai_mode === "claude" ? "AI" : "FB"}
           </span>
         )}
-        <div className="flex-1" />
+        <div style={{ flex: 1 }} />
         {summary.can_execute && (
           <button
             onClick={handleExecute}
             disabled={isExecuting}
             style={{
-              padding: "3px 10px",
-              fontSize: 11,
-              fontWeight: 600,
-              borderRadius: "var(--radius)",
-              background: "var(--green-dim)",
-              color: "var(--green)",
-              border: "none",
+              padding: "3px 10px", fontSize: 11, fontWeight: 600,
+              borderRadius: "var(--radius)", background: "var(--green-dim)",
+              color: "var(--green)", border: "none",
               cursor: isExecuting ? "default" : "pointer",
               opacity: isExecuting ? 0.5 : 1,
             }}
           >
-            {isExecuting ? "Executing..." : `Execute ${actionable.length}`}
+            {isExecuting ? "Executing…" : `Execute ${actionable.length}`}
           </button>
         )}
         <button
           onClick={handleAnalyze}
           style={{
-            padding: "3px 10px",
-            fontSize: 11,
-            fontWeight: 500,
-            borderRadius: "var(--radius)",
-            background: "var(--bg-elevated)",
-            color: "var(--text-secondary)",
-            border: "1px solid var(--border)",
-            cursor: "pointer",
+            padding: "3px 8px", fontSize: 11, fontWeight: 500,
+            borderRadius: "var(--radius)", background: "transparent",
+            color: "var(--text-dim)", border: "1px solid var(--border)", cursor: "pointer",
           }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--accent)";
-            el.style.color = "var(--accent)";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.borderColor = "var(--border)";
-            el.style.color = "var(--text-secondary)";
-          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-dim)"; }}
         >
-          Re-analyze
+          ↺
         </button>
       </div>
 
       {error && (
-        <div
-          style={{
-            padding: "6px 16px",
-            fontSize: 11,
-            color: "var(--red)",
-            background: "var(--red-dim)",
-            borderBottom: "1px solid rgba(239,68,68,0.2)",
-          }}
-        >
+        <div style={{ padding: "6px 12px", fontSize: 11, color: "var(--red)", background: "var(--red-dim)", borderBottom: "1px solid rgba(239,68,68,0.2)", flexShrink: 0 }}>
           {error}
         </div>
       )}
 
-      {/* Action cards */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      {/* Action list */}
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+
+        {/* Actionable rows */}
         {actionable.length > 0 && (
           <>
-            <h3 style={sectionHeaderStyle} className="mb-2">
-              Ready to execute
-            </h3>
-            {actionable.map((a, i) => (
-              <ActionCard key={`${a.original.ticker}-${i}`} action={a} />
-            ))}
+            <SectionDivider label="Ready to Execute" count={actionable.length} />
+            {actionable.map((a) => {
+              const key = `${a.original.action_type}:${a.original.ticker}`;
+              return (
+                <ActionRow
+                  key={key}
+                  action={a}
+                  expanded={expandedKey === key}
+                  onToggle={() => toggleRow(key)}
+                />
+              );
+            })}
           </>
         )}
+
+        {/* Vetoed rows — collapsed by default */}
         {vetoed.length > 0 && (
           <>
-            <h3 style={sectionHeaderStyle} className="mt-4 mb-2">
-              Vetoed
-            </h3>
-            {vetoed.map((a, i) => (
-              <ActionCard key={`veto-${a.original.ticker}-${i}`} action={a} />
-            ))}
+            <SectionDivider
+              label="Vetoed"
+              count={vetoed.length}
+              right={
+                <button
+                  onClick={() => setShowVetoed(v => !v)}
+                  style={{
+                    fontSize: 9, fontWeight: 600, letterSpacing: "0.05em",
+                    background: "transparent", border: "none",
+                    color: "var(--text-dim)", cursor: "pointer",
+                  }}
+                >
+                  {showVetoed ? "Hide" : "Show"}
+                </button>
+              }
+            />
+            {showVetoed && vetoed.map((a) => {
+              const key = `VETO:${a.original.action_type}:${a.original.ticker}`;
+              return (
+                <ActionRow
+                  key={key}
+                  action={a}
+                  expanded={expandedKey === key}
+                  onToggle={() => toggleRow(key)}
+                />
+              );
+            })}
           </>
         )}
       </div>
