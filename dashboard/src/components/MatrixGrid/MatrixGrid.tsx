@@ -283,7 +283,7 @@ export default function MatrixGrid({
 
   const treemapRects = useMemo(() => {
     if (containerSize.w < 10 || containerSize.h < 10 || sorted.length === 0) return [];
-    const bottomReserve = selectedPos && showSecondaryTabs ? 296 : 0;
+    const bottomReserve = selectedPos && showSecondaryTabs && viewTab !== "detail" ? 296 : 0;
     const tw = containerSize.w;
     const th = Math.max(1, containerSize.h - bottomReserve);
     // Pick sizing metric based on sort tab
@@ -928,8 +928,8 @@ export default function MatrixGrid({
         </div>
       )}
 
-      {/* DETAIL: bottom panel in portfolio view, modal in overview */}
-      {showSecondaryTabs
+      {/* DETAIL: bottom panel only when NOT on detail tab (detail tab has inline view) */}
+      {showSecondaryTabs && viewTab !== "detail"
         ? <BottomPanel
             pos={selectedPos}
             onClose={() => setSelectedPos(null)}
@@ -939,7 +939,9 @@ export default function MatrixGrid({
             buyTx={selectedPos ? (transactions.filter(t => t.ticker === selectedPos.ticker && t.action === "BUY").at(-1) ?? null) : null}
             sellReasoning={selectedPos ? (pendingSellReasoningMap[selectedPos.ticker] ?? null) : null}
           />
-        : <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+        : (!showSecondaryTabs
+            ? <DetailCard pos={selectedPos} onClose={() => setSelectedPos(null)} portfolioId={portfolios[0]?.id} watchlistCandidates={watchlistCandidates} />
+            : null)
       }
     </div>
   );

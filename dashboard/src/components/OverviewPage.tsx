@@ -39,7 +39,7 @@ type ViewMode = "briefing" | "grid" | "map" | "chart";
 // ---------------------------------------------------------------------------
 
 function pnlColor(v: number) {
-  return v > 0 ? "var(--green)" : v < 0 ? "var(--red)" : "var(--text-2)";
+  return v > 0 ? "var(--green)" : v < 0 ? "var(--red)" : "var(--text-muted)";
 }
 
 function fmt$(v: number, decimals = 0) {
@@ -542,8 +542,8 @@ function MorningBriefingView({
             >
               <defs>
                 <linearGradient id="briefingCurve" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={dayPnl >= 0 ? "#34d399" : "#f87171"} stopOpacity="0.18" />
-                  <stop offset="100%" stopColor={dayPnl >= 0 ? "#34d399" : "#f87171"} stopOpacity="0" />
+                  <stop offset="0%" stopColor={dayPnl >= 0 ? "#22C55E" : "#EF4444"} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={dayPnl >= 0 ? "#22C55E" : "#EF4444"} stopOpacity="0" />
                 </linearGradient>
               </defs>
               <polyline
@@ -553,7 +553,7 @@ function MorningBriefingView({
                   return `${x},${y}`;
                 }).join(" ")}
                 fill="none"
-                stroke={dayPnl >= 0 ? "#34d399" : "#f87171"}
+                stroke={dayPnl >= 0 ? "#22C55E" : "#EF4444"}
                 strokeWidth="0.8"
                 opacity="0.8"
                 vectorEffect="non-scaling-stroke"
