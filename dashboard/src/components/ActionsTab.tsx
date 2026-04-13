@@ -610,7 +610,7 @@ export default function ActionsTab() {
               opacity: isExecuting ? 0.5 : 1,
             }}
           >
-            {isExecuting ? "Executing..." : `EXECUTE ${actionable.length}`}
+            {isExecuting ? "Executing..." : `Execute ${actionable.length}`}
           </button>
         )}
         <button

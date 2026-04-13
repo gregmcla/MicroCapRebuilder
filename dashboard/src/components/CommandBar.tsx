@@ -193,22 +193,35 @@ export function ScanButton() {
     : {};
 
   return (
-    <button
-      onClick={handle}
-      disabled={scanning}
-      className={BASE}
-      title={resultText || undefined}
-      style={{ ...AMBER_STYLE, ...errorStyle }}
-    >
-      <span
-        style={{
-          width: "7px", height: "7px", borderRadius: "50%",
-          background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
-          animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
-        }}
-      />
-      {scanning ? "Scanning" : "Scan"}
-    </button>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2 }}>
+      <button
+        onClick={handle}
+        disabled={scanning}
+        className={BASE}
+        style={{ ...AMBER_STYLE, ...errorStyle }}
+      >
+        <span
+          style={{
+            width: "7px", height: "7px", borderRadius: "50%",
+            background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
+            animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
+          }}
+        />
+        {scanning ? "Scanning" : "Scan"}
+      </button>
+      {resultText && !scanning && (
+        <span style={{
+          fontSize: "8px",
+          color: isError ? "rgba(248,113,113,0.65)" : "var(--text-dim)",
+          letterSpacing: "0.03em",
+          whiteSpace: "nowrap",
+          paddingLeft: "1px",
+          lineHeight: 1,
+        }}>
+          {resultText}
+        </span>
+      )}
+    </div>
   );
 }
 

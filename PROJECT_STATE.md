@@ -41,6 +41,32 @@ The first session (earlier 2026-04-12) only renamed CSS variables — visually i
 - ~~Overview page: narrative morning briefing layout~~ — done
 - ~~Further visual polish: spacing, typography, density~~ — done
 
+## Recently Completed (2026-04-13) — UI Comprehensive Polish Pass
+
+### Session 5: Color system + sort bar conditional + bug fixes
+
+1. **MatrixGrid sort bar conditional** — sort/control bar was visible on ALL tabs. Now:
+   - `viewTab === "grid"` → full sort bar (portfolio name | stats | SORT chips | scan status | Waveform | clock)
+   - All other tabs → compact context bar: `← Grid` button + tab-specific label (ticker, count) + scan status indicator
+
+2. **Scan status visibility** — was invisible after LOGS tab was removed. Fixed two ways:
+   - MatrixGrid sort/context bar shows scan status in top-right on all tabs
+   - CommandBar ScanButton renders result text as visible 8px label below button (not just tooltip)
+
+3. **Full CSS design system pass** — eliminated all hardcoded Slate palette hex values from:
+   - `MatrixGrid.tsx`: replaced `#ccc`, `#aaa`, `#777`, `#ddd`, `#22C55E`, `#EF4444`, `#F59E0B` in treemap tiles, hover panel, EKG overlay, cursor block, Reticle, CELL_HEAT, WatchlistPanel HEAT_COLOR, HistoryPanel statusColor/pc function, activity/P&L colors, stub fallback colors
+   - `BottomPanel.tsx`: replaced entire Slate palette (`#F8FAFC`, `#94A3B8`, `#64748B`, `#475569`) + semantic colors throughout
+   - CSS vars used: `var(--text-primary)`, `var(--text-secondary)`, `var(--text-dim)`, `var(--text-muted)`, `var(--green)`, `var(--red)`, `var(--amber)`, `var(--green-dim)`, `var(--red-dim)`
+   - Intentionally kept: `#fb923c` (orange — no CSS var), `#38bdf8` (sky blue for HistoryPanel PEAK), `#818cf8` (indigo for SIGNAL exit)
+
+4. **OverviewPage fmt$ bug fix** — negative P&L displayed as positive (returned `"$9,800"` for -9800). Fixed: `""` → `"-"` for negative branch.
+
+5. **ActionsTab casing** — `"EXECUTE ${n}"` → `"Execute ${n}"` for button label consistency.
+
+6. **TypeScript**: 0 errors after all changes.
+
+---
+
 ## Recently Completed (2026-04-12 sessions 3–4) — UI Full Redesign Pass
 
 ### Session 3: Inline Detail + Overview Briefing + Visual Consistency

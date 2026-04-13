@@ -43,7 +43,7 @@ function pnlColor(v: number) {
 }
 
 function fmt$(v: number, decimals = 0) {
-  return `${v >= 0 ? "+" : ""}$${Math.abs(v).toLocaleString(undefined, {
+  return `${v >= 0 ? "+" : "-"}$${Math.abs(v).toLocaleString(undefined, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })}`;
@@ -553,7 +553,7 @@ function MorningBriefingView({
                   return `${x},${y}`;
                 }).join(" ")}
                 fill="none"
-                stroke={dayPnl >= 0 ? "#22C55E" : "#EF4444"}
+                stroke={dayPnl >= 0 ? "var(--green)" : "var(--red)"}
                 strokeWidth="0.8"
                 opacity="0.8"
                 vectorEffect="non-scaling-stroke"
