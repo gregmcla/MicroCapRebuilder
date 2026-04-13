@@ -15,6 +15,7 @@ import { useAnalysisStore, useBriefStore, useUIStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
 import { useWarnings } from "../../hooks/useRisk";
+import PositionInlineDetail from "./PositionInlineDetail";
 
 // ─── Squarified Treemap ───────────────────────────────────────────────────────
 function squarifyLayout(
@@ -800,25 +801,16 @@ export default function MatrixGrid({
           </div>
         </div>
 
-        {/* DETAIL PANEL — selected position detail, or select-a-position prompt */}
+        {/* DETAIL PANEL — inline position detail view */}
         {viewTab === "detail" && (
           selectedPos ? (
-            // Show placeholder; BottomPanel renders the actual detail overlay
-            <div style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "var(--text-dim)", fontSize: 10, fontFamily: "var(--font-mono)",
-              letterSpacing: "0.1em",
-            }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{
-                  fontSize: 22, fontWeight: 700, color: "var(--text-secondary)",
-                  fontFamily: "var(--font-mono)", letterSpacing: "0.04em", marginBottom: 4,
-                }}>
-                  {selectedPos.ticker}
-                </div>
-                <div style={{ fontSize: 10, color: "var(--text-dim)" }}>Detail panel loading below ↓</div>
-              </div>
-            </div>
+            <PositionInlineDetail
+              pos={selectedPos}
+              portfolioId={portfolios[0]?.id}
+              rationale={positionRationales[selectedPos.ticker] ?? null}
+              buyTx={transactions.filter(t => t.ticker === selectedPos.ticker && t.action === "BUY").at(-1) ?? null}
+              sellReasoning={pendingSellReasoningMap[selectedPos.ticker] ?? null}
+            />
           ) : (
             <div style={{
               flex: 1, display: "flex", flexDirection: "column",
