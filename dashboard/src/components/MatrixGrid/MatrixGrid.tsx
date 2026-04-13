@@ -10,7 +10,6 @@ import DetailCard from "./DetailCard";
 import BottomPanel from "./BottomPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
 import PositionPulse from "./PositionPulse";
-import ActionsTab from "../ActionsTab";
 import { useAnalysisStore, useBriefStore, useUIStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
@@ -116,11 +115,12 @@ export default function MatrixGrid({
   snapshots = [],
   startingCapital,
 }: MatrixGridProps) {
-  const [viewTab, setViewTab] = useState<"detail" | "grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("grid");
+  const [viewTab, setViewTab] = useState<"detail" | "grid" | "watchlist" | "activity" | "history">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
   // Sync external selection (from PositionsPanel UIStore) → internal selectedPos
   const uiSelectedPosition = useUIStore((s) => s.selectedPosition);
+  const setRightTab = useUIStore((s) => s.setRightTab);
   const { data: warnings } = useWarnings();
 
   // Build a map of pending sell reasoning from analysis result (ticker → ai_reasoning)
@@ -138,7 +138,7 @@ export default function MatrixGrid({
   // Auto-switch to ACTIONS tab only when analysis transitions from running → done
   const wasAnalyzing = useRef(false);
   useEffect(() => {
-    if (wasAnalyzing.current && !isAnalyzing && analysisResult) setViewTab("actions");
+    if (wasAnalyzing.current && !isAnalyzing && analysisResult) setRightTab("actions");
     wasAnalyzing.current = isAnalyzing;
   }, [analysisResult, isAnalyzing]);
   const [hovIdx, setHovIdx] = useState<number | null>(null);
@@ -549,60 +549,40 @@ export default function MatrixGrid({
 
         {/* TAB BAR */}
         <div style={{
-          height: 34,
+          height: 38,
           padding: "0 12px",
           background: "var(--bg-surface)",
           borderBottom: "1px solid var(--border)",
-          display: "flex", alignItems: "flex-end", gap: 0, flexShrink: 0,
+          display: "flex", alignItems: "center", gap: 2, flexShrink: 0,
           overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none",
         } as React.CSSProperties}>
           {(showSecondaryTabs
-            ? ["detail", "grid", "actions", "watchlist", "activity", "logs", "history"] as const
+            ? ["detail", "grid", "watchlist", "activity", "history"] as const
             : ["detail", "grid"] as const
           ).map((tab) => {
-            const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
-              detail: selectedPos ? `DETAIL · ${selectedPos.ticker}` : "DETAIL",
-              grid: `GRID [${sorted.length}]`,
-              actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${new Set([...analysisResult.approved, ...analysisResult.modified].map(a => `${a.original.ticker}:${a.original.action_type}`)).size}]` : "ACTIONS",
-              watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
-              activity: `ACTIVITY [${transactions.length}]`,
-              logs: "LOGS",
-              history: `HISTORY [${snapshots.length}]`,
+              detail: selectedPos ? `Detail · ${selectedPos.ticker}` : "Detail",
+              grid: "Grid",
+              watchlist: "Watchlist",
+              activity: "Activity",
+              history: "History",
             };
             const active = viewTab === tab;
-            // Color per tab
-            const TAB_ACTIVE_COLOR: Record<string, string> = {
-              detail:    "var(--text-secondary)",
-              grid:      "var(--green)",
-              actions:   "var(--accent)",
-              watchlist: "var(--amber)",
-              activity:  "var(--accent)",
-              logs:      "var(--text-muted)",
-              history:   "var(--accent-cyan)",
-            };
-            const activeColor = TAB_ACTIVE_COLOR[tab] ?? "#94A3B8";
-            // ACTIONS tab: amber pulse when analysis pending, accent when active
-            const pendingColor  = tab === "actions" && hasActions && !active ? "#F59E0B" : null;
-            const displayColor  = active ? activeColor : pendingColor ?? "var(--text-dim)";
-            const borderColor   = active ? activeColor : pendingColor ? "rgba(245,158,11,0.4)" : "transparent";
             return (
               <button
                 key={tab}
                 onClick={() => setViewTab(tab)}
                 style={{
                   padding: "5px 12px",
-                  fontSize: 9,
+                  borderRadius: 6,
+                  fontSize: 11,
                   fontWeight: 500,
-                  letterSpacing: "0.08em",
-                  fontFamily: "var(--font-mono)",
-                  background: "transparent",
-                  color: displayColor,
+                  fontFamily: "var(--font-sans)",
+                  background: active ? "var(--accent-dim)" : "transparent",
+                  color: active ? "var(--text-primary)" : "var(--text-muted)",
                   border: "none",
-                  borderBottom: `2px solid ${borderColor}`,
                   cursor: "pointer",
-                  transition: "all 0.12s",
-                  marginBottom: -1,
+                  transition: "color 0.15s, background 0.15s",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -825,13 +805,6 @@ export default function MatrixGrid({
           )
         )}
 
-        {/* ACTIONS PANEL */}
-        {viewTab === "actions" && (
-          <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: "var(--surface-0)" }}>
-            <ActionsTab />
-          </div>
-        )}
-
         {/* WATCHLIST PANEL */}
         {viewTab === "watchlist" && (
           <WatchlistPanel candidates={watchlistCandidates} onTickerClick={(ticker) => {
@@ -861,11 +834,6 @@ export default function MatrixGrid({
           }} />
         )}
 
-        {/* LOGS PANEL */}
-        {viewTab === "logs" && (
-          <LogsPanel scanStatus={scanStatus} />
-        )}
-
         {/* HISTORY PANEL */}
         {viewTab === "history" && (
           <HistoryPanel snapshots={snapshots} startingCapital={startingCapital} portfolioId={portfolios[0]?.id ?? ""} />
@@ -876,13 +844,13 @@ export default function MatrixGrid({
           padding: "3px 20px",
           borderTop: "1px solid rgba(74,222,128,0.04)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          fontSize: 8, color: "#444", letterSpacing: "0.08em", flexShrink: 0,
+          fontSize: 8, color: "var(--text-dim)", letterSpacing: "0.08em", flexShrink: 0,
         }}>
           <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-            {top && <span>&#9650; <span style={{ color: "#22C55E" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
-            {bot && <span>&#9660; <span style={{ color: "#EF4444" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
+            {top && <span>&#9650; <span style={{ color: "var(--green)" }}>{top.ticker} +{top.perf.toFixed(1)}%</span></span>}
+            {bot && <span>&#9660; <span style={{ color: "var(--red)" }}>{bot.ticker} {bot.perf.toFixed(1)}%</span></span>}
             {atRiskSet.size > 0 && (
-              <span>&#9474; <span style={{ color: "#EF4444" }}>{atRiskSet.size} near stop</span></span>
+              <span>&#9474; <span style={{ color: "var(--red)" }}>{atRiskSet.size} near stop</span></span>
             )}
           </div>
           <div />
@@ -918,8 +886,8 @@ export default function MatrixGrid({
             { l: "SECTOR", v: hovered.sector },
           ].map((s) => (
             <div key={s.l}>
-              <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em" }}>{s.l}</div>
-              <div style={{ fontSize: 12, color: s.c ?? "#888", fontWeight: 500 }}>{s.v}</div>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", letterSpacing: "0.09em" }}>{s.l}</div>
+              <div style={{ fontSize: 12, color: s.c ?? "var(--text-muted)", fontWeight: 500 }}>{s.v}</div>
             </div>
           ))}
           <div style={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
@@ -1052,7 +1020,7 @@ function WatchlistPanel({ candidates, onTickerClick }: { candidates: WatchlistCa
   const sorted = [...candidates].sort((a, b) => b.score - a.score);
   if (sorted.length === 0) {
     return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
         NO WATCHLIST DATA — RUN SCAN TO POPULATE
       </div>
     );
@@ -1119,7 +1087,7 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
   const sorted = [...transactions].reverse().slice(0, 100);
   if (sorted.length === 0) {
     return (
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 10, fontFamily: MATRIX_FONT, letterSpacing: "0.1em" }}>
         NO TRADE HISTORY
       </div>
     );
@@ -1172,10 +1140,10 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
                 cursor: "pointer",
                 background: isExpanded ? "rgba(255,255,255,0.02)" : undefined,
               }}>
-              <span style={{ color: "#555", fontSize: 10 }}>
+              <span style={{ color: "var(--text-muted)", fontSize: 10 }}>
                 {tx.date.slice(0, 10)}
                 {tx.date.length > 10 && (
-                  <span style={{ color: "#3a3a3a", display: "block", fontSize: 9 }}>
+                  <span style={{ color: "var(--text-dim)", display: "block", fontSize: 9 }}>
                     {tx.date.slice(11, 16)}
                   </span>
                 )}
@@ -1187,11 +1155,11 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
               >{tx.ticker}</span>
               {/* Entry price (sells) or qty (buys) */}
               {!isBuy && tx.entry_price != null
-                ? <span style={{ color: "#666" }}>${tx.entry_price.toFixed(2)}</span>
-                : <span style={{ color: "#888" }}>{isBuy ? tx.shares : "—"}</span>
+                ? <span style={{ color: "var(--text-secondary)" }}>${tx.entry_price.toFixed(2)}</span>
+                : <span style={{ color: "var(--text-muted)" }}>{isBuy ? tx.shares : "—"}</span>
               }
               {/* Sell price or buy price */}
-              <span style={{ color: "#888" }}>${tx.price.toFixed(2)}</span>
+              <span style={{ color: "var(--text-muted)" }}>${tx.price.toFixed(2)}</span>
               {/* P&L $ (sells) or total (buys) */}
               <span style={{ color: pnlColor, fontWeight: 600 }}>
                 {pnlStr}
@@ -1211,12 +1179,12 @@ function ActivityPanel({ transactions, onTickerClick }: { transactions: Transact
               <span style={{ color: pnlColor, fontWeight: 600, fontSize: 8 }}>
                 {pctStr}
                 {daysHeld != null && (
-                  <span style={{ display: "block", color: "#444", fontSize: 7, fontWeight: 400 }}>
+                  <span style={{ display: "block", color: "var(--text-dim)", fontSize: 7, fontWeight: 400 }}>
                     {daysHeld}d held
                   </span>
                 )}
               </span>
-              <span style={{ color: "#555", fontSize: 8 }}>{tx.reason}</span>
+              <span style={{ color: "var(--text-muted)", fontSize: 8 }}>{tx.reason}</span>
             </div>
             {/* Expanded reasoning row */}
             {isExpanded && (
@@ -1277,7 +1245,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
 
       {scanStatus?.result && (
         <>
-          <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
+          <div style={{ fontSize: 9, color: "var(--text-muted)", letterSpacing: "0.09em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 16 }}>
             {[
               { l: "DISCOVERED", v: scanStatus.result.discovered },
@@ -1314,7 +1282,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
                             background: "rgba(34,197,94,0.3)",
                           }} />
                         </div>
-                        <span style={{ fontSize: 10, color: "#888", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", width: 20, textAlign: "right", flexShrink: 0 }}>{count}</span>
                       </div>
                     );
                   })}
@@ -1325,7 +1293,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
       )}
 
       {!scanStatus && (
-        <div style={{ color: "#555", fontSize: 10, letterSpacing: "0.1em", marginTop: 24 }}>
+        <div style={{ color: "var(--text-muted)", fontSize: 10, letterSpacing: "0.1em", marginTop: 24 }}>
           NO SCAN DATA — TRIGGER SCAN FROM TOPBAR
         </div>
       )}

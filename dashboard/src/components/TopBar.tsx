@@ -186,16 +186,15 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
           height: "30px",
           padding: "0 12px",
           borderRadius: 6,
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 600,
-          letterSpacing: "0.06em",
+          letterSpacing: "0.02em",
           border: "1px solid",
           borderColor: "rgba(239,68,68,0.2)",
           background: "var(--red-dim)",
           color: "rgba(239,68,68,0.6)",
           cursor: "pointer",
           transition: "all 150ms ease",
-          fontFamily: "var(--font-mono)",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(239,68,68,0.4)";
@@ -206,7 +205,7 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
           (e.currentTarget as HTMLButtonElement).style.color = "rgba(239,68,68,0.6)";
         }}
       >
-        {closing ? "..." : "CLOSE ALL"}
+        {closing ? "..." : "Close All"}
       </button>
       {showConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -354,8 +353,7 @@ function LogsButton() {
         borderRadius: 6,
         fontSize: 11,
         fontWeight: 600,
-        letterSpacing: "0.06em",
-        fontFamily: "var(--font-mono)",
+        letterSpacing: "0.02em",
         border: isActive
           ? "1px solid rgba(139,92,246,0.25)"
           : "1px solid var(--border)",
@@ -377,7 +375,7 @@ function LogsButton() {
         }
       }}
     >
-      LOGS
+      Logs
     </button>
   );
 }
@@ -397,13 +395,12 @@ function BuyButton() {
           borderRadius: 6,
           fontSize: 11,
           fontWeight: 600,
-          letterSpacing: "0.06em",
+          letterSpacing: "0.02em",
           border: "1px solid rgba(34,197,94,0.25)",
           background: "var(--green-dim)",
           color: "var(--green)",
           cursor: "pointer",
           transition: "all 150ms ease",
-          fontFamily: "var(--font-mono)",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(34,197,94,0.5)";
@@ -414,7 +411,7 @@ function BuyButton() {
           (e.currentTarget as HTMLButtonElement).style.background = "var(--green-dim)";
         }}
       >
-        + BUY
+        + Buy
       </button>
       {showModal && <BuyModal onClose={() => setShowModal(false)} />}
     </>

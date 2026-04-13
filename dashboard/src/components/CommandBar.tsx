@@ -11,7 +11,7 @@ import { play } from "../lib/sounds";
 // Shared styles
 // ---------------------------------------------------------------------------
 
-const BASE = "inline-flex items-center gap-1.5 tracking-widest uppercase disabled:opacity-40 disabled:cursor-not-allowed";
+const BASE = "inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed";
 
 const BTN_BASE: React.CSSProperties = {
   height: "30px",
@@ -21,6 +21,7 @@ const BTN_BASE: React.CSSProperties = {
   border: "1px solid",
   transition: "all 150ms ease",
   padding: "0 12px",
+  letterSpacing: "0.02em",
 };
 
 const BLUE_STYLE: React.CSSProperties = {

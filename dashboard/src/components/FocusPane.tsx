@@ -28,6 +28,7 @@ function TabBar() {
       style={{
         borderBottom: "1px solid var(--border)",
         height: 38,
+        padding: "0 8px",
       }}
     >
       {TABS.map(({ tab, label }) => {

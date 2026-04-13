@@ -37,28 +37,58 @@ The first session (earlier 2026-04-12) only renamed CSS variables — visually i
 
 4. **MatrixGrid UIStore sync**: Left panel position clicks now sync to MatrixGrid's internal selectedPos, auto-switching to DETAIL tab and triggering BottomPanel
 
-### What still needs to be done
-- Overview page: narrative morning briefing layout (mockup: headline + action cards + stat row)
-- Further visual polish: spacing, typography, density
+### What still needs to be done (completed in sessions 3-4)
+- ~~Overview page: narrative morning briefing layout~~ — done
+- ~~Further visual polish: spacing, typography, density~~ — done
 
-## Recently Completed (2026-04-12 session 3) — Inline Position Detail View
+## Recently Completed (2026-04-12 sessions 3–4) — UI Full Redesign Pass
 
-Replaced the "Detail panel loading below ↓" placeholder in MatrixGrid's DETAIL tab with a full inline view matching the mockup:
+### Session 3: Inline Detail + Overview Briefing + Visual Consistency
 
-- **Header**: ticker 24px Fira Code bold + company name·sector subtitle + Company/Sell buttons
-- **6 metric cards**: Entry (price + days ago), Current (+ price diff), P&L ($ + %), Day Change (% + $), Shares (+ position value), Score (from buyTx.composite_score or factor average)
-- **Chart**: 210px InteractiveSparkline with 1M/3M/1Y period tabs; fetches data on tab change
-- **Progress bar**: Stop → Entry → Target labels; gradient fill; entry price (muted marker) + current price (accent glowing marker)
-- **AI Thesis**: purple-tinted box with ai_reasoning + factor bars; "Pending Exit" red alert when sellReasoning is set
-- **Company button** wired to CompanyInfoModal; **Sell button** wired to SellModal
+1. **PositionInlineDetail** (`dashboard/src/components/MatrixGrid/PositionInlineDetail.tsx`, 525 lines):
+   - Replaced "Detail panel loading below ↓" placeholder in MatrixGrid DETAIL tab
+   - Header: ticker 24px Fira Code bold + company·sector subtitle + Company/Sell buttons
+   - 6 metric cards: Entry / Current / P&L / Day Change / Shares / Score
+   - 210px InteractiveSparkline with 1M/3M/1Y tabs
+   - Progress bar: Stop → Entry → Target with gradient fill and position marker
+   - AI Thesis: purple-tinted box with ai_reasoning + factor bars + pending sell alert
+   - Fixed BottomPanel/InlineDetail overlap (viewTab !== "detail" guard in BottomPanel condition)
 
-New file: `dashboard/src/components/MatrixGrid/PositionInlineDetail.tsx` (525 lines)
+2. **OverviewPage Morning Briefing** (`OverviewPage.tsx`):
+   - Added "briefing" as default ViewMode; added Briefing tab to ControlsBar
+   - `MorningBriefingView` component: date greeting, narrative headline with colored spans (best performer, up/down counts, at-risk count), red action cards for positions with day_change_pct < -2%, 4 stat cards (equity/day P&L/all-time return/positions), combined equity sparkline (summed from portfolio equity curves), 2-column portfolio card grid with hover animation + onNavigate
+   - MorningBriefing stats header hidden when viewMode === "briefing"
+
+3. **Visual consistency pass**: Audited all buttons, color variables, fonts across TopBar, PositionsPanel, FocusPane; fixed pnlColor zero state, SVG colors in sparklines.
+
+### Session 4: In-Portfolio Design Polish (2026-04-12)
+
+4. **MatrixGrid center tab bar redesigned** to match `v2-portfolio-1-everything.html` spec:
+   - Removed ACTIONS and LOGS tabs from center (both were redundant: FocusPane right panel has Actions, LOGS is top-level nav)
+   - New tab list: Detail · Grid · Watchlist · Activity · History (5 clean tabs)
+   - Style changed from bottom-border Fira Code 9px uppercase → pill style Inter 11px title case (matching FocusPane)
+   - When analysis completes, auto-switches FocusPane right tab to Actions (not center tab)
+   - Container height: 34→38px, padding "0 12px"
+
+5. **CommandBar button casing**: removed `uppercase tracking-widest` from BASE class → Update/Scan/Analyze/Execute now render in natural title case with `letterSpacing: "0.02em"`
+
+6. **TopBar button normalization**:
+   - BuyButton: "+ BUY" → "+ Buy", removed `fontFamily: var(--font-mono)`, standardized spacing
+   - EmergencyClose: "CLOSE ALL" → "Close All", removed mono font, fontSize 11→10
+   - LogsButton: "LOGS" → "Logs", removed mono font, standardized spacing
+   - FocusPane tab bar: added `padding: "0 8px"` to container
+
+7. **Color system fixes** in MatrixGrid — replaced hardcoded `#444`, `#555`, `#888`, `#3a3a3a` hex values with `var(--text-dim)`, `var(--text-muted)`, `var(--text-secondary)`, `var(--green)`, `var(--red)` throughout status bar, hover panel, activity panel, scan results panel
 
 ### Mockup files (reference)
-- `v2-portfolio-1-everything.html` — portfolio 3-column layout
+- `v2-portfolio-1-everything.html` — portfolio 3-column layout + tab spec
 - `overview-option-a-v2.html` — morning briefing overview
 - `v3-matrixgrid-restyled.html` — MatrixGrid treemap style
 Path: `.superpowers/brainstorm/18474-1776014145/content/`
+
+### What still needs to be done
+- Further visual polish pass if user requests
+- Cron re-enable (was paused for 2026-04-03 holiday)
 
 ---
 
