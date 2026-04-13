@@ -10,7 +10,9 @@ import TopBar from "./components/TopBar";
 import ActivityFeed from "./components/ActivityFeed";
 import OverviewPage from "./components/OverviewPage";
 import LogsPage from "./components/LogsPage";
-import PortfolioSummary from "./components/PortfolioSummary";
+import HealthStrip from "./components/HealthStrip";
+import PositionsPanel from "./components/PositionsPanel";
+import FocusPane from "./components/FocusPane";
 import MatrixGrid from "./components/MatrixGrid";
 import { buildPortfolioMap, positionToMatrix } from "./components/MatrixGrid/constants";
 import type { MatrixPortfolio } from "./components/MatrixGrid/types";
@@ -124,23 +126,53 @@ export default function App() {
           </main>
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-            {/* Portfolio summary — full width above MatrixGrid */}
-            <PortfolioSummary />
+            {/* Health strip — position glyphs + health score + clock */}
+            <HealthStrip />
 
-            {/* Three columns → replaced by MatrixGrid */}
-            <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-              <MatrixGrid
-                key={portfolioId}
-                positions={matrixPositions}
-                portfolios={activeMatrixPortfolio ? [activeMatrixPortfolio] : []}
-                initialFilter={portfolioId ?? undefined}
-                transactions={state?.transactions ?? []}
-                watchlistCandidates={watchlistData?.candidates ?? []}
-                scanStatus={scanStatus}
-                positionRationales={state?.position_rationales ?? {}}
-                snapshots={state?.snapshots ?? []}
-                startingCapital={state?.starting_capital}
-              />
+            {/* 3-column workspace: positions | center | focus pane */}
+            <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+
+              {/* LEFT: positions list (270px fixed) */}
+              <div style={{
+                width: 270, flexShrink: 0,
+                borderRight: "1px solid var(--border)",
+                display: "flex", flexDirection: "column",
+                background: "rgba(15,23,42,0.3)",
+                overflow: "hidden",
+              }}>
+                <PositionsPanel
+                  positions={state?.positions ?? []}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* CENTER: MatrixGrid (grid/detail/watchlist/activity/history tabs) */}
+              <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+                <MatrixGrid
+                  key={portfolioId}
+                  positions={matrixPositions}
+                  portfolios={activeMatrixPortfolio ? [activeMatrixPortfolio] : []}
+                  initialFilter={portfolioId ?? undefined}
+                  transactions={state?.transactions ?? []}
+                  watchlistCandidates={watchlistData?.candidates ?? []}
+                  scanStatus={scanStatus}
+                  positionRationales={state?.position_rationales ?? {}}
+                  snapshots={state?.snapshots ?? []}
+                  startingCapital={state?.starting_capital}
+                />
+              </div>
+
+              {/* RIGHT: Focus pane (310px fixed) */}
+              <div style={{
+                width: 310, flexShrink: 0,
+                borderLeft: "1px solid var(--border)",
+                display: "flex", flexDirection: "column",
+                background: "rgba(15,23,42,0.3)",
+                overflow: "hidden",
+              }}>
+                <FocusPane />
+              </div>
+
             </div>
           </div>
         )}

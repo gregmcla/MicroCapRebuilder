@@ -11,7 +11,7 @@ import BottomPanel from "./BottomPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
 import PositionPulse from "./PositionPulse";
 import ActionsTab from "../ActionsTab";
-import { useAnalysisStore, useBriefStore } from "../../lib/store";
+import { useAnalysisStore, useBriefStore, useUIStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
 import { useWarnings } from "../../hooks/useRisk";
@@ -115,9 +115,11 @@ export default function MatrixGrid({
   snapshots = [],
   startingCapital,
 }: MatrixGridProps) {
-  const [viewTab, setViewTab] = useState<"detail" | "grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("detail");
+  const [viewTab, setViewTab] = useState<"detail" | "grid" | "actions" | "watchlist" | "activity" | "logs" | "history">("grid");
   const analysisResult = useAnalysisStore((s) => s.result);
   const isAnalyzing = useAnalysisStore((s) => s.isAnalyzing);
+  // Sync external selection (from PositionsPanel UIStore) → internal selectedPos
+  const uiSelectedPosition = useUIStore((s) => s.selectedPosition);
   const { data: warnings } = useWarnings();
 
   // Build a map of pending sell reasoning from analysis result (ticker → ai_reasoning)
@@ -222,6 +224,19 @@ export default function MatrixGrid({
       gridRef.current.style.transform = "perspective(1200px) rotateY(0deg) rotateX(0deg)";
     }
   }, []);
+
+  // Sync UIStore.selectedPosition (from left panel clicks) → internal selectedPos
+  useEffect(() => {
+    if (!uiSelectedPosition) {
+      setSelectedPos(null);
+      return;
+    }
+    const match = positions.find((p) => p.ticker === uiSelectedPosition.ticker);
+    if (match) {
+      setSelectedPos(match);
+      setViewTab("detail");
+    }
+  }, [uiSelectedPosition, positions]);
 
   // When filterOverride is defined externally, use it; otherwise use internal filterP
   const effectiveFilter = filterOverride !== undefined ? filterOverride : filterP;
@@ -546,7 +561,7 @@ export default function MatrixGrid({
           ).map((tab) => {
             const hasActions = (analysisResult || isAnalyzing) && tab === "actions";
             const labels: Record<string, string> = {
-              detail: `POSITIONS [${sorted.length}]`,
+              detail: selectedPos ? `DETAIL · ${selectedPos.ticker}` : "DETAIL",
               grid: `GRID [${sorted.length}]`,
               actions: isAnalyzing ? "ACTIONS ●" : analysisResult ? `ACTIONS [${new Set([...analysisResult.approved, ...analysisResult.modified].map(a => `${a.original.ticker}:${a.original.action_type}`)).size}]` : "ACTIONS",
               watchlist: `WATCHLIST [${watchlistCandidates.length}]`,
@@ -785,16 +800,37 @@ export default function MatrixGrid({
           </div>
         </div>
 
-        {/* DETAIL PANEL — positions table list view */}
+        {/* DETAIL PANEL — selected position detail, or select-a-position prompt */}
         {viewTab === "detail" && (
-          <PositionsDetailPanel
-            positions={sorted}
-            atRiskSet={atRiskSet}
-            onPositionClick={(pos) => {
-              setSelectedPos(prev => prev?.ticker === pos.ticker && prev?.portfolioId === pos.portfolioId ? null : pos);
-              onPositionClick?.(pos);
-            }}
-          />
+          selectedPos ? (
+            // Show placeholder; BottomPanel renders the actual detail overlay
+            <div style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--text-dim)", fontSize: 10, fontFamily: "var(--font-mono)",
+              letterSpacing: "0.1em",
+            }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{
+                  fontSize: 22, fontWeight: 700, color: "var(--text-secondary)",
+                  fontFamily: "var(--font-mono)", letterSpacing: "0.04em", marginBottom: 4,
+                }}>
+                  {selectedPos.ticker}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--text-dim)" }}>Detail panel loading below ↓</div>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              flex: 1, display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              color: "var(--text-dim)", fontSize: 10, fontFamily: "var(--font-mono)",
+              letterSpacing: "0.1em", gap: 8,
+            }}>
+              <div style={{ fontSize: 28, opacity: 0.15 }}>◈</div>
+              <div>SELECT A POSITION</div>
+              <div style={{ fontSize: 9, color: "var(--text-dim)", opacity: 0.5 }}>click from the positions list</div>
+            </div>
+          )
         )}
 
         {/* ACTIONS PANEL */}
