@@ -7,7 +7,58 @@
 
 ## Current Phase
 
-**Operational — 6 active portfolios (microcap, max, defense-tech, catalyst-momentum-scalper, gov-infra, unloved-microcap-cash-cows). Cron still PAUSED since 2026-04-03 holiday (user deferred re-enable). Post-trade review feature just shipped 2026-04-11.**
+**Operational + UI redesign in progress (feature/ui-redesign branch, worktree at .worktrees/ui-redesign). Cron still PAUSED since 2026-04-03 holiday (user deferred re-enable).**
+
+---
+
+## Recently Completed (2026-04-12) — UI Redesign: Structural Changes
+
+**Branch:** `feature/ui-redesign` | **Worktree:** `.worktrees/ui-redesign` | **Dev server:** port 5174
+
+### What was done in this session
+The first session (earlier 2026-04-12) only renamed CSS variables — visually indistinguishable because old and new colors were nearly identical dark values. This session implemented actual structural changes:
+
+1. **HealthStrip** (`dashboard/src/components/HealthStrip.tsx`) — New 34px bar between TopBar and workspace:
+   - Portfolio health score (from useRisk) + win/loss count
+   - All position glyphs as scrolling chips: `TICKER +12.4%` colored by P&L direction, red background if at-risk
+   - Live clock + day P&L total on right
+
+2. **3-column layout** (App.tsx restructured):
+   - Removed `PortfolioSummary` strip above workspace
+   - Left (270px): `PositionsPanel` — scrollable positions list
+   - Center (flex): `MatrixGrid` — treemap/watchlist/activity/history tabs
+   - Right (310px): `FocusPane` — reconnected (was not rendered at all in previous layout)
+
+3. **Position rows simplified** (`PositionsPanel.tsx` rewritten):
+   - Before: 5-column (ticker | price | day P&L $/% | overall P&L $/% | range dot)
+   - After: 3-column matching mockup (ticker 52px mono | price 58px muted | P&L flex: big % + small $ below)
+   - Clean dropdown sort replacing old `<select>` element
+   - Left border: 3px accent=selected, red=at-risk, transparent=normal
+
+4. **MatrixGrid UIStore sync**: Left panel position clicks now sync to MatrixGrid's internal selectedPos, auto-switching to DETAIL tab and triggering BottomPanel
+
+### What still needs to be done
+- Overview page: narrative morning briefing layout (mockup: headline + action cards + stat row)
+- Further visual polish: spacing, typography, density
+
+## Recently Completed (2026-04-12 session 3) — Inline Position Detail View
+
+Replaced the "Detail panel loading below ↓" placeholder in MatrixGrid's DETAIL tab with a full inline view matching the mockup:
+
+- **Header**: ticker 24px Fira Code bold + company name·sector subtitle + Company/Sell buttons
+- **6 metric cards**: Entry (price + days ago), Current (+ price diff), P&L ($ + %), Day Change (% + $), Shares (+ position value), Score (from buyTx.composite_score or factor average)
+- **Chart**: 210px InteractiveSparkline with 1M/3M/1Y period tabs; fetches data on tab change
+- **Progress bar**: Stop → Entry → Target labels; gradient fill; entry price (muted marker) + current price (accent glowing marker)
+- **AI Thesis**: purple-tinted box with ai_reasoning + factor bars; "Pending Exit" red alert when sellReasoning is set
+- **Company button** wired to CompanyInfoModal; **Sell button** wired to SellModal
+
+New file: `dashboard/src/components/MatrixGrid/PositionInlineDetail.tsx` (525 lines)
+
+### Mockup files (reference)
+- `v2-portfolio-1-everything.html` — portfolio 3-column layout
+- `overview-option-a-v2.html` — morning briefing overview
+- `v3-matrixgrid-restyled.html` — MatrixGrid treemap style
+Path: `.superpowers/brainstorm/18474-1776014145/content/`
 
 ---
 
