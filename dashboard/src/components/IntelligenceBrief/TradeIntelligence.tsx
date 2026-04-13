@@ -2,20 +2,20 @@
 
 import type { IntelligenceBriefData } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 function SectionHeader({ label, color }: { label: string; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
       <span style={{
         fontSize: '10px', fontFamily: PROSE_FONT,
-        fontWeight: 600, letterSpacing: '0.1em', color: color ?? '#5a5a78',
+        fontWeight: 600, letterSpacing: '0.1em', color: color ?? 'var(--text-dim)',
         textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
       }}>
         {label}
       </span>
-      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)' }} />
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, var(--border) 0%, transparent 100%)' }} />
     </div>
   );
 }
@@ -48,26 +48,26 @@ export default function TradeIntelligence({ brief }: Props) {
 
   // Color helpers — win_rate from API is already a percentage (e.g. 42.9 = 42.9%)
   const winRateColor = winRate != null
-    ? (winRate >= 55 ? '#34d399' : winRate >= 45 ? '#fbbf24' : '#f87171')
-    : 'rgba(255,255,255,0.2)';
+    ? (winRate >= 55 ? 'var(--green)' : winRate >= 45 ? 'var(--amber)' : 'var(--red)')
+    : 'var(--text-dim)';
 
   const pfColor = profitFactor != null
-    ? (profitFactor > 1.5 ? '#34d399' : profitFactor >= 1 ? '#fbbf24' : '#f87171')
-    : 'rgba(255,255,255,0.2)';
+    ? (profitFactor > 1.5 ? 'var(--green)' : profitFactor >= 1 ? 'var(--amber)' : 'var(--red)')
+    : 'var(--text-dim)';
 
   const placeholder = '\u2014';
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.028)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderTop: '1px solid rgba(255,255,255,0.11)',
-      borderLeft: '3px solid #7c5cfc',
-      borderRadius: '8px',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border)',
+      borderTop: '1px solid var(--border-hover)',
+      borderLeft: '3px solid var(--accent)',
+      borderRadius: 'var(--radius)',
       padding: '16px 20px',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
     }}>
-      <SectionHeader label="Trade Intelligence" color="#7c5cfc" />
+      <SectionHeader label="Trade Intelligence" color="var(--accent)" />
 
       {/* 3-stat row */}
       <div style={{ display: 'flex', gap: '24px', marginBottom: '0' }}>
@@ -75,7 +75,7 @@ export default function TradeIntelligence({ brief }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' as const }}>
           <span style={{
             fontFamily: PROSE_FONT, fontSize: '10px', fontWeight: 500,
-            letterSpacing: '0.08em', color: '#4a4a68', textTransform: 'uppercase' as const,
+            letterSpacing: '0.08em', color: 'var(--text-dim)', textTransform: 'uppercase' as const,
             marginBottom: '4px',
           }}>
             Win Rate
@@ -94,7 +94,7 @@ export default function TradeIntelligence({ brief }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' as const }}>
           <span style={{
             fontFamily: PROSE_FONT, fontSize: '10px', fontWeight: 500,
-            letterSpacing: '0.08em', color: '#4a4a68', textTransform: 'uppercase' as const,
+            letterSpacing: '0.08em', color: 'var(--text-dim)', textTransform: 'uppercase' as const,
             marginBottom: '4px',
           }}>
             Profit Factor
@@ -113,14 +113,14 @@ export default function TradeIntelligence({ brief }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' as const }}>
           <span style={{
             fontFamily: PROSE_FONT, fontSize: '10px', fontWeight: 500,
-            letterSpacing: '0.08em', color: '#4a4a68', textTransform: 'uppercase' as const,
+            letterSpacing: '0.08em', color: 'var(--text-dim)', textTransform: 'uppercase' as const,
             marginBottom: '4px',
           }}>
             Avg Hold
           </span>
           <span style={{
             fontFamily: DATA_FONT, fontSize: '22px', fontWeight: 600,
-            color: hasData ? '#e2e2f0' : 'rgba(255,255,255,0.2)',
+            color: hasData ? 'var(--text-primary)' : 'var(--text-dim)',
           }}>
             {avgHoldDays > 0 ? `${Math.round(avgHoldDays)}d` : placeholder}
           </span>
@@ -130,22 +130,22 @@ export default function TradeIntelligence({ brief }: Props) {
       {hasData && (workingFactors.length > 0 || strugglingFactors.length > 0 || mostTraded.length > 0) && (
         <>
           {/* Divider */}
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', margin: '12px 0' }} />
+          <div style={{ height: '1px', background: 'var(--bg-elevated)', margin: '12px 0' }} />
 
           {/* Working */}
           {workingFactors.length > 0 && (
             <div style={{ marginBottom: strugglingFactors.length > 0 || mostTraded.length > 0 ? '8px' : '0' }}>
               <span style={{
                 fontFamily: PROSE_FONT, fontSize: '9px', fontWeight: 600,
-                letterSpacing: '0.1em', color: '#34d399',
+                letterSpacing: '0.1em', color: 'var(--green)',
                 textTransform: 'uppercase' as const, display: 'block', marginBottom: '4px',
               }}>
                 Working
               </span>
               {workingFactors.slice(0, 3).map((item, i) => (
                 <div key={i} style={{
-                  fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontFamily: PROSE_FONT,
-                  lineHeight: 1.5, paddingLeft: '8px', borderLeft: '2px solid rgba(52,211,153,0.3)',
+                  fontSize: '10px', color: 'var(--text-secondary)', fontFamily: PROSE_FONT,
+                  lineHeight: 1.5, paddingLeft: '8px', borderLeft: '2px solid rgba(34,197,94,0.3)',
                   marginBottom: '3px',
                 }}>
                   {item}
@@ -159,15 +159,15 @@ export default function TradeIntelligence({ brief }: Props) {
             <div style={{ marginBottom: mostTraded.length > 0 ? '8px' : '0' }}>
               <span style={{
                 fontFamily: PROSE_FONT, fontSize: '9px', fontWeight: 600,
-                letterSpacing: '0.1em', color: '#f87171',
+                letterSpacing: '0.1em', color: 'var(--red)',
                 textTransform: 'uppercase' as const, display: 'block', marginBottom: '4px',
               }}>
                 Struggling
               </span>
               {strugglingFactors.slice(0, 3).map((item, i) => (
                 <div key={i} style={{
-                  fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontFamily: PROSE_FONT,
-                  lineHeight: 1.5, paddingLeft: '8px', borderLeft: '2px solid rgba(248,113,113,0.3)',
+                  fontSize: '10px', color: 'var(--text-secondary)', fontFamily: PROSE_FONT,
+                  lineHeight: 1.5, paddingLeft: '8px', borderLeft: '2px solid rgba(239,68,68,0.3)',
                   marginBottom: '3px',
                 }}>
                   {item}
@@ -181,7 +181,7 @@ export default function TradeIntelligence({ brief }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' as const }}>
               <span style={{
                 fontFamily: PROSE_FONT, fontSize: '9px', fontWeight: 600,
-                letterSpacing: '0.1em', color: '#5a5a78',
+                letterSpacing: '0.1em', color: 'var(--text-dim)',
                 textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
               }}>
                 Most Traded
@@ -189,8 +189,8 @@ export default function TradeIntelligence({ brief }: Props) {
               {mostTraded.map(({ ticker }) => (
                 <span key={ticker} style={{
                   fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
-                  background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
                   fontFamily: DATA_FONT, fontWeight: 600,
                 }}>
                   {ticker}
@@ -204,7 +204,7 @@ export default function TradeIntelligence({ brief }: Props) {
       {/* Empty state note */}
       {!hasData && (
         <p style={{
-          fontSize: '10px', color: '#5a5a78', fontStyle: 'italic',
+          fontSize: '10px', color: 'var(--text-dim)', fontStyle: 'italic',
           fontFamily: PROSE_FONT, margin: '12px 0 0 0',
         }}>
           Trade history builds as positions are closed

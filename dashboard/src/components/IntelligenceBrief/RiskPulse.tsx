@@ -2,27 +2,27 @@
 
 import type { IntelligenceBriefData } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 const SEVERITY_COLOR: Record<string, string> = {
-  critical: "#f87171",
+  critical: "var(--red)",
   high: "#f97316",
-  medium: "#fbbf24",
+  medium: "var(--amber)",
   low: "#60a5fa",
   info: "#60a5fa",
 };
 
 function scoreColor(score: number): string {
-  if (score <= 30) return "#34d399";
-  if (score <= 60) return "#fbbf24";
-  return "#f87171";
+  if (score <= 30) return "var(--green)";
+  if (score <= 60) return "var(--amber)";
+  return "var(--red)";
 }
 
 function scoreTint(score: number): string {
-  if (score <= 30) return "rgba(52,211,153,0.04)";
-  if (score <= 60) return "rgba(251,191,36,0.04)";
-  return "rgba(248,113,113,0.04)";
+  if (score <= 30) return "var(--green-dim)";
+  if (score <= 60) return "var(--amber-dim)";
+  return "var(--red-dim)";
 }
 
 function scoreLabel(score: number): string {
@@ -32,9 +32,9 @@ function scoreLabel(score: number): string {
 }
 
 function statusColor(status: string): string {
-  if (status === "OK") return "#34d399";
-  if (status === "WARNING") return "#fbbf24";
-  return "#f87171";
+  if (status === "OK") return "var(--green)";
+  if (status === "WARNING") return "var(--amber)";
+  return "var(--red)";
 }
 
 function SectionHeader({ label, color, badge }: { label: string; color?: string; badge?: string }) {
@@ -45,7 +45,7 @@ function SectionHeader({ label, color, badge }: { label: string; color?: string;
         fontFamily: PROSE_FONT,
         fontWeight: 600,
         letterSpacing: "0.1em",
-        color: color ?? "#5a5a78",
+        color: color ?? "var(--text-dim)",
         textTransform: "uppercase" as const,
         whiteSpace: "nowrap" as const,
       }}>
@@ -58,13 +58,13 @@ function SectionHeader({ label, color, badge }: { label: string; color?: string;
           fontWeight: 600,
           padding: "1px 6px",
           borderRadius: "3px",
-          background: "rgba(255,255,255,0.06)",
-          color: "rgba(255,255,255,0.4)",
+          background: "var(--bg-elevated)",
+          color: "var(--text-muted)",
         }}>
           {badge}
         </span>
       )}
-      <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)" }} />
+      <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--border) 0%, transparent 100%)" }} />
     </div>
   );
 }
@@ -121,7 +121,7 @@ export default function RiskPulse({ brief }: Props) {
           fontFamily: PROSE_FONT,
           fontWeight: 500,
           letterSpacing: "0.08em",
-          color: "#4a4a68",
+          color: "var(--text-dim)",
           textTransform: "uppercase" as const,
         }}>
           RISK SCORE
@@ -152,24 +152,24 @@ export default function RiskPulse({ brief }: Props) {
               const pct = Math.max(0, Math.min(100, comp.score));
               return (
                 <div key={comp.name} style={{
-                  background: "rgba(255,255,255,0.028)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderTop: "1px solid rgba(255,255,255,0.11)",
-                  borderRadius: "8px",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderTop: "1px solid var(--border-hover)",
+                  borderRadius: "var(--radius)",
                   padding: "16px 20px",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
                 }}>
                   <div style={{
                     fontSize: "11px",
                     fontFamily: PROSE_FONT,
-                    color: "#9090b0",
+                    color: "var(--text-secondary)",
                     marginBottom: "10px",
                   }}>
                     {comp.name}
                   </div>
                   <div style={{
                     height: "4px",
-                    background: "rgba(255,255,255,0.06)",
+                    background: "var(--bg-elevated)",
                     borderRadius: "2px",
                     marginBottom: "8px",
                   }}>
@@ -201,10 +201,10 @@ export default function RiskPulse({ brief }: Props) {
         <div style={{
           padding: "10px 14px",
           borderRadius: "6px",
-          background: "rgba(52,211,153,0.05)",
-          border: "1px solid rgba(52,211,153,0.12)",
+          background: "var(--green-dim)",
+          border: "1px solid rgba(34,197,94,0.12)",
         }}>
-          <span style={{ fontSize: "12px", fontFamily: PROSE_FONT, color: "rgba(52,211,153,0.7)" }}>
+          <span style={{ fontSize: "12px", fontFamily: PROSE_FONT, color: "var(--green)" }}>
             &#10003; No active warnings
           </span>
         </div>
@@ -220,19 +220,19 @@ export default function RiskPulse({ brief }: Props) {
               const isDanger = w.severity === "critical" || w.severity === "high";
               return (
                 <div key={w.id} style={isDanger ? {
-                  background: "rgba(248,113,113,0.05)",
-                  border: "1px solid rgba(248,113,113,0.2)",
-                  borderTop: "1px solid rgba(248,113,113,0.3)",
-                  borderLeft: "3px solid rgba(248,113,113,0.7)",
-                  borderRadius: "8px",
+                  background: "var(--red-dim)",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  borderTop: "1px solid rgba(239,68,68,0.3)",
+                  borderLeft: "3px solid rgba(239,68,68,0.7)",
+                  borderRadius: "var(--radius)",
                   padding: "14px 18px",
                 } : {
-                  background: "rgba(255,255,255,0.028)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderTop: "1px solid rgba(255,255,255,0.11)",
-                  borderRadius: "8px",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderTop: "1px solid var(--border-hover)",
+                  borderRadius: "var(--radius)",
                   padding: "14px 18px",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                     <span style={{
@@ -247,14 +247,14 @@ export default function RiskPulse({ brief }: Props) {
                     <span style={{
                       fontSize: "12px",
                       fontWeight: 600,
-                      color: "#e8e8f8",
+                      color: "var(--text-primary)",
                     }}>
                       {w.title}
                     </span>
                   </div>
                   <div style={{
                     fontSize: "11px",
-                    color: "rgba(255,255,255,0.5)",
+                    color: "var(--text-secondary)",
                     lineHeight: 1.5,
                   }}>
                     {w.description}
@@ -276,9 +276,9 @@ export default function RiskPulse({ brief }: Props) {
                 fontSize: "10px",
                 padding: "2px 8px",
                 borderRadius: "4px",
-                background: "rgba(249,115,22,0.12)",
-                color: "#f97316",
-                border: "1px solid rgba(249,115,22,0.2)",
+                background: "var(--amber-dim)",
+                color: "var(--amber)",
+                border: "1px solid rgba(245,158,11,0.2)",
                 fontFamily: DATA_FONT,
                 fontWeight: 600,
               }}>
@@ -297,10 +297,10 @@ export default function RiskPulse({ brief }: Props) {
             {recommendations.map((r, i) => (
               <div key={i} style={{
                 padding: "10px 14px",
-                borderLeft: "2px solid rgba(124,92,252,0.3)",
+                borderLeft: "2px solid rgba(139,92,246,0.3)",
                 fontSize: "12px",
                 fontFamily: PROSE_FONT,
-                color: "rgba(255,255,255,0.6)",
+                color: "var(--text-secondary)",
                 lineHeight: 1.6,
               }}>
                 {r}

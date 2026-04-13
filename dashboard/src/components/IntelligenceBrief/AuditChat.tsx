@@ -4,8 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api";
 import type { ChatMessage } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 // ---------- FormattedText (markdown-lite: bold **text**, newlines) ----------
 
@@ -19,7 +19,7 @@ function FormattedText({ text }: { text: string }) {
         const rendered = parts.map((p, j) => {
           if (p.startsWith("**") && p.endsWith("**")) {
             return (
-              <strong key={j} style={{ color: "#e8e8f8", fontWeight: 600 }}>
+              <strong key={j} style={{ color: "var(--text-primary)", fontWeight: 600 }}>
                 {p.slice(2, -2)}
               </strong>
             );
@@ -31,7 +31,7 @@ function FormattedText({ text }: { text: string }) {
             margin: "0 0 2px",
             fontSize: "13px",
             fontFamily: PROSE_FONT,
-            color: "#d8d8f0",
+            color: "var(--text-secondary)",
           }}>
             {rendered}
           </p>
@@ -67,20 +67,20 @@ function AuditBrief({ portfolioId }: { portfolioId: string }) {
     return (
       <div style={{
         margin: "20px 24px 0",
-        background: "rgba(124,92,252,0.06)",
-        border: "1px solid rgba(124,92,252,0.22)",
-        borderTop: "1px solid rgba(124,92,252,0.35)",
-        borderLeft: "4px solid #7c5cfc",
-        borderRadius: "10px",
+        background: "var(--accent-dim)",
+        border: "1px solid rgba(139,92,246,0.22)",
+        borderTop: "1px solid rgba(139,92,246,0.35)",
+        borderLeft: "4px solid var(--accent)",
+        borderRadius: "var(--radius-lg)",
         padding: "20px 24px",
-        boxShadow: "inset 0 1px 0 rgba(124,92,252,0.2), 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(124,92,252,0.08)",
+        boxShadow: "inset 0 1px 0 rgba(139,92,246,0.2), 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(139,92,246,0.08)",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
           <span style={{
             fontSize: "9px", letterSpacing: "0.12em", fontWeight: 700,
-            background: "rgba(124,92,252,0.2)", color: "#7c5cfc",
-            border: "1px solid rgba(124,92,252,0.3)", borderRadius: "3px",
+            background: "var(--accent-dim)", color: "var(--accent)",
+            border: "1px solid rgba(139,92,246,0.3)", borderRadius: "3px",
             padding: "2px 8px", fontFamily: DATA_FONT,
           }}>
             GSCOTT
@@ -109,16 +109,16 @@ function AuditBrief({ portfolioId }: { portfolioId: string }) {
     return (
       <div style={{
         margin: "20px 24px 0",
-        background: "rgba(124,92,252,0.06)",
-        border: "1px solid rgba(124,92,252,0.22)",
-        borderTop: "1px solid rgba(124,92,252,0.35)",
-        borderLeft: "4px solid #7c5cfc",
-        borderRadius: "10px",
+        background: "var(--accent-dim)",
+        border: "1px solid rgba(139,92,246,0.22)",
+        borderTop: "1px solid rgba(139,92,246,0.35)",
+        borderLeft: "4px solid var(--accent)",
+        borderRadius: "var(--radius-lg)",
         padding: "20px 24px",
-        boxShadow: "inset 0 1px 0 rgba(124,92,252,0.2), 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(124,92,252,0.08)",
+        boxShadow: "inset 0 1px 0 rgba(139,92,246,0.2), 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(139,92,246,0.08)",
         flexShrink: 0,
       }}>
-        <span style={{ fontSize: "12px", color: "#f87171", fontFamily: PROSE_FONT }}>
+        <span style={{ fontSize: "12px", color: "var(--red)", fontFamily: PROSE_FONT }}>
           {error}
         </span>
       </div>
@@ -152,13 +152,13 @@ function AuditBrief({ portfolioId }: { portfolioId: string }) {
           GSCOTT
         </span>
         <span style={{
-          fontSize: "10px", color: "rgba(255,255,255,0.5)",
+          fontSize: "10px", color: "var(--text-secondary)",
           letterSpacing: "0.1em", marginLeft: "8px", fontFamily: PROSE_FONT,
         }}>
           PORTFOLIO AUDIT
         </span>
         <span style={{
-          fontSize: "9px", color: "rgba(255,255,255,0.2)",
+          fontSize: "9px", color: "var(--text-dim)",
           marginLeft: "auto", fontFamily: PROSE_FONT,
         }}>
           &middot; ask follow-up questions below
@@ -226,7 +226,7 @@ export default function AuditChat({ portfolioId }: Props) {
       <AuditBrief portfolioId={portfolioId} />
 
       {/* Divider */}
-      <div style={{ margin: "0 24px", borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: "20px" }} />
+      <div style={{ margin: "0 24px", borderTop: "1px solid var(--border)", marginTop: "20px" }} />
 
       {/* Chat messages area */}
       <div
@@ -253,7 +253,7 @@ export default function AuditChat({ portfolioId }: Props) {
             <span style={{
               fontSize: "10px",
               letterSpacing: "0.12em",
-              color: "rgba(255,255,255,0.25)",
+              color: "var(--text-dim)",
               fontFamily: PROSE_FONT,
             }}>
               ASK GSCOTT ANYTHING ABOUT THIS PORTFOLIO
@@ -275,9 +275,9 @@ export default function AuditChat({ portfolioId }: Props) {
                     fontSize: "11px",
                     padding: "6px 14px",
                     borderRadius: "20px",
-                    background: hoveredSuggestion === idx ? "rgba(124,92,252,0.15)" : "rgba(124,92,252,0.08)",
-                    border: hoveredSuggestion === idx ? "1px solid rgba(124,92,252,0.35)" : "1px solid rgba(124,92,252,0.2)",
-                    color: hoveredSuggestion === idx ? "#917aff" : "rgba(255,255,255,0.5)",
+                    background: hoveredSuggestion === idx ? "var(--accent-dim)" : "rgba(139,92,246,0.06)",
+                    border: hoveredSuggestion === idx ? "1px solid rgba(139,92,246,0.35)" : "1px solid rgba(139,92,246,0.2)",
+                    color: hoveredSuggestion === idx ? "var(--accent)" : "var(--text-secondary)",
                     cursor: "pointer",
                     transition: "all 150ms ease",
                     fontFamily: PROSE_FONT,
@@ -301,14 +301,14 @@ export default function AuditChat({ portfolioId }: Props) {
                 }}
               >
                 <div style={msg.role === "user" ? {
-                  background: "rgba(124,92,252,0.1)",
-                  border: "1px solid rgba(124,92,252,0.18)",
+                  background: "var(--bg-elevated)",
+                  border: "1px solid var(--border)",
                   borderRadius: "12px 12px 4px 12px",
                   padding: "10px 14px",
                 } : {
-                  background: "rgba(255,255,255,0.028)",
-                  border: "1px solid rgba(255,255,255,0.07)",
-                  borderLeft: "3px solid rgba(124,92,252,0.5)",
+                  background: "var(--bg-surface)",
+                  border: "1px solid var(--border)",
+                  borderLeft: "2px solid var(--accent)",
                   borderRadius: "4px 12px 12px 12px",
                   padding: "12px 16px",
                 }}>
@@ -318,7 +318,7 @@ export default function AuditChat({ portfolioId }: Props) {
                     <p style={{
                       fontSize: "13px",
                       fontFamily: PROSE_FONT,
-                      color: "#e2e2f0",
+                      color: "var(--text-primary)",
                       lineHeight: 1.5,
                       margin: 0,
                     }}>
@@ -328,7 +328,7 @@ export default function AuditChat({ portfolioId }: Props) {
                 </div>
                 <span style={{
                   fontSize: "9px",
-                  color: msg.role === "user" ? "rgba(255,255,255,0.2)" : "rgba(124,92,252,0.5)",
+                  color: msg.role === "user" ? "var(--text-dim)" : "rgba(139,92,246,0.6)",
                   marginTop: "3px",
                   letterSpacing: "0.06em",
                   fontFamily: PROSE_FONT,
@@ -353,14 +353,14 @@ export default function AuditChat({ portfolioId }: Props) {
                         width: "5px",
                         height: "5px",
                         borderRadius: "50%",
-                        background: "rgba(124,92,252,0.6)",
+                        background: "rgba(139,92,246,0.6)",
                         animation: `bounce 0.9s ease-in-out ${i * 0.15}s infinite`,
                       }} />
                     ))}
                   </div>
                   <span style={{
                     fontSize: "10px",
-                    color: "rgba(255,255,255,0.25)",
+                    color: "var(--text-dim)",
                     fontFamily: PROSE_FONT,
                   }}>
                     GScott is thinking...
@@ -377,7 +377,7 @@ export default function AuditChat({ portfolioId }: Props) {
       <div style={{
         padding: "12px 24px 20px",
         flexShrink: 0,
-        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderTop: "1px solid var(--border)",
         display: "flex",
         gap: "10px",
         alignItems: "flex-end",
@@ -396,10 +396,10 @@ export default function AuditChat({ portfolioId }: Props) {
           style={{
             flex: 1,
             resize: "none" as const,
-            background: focusedInput ? "rgba(124,92,252,0.04)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${focusedInput ? "rgba(124,92,252,0.5)" : "rgba(255,255,255,0.1)"}`,
-            borderRadius: "8px",
-            color: "#e2e2f0",
+            background: "var(--bg-elevated)",
+            border: `1px solid ${focusedInput ? "var(--accent)" : "var(--border)"}`,
+            borderRadius: "var(--radius)",
+            color: "var(--text-primary)",
             fontSize: "13px",
             fontFamily: PROSE_FONT,
             padding: "10px 14px",
@@ -417,11 +417,11 @@ export default function AuditChat({ portfolioId }: Props) {
           onMouseLeave={() => setHoveredSend(false)}
           style={{
             background: sendDisabled
-              ? "rgba(124,92,252,0.12)"
-              : hoveredSend ? "#917aff" : "#7c5cfc",
-            color: sendDisabled ? "rgba(255,255,255,0.3)" : "#fff",
+              ? "var(--accent-dim)"
+              : hoveredSend ? "#917aff" : "var(--accent-dim)",
+            color: sendDisabled ? "var(--text-dim)" : "var(--accent)",
             border: "none",
-            borderRadius: "8px",
+            borderRadius: "var(--radius)",
             padding: "10px 18px",
             fontSize: "12px",
             fontFamily: PROSE_FONT,
@@ -430,7 +430,7 @@ export default function AuditChat({ portfolioId }: Props) {
             cursor: sendDisabled ? "not-allowed" : "pointer",
             transition: "all 150ms ease",
             flexShrink: 0,
-            boxShadow: (!sendDisabled && hoveredSend) ? "0 0 16px rgba(124,92,252,0.5)" : "none",
+            boxShadow: (!sendDisabled && hoveredSend) ? "0 0 16px rgba(139,92,246,0.5)" : "none",
           }}
         >
           SEND

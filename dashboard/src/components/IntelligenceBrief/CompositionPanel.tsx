@@ -2,20 +2,20 @@
 
 import type { IntelligenceBriefData } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 function SectionHeader({ label, color }: { label: string; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
       <span style={{
         fontSize: '10px', fontFamily: PROSE_FONT,
-        fontWeight: 600, letterSpacing: '0.1em', color: color ?? '#5a5a78',
+        fontWeight: 600, letterSpacing: '0.1em', color: color ?? 'var(--text-dim)',
         textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
       }}>
         {label}
       </span>
-      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)' }} />
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, var(--border) 0%, transparent 100%)' }} />
     </div>
   );
 }
@@ -38,13 +38,13 @@ export default function CompositionPanel({ brief }: Props) {
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.028)',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderTop: '1px solid rgba(255,255,255,0.11)',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border)',
+      borderTop: '1px solid var(--border-hover)',
       borderLeft: '3px solid #60a5fa',
-      borderRadius: '8px',
+      borderRadius: 'var(--radius)',
       padding: '16px 20px',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
     }}>
       <SectionHeader label="Composition" color="#60a5fa" />
 
@@ -54,7 +54,7 @@ export default function CompositionPanel({ brief }: Props) {
           padding: '20px 0',
         }}>
           <span style={{
-            fontSize: '10px', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.2)',
+            fontSize: '10px', letterSpacing: '0.15em', color: 'var(--text-dim)',
             fontFamily: PROSE_FONT, fontWeight: 600, textTransform: 'uppercase' as const,
           }}>
             No Positions
@@ -67,14 +67,14 @@ export default function CompositionPanel({ brief }: Props) {
             {visibleSectors.map(({ sector, pct, count }) => (
               <div key={sector} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{
-                  fontSize: '10px', fontFamily: PROSE_FONT, color: 'rgba(255,255,255,0.7)',
+                  fontSize: '10px', fontFamily: PROSE_FONT, color: 'var(--text-secondary)',
                   width: '90px', textOverflow: 'ellipsis', overflow: 'hidden',
                   whiteSpace: 'nowrap' as const, flexShrink: 0,
                 }}>
                   {sector}
                 </span>
                 <div style={{
-                  flex: 1, height: '4px', background: 'rgba(255,255,255,0.06)',
+                  flex: 1, height: '4px', background: 'var(--bg-elevated)',
                   borderRadius: '2px', overflow: 'hidden',
                 }}>
                   <div style={{
@@ -84,13 +84,13 @@ export default function CompositionPanel({ brief }: Props) {
                   }} />
                 </div>
                 <span style={{
-                  fontSize: '10px', fontFamily: DATA_FONT, color: 'rgba(255,255,255,0.5)',
+                  fontSize: '10px', fontFamily: DATA_FONT, color: 'var(--text-secondary)',
                   width: '36px', textAlign: 'right' as const, flexShrink: 0,
                 }}>
                   {pct.toFixed(0)}%
                 </span>
                 <span style={{
-                  fontSize: '9px', color: 'rgba(255,255,255,0.3)', marginLeft: '4px',
+                  fontSize: '9px', color: 'var(--text-dim)', marginLeft: '4px',
                   fontFamily: DATA_FONT, flexShrink: 0,
                 }}>
                   ({count})
@@ -101,7 +101,7 @@ export default function CompositionPanel({ brief }: Props) {
 
           {hiddenCount > 0 && (
             <p style={{
-              fontSize: '10px', color: 'rgba(255,255,255,0.3)', fontFamily: PROSE_FONT,
+              fontSize: '10px', color: 'var(--text-dim)', fontFamily: PROSE_FONT,
               margin: '6px 0 0 0',
             }}>
               +{hiddenCount} more
@@ -114,8 +114,8 @@ export default function CompositionPanel({ brief }: Props) {
               {top3 > 60 && (
                 <span style={{
                   fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
-                  background: 'rgba(249,115,22,0.12)', color: '#f97316',
-                  border: '1px solid rgba(249,115,22,0.2)',
+                  background: 'var(--amber-dim)', color: 'var(--amber)',
+                  border: '1px solid rgba(245,158,11,0.2)',
                   fontFamily: DATA_FONT, fontWeight: 600,
                 }}>
                   {'\u26A0'} TOP 3: {top3.toFixed(0)}%
@@ -123,7 +123,7 @@ export default function CompositionPanel({ brief }: Props) {
               )}
               {nearStop.length > 0 && (
                 <span style={{
-                  fontSize: '10px', color: '#f97316', fontFamily: PROSE_FONT,
+                  fontSize: '10px', color: 'var(--amber)', fontFamily: PROSE_FONT,
                 }}>
                   {nearStop.length} near stop-loss
                 </span>

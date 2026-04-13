@@ -2,20 +2,20 @@
 
 import type { IntelligenceBriefData } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 function SectionHeader({ label, color }: { label: string; color?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
       <span style={{
         fontSize: '10px', fontFamily: PROSE_FONT,
-        fontWeight: 600, letterSpacing: '0.1em', color: color ?? '#5a5a78',
+        fontWeight: 600, letterSpacing: '0.1em', color: color ?? 'var(--text-dim)',
         textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
       }}>
         {label}
       </span>
-      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)' }} />
+      <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, var(--border) 0%, transparent 100%)' }} />
     </div>
   );
 }
@@ -52,17 +52,17 @@ export default function DnaCard({ brief }: Props) {
 
   return (
     <div style={{
-      background: 'rgba(0,0,0,0.25)',
-      border: '1px solid rgba(255,255,255,0.05)',
-      borderRadius: '8px',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius)',
       padding: '16px 20px',
       boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.4)',
     }}>
-      <SectionHeader label="Strategy DNA" color="#5a5a78" />
+      <SectionHeader label="Strategy DNA" color="var(--text-dim)" />
 
       {!hasConfig ? (
         <p style={{
-          fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontFamily: PROSE_FONT,
+          fontSize: '11px', color: 'var(--text-dim)', fontFamily: PROSE_FONT,
           margin: 0,
         }}>
           No config available
@@ -74,8 +74,8 @@ export default function DnaCard({ brief }: Props) {
             <div style={{ marginBottom: '12px' }}>
               <span style={{
                 fontSize: '10px', padding: '2px 8px', borderRadius: '4px',
-                background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
                 fontFamily: DATA_FONT,
               }}>
                 {tradingStyle}
@@ -86,7 +86,7 @@ export default function DnaCard({ brief }: Props) {
           {/* DNA prose */}
           {dna && (
             <p style={{
-              fontSize: '11px', fontFamily: PROSE_FONT, color: 'rgba(255,255,255,0.5)',
+              fontSize: '11px', fontFamily: PROSE_FONT, color: 'var(--text-secondary)',
               lineHeight: 1.6, marginBottom: '12px', marginTop: 0,
             }}>
               {dna}
@@ -99,23 +99,23 @@ export default function DnaCard({ brief }: Props) {
               {weightEntries.map(([factor, weight]) => (
                 <div key={factor} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{
-                    fontSize: '10px', fontFamily: PROSE_FONT, color: 'rgba(255,255,255,0.5)',
+                    fontSize: '10px', fontFamily: PROSE_FONT, color: 'var(--text-secondary)',
                     width: '90px', flexShrink: 0,
                   }}>
                     {formatFactor(factor)}
                   </span>
                   <div style={{
-                    flex: 1, height: '3px', background: 'rgba(255,255,255,0.06)',
+                    flex: 1, height: '3px', background: 'var(--bg-elevated)',
                     borderRadius: '2px', overflow: 'hidden',
                   }}>
                     <div style={{
                       height: '100%', borderRadius: '2px',
-                      background: 'rgba(124,92,252,0.5)',
+                      background: 'var(--accent)',
                       width: `${weight * 100}%`,
                     }} />
                   </div>
                   <span style={{
-                    fontSize: '10px', fontFamily: DATA_FONT, color: 'rgba(255,255,255,0.35)',
+                    fontSize: '10px', fontFamily: DATA_FONT, color: 'var(--text-muted)',
                     width: '32px', textAlign: 'right' as const, flexShrink: 0,
                   }}>
                     {(weight * 100).toFixed(0)}%
@@ -131,8 +131,8 @@ export default function DnaCard({ brief }: Props) {
               {etfs.map(etf => (
                 <span key={etf} style={{
                   fontSize: '9px', padding: '1px 5px', borderRadius: '3px',
-                  background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.35)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--bg-elevated)', color: 'var(--text-muted)',
+                  border: '1px solid var(--border)',
                   fontFamily: DATA_FONT,
                 }}>
                   {etf}

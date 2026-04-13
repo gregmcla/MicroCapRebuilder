@@ -15,7 +15,7 @@ import FactorIntelligence from "./FactorIntelligence";
 import AuditChat from "./AuditChat";
 import TradesTab from "./TradesTab";
 
-const FONT = "'JetBrains Mono', 'SF Mono', monospace";
+const FONT = "var(--font-mono)";
 
 interface Props {
   portfolioId: string;
@@ -33,17 +33,17 @@ function fmt(v: number | null | undefined, decimals = 1, suffix = ""): string {
 }
 
 function gradeColor(grade: string): string {
-  if (grade.startsWith("A")) return "#34d399";
+  if (grade.startsWith("A")) return "var(--green)";
   if (grade.startsWith("B")) return "#60a5fa";
-  if (grade.startsWith("C")) return "#fbbf24";
-  if (grade.startsWith("D") || grade.startsWith("F")) return "#f87171";
-  return "#9090b0";
+  if (grade.startsWith("C")) return "var(--amber)";
+  if (grade.startsWith("D") || grade.startsWith("F")) return "var(--red)";
+  return "var(--text-dim)";
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  critical: "#f87171",
+  critical: "var(--red)",
   high: "#f97316",
-  medium: "#fbbf24",
+  medium: "var(--amber)",
   info: "#60a5fa",
   low: "#60a5fa",
 };
@@ -54,10 +54,10 @@ function SectionHeader({ label, color }: { label: string; color?: string }) {
       <span
         style={{
           fontSize: "10px",
-          fontFamily: "system-ui",
+          fontFamily: "var(--font-sans)",
           fontWeight: 600,
           letterSpacing: "0.1em",
-          color: color ?? "#5a5a78",
+          color: color ?? "var(--text-dim)",
           textTransform: "uppercase" as const,
           whiteSpace: "nowrap" as const,
         }}
@@ -68,7 +68,7 @@ function SectionHeader({ label, color }: { label: string; color?: string }) {
         style={{
           flex: 1,
           height: "1px",
-          background: "linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)",
+          background: "linear-gradient(90deg, var(--border) 0%, transparent 100%)",
         }}
       />
     </div>
@@ -119,12 +119,12 @@ function Sparkline({ data }: { data: number[] }) {
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height: "100%" }}>
       <defs>
         <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(124,92,252,0.15)" />
+          <stop offset="0%" stopColor="rgba(139,92,246,0.15)" />
           <stop offset="100%" stopColor="transparent" />
         </linearGradient>
       </defs>
       <polygon points={fillPoints} fill="url(#sparkGrad)" />
-      <polyline points={polyline} fill="none" stroke="#7c5cfc" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+      <polyline points={polyline} fill="none" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -134,15 +134,15 @@ function Sparkline({ data }: { data: number[] }) {
 function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
   const score = brief?.risk?.overall_score ?? 0;
   const nearStop = brief?.positions_near_stop ?? [];
-  const borderColor = score <= 30 ? "#34d399" : score <= 60 ? "#fbbf24" : "#f87171";
+  const borderColor = score <= 30 ? "var(--green)" : score <= 60 ? "var(--amber)" : "var(--red)";
 
   return (
     <div
       style={{
         padding: "16px",
         borderRadius: "8px",
-        background: "rgba(255,255,255,0.028)",
-        border: "1px solid rgba(255,255,255,0.07)",
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border)",
         borderLeft: `3px solid ${borderColor}`,
       }}
     >
@@ -164,7 +164,7 @@ function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
             fontFamily: "system-ui",
             fontWeight: 500,
             letterSpacing: "0.08em",
-            color: "#5a5a78",
+            color: "var(--text-dim)",
             textTransform: "uppercase" as const,
           }}
         >
@@ -182,8 +182,8 @@ function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
             color: "#f97316",
             padding: "3px 8px",
             borderRadius: "999px",
-            background: "rgba(249,115,22,0.1)",
-            border: "1px solid rgba(249,115,22,0.3)",
+            background: "var(--amber-dim)",
+            border: "1px solid rgba(245,158,11,0.3)",
           }}
         >
           {nearStop.length} NEAR STOP
@@ -251,10 +251,10 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
     {
       key: "risk" as const,
       label: "RISK",
-      dot: (brief?.risk?.overall_score ?? 0) > 65 ? "#f87171" : null,
+      dot: (brief?.risk?.overall_score ?? 0) > 65 ? "var(--red)" : null,
     },
     { key: "factors" as const, label: "FACTORS", dot: null },
-    { key: "gscott" as const, label: "GSCOTT", dot: "#7c5cfc" },
+    { key: "gscott" as const, label: "GSCOTT", dot: "var(--accent)" },
     { key: "trades" as const, label: "TRADES", dot: null },
   ];
 
@@ -268,7 +268,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "rgba(8, 8, 16, 0.92)",
+          background: "rgba(2,6,23,0.94)",
           backdropFilter: "blur(48px) saturate(160%)",
           display: "flex",
           alignItems: "center",
@@ -283,14 +283,14 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
           style={{
             width: "min(1400px, calc(100vw - 48px))",
             height: "calc(100vh - 48px)",
-            background: "#0d0d1a",
-            border: "1px solid rgba(124,92,252,0.18)",
-            borderRadius: "12px",
+            background: "var(--bg-surface)",
+            border: "1px solid rgba(139,92,246,0.18)",
+            borderRadius: "var(--radius-lg)",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
             boxShadow:
-              "0 0 0 1px rgba(124,92,252,0.08), 0 48px 96px rgba(0,0,0,0.85), 0 0 160px rgba(124,92,252,0.05)",
+              "0 0 0 1px rgba(139,92,246,0.08), 0 48px 96px rgba(0,0,0,0.85), 0 0 160px rgba(139,92,246,0.05)",
             position: "relative",
           }}
         >
@@ -302,8 +302,8 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
               padding: "0 24px",
               display: "flex",
               alignItems: "center",
-              borderBottom: "1px solid rgba(255,255,255,0.07)",
-              background: "linear-gradient(180deg, rgba(124,92,252,0.06) 0%, transparent 100%)",
+              borderBottom: "1px solid var(--border)",
+              background: "linear-gradient(180deg, rgba(139,92,246,0.06) 0%, transparent 100%)",
             }}
           >
             {/* Left group: grade + name + regime */}
@@ -327,11 +327,11 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 <span
                   style={{
                     fontSize: "15px",
-                    fontFamily: FONT,
+                    fontFamily: "var(--font-mono)",
                     fontWeight: 600,
                     letterSpacing: "0.04em",
-                    color: "#e0d8ff",
-                    textShadow: "0 0 20px rgba(124,92,252,0.4)",
+                    color: "var(--text-primary)",
+                    textShadow: "0 0 20px rgba(139,92,246,0.4)",
                   }}
                 >
                   {portfolioName}
@@ -350,20 +350,20 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                       border: "1px solid",
                       ...(regime === "BULL"
                         ? {
-                            color: "#34d399",
-                            borderColor: "rgba(52,211,153,0.4)",
-                            background: "rgba(52,211,153,0.08)",
+                            color: "var(--green)",
+                            borderColor: "rgba(34,197,94,0.4)",
+                            background: "var(--green-dim)",
                           }
                         : regime === "BEAR"
                           ? {
-                              color: "#f87171",
-                              borderColor: "rgba(248,113,113,0.4)",
-                              background: "rgba(248,113,113,0.08)",
+                              color: "var(--red)",
+                              borderColor: "rgba(239,68,68,0.4)",
+                              background: "var(--red-dim)",
                             }
                           : {
-                              color: "#fbbf24",
-                              borderColor: "rgba(251,191,36,0.4)",
-                              background: "rgba(251,191,36,0.08)",
+                              color: "var(--amber)",
+                              borderColor: "rgba(245,158,11,0.4)",
+                              background: "var(--amber-dim)",
                             }),
                     }}
                   >
@@ -384,12 +384,12 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                   letterSpacing: "-0.01em",
                   ...(totalReturn != null && totalReturn >= 0
                     ? {
-                        background: "linear-gradient(135deg, #ffffff 0%, #c8c0ff 60%, #917aff 100%)",
+                        background: "linear-gradient(135deg, var(--text-primary) 0%, #c8c0ff 60%, var(--accent) 100%)",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                       }
                     : {
-                        background: "linear-gradient(135deg, #ffffff 0%, #ffb0b0 60%, #f87171 100%)",
+                        background: "linear-gradient(135deg, var(--text-primary) 0%, #ffb0b0 60%, var(--red) 100%)",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                       }),
@@ -403,7 +403,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 style={{
                   width: "1px",
                   height: "28px",
-                  background: "rgba(255,255,255,0.08)",
+                  background: "var(--border)",
                   margin: "0 20px",
                 }}
               />
@@ -411,11 +411,11 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
               {/* Stat pairs */}
               <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
                 <StatPair label="SHARPE" value={fmt(sharpe, 2)} />
-                <StatPair label="MAX DD" value={fmt(maxDD, 1, "%")} color="#f87171" />
+                <StatPair label="MAX DD" value={fmt(maxDD, 1, "%")} color="var(--red)" />
                 <StatPair
                   label="ALPHA"
                   value={fmt(alpha, 1, "%")}
-                  color={alpha != null && alpha >= 0 ? "#34d399" : "#f87171"}
+                  color={alpha != null && alpha >= 0 ? "var(--green)" : "var(--red)"}
                 />
               </div>
 
@@ -428,11 +428,11 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                   width: "28px",
                   height: "28px",
                   borderRadius: "6px",
-                  background: closeHover ? "rgba(248,113,113,0.1)" : "transparent",
+                  background: closeHover ? "var(--red-dim)" : "transparent",
                   border: closeHover
-                    ? "1px solid rgba(248,113,113,0.3)"
-                    : "1px solid rgba(255,255,255,0.08)",
-                  color: closeHover ? "#f87171" : "#5a5a78",
+                    ? "1px solid rgba(239,68,68,0.3)"
+                    : "1px solid var(--border)",
+                  color: closeHover ? "var(--red)" : "var(--text-dim)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -452,7 +452,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
             <div
               style={{
                 padding: "8px 24px",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: "1px solid var(--border)",
                 display: "flex",
                 flexDirection: "column",
                 gap: "6px",
@@ -466,9 +466,9 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                     key={w.id ?? i}
                     style={{
                       padding: "8px 12px",
-                      borderRadius: "6px",
+                      borderRadius: "var(--radius)",
                       borderLeft: `3px solid ${sc}`,
-                      background: "rgba(255,255,255,0.02)",
+                      background: "var(--bg-elevated)",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center" }}>
@@ -487,7 +487,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                         style={{
                           fontSize: "11px",
                           fontWeight: 600,
-                          color: "#e2e8f0",
+                          color: "var(--text-primary)",
                           marginLeft: "8px",
                         }}
                       >
@@ -498,7 +498,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                       <div
                         style={{
                           fontSize: "10px",
-                          color: "rgba(255,255,255,0.5)",
+                          color: "var(--text-muted)",
                           lineHeight: 1.5,
                           marginTop: "2px",
                         }}
@@ -513,7 +513,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 <span
                   style={{
                     fontSize: "10px",
-                    color: "rgba(255,255,255,0.3)",
+                    color: "var(--text-dim)",
                     paddingLeft: "12px",
                   }}
                 >
@@ -524,15 +524,14 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
           )}
 
           {/* ── Tab Strip ──────────────────────────────────────────────── */}
-          <div style={{ padding: "0 24px", flexShrink: 0 }}>
+          <div style={{ padding: "0 24px", flexShrink: 0, borderBottom: "1px solid var(--border)" }}>
             <div
               style={{
                 display: "inline-flex",
                 gap: "2px",
                 padding: "4px",
-                background: "rgba(0,0,0,0.3)",
-                borderRadius: "8px",
-                border: "1px solid rgba(255,255,255,0.06)",
+                background: "transparent",
+                borderRadius: "var(--radius)",
                 margin: "8px 0",
               }}
             >
@@ -546,28 +545,28 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                       active
                         ? {
                             padding: "7px 16px",
-                            borderRadius: "6px",
+                            borderRadius: "var(--radius)",
                             fontSize: "13px",
                             fontWeight: 600,
                             letterSpacing: "0.02em",
-                            fontFamily: "system-ui",
-                            color: "#c8bcff",
-                            background: "rgba(124,92,252,0.15)",
-                            border: "1px solid rgba(124,92,252,0.25)",
+                            fontFamily: "var(--font-sans)",
+                            color: "var(--text-primary)",
+                            background: "var(--accent-dim)",
+                            border: "1px solid rgba(139,92,246,0.25)",
                             cursor: "pointer",
-                            boxShadow: "0 0 12px rgba(124,92,252,0.2)",
+                            boxShadow: "0 0 12px rgba(139,92,246,0.15)",
                             display: "flex",
                             alignItems: "center",
                             gap: "6px",
                           }
                         : {
                             padding: "7px 16px",
-                            borderRadius: "6px",
+                            borderRadius: "var(--radius)",
                             fontSize: "13px",
                             fontWeight: 500,
                             letterSpacing: "0.02em",
-                            fontFamily: "system-ui",
-                            color: "#5a5a78",
+                            fontFamily: "var(--font-sans)",
+                            color: "var(--text-muted)",
                             background: "transparent",
                             border: "none",
                             cursor: "pointer",
@@ -636,10 +635,10 @@ function StatPair({ label, value, color }: { label: string; value: string; color
       <span
         style={{
           fontSize: "10px",
-          fontFamily: "system-ui",
+          fontFamily: "var(--font-sans)",
           fontWeight: 500,
           letterSpacing: "0.08em",
-          color: "#4a4a68",
+          color: "var(--text-dim)",
           textTransform: "uppercase" as const,
         }}
       >
@@ -648,9 +647,9 @@ function StatPair({ label, value, color }: { label: string; value: string; color
       <span
         style={{
           fontSize: "14px",
-          fontFamily: FONT,
+          fontFamily: "var(--font-mono)",
           fontWeight: 500,
-          color: color ?? "#e2e2f0",
+          color: color ?? "var(--text-primary)",
         }}
       >
         {value}
@@ -677,7 +676,7 @@ function PerformanceTab({
         className="ib-scroll"
         style={{
           width: "65%",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
+          borderRight: "1px solid var(--border)",
           display: "flex",
           flexDirection: "column",
           overflowY: "auto",
@@ -690,13 +689,13 @@ function PerformanceTab({
           <div
             style={{
               fontSize: "13px",
-              fontFamily: "system-ui",
-              color: "rgba(255,255,255,0.7)",
+              fontFamily: "var(--font-sans)",
+              color: "var(--text-secondary)",
               lineHeight: 1.6,
               padding: "12px 16px",
-              background: "rgba(124,92,252,0.04)",
-              borderRadius: "8px",
-              borderLeft: "3px solid rgba(124,92,252,0.4)",
+              background: "var(--accent-dim)",
+              borderRadius: "var(--radius)",
+              borderLeft: "3px solid rgba(139,92,246,0.4)",
             }}
           >
             {brief.health.diagnosis}
@@ -708,10 +707,10 @@ function PerformanceTab({
           style={{
             width: "100%",
             height: "140px",
-            background: "rgba(255,255,255,0.028)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderTop: "1px solid rgba(255,255,255,0.11)",
-            borderRadius: "8px",
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border)",
+            borderTop: "1px solid var(--border-hover)",
+            borderRadius: "var(--radius)",
             padding: "12px 16px",
             position: "relative",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
@@ -763,12 +762,12 @@ function PerformanceTab({
                     display: "flex",
                     gap: "8px",
                     fontSize: "12px",
-                    fontFamily: "system-ui",
-                    color: "rgba(255,255,255,0.6)",
+                    fontFamily: "var(--font-sans)",
+                    color: "var(--text-secondary)",
                     lineHeight: 1.5,
                   }}
                 >
-                  <span style={{ color: "#7c5cfc", flexShrink: 0, fontWeight: 700 }}>{"\u203A"}</span>
+                  <span style={{ color: "var(--accent)", flexShrink: 0, fontWeight: 700 }}>{"\u203A"}</span>
                   <span>{rec}</span>
                 </div>
               ))}
@@ -779,9 +778,9 @@ function PerformanceTab({
         {/* DNA Card (recessed) */}
         <div
           style={{
-            background: "rgba(0,0,0,0.2)",
-            borderRadius: "8px",
-            border: "1px solid rgba(255,255,255,0.04)",
+            background: "var(--bg-elevated)",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--border)",
             padding: "16px",
           }}
         >
@@ -806,8 +805,8 @@ const shimmerStyle = `
   }
   .ib-scroll::-webkit-scrollbar { width: 4px; }
   .ib-scroll::-webkit-scrollbar-track { background: transparent; }
-  .ib-scroll::-webkit-scrollbar-thumb { background: rgba(124,92,252,0.25); border-radius: 2px; }
-  .ib-scroll::-webkit-scrollbar-thumb:hover { background: rgba(124,92,252,0.45); }
+  .ib-scroll::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.25); border-radius: 2px; }
+  .ib-scroll::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.45); }
 `;
 
 const skeletonBase: React.CSSProperties = {
@@ -850,8 +849,8 @@ function LoadingState() {
       <p
         style={{
           fontSize: "11px",
-          fontFamily: FONT,
-          color: "rgba(255,255,255,0.3)",
+          fontFamily: "var(--font-mono)",
+          color: "var(--text-dim)",
           letterSpacing: "0.08em",
         }}
       >

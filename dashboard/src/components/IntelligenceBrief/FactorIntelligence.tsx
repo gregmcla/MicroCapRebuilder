@@ -2,15 +2,15 @@
 
 import type { IntelligenceBriefData } from "../../lib/types";
 
-const DATA_FONT = "'JetBrains Mono', 'SF Mono', monospace";
-const PROSE_FONT = "-apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif";
+const DATA_FONT = "var(--font-mono)";
+const PROSE_FONT = "var(--font-sans)";
 
 const FACTOR_COLORS: Record<string, string> = {
-  price_momentum: "#7c5cfc",
-  earnings_growth: "#34d399",
+  price_momentum: "var(--accent)",
+  earnings_growth: "var(--green)",
   quality: "#5ce0d6",
-  volume: "#fbbf24",
-  volatility: "#f87171",
+  volume: "var(--amber)",
+  volatility: "var(--red)",
   value_timing: "#a78bfa",
 };
 
@@ -22,13 +22,13 @@ function SectionHeader({ label }: { label: string }) {
         fontFamily: PROSE_FONT,
         fontWeight: 600,
         letterSpacing: "0.1em",
-        color: "#5a5a78",
+        color: "var(--text-dim)",
         textTransform: "uppercase" as const,
         whiteSpace: "nowrap" as const,
       }}>
         {label}
       </span>
-      <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, rgba(255,255,255,0.08) 0%, transparent 100%)" }} />
+      <div style={{ flex: 1, height: "1px", background: "linear-gradient(90deg, var(--border) 0%, transparent 100%)" }} />
     </div>
   );
 }
@@ -54,24 +54,24 @@ function trendPill(trend: string) {
   if (trend === "improving") {
     return {
       label: "\u25B2",
-      bg: "rgba(52,211,153,0.12)",
-      color: "#34d399",
-      border: "1px solid rgba(52,211,153,0.2)",
+      bg: "var(--green-dim)",
+      color: "var(--green)",
+      border: "1px solid rgba(34,197,94,0.2)",
     };
   }
   if (trend === "declining") {
     return {
       label: "\u25BC",
-      bg: "rgba(248,113,113,0.12)",
-      color: "#f87171",
-      border: "1px solid rgba(248,113,113,0.2)",
+      bg: "var(--red-dim)",
+      color: "var(--red)",
+      border: "1px solid rgba(239,68,68,0.2)",
     };
   }
   return {
     label: "\u2192",
-    bg: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.4)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    bg: "var(--bg-elevated)",
+    color: "var(--text-muted)",
+    border: "1px solid var(--border)",
   };
 }
 
@@ -79,9 +79,9 @@ function confidenceBadge(confidence: string) {
   const c = confidence.toUpperCase();
   if (c === "HIGH") {
     return {
-      bg: "rgba(52,211,153,0.12)",
-      color: "#34d399",
-      border: "1px solid rgba(52,211,153,0.2)",
+      bg: "var(--green-dim)",
+      color: "var(--green)",
+      border: "1px solid rgba(34,197,94,0.2)",
     };
   }
   if (c === "MEDIUM") {
@@ -92,9 +92,9 @@ function confidenceBadge(confidence: string) {
     };
   }
   return {
-    bg: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.4)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    bg: "var(--bg-elevated)",
+    color: "var(--text-muted)",
+    border: "1px solid var(--border)",
   };
 }
 
@@ -126,7 +126,7 @@ export default function FactorIntelligence({ brief }: Props) {
           <span style={{
             fontSize: "11px",
             letterSpacing: "0.12em",
-            color: "rgba(255,255,255,0.4)",
+            color: "var(--text-muted)",
             fontFamily: PROSE_FONT,
             fontWeight: 600,
           }}>
@@ -134,7 +134,7 @@ export default function FactorIntelligence({ brief }: Props) {
           </span>
           <span style={{
             fontSize: "12px",
-            color: "rgba(255,255,255,0.25)",
+            color: "var(--text-dim)",
             textAlign: "center" as const,
             maxWidth: "340px",
             lineHeight: 1.6,
@@ -148,12 +148,12 @@ export default function FactorIntelligence({ brief }: Props) {
       {/* Section 1: Factor Performance Table */}
       {factors.length > 0 && (
         <div style={{
-          background: "rgba(255,255,255,0.028)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          borderTop: "1px solid rgba(255,255,255,0.11)",
-          borderRadius: "8px",
+          background: "var(--bg-surface)",
+          border: "1px solid var(--border)",
+          borderTop: "1px solid var(--border-hover)",
+          borderRadius: "var(--radius)",
           padding: "16px 20px",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
         }}>
           <SectionHeader label="Factor Performance" />
 
@@ -162,16 +162,16 @@ export default function FactorIntelligence({ brief }: Props) {
             display: "grid",
             gridTemplateColumns: TABLE_COLS,
             gap: "8px",
-            background: "rgba(255,255,255,0.03)",
+            background: "var(--bg-elevated)",
             padding: "10px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--border)",
             borderRadius: "4px 4px 0 0",
           }}>
             {HEADER_LABELS.map(h => (
               <span key={h} style={{
                 fontSize: "9px",
                 letterSpacing: "0.12em",
-                color: "rgba(255,255,255,0.3)",
+                color: "var(--text-dim)",
                 fontFamily: PROSE_FONT,
                 fontWeight: 600,
                 textTransform: "uppercase" as const,
@@ -184,7 +184,7 @@ export default function FactorIntelligence({ brief }: Props) {
           {/* Table rows */}
           {factors.map(f => {
             const fColor = FACTOR_COLORS[f.factor] ?? "#888";
-            const winColor = f.win_rate >= 0.6 ? "#34d399" : f.win_rate >= 0.45 ? "#fbbf24" : "#f87171";
+            const winColor = f.win_rate >= 0.6 ? "var(--green)" : f.win_rate >= 0.45 ? "var(--amber)" : "var(--red)";
             const tp = trendPill(f.trend);
             const weight = defaultWeights[f.factor];
             return (
@@ -193,7 +193,7 @@ export default function FactorIntelligence({ brief }: Props) {
                 gridTemplateColumns: TABLE_COLS,
                 gap: "8px",
                 padding: "10px 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                borderBottom: "1px solid var(--border)",
                 alignItems: "center",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -208,7 +208,7 @@ export default function FactorIntelligence({ brief }: Props) {
                     fontSize: "12px",
                     fontFamily: DATA_FONT,
                     fontWeight: 600,
-                    color: "#e2e2f0",
+                    color: "var(--text-primary)",
                   }}>
                     {f.factor.replace(/_/g, " ")}
                   </span>
@@ -224,7 +224,7 @@ export default function FactorIntelligence({ brief }: Props) {
                 <span style={{
                   fontSize: "12px",
                   fontFamily: DATA_FONT,
-                  color: "rgba(255,255,255,0.5)",
+                  color: "var(--text-secondary)",
                 }}>
                   {f.total_trades}
                 </span>
@@ -244,7 +244,7 @@ export default function FactorIntelligence({ brief }: Props) {
                 <span style={{
                   fontSize: "12px",
                   fontFamily: DATA_FONT,
-                  color: "rgba(255,255,255,0.4)",
+                  color: "var(--text-muted)",
                 }}>
                   {weight != null ? `${(weight * 100).toFixed(0)}%` : "\u2014"}
                 </span>
@@ -256,12 +256,12 @@ export default function FactorIntelligence({ brief }: Props) {
 
       {/* Section 2: Weight Suggestions */}
       <div style={{
-        background: "rgba(255,255,255,0.028)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderTop: "1px solid rgba(255,255,255,0.11)",
-        borderRadius: "8px",
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        borderTop: "1px solid var(--border-hover)",
+        borderRadius: "var(--radius)",
         padding: "16px 20px",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.35)",
       }}>
         <SectionHeader label="Weight Suggestions" />
 
@@ -269,7 +269,7 @@ export default function FactorIntelligence({ brief }: Props) {
           <span style={{
             fontSize: "12px",
             fontFamily: PROSE_FONT,
-            color: "rgba(255,255,255,0.25)",
+            color: "var(--text-dim)",
             fontStyle: "italic" as const,
           }}>
             No adjustments suggested yet
@@ -279,12 +279,12 @@ export default function FactorIntelligence({ brief }: Props) {
             {suggestions.map(s => {
               const fColor = FACTOR_COLORS[s.factor] ?? "#888";
               const isIncrease = s.change_pct > 0;
-              const changeColor = isIncrease ? "#34d399" : "#f87171";
+              const changeColor = isIncrease ? "var(--green)" : "var(--red)";
               const cb = confidenceBadge(s.confidence);
               return (
                 <div key={s.factor} style={{
                   padding: "10px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  borderBottom: "1px solid var(--border)",
                 }}>
                   <div style={{
                     display: "flex",
@@ -305,7 +305,7 @@ export default function FactorIntelligence({ brief }: Props) {
                         fontSize: "12px",
                         fontFamily: DATA_FONT,
                         fontWeight: 600,
-                        color: "#e2e2f0",
+                        color: "var(--text-primary)",
                       }}>
                         {s.factor.replace(/_/g, " ")}
                       </span>
@@ -315,13 +315,13 @@ export default function FactorIntelligence({ brief }: Props) {
                     <span style={{
                       fontSize: "12px",
                       fontFamily: DATA_FONT,
-                      color: "rgba(255,255,255,0.5)",
+                      color: "var(--text-secondary)",
                     }}>
                       {(s.current_weight * 100).toFixed(0)}%
                     </span>
 
                     {/* Arrow */}
-                    <span style={{ color: "rgba(255,255,255,0.2)", fontSize: "12px" }}>{"\u2192"}</span>
+                    <span style={{ color: "var(--text-dim)", fontSize: "12px" }}>{"\u2192"}</span>
 
                     {/* Suggested weight */}
                     <span style={{
@@ -338,9 +338,9 @@ export default function FactorIntelligence({ brief }: Props) {
                       fontSize: "10px",
                       padding: "2px 8px",
                       borderRadius: "4px",
-                      background: isIncrease ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
+                      background: isIncrease ? "var(--green-dim)" : "var(--red-dim)",
                       color: changeColor,
-                      border: `1px solid ${isIncrease ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)"}`,
+                      border: `1px solid ${isIncrease ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`,
                       fontFamily: DATA_FONT,
                     }}>
                       {isIncrease ? "+" : ""}{s.change_pct.toFixed(1)}%
@@ -368,7 +368,7 @@ export default function FactorIntelligence({ brief }: Props) {
                     <div style={{
                       fontSize: "11px",
                       fontFamily: PROSE_FONT,
-                      color: "rgba(255,255,255,0.4)",
+                      color: "var(--text-muted)",
                       marginTop: "4px",
                       lineHeight: 1.5,
                       paddingLeft: "11px",
