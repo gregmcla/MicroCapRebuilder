@@ -133,7 +133,7 @@ function AuditBrief({ portfolioId }: { portfolioId: string }) {
       background: "rgba(124,92,252,0.06)",
       border: "1px solid rgba(124,92,252,0.22)",
       borderTop: "1px solid rgba(124,92,252,0.35)",
-      borderLeft: "4px solid #7c5cfc",
+      borderLeft: "4px solid var(--accent)",
       borderRadius: "10px",
       padding: "20px 24px",
       boxShadow: "inset 0 1px 0 rgba(124,92,252,0.2), 0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(124,92,252,0.08)",
@@ -145,7 +145,7 @@ function AuditBrief({ portfolioId }: { portfolioId: string }) {
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
         <span style={{
           fontSize: "9px", letterSpacing: "0.12em", fontWeight: 700,
-          background: "rgba(124,92,252,0.2)", color: "#7c5cfc",
+          background: "var(--accent-dim)", color: "var(--accent)",
           border: "1px solid rgba(124,92,252,0.3)", borderRadius: "3px",
           padding: "2px 8px", fontFamily: DATA_FONT,
         }}>
@@ -418,7 +418,7 @@ export default function AuditChat({ portfolioId }: Props) {
           style={{
             background: sendDisabled
               ? "var(--accent-dim)"
-              : hoveredSend ? "#917aff" : "var(--accent-dim)",
+              : hoveredSend ? "var(--accent)" : "var(--accent-dim)",
             color: sendDisabled ? "var(--text-dim)" : "var(--accent)",
             border: "none",
             borderRadius: "var(--radius)",

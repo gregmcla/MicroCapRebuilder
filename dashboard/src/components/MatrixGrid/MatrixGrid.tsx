@@ -522,7 +522,7 @@ export default function MatrixGrid({
               .slice(0, 3)
               .map((w, i) => (
                 <span key={i} style={{
-                  color: w.severity === "critical" ? "var(--red)" : "var(--color-warning)",
+                  color: w.severity === "critical" ? "var(--red)" : "var(--amber)",
                   fontWeight: 600,
                 }}>
                   {w.severity.toUpperCase()} {w.title}

@@ -226,7 +226,7 @@ function SourceBadge({ source }: { source: string }) {
 const HEAT_STYLE: Record<string, { color: string; bg: string; pulse?: boolean }> = {
   WARM:    { color: "#fbbf24",   bg: "rgba(251,191,36,0.12)" },
   HOT:     { color: "#f97316",   bg: "rgba(249,115,22,0.12)" },
-  SPIKING: { color: "#f87171",   bg: "rgba(248,113,113,0.15)", pulse: true },
+  SPIKING: { color: "var(--red)",   bg: "rgba(248,113,113,0.15)", pulse: true },
 };
 
 function SocialHeatBadge({ heat }: { heat?: string }) {
@@ -435,8 +435,8 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
           style={{
             width: "100%", padding: "9px 0", fontSize: "11px", fontWeight: 700,
             letterSpacing: "0.10em", textTransform: "uppercase",
-            background: "linear-gradient(135deg, #7c5cfc 0%, #9b7eff 100%)",
-            color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer",
+            background: "var(--accent-dim)",
+            color: "var(--accent)", border: "none", borderRadius: "6px", cursor: "pointer",
             boxShadow: "0 0 16px rgba(124,92,252,0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
             transition: "box-shadow 0.15s",
           }}
