@@ -63,45 +63,65 @@ export default function PortfolioSwitcher() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold transition-colors"
         style={{
-          background: "var(--surface-2)",
-          color: "var(--text-3)",
-          border: "1px solid var(--border-1)",
+          background: "var(--bg-elevated)",
+          color: "var(--text-primary)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius)",
         }}
       >
         <span>{label}</span>
-        <span style={{ color: "var(--text-1)", fontSize: "10px" }}>{open ? "▲" : "▼"}</span>
+        <span style={{ color: "var(--text-muted)", fontSize: "10px" }}>{open ? "▲" : "▼"}</span>
       </button>
 
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 w-56 rounded-lg shadow-xl z-50 overflow-hidden"
+          className="absolute top-full left-0 mt-1 w-56 shadow-xl z-50 overflow-hidden"
           style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--border-1)",
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-lg)",
           }}
         >
           {/* Overview option */}
           <button
             onClick={() => { setPortfolio("overview"); setOpen(false); }}
-            className="w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 hover:opacity-80"
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2"
             style={{
-              color: activeId === "overview" ? "var(--accent)" : "var(--text-3)",
+              color: activeId === "overview" ? "var(--text-primary)" : "var(--text-secondary)",
+              background: activeId === "overview" ? "var(--accent-dim)" : "transparent",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (activeId !== "overview") (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-elevated)";
+            }}
+            onMouseLeave={(e) => {
+              if (activeId !== "overview") (e.currentTarget as HTMLButtonElement).style.background = "transparent";
             }}
           >
             <span className="font-semibold">Overview</span>
-            <span className="ml-auto" style={{ fontSize: "10px", color: "var(--text-1)" }}>
+            <span className="ml-auto" style={{ fontSize: "10px", color: "var(--text-muted)" }}>
               All portfolios
             </span>
           </button>
 
-          <div style={{ borderTop: "1px solid var(--border-1)" }} />
+          <div style={{ borderTop: "1px solid var(--border)" }} />
 
           {/* Portfolio list */}
           {data?.portfolios.map((p) => (
             <div
               key={p.id}
-              className="flex items-center px-3 py-2 text-xs transition-colors hover:opacity-90 group"
-              style={{ color: activeId === p.id ? "var(--accent)" : "var(--text-3)" }}
+              className="flex items-center px-3 py-2 text-xs group"
+              style={{
+                color: activeId === p.id ? "var(--text-primary)" : "var(--text-secondary)",
+                background: activeId === p.id ? "var(--accent-dim)" : "transparent",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (activeId !== p.id) (e.currentTarget as HTMLDivElement).style.background = "var(--bg-elevated)";
+              }}
+              onMouseLeave={(e) => {
+                if (activeId !== p.id) (e.currentTarget as HTMLDivElement).style.background = "transparent";
+              }}
             >
               {renamingId === p.id ? (
                 <input
@@ -116,10 +136,10 @@ export default function PortfolioSwitcher() {
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     flex: 1,
-                    background: "var(--void)",
-                    border: "1px solid var(--accent-border)",
+                    background: "var(--bg-void)",
+                    border: "1px solid var(--accent)",
                     borderRadius: "4px",
-                    color: "var(--text-3)",
+                    color: "var(--text-primary)",
                     fontSize: "12px",
                     fontWeight: 600,
                     padding: "2px 6px",
@@ -136,14 +156,14 @@ export default function PortfolioSwitcher() {
                   {p.name}
                 </button>
               )}
-              <span style={{ fontSize: "10px", color: "var(--text-1)", marginLeft: "8px", flexShrink: 0 }}>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", marginLeft: "8px", flexShrink: 0 }}>
                 {renamingId !== p.id && p.universe}
               </span>
               {renamingId !== p.id && (
                 <button
                   onClick={(e) => startRename(e, p.id, p.name)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-1)", fontSize: "11px", padding: "0 2px", lineHeight: 1 }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "11px", padding: "0 2px", lineHeight: 1 }}
                   title="Rename"
                 >
                   ✎
@@ -152,13 +172,25 @@ export default function PortfolioSwitcher() {
             </div>
           ))}
 
-          <div style={{ borderTop: "1px solid var(--border-1)" }} />
+          <div style={{ borderTop: "1px solid var(--border)" }} />
 
           {/* Create new */}
           <button
             onClick={() => { setOpen(false); setShowCreate(true); }}
-            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-1)" }}
+            className="w-full text-left px-3 py-2 text-xs flex items-center gap-2"
+            style={{
+              color: "var(--text-muted)",
+              background: "transparent",
+              transition: "background 0.15s, color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-elevated)";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+              (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+            }}
           >
             <span>+ New Portfolio</span>
           </button>

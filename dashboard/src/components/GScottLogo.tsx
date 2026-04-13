@@ -92,7 +92,7 @@ export default function GScottLogo({
         </clipPath>
       </defs>
 
-      {/* Corner brackets */}
+      {/* Corner brackets — using accent-adjacent dim tones */}
       <g stroke="#2a1f5a" strokeWidth="1.2" fill="none" opacity="0.8" strokeLinecap="square">
         <polyline points="28,18 28,44 54,44"/>
         <polyline points={`${VB_W-28},18 ${VB_W-28},44 ${VB_W-54},44`}/>
@@ -107,24 +107,24 @@ export default function GScottLogo({
       <text x="52" y="168" fontFamily="'Courier New', Courier, monospace" fontSize="82" fill="#1a1050" opacity="0.5">&gt;&gt;</text>
       <text x="68" y="168" fontFamily="'Courier New', Courier, monospace" fontSize="82" fill="#2e1d80" opacity="0.4">&gt;</text>
 
-      {/* Primary > prompt */}
-      <text x="82" y="168" fontFamily="'Courier New', Courier, monospace" fontSize="82" fill="#8b6fff" filter="url(#lg-glow-prompt)">&gt;</text>
+      {/* Primary > prompt — new accent #8B5CF6 */}
+      <text x="82" y="168" fontFamily="'Courier New', Courier, monospace" fontSize="82" fill="#8B5CF6" filter="url(#lg-glow-prompt)">&gt;</text>
 
-      {/* "GScott" — large, bold, white */}
+      {/* "GScott" — large, bold, --text-primary */}
       <text
         x={TEXT_X}
         y={TEXT_Y}
         fontFamily="'Courier New', Courier, monospace"
         fontSize={FONT_A}
         fontWeight="bold"
-        fill="#eeeeff"
+        fill="#F8FAFC"
         letterSpacing="-1"
         filter="url(#lg-glow-text)"
       >
         {displayA}
       </text>
 
-      {/* " Terminal" — smaller, accent purple */}
+      {/* " Terminal" — smaller, accent purple #8B5CF6 */}
       {displayB.length > 0 && (
         <text
           x={TEXT_X + TEXT_GSCOTT.length * CW_A}
@@ -132,7 +132,7 @@ export default function GScottLogo({
           fontFamily="'Courier New', Courier, monospace"
           fontSize={FONT_B}
           fontWeight="normal"
-          fill="#9b7eff"
+          fill="#8B5CF6"
           letterSpacing="0"
           filter="url(#lg-glow-terminal)"
         >
@@ -141,7 +141,7 @@ export default function GScottLogo({
       )}
 
       {/* Cursor — solid while typing, blinking when idle */}
-      <rect x={cx} y="96" width="11" height="68" fill="#00f5ff" filter="url(#lg-glow-cursor)">
+      <rect x={cx} y="96" width="11" height="68" fill="#8B5CF6" filter="url(#lg-glow-cursor)">
         {done ? (
           <animate
             attributeName="opacity"
@@ -155,9 +155,9 @@ export default function GScottLogo({
         )}
       </rect>
 
-      {/* Sweeping scan line */}
+      {/* Sweeping scan line — accent-tinted */}
       <g clipPath="url(#lg-bounds)" filter="url(#lg-glow-scan)">
-        <rect width={VB_W} height="3" fill="#6040d0" opacity="0.12">
+        <rect width={VB_W} height="3" fill="#8B5CF6" opacity="0.10">
           <animateTransform attributeName="transform" type="translate" from="0,-4" to={`0,${VB_H+4}`} dur="4s" repeatCount="indefinite"/>
         </rect>
       </g>

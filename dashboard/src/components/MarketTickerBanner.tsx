@@ -37,7 +37,7 @@ function IndexCard({
       <div className="flex items-center gap-2">
         <span
           className="uppercase font-sans text-[10px] tracking-[0.08em]"
-          style={{ color: "var(--text-0)" }}
+          style={{ color: "var(--text-muted)" }}
         >
           {name}
         </span>
@@ -51,11 +51,11 @@ function IndexCard({
       <div className="flex items-center gap-2">
         <span
           className="uppercase font-sans text-[10px] tracking-[0.08em]"
-          style={{ color: "var(--text-0)" }}
+          style={{ color: "var(--text-muted)" }}
         >
           {name}
         </span>
-        <span className="text-[10px]" style={{ color: "var(--text-0)" }}>—</span>
+        <span className="text-[10px]" style={{ color: "var(--text-dim)" }}>—</span>
       </div>
     );
   }
@@ -69,7 +69,7 @@ function IndexCard({
       {/* Index name */}
       <span
         className="uppercase font-sans text-[10px] tracking-[0.08em]"
-        style={{ color: "var(--text-0)" }}
+        style={{ color: "var(--text-muted)" }}
       >
         {name}
       </span>
@@ -77,7 +77,7 @@ function IndexCard({
       {/* Price */}
       <span
         className="font-mono text-[12px] tabular-nums"
-        style={{ color: "var(--text-3)" }}
+        style={{ color: "var(--text-primary)" }}
       >
         {data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
       </span>
@@ -121,8 +121,8 @@ export default function MarketTickerBanner() {
     <div
       className="h-9 flex items-center overflow-hidden shrink-0"
       style={{
-        background: "var(--surface-0)",
-        borderBottom: "1px solid var(--border-0)",
+        background: "var(--bg-surface)",
+        borderBottom: "1px solid var(--border)",
       }}
       role="region"
       gscott-label="Market indices ticker"

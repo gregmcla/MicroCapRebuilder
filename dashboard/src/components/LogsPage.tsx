@@ -7,14 +7,14 @@ import { useState } from "react";
 import { useSystemLogs, useSystemNarrative, useRegenerateNarrative } from "../hooks/useSystemLogs";
 import type { DayLog, PipelineJob, LogEvent } from "../lib/types";
 
-// ── Badge colours ─────────────────────────────────────────────────────────────
+// ── Badge colours (inline styles using design tokens) ─────────────────────────
 
-const EVENT_BADGE: Record<LogEvent["type"], string> = {
-  scan:        "bg-blue-900/60 text-blue-300 border border-blue-700/40",
-  execute:     "bg-green-900/60 text-green-300 border border-green-700/40",
-  update:      "bg-teal-900/60 text-teal-300 border border-teal-700/40",
-  api_restart: "bg-amber-900/60 text-amber-300 border border-amber-700/40",
-  failed:      "bg-red-900/60 text-red-400 border border-red-700/40",
+const EVENT_BADGE_STYLE: Record<LogEvent["type"], React.CSSProperties> = {
+  scan:        { background: "rgba(96,165,250,0.12)", color: "#60A5FA", border: "1px solid rgba(96,165,250,0.2)" },
+  execute:     { background: "var(--green-dim)",      color: "var(--green)", border: "1px solid rgba(34,197,94,0.2)" },
+  update:      { background: "rgba(45,212,191,0.10)", color: "#2DD4BF", border: "1px solid rgba(45,212,191,0.2)" },
+  api_restart: { background: "var(--amber-dim)",      color: "var(--amber)", border: "1px solid rgba(245,158,11,0.2)" },
+  failed:      { background: "var(--red-dim)",        color: "var(--red)",   border: "1px solid rgba(239,68,68,0.2)" },
 };
 
 const EVENT_LABEL: Record<LogEvent["type"], string> = {
@@ -29,17 +29,17 @@ const EVENT_LABEL: Record<LogEvent["type"], string> = {
 
 function StatusCell({ job }: { job: PipelineJob }) {
   if (job.status === "missing") {
-    return <span className="text-zinc-600 font-mono text-xs">—</span>;
+    return <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>—</span>;
   }
   const total = job.ok + job.failed;
   if (job.status === "failed" && total === 0) {
-    return <span className="text-red-400 font-mono text-xs">✗</span>;
+    return <span style={{ color: "var(--red)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>✗</span>;
   }
   const hasFailures = job.failed > 0;
-  const color = hasFailures ? "text-amber-400" : "text-green-400";
+  const color = hasFailures ? "var(--amber)" : "var(--green)";
   const icon = hasFailures ? "⚠" : "✓";
   return (
-    <span className={`${color} font-mono text-xs`}>
+    <span style={{ color, fontFamily: "var(--font-mono)", fontSize: "12px" }}>
       {icon} {job.ok}/{total}
     </span>
   );
@@ -47,10 +47,10 @@ function StatusCell({ job }: { job: PipelineJob }) {
 
 function WatchdogCell({ restarts }: { restarts: number }) {
   if (restarts === 0) {
-    return <span className="text-zinc-600 font-mono text-xs">0</span>;
+    return <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>0</span>;
   }
   return (
-    <span className="text-amber-400 font-mono text-xs">
+    <span style={{ color: "var(--amber)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
       ⚡ {restarts}
     </span>
   );
@@ -61,15 +61,41 @@ function NarrativeSection() {
   const regenerateMutation = useRegenerateNarrative();
 
   return (
-    <section className="mb-8 border border-zinc-800 rounded-lg p-5 bg-zinc-900/40">
+    <section
+      className="mb-8 rounded-lg p-5"
+      style={{
+        background: "var(--bg-surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-lg)",
+      }}
+    >
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xs font-mono tracking-widest text-zinc-500 uppercase">
+        <h2
+          style={{
+            fontSize: "10px",
+            fontFamily: "var(--font-mono)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+          }}
+        >
           Today's Briefing
         </h2>
         <button
           onClick={() => regenerateMutation.mutate()}
           disabled={regenerateMutation.isPending}
-          className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors font-mono disabled:opacity-40"
+          style={{
+            fontSize: "11px",
+            fontFamily: "var(--font-mono)",
+            color: regenerateMutation.isPending ? "var(--text-dim)" : "var(--text-muted)",
+            background: "none",
+            border: "none",
+            cursor: regenerateMutation.isPending ? "not-allowed" : "pointer",
+            opacity: regenerateMutation.isPending ? 0.4 : 1,
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={(e) => { if (!regenerateMutation.isPending) (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
         >
           {regenerateMutation.isPending ? "Generating…" : "Regenerate ↺"}
         </button>
@@ -78,18 +104,26 @@ function NarrativeSection() {
       {isLoading ? (
         <div className="space-y-2 animate-pulse">
           {[100, 90, 95, 80].map((w, i) => (
-            <div key={i} className="h-3 bg-zinc-800 rounded" style={{ width: `${w}%` }} />
+            <div key={i} className="h-3 rounded" style={{ width: `${w}%`, background: "var(--bg-elevated)" }} />
           ))}
         </div>
       ) : data?.narrative ? (
-        <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-mono">
+        <p
+          style={{
+            fontSize: "13px",
+            color: "var(--text-secondary)",
+            lineHeight: "1.7",
+            whiteSpace: "pre-wrap",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
           {data.narrative}
         </p>
       ) : (
-        <p className="text-sm text-zinc-600 italic">
+        <p style={{ fontSize: "13px", color: "var(--text-muted)", fontStyle: "italic" }}>
           {data?.error
             ? "Narrative unavailable — Claude call failed."
-            : "No briefing yet. Check back after the first cron run."}
+            : "No briefing yet. Check back after the first cron run (6:30 AM tomorrow)."}
         </p>
       )}
     </section>
@@ -102,19 +136,28 @@ function PipelineGrid({ days }: { days: DayLog[] }) {
 
   return (
     <section className="mb-8">
-      <h2 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">
+      <h2
+        style={{
+          fontSize: "10px",
+          fontFamily: "var(--font-mono)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+          marginBottom: "12px",
+        }}
+      >
         Pipeline Status
       </h2>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs font-mono border-collapse">
+        <table style={{ width: "100%", fontSize: "12px", fontFamily: "var(--font-mono)", borderCollapse: "collapse" }}>
           <thead>
-            <tr className="text-zinc-600 border-b border-zinc-800">
-              <th className="text-left py-2 pr-6 font-normal">DATE</th>
-              <th className="text-center py-2 px-3 font-normal">SCAN 6:30</th>
-              <th className="text-center py-2 px-3 font-normal">EXECUTE 9:35</th>
-              <th className="text-center py-2 px-3 font-normal">UPDATE 12:00</th>
-              <th className="text-center py-2 px-3 font-normal">UPDATE 4:15</th>
-              <th className="text-center py-2 px-3 font-normal">WATCHDOG</th>
+            <tr style={{ color: "var(--text-dim)", borderBottom: "1px solid var(--border)" }}>
+              <th style={{ textAlign: "left", paddingTop: "8px", paddingBottom: "8px", paddingRight: "24px", fontWeight: "normal" }}>DATE</th>
+              <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: "normal" }}>SCAN 6:30</th>
+              <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: "normal" }}>EXECUTE 9:35</th>
+              <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: "normal" }}>UPDATE 12:00</th>
+              <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: "normal" }}>UPDATE 4:15</th>
+              <th style={{ textAlign: "center", padding: "8px 12px", fontWeight: "normal" }}>WATCHDOG</th>
             </tr>
           </thead>
           <tbody>
@@ -123,24 +166,27 @@ function PipelineGrid({ days }: { days: DayLog[] }) {
               return (
                 <tr
                   key={day.date}
-                  className={`border-b border-zinc-800/50 ${isToday ? "bg-zinc-800/30" : ""}`}
+                  style={{
+                    borderBottom: "1px solid rgba(148,163,184,0.05)",
+                    background: isToday ? "var(--bg-elevated)" : "transparent",
+                  }}
                 >
-                  <td className={`py-2 pr-6 ${isToday ? "text-zinc-300" : "text-zinc-500"}`}>
+                  <td style={{ paddingTop: "8px", paddingBottom: "8px", paddingRight: "24px", color: isToday ? "var(--text-primary)" : "var(--text-muted)" }}>
                     {day.date}
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
                     <StatusCell job={day.pipeline.scan} />
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
                     <StatusCell job={day.pipeline.execute} />
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
                     <StatusCell job={day.pipeline.update_midday} />
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
                     <StatusCell job={day.pipeline.update_close} />
                   </td>
-                  <td className="py-2 px-3 text-center">
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
                     <WatchdogCell restarts={day.watchdog_restarts} />
                   </td>
                 </tr>
@@ -160,30 +206,55 @@ function TimelineDay({ day, defaultOpen }: { day: DayLog; defaultOpen: boolean }
   });
 
   return (
-    <div className="border-b border-zinc-800/50">
+    <div style={{ borderBottom: "1px solid rgba(148,163,184,0.05)" }}>
       <button
-        className="w-full flex items-center gap-2 py-2 text-xs font-mono text-zinc-500 hover:text-zinc-300 transition-colors"
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "8px 0",
+          fontSize: "12px",
+          fontFamily: "var(--font-mono)",
+          color: "var(--text-muted)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          transition: "color 0.15s",
+          textAlign: "left",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)"; }}
         onClick={() => setOpen((o) => !o)}
       >
         <span>{open ? "▼" : "▶"}</span>
         <span>{label}</span>
         {day.events.length > 0 && (
-          <span className="text-zinc-700">({day.events.length} events)</span>
+          <span style={{ color: "var(--text-dim)" }}>({day.events.length} events)</span>
         )}
       </button>
 
       {open && (
-        <div className="pb-3 space-y-1.5 pl-4">
+        <div style={{ paddingBottom: "12px", paddingLeft: "16px" }} className="space-y-1.5">
           {day.events.length === 0 ? (
-            <p className="text-xs text-zinc-700 font-mono">No events recorded.</p>
+            <p style={{ fontSize: "12px", color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>No events recorded.</p>
           ) : (
             day.events.map((evt, i) => (
               <div key={i} className="flex items-center gap-3">
-                <span className="text-zinc-600 font-mono text-xs w-10 shrink-0">{evt.time}</span>
-                <span className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 ${EVENT_BADGE[evt.type]}`}>
+                <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: "12px", width: "40px", flexShrink: 0 }}>{evt.time}</span>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontFamily: "var(--font-mono)",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    flexShrink: 0,
+                    ...EVENT_BADGE_STYLE[evt.type],
+                  }}
+                >
                   {EVENT_LABEL[evt.type]}
                 </span>
-                <span className="text-zinc-400 font-mono text-xs">{evt.detail}</span>
+                <span style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>{evt.detail}</span>
               </div>
             ))
           )}
@@ -196,7 +267,16 @@ function TimelineDay({ day, defaultOpen }: { day: DayLog; defaultOpen: boolean }
 function EventTimeline({ days }: { days: DayLog[] }) {
   return (
     <section>
-      <h2 className="text-xs font-mono tracking-widest text-zinc-500 uppercase mb-3">
+      <h2
+        style={{
+          fontSize: "10px",
+          fontFamily: "var(--font-mono)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+          marginBottom: "12px",
+        }}
+      >
         Event Timeline
       </h2>
       <div>
@@ -220,10 +300,18 @@ export default function LogsPage() {
     <main className="flex-1 overflow-y-auto p-6 min-w-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xs font-mono tracking-widest text-zinc-400 uppercase">
+        <h1
+          style={{
+            fontSize: "11px",
+            fontFamily: "var(--font-mono)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: "var(--text-secondary)",
+          }}
+        >
           System Logs
         </h1>
-        <span className="text-xs font-mono text-zinc-600">
+        <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-dim)" }}>
           last updated {updatedAt}
         </span>
       </div>
@@ -231,13 +319,13 @@ export default function LogsPage() {
       {isLoading ? (
         <div className="space-y-4 animate-pulse">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-6 bg-zinc-800 rounded w-full" />
+            <div key={i} className="h-6 rounded w-full" style={{ background: "var(--bg-elevated)" }} />
           ))}
         </div>
       ) : !data || data.days.every((d) => d.events.length === 0 && d.watchdog_restarts === 0) ? (
         <div className="flex flex-col items-center justify-center h-64 text-center">
-          <p className="text-zinc-500 font-mono text-sm mb-1">No logs yet</p>
-          <p className="text-zinc-700 font-mono text-xs">
+          <p style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "14px", marginBottom: "4px" }}>No logs yet</p>
+          <p style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
             Pipeline activity will appear here after the first cron run (6:30 AM tomorrow).
           </p>
         </div>

@@ -26,10 +26,10 @@ function groupByDate(txs: Transaction[]): [string, Transaction[]][] {
 }
 
 const reasonBadge: Record<string, { label: string; bg: string; color: string }> = {
-  STOP_LOSS: { label: "STOP", bg: "rgba(248,113,113,0.12)", color: "var(--red)" },
-  TAKE_PROFIT: { label: "TARGET", bg: "rgba(52,211,153,0.12)", color: "var(--green)" },
-  MANUAL: { label: "MANUAL", bg: "var(--surface-3)", color: "var(--text-1)" },
-  INTELLIGENCE: { label: "AI", bg: "rgba(139,92,246,0.12)", color: "var(--accent)" },
+  STOP_LOSS:   { label: "STOP",   bg: "var(--red-dim)",    color: "var(--red)" },
+  TAKE_PROFIT: { label: "TARGET", bg: "var(--green-dim)",  color: "var(--green)" },
+  MANUAL:      { label: "MANUAL", bg: "rgba(148,163,184,0.08)", color: "var(--text-secondary)" },
+  INTELLIGENCE:{ label: "AI",     bg: "var(--accent-dim)", color: "var(--accent)" },
 };
 
 
@@ -43,23 +43,23 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
     <div
       className="px-3 py-2 text-xs"
       style={{
-        background: "var(--surface-1)",
-        borderBottom: "1px solid var(--border-1)",
+        background: "var(--bg-elevated)",
+        borderBottom: "1px solid var(--border)",
         borderLeft: "2px solid var(--accent)",
       }}
     >
       {(aiText || tradeExplanation(tx)) && (
         <>
-          <p style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-0)", marginBottom: "4px", textTransform: "uppercase" }}>
+          <p style={{ fontSize: "9px", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>
             {label}
           </p>
-          <p style={{ color: "var(--text-2)", lineHeight: "1.6" }}>
+          <p style={{ color: "var(--text-secondary)", lineHeight: "1.6" }}>
             {aiText || tradeExplanation(tx)}
           </p>
         </>
       )}
       {aiText && quantText && (
-        <p style={{ color: "var(--text-3)", lineHeight: "1.5", marginTop: "4px", fontSize: "10px", opacity: 0.7 }}>
+        <p style={{ color: "var(--text-muted)", lineHeight: "1.5", marginTop: "4px", fontSize: "10px", opacity: 0.7 }}>
           {quantText.split(" | ")[0]}
         </p>
       )}
@@ -97,6 +97,7 @@ function FeedItem({
   allTxs: Transaction[];
 }) {
   const isBuy = tx.action === "BUY";
+  // BUY = accent, SELL = amber
   const actionColor = isBuy ? "var(--accent)" : "var(--amber)";
   const icon = isBuy ? "▲" : "▼";
   const badge = reasonBadge[tx.reason];
@@ -110,8 +111,14 @@ function FeedItem({
       <div
         className="flex items-center gap-2 px-3 py-1.5 text-xs transition-colors cursor-pointer"
         style={{
-          borderBottom: expanded ? "none" : "1px solid var(--border-0)",
-          background: expanded ? "var(--surface-1)" : undefined,
+          borderBottom: expanded ? "none" : "1px solid var(--border)",
+          background: expanded ? "var(--bg-elevated)" : undefined,
+        }}
+        onMouseEnter={(e) => {
+          if (!expanded) (e.currentTarget as HTMLDivElement).style.background = "rgba(148,163,184,0.04)";
+        }}
+        onMouseLeave={(e) => {
+          if (!expanded) (e.currentTarget as HTMLDivElement).style.background = "";
         }}
         onClick={onToggle}
       >
@@ -121,19 +128,19 @@ function FeedItem({
         <span className="font-semibold w-8 shrink-0" style={{ color: actionColor }}>
           {tx.action}
         </span>
-        <span className="font-semibold w-12 shrink-0" style={{ color: "var(--text-3)" }}>
+        <span className="font-semibold w-12 shrink-0" style={{ color: "var(--text-primary)" }}>
           {tx.ticker}
         </span>
 
         {/* SELL: entry → sell price */}
         {!isBuy && hasEntry ? (
-          <span className="font-mono" style={{ color: "var(--text-2)" }}>
+          <span style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
             ${tx.entry_price!.toFixed(2)}
-            <span style={{ color: "var(--text-0)", margin: "0 2px" }}>→</span>
+            <span style={{ color: "var(--text-dim)", margin: "0 2px" }}>→</span>
             ${tx.price.toFixed(2)}
           </span>
         ) : (
-          <span className="font-mono" style={{ color: "var(--text-2)" }}>
+          <span style={{ color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
             {tx.shares}@${tx.price.toFixed(2)}
           </span>
         )}
@@ -141,15 +148,13 @@ function FeedItem({
         {/* P&L for sells, total cost for buys */}
         {hasPnl ? (
           <span
-            className="font-mono font-semibold"
-            style={{ fontSize: "10px", color: pnlColor, fontFamily: "var(--font-mono)" }}
+            style={{ fontSize: "10px", color: pnlColor, fontFamily: "var(--font-mono)", fontWeight: 600 }}
           >
             {formatPnl(tx.realized_pnl!, tx.realized_pnl_pct!)}
           </span>
         ) : (
           <span
-            className="font-mono"
-            style={{ fontSize: "10px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}
+            style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
           >
             ${tx.total_value.toLocaleString(undefined, {
               minimumFractionDigits: 0,
@@ -164,7 +169,7 @@ function FeedItem({
             className="font-bold px-1 py-0.5 rounded shrink-0"
             style={{
               fontSize: "9px",
-              background: tx.realized_pnl! >= 0 ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)",
+              background: tx.realized_pnl! >= 0 ? "var(--green-dim)" : "var(--red-dim)",
               color: tx.realized_pnl! >= 0 ? "var(--green)" : "var(--red)",
             }}
           >
@@ -173,7 +178,7 @@ function FeedItem({
         )}
         {/* Days held for sells */}
         {daysHeld != null && (
-          <span className="shrink-0" style={{ fontSize: "9px", color: "var(--text-0)" }}>
+          <span className="shrink-0" style={{ fontSize: "9px", color: "var(--text-dim)" }}>
             {daysHeld}d
           </span>
         )}
@@ -190,14 +195,14 @@ function FeedItem({
           </span>
         )}
         {tx.date.length > 10 && (
-          <span style={{ color: "var(--text-0)", fontSize: "9px", fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--text-dim)", fontSize: "9px", fontFamily: "var(--font-mono)" }}>
             {tx.date.slice(11, 16)}
           </span>
         )}
         <span
           className="shrink-0"
           style={{
-            color: "var(--text-0)",
+            color: "var(--text-dim)",
             fontSize: "9px",
             marginLeft: badge ? "4px" : "auto",
           }}
@@ -224,24 +229,24 @@ export default function ActivityFeed({
   }
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "var(--surface-0)" }}>
+    <div className="flex flex-col h-full" style={{ background: "var(--bg-surface)" }}>
       <div
         className="flex items-center justify-between px-3 py-2 shrink-0"
-        style={{ borderBottom: "1px solid var(--border-0)" }}
+        style={{ borderBottom: "1px solid var(--border)" }}
       >
         <h2
           className="uppercase tracking-wider font-semibold"
-          style={{ fontSize: "11px", color: "var(--text-2)" }}
+          style={{ fontSize: "11px", color: "var(--text-secondary)" }}
         >
           Activity
         </h2>
-        <span style={{ fontSize: "10px", color: "var(--text-0)", fontFamily: "var(--font-mono)" }}>
+        <span style={{ fontSize: "10px", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
           {transactions.length} trades
         </span>
       </div>
       <div className="flex-1 overflow-y-auto">
         {groups.length === 0 ? (
-          <div className="p-4 text-center text-sm" style={{ color: "var(--text-1)" }}>
+          <div className="p-4 text-center text-sm" style={{ color: "var(--text-muted)" }}>
             No recent activity
           </div>
         ) : (
@@ -250,15 +255,15 @@ export default function ActivityFeed({
               <div
                 className="sticky top-0 px-3 py-1 backdrop-blur-sm"
                 style={{
-                  background: "rgba(14,14,16,0.90)",
-                  borderBottom: "1px solid var(--border-0)",
+                  background: "rgba(2,6,23,0.90)",
+                  borderBottom: "1px solid var(--border)",
                 }}
               >
                 <span
                   className="uppercase tracking-wider font-semibold"
                   style={{
                     fontSize: "10px",
-                    color: "var(--text-0)",
+                    color: "var(--text-dim)",
                     fontFamily: "var(--font-mono)",
                   }}
                 >

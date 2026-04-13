@@ -97,8 +97,8 @@ export default function Sidebar() {
         overflow: "hidden",
         display: "flex",
         flexDirection: "column",
-        borderRight: "1px solid var(--border-0)",
-        background: "var(--surface-0)",
+        borderRight: "1px solid var(--border)",
+        background: "var(--bg-surface)",
       }}
     >
       {/* ── Portfolio section ──────────────────────────────────────────────── */}
@@ -110,7 +110,7 @@ export default function Sidebar() {
               fontWeight: 600,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "var(--text-0)",
+              color: "var(--text-dim)",
               padding: "0 12px",
               marginBottom: "4px",
             }}
@@ -139,7 +139,7 @@ export default function Sidebar() {
       </div>
 
       {/* ── Divider ────────────────────────────────────────────────────────── */}
-      <div style={{ height: "1px", background: "var(--border-0)", margin: "4px 0" }} />
+      <div style={{ height: "1px", background: "var(--border)", margin: "4px 0" }} />
 
       {/* ── Nav section ────────────────────────────────────────────────────── */}
       <div className="flex flex-col py-2">
@@ -150,7 +150,7 @@ export default function Sidebar() {
               fontWeight: 600,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "var(--text-0)",
+              color: "var(--text-dim)",
               padding: "0 12px",
               marginBottom: "4px",
             }}
@@ -182,7 +182,7 @@ export default function Sidebar() {
         <div
           style={{
             padding: "8px 12px",
-            borderTop: "1px solid var(--border-0)",
+            borderTop: "1px solid var(--border)",
           }}
         >
           <div
@@ -191,7 +191,7 @@ export default function Sidebar() {
               fontWeight: 600,
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "var(--text-0)",
+              color: "var(--text-dim)",
               marginBottom: "4px",
             }}
           >
@@ -214,7 +214,7 @@ export default function Sidebar() {
                 display: "inline-block",
               }}
             />
-            <span style={{ fontSize: "10px", color: "var(--text-1)" }}>Paper mode</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Paper mode</span>
           </div>
         </div>
       )}
@@ -228,20 +228,20 @@ export default function Sidebar() {
           alignItems: "center",
           justifyContent: "center",
           height: "40px",
-          borderTop: "1px solid var(--border-0)",
+          borderTop: "1px solid var(--border)",
           background: "transparent",
           cursor: "pointer",
-          color: "var(--text-1)",
+          color: "var(--text-dim)",
           transition: "color 0.15s",
           flexShrink: 0,
           width: "100%",
           outline: "none",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-3)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-1)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-dim)";
         }}
       >
         {collapsed ? <IconChevronRight /> : <IconChevronLeft />}
@@ -274,24 +274,25 @@ function PortfolioRow({
         padding: collapsed ? "7px 0" : "7px 12px",
         justifyContent: collapsed ? "center" : "flex-start",
         width: "100%",
-        background: active ? "rgba(124,92,252,0.06)" : "transparent",
+        background: active ? "var(--accent-dim)" : "transparent",
         border: "none",
         borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
         cursor: "pointer",
-        color: active ? "var(--text-3)" : "var(--text-1)",
+        color: active ? "var(--text-primary)" : "var(--text-dim)",
         transition: "background 0.15s, color 0.15s",
         textAlign: "left",
         minWidth: 0,
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          (e.currentTarget as HTMLButtonElement).style.background =
-            "rgba(255,255,255,0.03)";
+          (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-elevated)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-dim)";
         }
       }}
     >
@@ -340,24 +341,25 @@ function NavRow({
         padding: collapsed ? "8px 0" : "8px 12px",
         justifyContent: collapsed ? "center" : "flex-start",
         width: "100%",
-        background: active ? "rgba(124,92,252,0.06)" : "transparent",
+        background: active ? "var(--accent-dim)" : "transparent",
         border: "none",
         borderLeft: active ? "3px solid var(--accent)" : "3px solid transparent",
         cursor: "pointer",
-        color: active ? "var(--text-3)" : "var(--text-1)",
+        color: active ? "var(--text-primary)" : "var(--text-dim)",
         transition: "background 0.15s, color 0.15s",
         textAlign: "left",
         minWidth: 0,
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          (e.currentTarget as HTMLButtonElement).style.background =
-            "rgba(255,255,255,0.03)";
+          (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-elevated)";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)";
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+          (e.currentTarget as HTMLButtonElement).style.color = "var(--text-dim)";
         }
       }}
     >
