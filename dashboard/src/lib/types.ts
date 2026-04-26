@@ -29,6 +29,7 @@ export interface PortfolioMeta {
   created: string;
   starting_capital: number;
   active: boolean;
+  exclude_from_aggregates?: boolean;
 }
 
 export interface PortfolioList {
@@ -54,6 +55,7 @@ export interface PortfolioSummary {
   sparkline?: number[];
   equity_curve?: number[];
   error?: string;
+  exclude_from_aggregates?: boolean;
 }
 
 export interface CrossPortfolioMover {
@@ -552,6 +554,41 @@ export interface NarrativeResponse {
   generated_at: string;
   cached: boolean;
   error?: string;
+}
+
+export interface ModelCohortStats {
+  model?: string;
+  buys: number;
+  closed: number;
+  open: number;
+  wins: number;
+  losses: number;
+  win_rate_pct: number;
+  realized_pnl: number;
+  unrealized_pnl: number;
+  total_pnl: number;
+  total_pnl_pct: number;
+  avg_per_trade_return_pct: number;
+  avg_holding_days: number;
+}
+
+export interface PerPortfolioModelStats {
+  portfolio_id: string;
+  starting_capital: number;
+  baseline: ModelCohortStats;
+  challenger: ModelCohortStats;
+}
+
+export interface ModelComparisonResponse {
+  attribution: "sell" | "buy";
+  baseline: ModelCohortStats;
+  challenger: ModelCohortStats;
+  switch_date: string;
+  end_date: string;
+  days_remaining: number;
+  portfolios_included: string[];
+  total_starting_capital: number;
+  by_portfolio: PerPortfolioModelStats[];
 }
 
 // --- Intelligence Brief types ---

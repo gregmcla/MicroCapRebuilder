@@ -1,5 +1,5 @@
 {
-  "default_portfolio": "microcap",
+  "default_portfolio": "max",
   "portfolios": {
     "microcap": {
       "id": "microcap",
@@ -7,7 +7,7 @@
       "universe": "microcap",
       "created": "2026-02-16T12:30:20",
       "starting_capital": 50000.0,
-      "active": true
+      "active": false
     },
     "adjacent-supporters-of-ai": {
       "id": "adjacent-supporters-of-ai",
@@ -39,7 +39,7 @@
       "universe": "midcap",
       "created": "2026-03-11T14:16:25",
       "starting_capital": 1000000.0,
-      "active": true
+      "active": false
     },
     "cash-cow-compounders": {
       "id": "cash-cow-compounders",
@@ -63,7 +63,7 @@
       "universe": "allcap",
       "created": "2026-03-23T16:59:14",
       "starting_capital": 1000000.0,
-      "active": true
+      "active": false
     },
     "momentum-scalper": {
       "id": "momentum-scalper",
@@ -231,7 +231,7 @@
       "universe": "allcap",
       "created": "2026-04-06T16:40:13",
       "starting_capital": 1000000.0,
-      "active": true
+      "active": false
     },
     "unloved-microcap-cash-cows": {
       "id": "unloved-microcap-cash-cows",
@@ -240,6 +240,39 @@
       "created": "2026-04-06T17:51:10",
       "starting_capital": 1000000.0,
       "active": true
+    },
+    "quality-smallcap-value": {
+      "id": "quality-smallcap-value",
+      "name": "Quality SmallCap Value",
+      "universe": "smallcap",
+      "created": "2026-04-13T10:47:13",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "deep-value-swinger": {
+      "id": "deep-value-swinger",
+      "name": "Deep Value Swinger",
+      "universe": "largecap",
+      "created": "2026-04-13T16:03:55",
+      "starting_capital": 2000000.0,
+      "active": false
+    },
+    "small-cap-squeeze-momentum": {
+      "id": "small-cap-squeeze-momentum",
+      "name": "Squeezer",
+      "universe": "smallcap",
+      "created": "2026-04-13T16:16:45",
+      "starting_capital": 1000000.0,
+      "active": false
+    },
+    "max2": {
+      "id": "max2",
+      "name": "MAX2",
+      "universe": "allcap",
+      "created": "2026-04-23T20:55:09",
+      "starting_capital": 5000000.0,
+      "active": true,
+      "exclude_from_aggregates": true
     }
   }
 }

@@ -257,3 +257,277 @@ def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
     }
     _narrative_cache[target_date] = {"result": result, "cached_at": datetime.now()}
     return result
+
+
+
+@router.get("/model-comparison")
+def model_comparison(attribution: str = "sell"):
+    """Compare baseline (4.6) vs challenger (4.7) across active portfolios.
+
+    attribution: "sell" (default) credits realized P&L to the SELL-cohort (the
+        exit decision) and unrealized P&L to the BUY-cohort. "buy" credits all
+        P&L to the BUY cohort."""
+    import json
+    from schema import MODEL_EXPERIMENT
+    from portfolio_registry import list_portfolios
+
+    if attribution not in ("sell", "buy"):
+        attribution = "sell"
+
+    baseline = MODEL_EXPERIMENT["baseline_model"]
+    challenger = MODEL_EXPERIMENT["challenger_model"]
+    switch_date = MODEL_EXPERIMENT["switch_date"]
+    end_date = MODEL_EXPERIMENT["end_date"]
+
+    # Exclude portfolios flagged as experiment replicas / side portfolios — they
+    # have no counterpart in the other cohort and would skew the A/B.
+    active_portfolios = [
+        p.id for p in list_portfolios(active_only=True)
+        if not p.exclude_from_aggregates
+    ]
+
+    # Load starting_capital for each portfolio for return% denominators
+    starting_capital_by_pid: dict = {}
+    for pid in active_portfolios:
+        cfg_file = PORTFOLIOS_DIR / pid / "config.json"
+        if cfg_file.exists():
+            try:
+                with open(cfg_file) as f:
+                    starting_capital_by_pid[pid] = float(json.load(f).get("starting_capital", 0))
+            except (json.JSONDecodeError, TypeError, ValueError):
+                starting_capital_by_pid[pid] = 0.0
+    total_starting_capital = sum(starting_capital_by_pid.values())
+
+    def _cohort_for(row: dict) -> str:
+        """Return 'baseline' or 'challenger' for a BUY or SELL row."""
+        rationale_raw = row.get("trade_rationale", "") or ""
+        if rationale_raw:
+            try:
+                tag = json.loads(rationale_raw).get("ai_model", "") or ""
+                if tag == baseline:
+                    return "baseline"
+                if tag == challenger:
+                    return "challenger"
+            except (json.JSONDecodeError, AttributeError):
+                pass
+        # Fallback: date-based inference (pre-switch = baseline, post = challenger)
+        date_str = str(row.get("date", ""))[:10]
+        return "challenger" if date_str >= switch_date else "baseline"
+
+    def _bucket():
+        return {
+            "buys": 0,
+            "closed": 0,
+            "open_lots": 0,          # lots with shares_remaining > 0
+            "wins": 0,
+            "losses": 0,
+            "realized_pnl": 0.0,
+            "total_pnl_pct_sum": 0.0,
+            "holding_days_sum": 0,
+            "capital_closed": 0.0,
+            "unrealized_pnl": 0.0,
+            "capital_open": 0.0,
+        }
+
+    cohorts = {"baseline": _bucket(), "challenger": _bucket()}
+    # Per-portfolio, per-cohort buckets for breakdown view
+    by_portfolio: dict = {
+        pid: {"baseline": _bucket(), "challenger": _bucket()}
+        for pid in active_portfolios
+    }
+
+    for pid in active_portfolios:
+        tx_file = PORTFOLIOS_DIR / pid / "transactions.csv"
+        if not tx_file.exists():
+            continue
+        with open(tx_file) as f:
+            rows = list(csv.DictReader(f))
+
+        # Build per-ticker BUY history (FIFO lot matching) to match SELL outcomes
+        # to the BUY's model cohort
+        lots_by_ticker: dict = {}
+        for r in rows:
+            ticker = r.get("ticker")
+            action = r.get("action")
+            try:
+                shares = float(r.get("shares", 0) or 0)
+                price = float(r.get("price", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+
+            if action == "BUY":
+                buy_cohort = _cohort_for(r)
+                cohorts[buy_cohort]["buys"] += 1
+                by_portfolio[pid][buy_cohort]["buys"] += 1
+                lots_by_ticker.setdefault(ticker, []).append({
+                    "shares_initial": shares,
+                    "shares_remaining": shares,
+                    "price": price,
+                    "date": str(r.get("date", ""))[:10],
+                    "buy_cohort": buy_cohort,
+                    "sell_matches": [],      # per-sell records: {cohort, pnl, cost_basis, closed_lot, date}
+                })
+            elif action == "SELL":
+                lots = lots_by_ticker.get(ticker, [])
+                remaining_sell = shares
+                sell_date = str(r.get("date", ""))[:10]
+                sell_cohort = _cohort_for(r)
+                i = 0
+                while remaining_sell > 0 and i < len(lots):
+                    lot = lots[i]
+                    if lot["shares_remaining"] <= 0:
+                        i += 1
+                        continue
+                    matched = min(remaining_sell, lot["shares_remaining"])
+                    pnl = (price - lot["price"]) * matched
+                    matched_cost = lot["price"] * matched
+                    lot["shares_remaining"] -= matched
+                    lot_closed = (lot["shares_remaining"] == 0)
+                    lot["sell_matches"].append({
+                        "cohort": sell_cohort,
+                        "pnl": pnl,
+                        "cost_basis": matched_cost,
+                        "closed_lot": lot_closed,
+                        "date": sell_date,
+                    })
+                    remaining_sell -= matched
+                    if not lot_closed:
+                        break
+
+        # Load current prices for unrealized P&L on open lots
+        pos_file = PORTFOLIOS_DIR / pid / "positions.csv"
+        current_prices: dict = {}
+        if pos_file.exists():
+            with open(pos_file) as f:
+                for row in csv.DictReader(f):
+                    t = row.get("ticker")
+                    try:
+                        cp = float(row.get("current_price", 0) or 0)
+                    except (TypeError, ValueError):
+                        cp = 0.0
+                    if t and cp > 0:
+                        current_prices[t] = cp
+
+        # Aggregation pass — attribution mode determines who gets realized P&L:
+        #   "buy":  all P&L (realized + unrealized) → lot's buy_cohort
+        #   "sell": realized → whichever cohort executed the sell;
+        #           unrealized → buy_cohort (only they've made a decision)
+        for ticker, ticker_lots in lots_by_ticker.items():
+            cp = current_prices.get(ticker, 0.0)
+            for lot in ticker_lots:
+                buy_cohort = lot["buy_cohort"]
+                lot_realized = sum(m["pnl"] for m in lot["sell_matches"])
+                sold_cost = sum(m["cost_basis"] for m in lot["sell_matches"])
+                open_cost = lot["price"] * lot["shares_remaining"]
+                lot_closed = (lot["shares_remaining"] == 0)
+
+                # Unrealized always goes to buy_cohort (same in both modes)
+                if lot["shares_remaining"] > 0 and cp > 0:
+                    unrealized = (cp - lot["price"]) * lot["shares_remaining"]
+                    for b in (cohorts[buy_cohort], by_portfolio[pid][buy_cohort]):
+                        b["unrealized_pnl"] += unrealized
+                        b["capital_open"] += open_cost
+
+                # Open-lot count → buy_cohort (who originated it)
+                if not lot_closed:
+                    for b in (cohorts[buy_cohort], by_portfolio[pid][buy_cohort]):
+                        b["open_lots"] += 1
+
+                # Realized P&L attribution depends on mode
+                if attribution == "buy":
+                    # All realized P&L → buy_cohort; closed count → buy_cohort
+                    if sold_cost > 0:
+                        for b in (cohorts[buy_cohort], by_portfolio[pid][buy_cohort]):
+                            b["realized_pnl"] += lot_realized
+                            b["capital_closed"] += sold_cost
+                    if lot_closed:
+                        # Full lot close — lot-level win/loss, holding days, pnl_pct
+                        lot_pnl_pct = (lot_realized / sold_cost * 100) if sold_cost > 0 else 0
+                        last_sell_date = lot["sell_matches"][-1]["date"] if lot["sell_matches"] else None
+                        try:
+                            held = (datetime.fromisoformat(last_sell_date) -
+                                    datetime.fromisoformat(lot["date"])).days if last_sell_date else 0
+                        except (ValueError, TypeError):
+                            held = 0
+                        for b in (cohorts[buy_cohort], by_portfolio[pid][buy_cohort]):
+                            b["closed"] += 1
+                            b["total_pnl_pct_sum"] += lot_pnl_pct
+                            b["holding_days_sum"] += held
+                            if lot_realized > 0:
+                                b["wins"] += 1
+                            else:
+                                b["losses"] += 1
+                else:
+                    # SELL mode: attribute each partial sell to its executing cohort
+                    for match in lot["sell_matches"]:
+                        sc = match["cohort"]
+                        pnl = match["pnl"]
+                        cb = match["cost_basis"]
+                        for b in (cohorts[sc], by_portfolio[pid][sc]):
+                            b["realized_pnl"] += pnl
+                            b["capital_closed"] += cb
+                    if lot_closed:
+                        # Closer = cohort of the final sell match
+                        closer = lot["sell_matches"][-1]["cohort"]
+                        last_sell_date = lot["sell_matches"][-1]["date"]
+                        # Lot-level pnl_pct uses aggregate lot realized over aggregate sold cost
+                        lot_pnl_pct = (lot_realized / sold_cost * 100) if sold_cost > 0 else 0
+                        try:
+                            held = (datetime.fromisoformat(last_sell_date) -
+                                    datetime.fromisoformat(lot["date"])).days
+                        except (ValueError, TypeError):
+                            held = 0
+                        for b in (cohorts[closer], by_portfolio[pid][closer]):
+                            b["closed"] += 1
+                            b["total_pnl_pct_sum"] += lot_pnl_pct
+                            b["holding_days_sum"] += held
+                            if lot_realized > 0:
+                                b["wins"] += 1
+                            else:
+                                b["losses"] += 1
+
+    def _finalize(b: dict, starting_capital: float) -> dict:
+        closed = b["closed"]
+        total_pnl = b["realized_pnl"] + b["unrealized_pnl"]
+        return {
+            "buys": b["buys"],
+            "closed": closed,
+            "open": b["open_lots"],
+            "wins": b["wins"],
+            "losses": b["losses"],
+            "win_rate_pct": round(b["wins"] / closed * 100, 1) if closed else 0.0,
+            "realized_pnl": round(b["realized_pnl"], 2),
+            "unrealized_pnl": round(b["unrealized_pnl"], 2),
+            "total_pnl": round(total_pnl, 2),
+            "total_pnl_pct": round(total_pnl / starting_capital * 100, 2) if starting_capital > 0 else 0.0,
+            "avg_per_trade_return_pct": round(b["total_pnl_pct_sum"] / closed, 2) if closed else 0.0,
+            "avg_holding_days": round(b["holding_days_sum"] / closed, 1) if closed else 0.0,
+        }
+
+    today = _date.today().isoformat()
+    try:
+        days_remaining = max(0, (datetime.fromisoformat(end_date) - datetime.fromisoformat(today)).days)
+    except (ValueError, TypeError):
+        days_remaining = 0
+
+    per_portfolio = []
+    for pid in active_portfolios:
+        sc = starting_capital_by_pid.get(pid, 0.0)
+        per_portfolio.append({
+            "portfolio_id": pid,
+            "starting_capital": sc,
+            "baseline": _finalize(by_portfolio[pid]["baseline"], sc),
+            "challenger": _finalize(by_portfolio[pid]["challenger"], sc),
+        })
+
+    return {
+        "attribution": attribution,
+        "baseline": {"model": baseline, **_finalize(cohorts["baseline"], total_starting_capital)},
+        "challenger": {"model": challenger, **_finalize(cohorts["challenger"], total_starting_capital)},
+        "switch_date": switch_date,
+        "end_date": end_date,
+        "days_remaining": days_remaining,
+        "portfolios_included": active_portfolios,
+        "total_starting_capital": total_starting_capital,
+        "by_portfolio": per_portfolio,
+    }

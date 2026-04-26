@@ -302,6 +302,7 @@ class PortfolioMeta:
     created: str
     starting_capital: float
     active: bool = True
+    exclude_from_aggregates: bool = False
 
 
 # ─── Registry I/O ─────────────────────────────────────────────────────────────
@@ -335,6 +336,7 @@ def list_portfolios(active_only: bool = True) -> list[PortfolioMeta]:
             created=meta.get("created", ""),
             starting_capital=meta.get("starting_capital", 50000.0),
             active=meta.get("active", True),
+            exclude_from_aggregates=meta.get("exclude_from_aggregates", False),
         )
         if active_only and not pm.active:
             continue

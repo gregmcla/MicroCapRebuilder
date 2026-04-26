@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.25,
-      "earnings_growth": 0.15,
-      "quality": 0.15,
-      "volume": 0.1,
-      "volatility": 0.15,
-      "value_timing": 0.2
+      "price_momentum": 0.2268,
+      "earnings_growth": 0.1543,
+      "quality": 0.1543,
+      "volume": 0.1194,
+      "volatility": 0.1543,
+      "value_timing": 0.1909
     },
     "regime_weights": {
       "BULL": {

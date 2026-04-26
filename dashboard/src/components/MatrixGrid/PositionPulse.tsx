@@ -29,6 +29,21 @@ function marketState(): { label: string; color: string } {
   return { label: "closed", color: "#444" };
 }
 
+function countdownToClose(): string {
+  const et = getETTime();
+  const day = et.getDay();
+  if (day === 0 || day === 6) return "";
+  const close = new Date(et);
+  close.setHours(16, 0, 0, 0);
+  const msLeft = close.getTime() - et.getTime();
+  if (msLeft <= 0) return "";
+  const totalSec = Math.floor(msLeft / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
 // ── Mini sparkline (SVG, 1px line, no fill) ───────────────────────────────────
 
 function MiniSparkline({
@@ -204,7 +219,7 @@ export default function PositionPulse({
   // Clock — 1s interval, ET timezone
   useEffect(() => {
     const tick = () => {
-      setClock(getETTime().toLocaleTimeString("en-US", { hour12: false }));
+      setClock(countdownToClose());
       setMkt(marketState());
     };
     tick();
@@ -386,10 +401,10 @@ export default function PositionPulse({
           })}
         </div>
 
-        {/* ── Zone 3: Session Clock + ΔDAY ───────────────────────────────── */}
+        {/* ── Zone 3: Close Countdown + ΔDAY ─────────────────────────────── */}
         <div
           style={{
-            width:       130,
+            width:       170,
             flexShrink:  0,
             borderLeft:  "1px solid rgba(74,222,128,0.07)",
             display:     "flex",
@@ -397,27 +412,36 @@ export default function PositionPulse({
             justifyContent:"center",
             alignItems:  "flex-end",
             paddingRight: 16,
-            gap:         2,
+            gap:         3,
           }}
         >
-          {/* Clock + market state */}
+          {/* Countdown to close (or market state label when closed) */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 10, color: "#666", letterSpacing: "0.06em", fontVariantNumeric: "tabular-nums" }}>
-              {clock}
-            </span>
-            <span style={{ fontSize: 7, color: mkt.color, letterSpacing: "0.08em" }}>
-              {mkt.label}
-            </span>
+            {clock ? (
+              <>
+                <span style={{ fontSize: 16, fontWeight: 600, color: "#cbd5e1", letterSpacing: "0.02em", fontVariantNumeric: "tabular-nums" }}>
+                  {clock}
+                </span>
+                <span style={{ fontSize: 9, color: mkt.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                  to close
+                </span>
+              </>
+            ) : (
+              <span style={{ fontSize: 14, fontWeight: 600, color: mkt.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                {mkt.label}
+              </span>
+            )}
           </div>
 
           {/* ΔDAY */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 7, color: "#444", letterSpacing: "0.1em" }}>ΔDAY</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+            <span style={{ fontSize: 9, color: "#444", letterSpacing: "0.1em" }}>ΔDAY</span>
             <span style={{
-              fontSize:   10,
+              fontSize:   14,
               fontWeight: 700,
               color:      deltaDay >= 0 ? "#4ade80" : "#f87171",
               letterSpacing: "0.02em",
+              fontVariantNumeric: "tabular-nums",
             }}>
               {deltaDay >= 0 ? "▲" : "▼"} {deltaDay >= 0 ? "+" : ""}${Math.abs(deltaDay).toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </span>

@@ -928,6 +928,7 @@ def _normalize_reviewed_action(r):
             modified_shares=r.get("modified_shares"),
             modified_stop=r.get("modified_stop"),
             modified_target=r.get("modified_target"),
+            ai_model=r.get("ai_model"),
         )
     return r  # already a ReviewedAction dataclass
 
@@ -956,27 +957,44 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     # Fetch live prices for ALL tickers (buys and sells) so we record the real
     # fill price, not the stale cache price from analyze time.
-    # BUYs with no confirmed live price are dropped entirely — never fall back to stale data.
+    # BUYs with no confirmed live price — or with prices that fail cross-source
+    # sanity checks — are dropped entirely. Never fall back to stale data.
     confirmed_live: set[str] = set()
     bad_data_tickers: set[str] = set()
     all_tickers = [r.original.ticker for r in actions_to_execute]
     if all_tickers:
-        # Try Public.com API first — real-time bid/ask data, single batch call.
-        # Fall back to yfinance for any tickers the API couldn't quote.
-        public_tickers: set[str] = set()
+        # Always fetch yfinance prices + prev_closes for cross-checking, even
+        # when Public.com is available. Public.com has had stale-price incidents
+        # (e.g., 2026-04-23 INTC quoted at $80 when real price was $67), and
+        # trusting a single source with no sanity baseline risked bad fills.
+        pub_prices: dict = {}
         if public_api_configured():
-            pub_prices, pub_failures = fetch_live_quotes(all_tickers)
-            public_tickers = set(pub_prices.keys())
-            if pub_failures:
-                yf_prices, _, prev_closes = fetch_prices_batch(pub_failures)
-                live_prices = {**pub_prices, **yf_prices}
-            else:
-                live_prices, prev_closes = pub_prices, {}
-            src = "Public.com" if public_tickers else "yfinance"
-            print(f"  📡 Live prices via {src} ({len(public_tickers)} tickers); "
-                  f"yfinance fallback for {len(all_tickers) - len(public_tickers)}")
-        else:
-            live_prices, _, prev_closes = fetch_prices_batch(all_tickers)
+            pub_prices, _ = fetch_live_quotes(all_tickers)
+        yf_prices, _, prev_closes = fetch_prices_batch(all_tickers)
+
+        # Build live_prices: prefer Public.com when it agrees with yfinance,
+        # otherwise trust yfinance (more verifiable via prev_close).
+        live_prices: dict = {}
+        public_tickers: set[str] = set()
+        CROSS_SOURCE_TOLERANCE = 0.05  # 5% disagreement = prefer yfinance
+        for ticker in all_tickers:
+            pub = pub_prices.get(ticker)
+            yf = yf_prices.get(ticker)
+            if pub and yf and pub > 0 and yf > 0:
+                disagreement = abs(pub - yf) / yf
+                if disagreement > CROSS_SOURCE_TOLERANCE:
+                    print(f"  ⚠ {ticker}: Public.com ${pub:.2f} vs yfinance ${yf:.2f} disagree by {disagreement*100:.1f}% — using yfinance")
+                    live_prices[ticker] = yf
+                else:
+                    live_prices[ticker] = pub
+                    public_tickers.add(ticker)
+            elif pub and pub > 0:
+                live_prices[ticker] = pub
+                public_tickers.add(ticker)
+            elif yf and yf > 0:
+                live_prices[ticker] = yf
+        src_summary = f"{len(public_tickers)} via Public.com, {len(live_prices) - len(public_tickers)} via yfinance"
+        print(f"  📡 Live prices: {src_summary} (of {len(all_tickers)} requested)")
 
         for reviewed in actions_to_execute:
             action = reviewed.original
@@ -985,13 +1003,13 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 if action.action_type == "BUY":
                     print(f"  ⛔ {action.ticker}: no live price — buy skipped (won't use stale data)")
                 continue
-            # Sanity-check: price must be within 2× of yesterday's close.
-            # Only needed for yfinance-sourced prices — Public.com prices are real-time
-            # and trusted, so skip the check for those.
+            # Sanity-check vs prev_close — applied to ALL sources now. A stock
+            # shouldn't move >30% intraday without a clear news catalyst; treat
+            # larger moves as likely bad data and skip the buy.
             prev = prev_closes.get(action.ticker)
-            if prev and prev > 0 and action.action_type == "BUY" and action.ticker not in public_tickers:
+            if prev and prev > 0 and action.action_type == "BUY":
                 ratio = fresh / prev
-                if ratio > 2.0 or ratio < 0.5:
+                if ratio > 1.30 or ratio < 0.70:
                     print(f"  ⛔ {action.ticker}: live price ${fresh:.2f} is {ratio:.2f}× prev_close ${prev:.2f} — bad data, buy skipped")
                     bad_data_tickers.add(action.ticker)
                     continue
@@ -1080,6 +1098,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "ai_decision": _ai_decision,
             "ai_confidence": round(float(reviewed.confidence or 0), 3),
             "ai_reasoning": (reviewed.ai_reasoning or "")[:500],
+            "ai_model": getattr(reviewed, "ai_model", None) or "",
             "quant_reason": action.reason or "",
             "regime": action.regime or "",
             "top_factors": _top_factors,

@@ -60,6 +60,8 @@ class ReviewedAction:
     modified_shares: Optional[int] = None
     modified_stop: Optional[float] = None
     modified_target: Optional[float] = None
+    # Model identifier — populated from response.model; used for cohort analysis
+    ai_model: Optional[str] = None
 
 
 def get_ai_client():
@@ -386,6 +388,9 @@ def _review_batch(client, proposed_actions: list, portfolio_context: dict,
         # Map reviews back to actions
         reviews_by_ticker = {r["ticker"]: r for r in reviews_data.get("reviews", [])}
 
+        # Authoritative model id from the API response (not the requested constant)
+        response_model = getattr(response, "model", CLAUDE_MODEL)
+
         reviewed_actions = []
         for action in proposed_actions:
             review = reviews_by_ticker.get(action.ticker, {})
@@ -398,6 +403,7 @@ def _review_batch(client, proposed_actions: list, portfolio_context: dict,
                 modified_shares=review.get("modified_shares"),
                 modified_stop=review.get("modified_stop"),
                 modified_target=review.get("modified_target"),
+                ai_model=response_model,
             ))
 
         return reviewed_actions

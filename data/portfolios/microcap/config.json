@@ -22,12 +22,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.2309,
-      "earnings_growth": 0.1538,
-      "quality": 0.1538,
-      "volume": 0.1154,
-      "volatility": 0.1538,
-      "value_timing": 0.1923
+      "price_momentum": 0.2162,
+      "earnings_growth": 0.1569,
+      "quality": 0.1569,
+      "volume": 0.1269,
+      "volatility": 0.1569,
+      "value_timing": 0.1862
     },
     "min_score_threshold": 35.0,
     "momentum": {

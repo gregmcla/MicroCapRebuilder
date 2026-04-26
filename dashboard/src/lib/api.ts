@@ -21,6 +21,7 @@ import type {
   TradeRationale,
   SystemLogsResponse,
   NarrativeResponse,
+  ModelComparisonResponse,
   IntelligenceBriefData,
   AuditBriefResponse,
   ChatMessage,
@@ -175,6 +176,9 @@ export const api = {
     const qs = params.toString();
     return get<NarrativeResponse>(`/system/narrative${qs ? `?${qs}` : ""}`);
   },
+
+  getModelComparison: (attribution: "sell" | "buy" = "sell"): Promise<ModelComparisonResponse> =>
+    get<ModelComparisonResponse>(`/system/model-comparison?attribution=${attribution}`),
 
   // Intelligence brief
   getIntelligenceBrief: (pid: string): Promise<IntelligenceBriefData> =>

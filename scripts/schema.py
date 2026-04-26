@@ -75,4 +75,14 @@ class Reason:
 
 
 # ─── AI Model ─────────────────────────────────────────────────────────────────
-CLAUDE_MODEL = "claude-opus-4-6"
+CLAUDE_MODEL = "claude-opus-4-7"
+
+# ─── Model Experiment ─────────────────────────────────────────────────────────
+# Active comparison: baseline cohort (4.6) vs challenger cohort (4.7).
+# Switched on 2026-04-23; experiment window 4 weeks.
+MODEL_EXPERIMENT = {
+    "baseline_model": "claude-opus-4-6",
+    "challenger_model": "claude-opus-4-7",
+    "switch_date": "2026-04-23",
+    "end_date": "2026-05-21",
+}

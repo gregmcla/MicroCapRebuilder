@@ -269,8 +269,10 @@ def get_overview():
             if state.total_equity > 0:
                 deployed_pct = round(state.positions_value / state.total_equity * 100, 1)
 
-            # Collect positions for cross-portfolio movers
-            if len(positions) > 0:
+            # Collect positions for cross-portfolio movers — skip if portfolio
+            # is flagged as excluded from aggregate surfaces (e.g., experiment
+            # replicas that shouldn't pollute top-level stats).
+            if len(positions) > 0 and not p.exclude_from_aggregates:
                 for _, pos in positions.iterrows():
                     try:
                         def _f(v, default=0.0):
@@ -314,14 +316,17 @@ def get_overview():
                 "deployed_pct": deployed_pct,
                 "sparkline": sparkline,
                 "equity_curve": equity_curve,
+                "exclude_from_aggregates": p.exclude_from_aggregates,
             }
-            total_equity += state.total_equity
-            total_cash += state.cash
-            total_day_pnl += day_pnl
-            total_unrealized_pnl += unrealized_pnl
-            total_all_time_pnl += all_time_pnl
-            total_starting_capital += starting_capital
-            total_positions += state.num_positions
+            # Only accumulate top-level totals for non-excluded portfolios
+            if not p.exclude_from_aggregates:
+                total_equity += state.total_equity
+                total_cash += state.cash
+                total_day_pnl += day_pnl
+                total_unrealized_pnl += unrealized_pnl
+                total_all_time_pnl += all_time_pnl
+                total_starting_capital += starting_capital
+                total_positions += state.num_positions
             summaries.append(summary)
         except Exception as e:
             summaries.append({"id": p.id, "name": p.name, "universe": p.universe, "error": str(e)})

@@ -7,7 +7,58 @@
 
 ## Current Phase
 
-**Operational — 6 active portfolios (microcap, max, defense-tech, catalyst-momentum-scalper, gov-infra, unloved-microcap-cash-cows). Cron still PAUSED since 2026-04-03 holiday (user deferred re-enable). Post-trade review feature just shipped 2026-04-11.**
+**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron still PAUSED since 2026-04-03 (user deferred re-enable). Now running 4.6 vs 4.7 model experiment through 2026-05-21.**
+
+---
+
+## Recently Completed (2026-04-22 → 2026-04-26) — Model Experiment + MAX2 + Bug Fixes
+
+### Model swap: 4.6 → 4.7
+- `scripts/schema.py` — `CLAUDE_MODEL` bumped from `claude-opus-4-6` → `claude-opus-4-7`
+- New `MODEL_EXPERIMENT` config (baseline/challenger/switch_date/end_date)
+- All AI surfaces use 4.7 by default: ai_review, ai_allocator, strategy_generator
+- `ai_model` field added to `ReviewedAction` dataclass; populated from `response.model` in both ai_review.py and ai_allocator.py
+- Tag preserved in `trade_rationale` JSON on every transaction going forward
+- **Bug fixed:** `_normalize_reviewed_action()` in unified_analysis.py was dropping `ai_model` when reconstructing dict→namespace (round-trip via /analyze .last_analysis.json → /execute). Added `ai_model=r.get("ai_model")` to SimpleNamespace.
+
+### LOGS page: Model Experiment panel
+- New `GET /api/system/model-comparison?attribution=sell|buy` endpoint
+- Two cohort panels (baseline 4.6 vs challenger 4.7) with countdown to end of experiment
+- Metrics per cohort: buys, closed/open lots, win rate, avg per-trade return, realized/unrealized/total P&L, total P&L % vs starting capital
+- Per-portfolio breakdown table below cohort panels
+- Toggle between SELL-cohort attribution (default — credits realized P&L to exit decision) and BUY-cohort (legacy — origin attribution)
+- Cohort attribution: explicit `ai_model` tag preferred, falls back to date-based (pre/post 2026-04-23 switch)
+- **Counting bug fixed:** original FIFO loop incremented `closed`/`wins`/`losses` per match-event, not per lot. Lot fully sold over 3 partial SELLs counted as 3 closes. Refactored to per-lot aggregation pass; closed count + win rate now lot-level (228 buys = 170 closed + 58 open, matches positions.csv reality).
+
+### MAX2 — DNA replica side experiment
+- New portfolio cloned from MAX's exact config (same DNA, allcap universe, $5M starting capital)
+- Empty positions/transactions/snapshots — fresh start
+- `exclude_from_aggregates: true` flag in portfolios.json — keeps MAX2 out of overview totals AND model-comparison cohort (no 4.6 baseline for it)
+- Visible as its own card; not pinned to a model (drifts with global default)
+- Added `exclude_from_aggregates` field to `PortfolioMeta` dataclass + registry loader
+
+### Overview: Analyze All button + shared analysis store
+- "Analyze All" button on Overview header (mirrors Scan All pattern); iterates active portfolios sequentially
+- New ReviewQueuePanel below aggregate bar — per-portfolio sections with action lists, click-to-navigate, per-portfolio Execute button
+- **Major refactor:** moved per-portfolio analysis state from OverviewPage local useState into shared `useAnalysisStore` keyed by portfolio_id. Top-level `result`/`isAnalyzing`/etc. auto-sync to active portfolio via subscription on `usePortfolioStore`. Solves the "navigate away → results disappear" problem; ActionsTab now sees pre-analyzed results when navigating from Overview.
+
+### Stale-price bug — Public.com cross-source check
+- **Root cause:** Public.com returned $80.07 for INTC on 2026-04-23 when actual close was $66.78. Caused MAX2 to record an immediate $122k phantom loss (-2.4%). Old execute logic explicitly bypassed the sanity check for Public.com prices ("trusted, real-time").
+- **Fix in `unified_analysis.py:execute_approved_actions`:** always fetch BOTH Public.com AND yfinance, cross-check at 5% tolerance, prefer yfinance on disagreement (verifiable via prev_close). Sanity-check ratio tightened from 2.0× / 0.5× → 1.30× / 0.70×, applied to ALL sources regardless of provider.
+- **Data fix:** MAX2's INTC transaction repaired (cost basis $80.07 → $66.78), $122k refunded to cash, stop/target rescaled. Backup at `data/portfolios/max2/.backup-intc-fix/`.
+
+### Other UI / data fixes
+- PositionPulse clock: replaced wall-clock time with countdown to market close (4pm ET); fonts bumped (zone widened 130→170px)
+- Reverted XNDU + 9 other morning trades in MAX (10 total)
+- Backfilled 4/16 + 4/17 history rows across all portfolios (computed from yfinance closes against current positions)
+- EXAS/GLDD acquisition cleanup — both delisted; positions closed at fixed acquisition prices ($105 EXAS, $17 GLDD) across all affected portfolios
+- Asymmetric-catalyst-hunters scaled 100x ($10k → $1M starting capital + all transaction/position/snapshot rows)
+- ActionsTab redesigned: compact rows + click-to-expand details + collapsible Vetoed section
+
+### Diagnosed but NOT fixed (deferred)
+- **`day_pnl` zeroed post-market** in `state.py:178-181` — explicitly forces `day_pnl=0` outside 9:30–16:00 ET, even when snapshot has a real value
+- **Momentum-fade exit fires on 1-day-held positions** — `_check_momentum_fade` in `risk_layer.py` reads stock's 3-month price tape, ignores entry date. Buying a "bounce" candidate that's already 3 days below 5d SMA → immediate sell signal next analyze. Possible fix: skip if `days_held < 3` AND if fade was already present at entry.
+- **Cron still paused** since 2026-04-03 (no daily scans without manual trigger; watchlist scores age out)
 
 ---
 

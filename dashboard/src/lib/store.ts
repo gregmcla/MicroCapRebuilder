@@ -16,15 +16,37 @@ export const usePortfolioStore = create<PortfolioStore>((set) => ({
   setPortfolio: (id) => set({ activePortfolioId: id }),
 }));
 
+export type PortfolioAnalysisStatus =
+  | "idle"
+  | "running"
+  | "complete"
+  | "error"
+  | "executing"
+  | "executed";
+
+export interface PortfolioAnalysisState {
+  status: PortfolioAnalysisStatus;
+  result: AnalysisResult | null;
+  error: string | null;
+  analyzedAt: string | null;
+}
+
 interface AnalysisStore {
+  // Current-portfolio view (auto-synced from portfolioAnalyses[activePortfolioId])
   result: AnalysisResult | null;
   isAnalyzing: boolean;
   isExecuting: boolean;
   error: string | null;
   lastAnalyzedAt: string | null;
 
+  // Per-portfolio analysis state (persists across navigation)
+  portfolioAnalyses: Record<string, PortfolioAnalysisState>;
+
   runAnalysis: () => Promise<void>;
   runExecute: () => Promise<void>;
+  setPortfolioAnalysis: (pid: string, patch: Partial<PortfolioAnalysisState>) => void;
+  clearPortfolioAnalysis: (pid: string) => void;
+  clearAllAnalyses: () => void;
   clear: () => void;
 }
 
@@ -76,50 +98,116 @@ export const useUIStore = create<UIStore>((set) => ({
     }),
 }));
 
-export const useAnalysisStore = create<AnalysisStore>((set, get) => ({
-  result: null,
-  isAnalyzing: false,
-  isExecuting: false,
-  error: null,
-  lastAnalyzedAt: null,
+export const useAnalysisStore = create<AnalysisStore>((set, get) => {
+  // Sync top-level `result`/`isAnalyzing`/`error`/`lastAnalyzedAt` to whatever
+  // portfolio is currently active, so consumers don't need to know about the
+  // per-portfolio map.
+  const syncActive = () => {
+    const pid = usePortfolioStore.getState().activePortfolioId;
+    const slot = get().portfolioAnalyses[pid];
+    set({
+      result: slot?.result ?? null,
+      isAnalyzing: slot?.status === "running",
+      isExecuting: slot?.status === "executing",
+      error: slot?.error ?? null,
+      lastAnalyzedAt: slot?.analyzedAt ?? null,
+    });
+  };
 
-  runAnalysis: async () => {
-    const portfolioId = usePortfolioStore.getState().activePortfolioId;
-    if (portfolioId === "overview") return;
-    set({ isAnalyzing: true, error: null });
-    try {
-      const result = await api.analyze(portfolioId);
-      set({
-        result,
-        isAnalyzing: false,
-        lastAnalyzedAt: new Date().toLocaleTimeString(),
-      });
-    } catch (e) {
-      set({
-        isAnalyzing: false,
-        error: e instanceof Error ? e.message : "Analysis failed",
-      });
-    }
-  },
+  // Rebind top-level view whenever the active portfolio changes.
+  usePortfolioStore.subscribe((state, prev) => {
+    if (state.activePortfolioId !== prev.activePortfolioId) syncActive();
+  });
 
-  runExecute: async () => {
-    const portfolioId = usePortfolioStore.getState().activePortfolioId;
-    if (portfolioId === "overview") return;
-    if (!get().result?.summary.can_execute) return;
-    set({ isExecuting: true, error: null });
-    try {
-      await api.execute(portfolioId);
-      set({ isExecuting: false, result: null, lastAnalyzedAt: null });
-    } catch (e) {
-      set({
-        isExecuting: false,
-        error: e instanceof Error ? e.message : "Execution failed",
-      });
-    }
-  },
+  const writeSlot = (pid: string, patch: Partial<PortfolioAnalysisState>) => {
+    set((s) => {
+      const prev = s.portfolioAnalyses[pid] ?? {
+        status: "idle",
+        result: null,
+        error: null,
+        analyzedAt: null,
+      };
+      return {
+        portfolioAnalyses: {
+          ...s.portfolioAnalyses,
+          [pid]: { ...prev, ...patch },
+        },
+      };
+    });
+    syncActive();
+  };
 
-  clear: () => set({ result: null, error: null, lastAnalyzedAt: null }),
-}));
+  return {
+    result: null,
+    isAnalyzing: false,
+    isExecuting: false,
+    error: null,
+    lastAnalyzedAt: null,
+    portfolioAnalyses: {},
+
+    runAnalysis: async () => {
+      const portfolioId = usePortfolioStore.getState().activePortfolioId;
+      if (portfolioId === "overview") return;
+      writeSlot(portfolioId, { status: "running", error: null });
+      try {
+        const result = await api.analyze(portfolioId);
+        writeSlot(portfolioId, {
+          status: "complete",
+          result,
+          error: null,
+          analyzedAt: new Date().toLocaleTimeString(),
+        });
+      } catch (e) {
+        writeSlot(portfolioId, {
+          status: "error",
+          error: e instanceof Error ? e.message : "Analysis failed",
+        });
+      }
+    },
+
+    runExecute: async () => {
+      const portfolioId = usePortfolioStore.getState().activePortfolioId;
+      if (portfolioId === "overview") return;
+      const slot = get().portfolioAnalyses[portfolioId];
+      if (!slot?.result?.summary.can_execute) return;
+      writeSlot(portfolioId, { status: "executing", error: null });
+      try {
+        await api.execute(portfolioId);
+        writeSlot(portfolioId, {
+          status: "executed",
+          result: null,
+          analyzedAt: null,
+        });
+      } catch (e) {
+        writeSlot(portfolioId, {
+          status: "error",
+          error: e instanceof Error ? e.message : "Execution failed",
+        });
+      }
+    },
+
+    setPortfolioAnalysis: writeSlot,
+
+    clearPortfolioAnalysis: (pid) => {
+      set((s) => {
+        const { [pid]: _, ...rest } = s.portfolioAnalyses;
+        void _;
+        return { portfolioAnalyses: rest };
+      });
+      syncActive();
+    },
+
+    clearAllAnalyses: () => {
+      set({ portfolioAnalyses: {} });
+      syncActive();
+    },
+
+    clear: () => {
+      set({ portfolioAnalyses: {} });
+      syncActive();
+    },
+  };
+});
 
 interface FreshnessStore {
   timestamps: Record<string, number>;

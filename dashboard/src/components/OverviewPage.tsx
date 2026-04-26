@@ -3,11 +3,12 @@
 import { useMemo, useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
-import { usePortfolioStore } from "../lib/store";
+import { usePortfolioStore, useAnalysisStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
-import type { PortfolioSummary, CrossPortfolioMover } from "../lib/types";
+import type { PortfolioSummary, CrossPortfolioMover, ReviewedAction } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
+import type { PortfolioAnalysisState } from "../lib/store";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import { play } from "../lib/sounds";
 
@@ -29,6 +30,17 @@ interface ScanAllState {
   running: boolean;
   currentId: string | null;
   results: Record<string, ScanAllPortfolioResult>;
+}
+
+// ---------------------------------------------------------------------------
+// Analyze-all types
+// ---------------------------------------------------------------------------
+// Per-portfolio analysis state lives in useAnalysisStore (shared across views).
+// This local state only tracks the "in-progress Analyze All run" metadata.
+
+interface AnalyzeAllState {
+  running: boolean;
+  currentId: string | null;
 }
 
 type SortKey = "day_pnl" | "total_return_pct" | "equity" | "deployed_pct" | "name";
@@ -124,6 +136,7 @@ function AggregateBar({
   totalEquity, totalCash, totalDayPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
   portfoliosUp, portfoliosDown, deployedPct,
   onNewPortfolio, onUpdateAll, updatingAll, updateResult, onScanAll, scanAllRunning, scanAllLabel,
+  onAnalyzeAll, analyzeAllRunning, analyzeAllLabel,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
   totalAllTimePnl: number; totalReturnPct: number; totalPositions: number; portfolioCount: number;
@@ -135,6 +148,9 @@ function AggregateBar({
   onScanAll: () => void;
   scanAllRunning: boolean;
   scanAllLabel: string | null;
+  onAnalyzeAll: () => void;
+  analyzeAllRunning: boolean;
+  analyzeAllLabel: string | null;
 }) {
   const rawCount = useCountUp(totalEquity, 1200, 0);
   const animatedEquity = Number(rawCount).toLocaleString();
@@ -252,10 +268,235 @@ function AggregateBar({
           }} />
           {scanAllLabel ?? "Scan All"}
         </ActionBtn>
+        <ActionBtn onClick={onAnalyzeAll} disabled={analyzeAllRunning}>
+          <span style={{
+            width: "6px", height: "6px", borderRadius: "50%",
+            background: "currentColor", opacity: analyzeAllRunning ? 1 : 0.6, flexShrink: 0,
+            animation: analyzeAllRunning ? "pulse 1s ease-in-out infinite" : "none",
+          }} />
+          {analyzeAllLabel ?? "Analyze All"}
+        </ActionBtn>
         <ActionBtn onClick={onNewPortfolio}>
           + New
         </ActionBtn>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Analyze-All Review Queue
+// ---------------------------------------------------------------------------
+
+function ReviewQueueRow({ action }: { action: ReviewedAction }) {
+  const a = action.original;
+  const decisionColor =
+    action.decision === "APPROVE" ? "var(--green)" :
+    action.decision === "MODIFY"  ? "var(--amber)" :
+                                    "var(--red)";
+  const actionColor = a.action_type === "BUY" ? "var(--green)" : "var(--red)";
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "60px 48px 80px 1fr 80px 1fr",
+      gap: "10px",
+      alignItems: "baseline",
+      padding: "5px 10px",
+      fontSize: "10px",
+      borderBottom: "1px solid var(--border-0)",
+      fontFamily: "var(--font-mono)",
+    }}>
+      <span style={{ color: decisionColor, fontWeight: 600, letterSpacing: "0.06em" }}>
+        {action.decision}
+      </span>
+      <span style={{ color: actionColor, fontWeight: 700 }}>{a.action_type}</span>
+      <span style={{ color: "var(--text-3)", fontWeight: 600 }}>{a.ticker}</span>
+      <span style={{ color: "var(--text-1)", fontSize: "9px" }}>
+        {a.shares.toLocaleString()} @ ${a.price.toFixed(2)} · score {a.quant_score.toFixed(0)}
+      </span>
+      <span style={{ color: "var(--text-0)", fontSize: "9px" }}>
+        {(action.confidence * 100).toFixed(0)}%
+      </span>
+      <span style={{
+        color: "var(--text-1)",
+        fontSize: "9px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }} title={action.ai_reasoning}>
+        {action.ai_reasoning}
+      </span>
+    </div>
+  );
+}
+
+function ReviewQueuePanel({
+  results,
+  running,
+  currentId,
+  names,
+  onExecute,
+  onDismiss,
+  onNavigate,
+}: {
+  results: Record<string, PortfolioAnalysisState>;
+  running: boolean;
+  currentId: string | null;
+  names: Map<string, string>;
+  onExecute: (pid: string) => void;
+  onDismiss: () => void;
+  onNavigate: (pid: string) => void;
+}) {
+  const entries = Object.entries(results);
+  if (entries.length === 0 && !running) return null;
+
+  const totalApproved = entries.reduce((sum, [, r]) => sum + (r.result?.approved.length ?? 0), 0);
+  const totalProposed = entries.reduce((sum, [, r]) => sum + (r.result?.summary.total_proposed ?? 0), 0);
+
+  return (
+    <div style={{
+      borderBottom: "1px solid var(--border-1)",
+      background: "var(--surface-0)",
+      maxHeight: "50vh",
+      overflow: "auto",
+    }}>
+      {/* Header */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "10px 16px",
+        borderBottom: "1px solid var(--border-0)",
+        position: "sticky",
+        top: 0,
+        background: "var(--surface-0)",
+        zIndex: 1,
+      }}>
+        <span style={{
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--accent-bright)",
+        }}>
+          Review Queue
+        </span>
+        {running && currentId && (
+          <span style={{ fontSize: "10px", color: "var(--amber)" }}>
+            Analyzing {names.get(currentId) ?? currentId}…
+          </span>
+        )}
+        {!running && totalProposed > 0 && (
+          <span style={{ fontSize: "10px", color: "var(--text-1)" }}>
+            {totalApproved} approved · {totalProposed} proposed across {entries.length} portfolio{entries.length === 1 ? "" : "s"}
+          </span>
+        )}
+        <button
+          onClick={onDismiss}
+          style={{
+            marginLeft: "auto",
+            padding: "3px 10px",
+            background: "transparent",
+            border: "1px solid var(--border-1)",
+            borderRadius: "4px",
+            color: "var(--text-1)",
+            fontSize: "10px",
+            cursor: "pointer",
+          }}
+        >
+          Dismiss
+        </button>
+      </div>
+
+      {/* Per-portfolio sections */}
+      {entries.map(([pid, r]) => {
+        const name = names.get(pid) ?? pid;
+        const approved = r.result?.approved ?? [];
+        const modified = r.result?.modified ?? [];
+        const vetoed = r.result?.vetoed ?? [];
+        const canExecute = r.result?.summary.can_execute ?? false;
+
+        return (
+          <div key={pid} style={{ borderBottom: "1px solid var(--border-0)" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "7px 16px",
+              background: "var(--surface-1)",
+            }}>
+              <button
+                onClick={() => onNavigate(pid)}
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: "var(--text-3)",
+                  letterSpacing: "0.04em",
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  textDecoration: "none",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                title={`Open ${name}`}
+              >
+                {name} ↗
+              </button>
+              {r.status === "running" && (
+                <span style={{ fontSize: "9px", color: "var(--amber)" }}>analyzing…</span>
+              )}
+              {r.status === "complete" && r.result && (
+                <span style={{ fontSize: "9px", color: "var(--text-1)" }}>
+                  <span style={{ color: "var(--green)" }}>{approved.length} ✓</span>
+                  {modified.length > 0 && <> · <span style={{ color: "var(--amber)" }}>{modified.length} ~</span></>}
+                  {vetoed.length > 0 && <> · <span style={{ color: "var(--red)" }}>{vetoed.length} ✗</span></>}
+                  {approved.length === 0 && modified.length === 0 && vetoed.length === 0 && (
+                    <span style={{ color: "var(--text-0)" }}>no actions</span>
+                  )}
+                </span>
+              )}
+              {r.status === "error" && (
+                <span style={{ fontSize: "9px", color: "var(--red)" }}>error: {r.error}</span>
+              )}
+              {r.status === "executing" && (
+                <span style={{ fontSize: "9px", color: "var(--amber)" }}>executing…</span>
+              )}
+              {r.status === "executed" && (
+                <span style={{ fontSize: "9px", color: "var(--green)" }}>✓ executed</span>
+              )}
+              {r.status === "complete" && canExecute && approved.length > 0 && (
+                <button
+                  onClick={() => onExecute(pid)}
+                  style={{
+                    marginLeft: "auto",
+                    padding: "3px 10px",
+                    background: "var(--accent-dim)",
+                    border: "1px solid var(--accent-border)",
+                    borderRadius: "4px",
+                    color: "var(--accent-bright)",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Execute ({approved.length})
+                </button>
+              )}
+            </div>
+            {r.status === "complete" && r.result && (
+              <>
+                {approved.map((a, i) => <ReviewQueueRow key={`a-${i}`} action={a} />)}
+                {modified.map((a, i) => <ReviewQueueRow key={`m-${i}`} action={a} />)}
+                {vetoed.map((a, i) => <ReviewQueueRow key={`v-${i}`} action={a} />)}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -823,6 +1064,15 @@ export default function OverviewPage() {
   });
   const scanCancelledRef = useRef(false);
 
+  const [analyzeAll, setAnalyzeAll] = useState<AnalyzeAllState>({
+    running: false,
+    currentId: null,
+  });
+  const analyzeCancelledRef = useRef(false);
+  const portfolioAnalyses = useAnalysisStore((s) => s.portfolioAnalyses);
+  const setPortfolioAnalysis = useAnalysisStore((s) => s.setPortfolioAnalysis);
+  const clearAllAnalyses = useAnalysisStore((s) => s.clearAllAnalyses);
+
   const wasScanAllRunning = useRef(false);
   useEffect(() => {
     if (wasScanAllRunning.current && !scanAll.running) play("scanComplete");
@@ -945,8 +1195,68 @@ export default function OverviewPage() {
     }, 5000);
   };
 
+  const handleAnalyzeAll = async () => {
+    const ids = (portfolioList?.portfolios ?? [])
+      .filter((p) => p.active)
+      .map((p) => p.id);
+    if (ids.length === 0) return;
+
+    analyzeCancelledRef.current = false;
+    // Reset prior results for a clean slate, then mark first as running.
+    clearAllAnalyses();
+    setAnalyzeAll({ running: true, currentId: ids[0] });
+
+    for (const id of ids) {
+      if (analyzeCancelledRef.current) break;
+
+      setAnalyzeAll((prev) => ({ ...prev, currentId: id }));
+      setPortfolioAnalysis(id, { status: "running", result: null, error: null });
+
+      try {
+        const result = await api.analyze(id);
+        setPortfolioAnalysis(id, {
+          status: "complete",
+          result,
+          error: null,
+          analyzedAt: new Date().toLocaleTimeString(),
+        });
+      } catch (err) {
+        setPortfolioAnalysis(id, {
+          status: "error",
+          result: null,
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    setAnalyzeAll({ running: false, currentId: null });
+  };
+
+  const handleExecutePortfolio = async (pid: string) => {
+    setPortfolioAnalysis(pid, { status: "executing" });
+    try {
+      await api.execute(pid);
+      setPortfolioAnalysis(pid, { status: "executed", result: null });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+    } catch (err) {
+      setPortfolioAnalysis(pid, {
+        status: "error",
+        error: err instanceof Error ? err.message : "Execute failed",
+      });
+    }
+  };
+
+  const dismissAnalyzeAll = () => {
+    analyzeCancelledRef.current = true;
+    setAnalyzeAll({ running: false, currentId: null });
+    clearAllAnalyses();
+  };
+
   useEffect(() => {
-    return () => { scanCancelledRef.current = true; };
+    return () => {
+      scanCancelledRef.current = true;
+      analyzeCancelledRef.current = true;
+    };
   }, []);
 
   const names = new Map((portfolioList?.portfolios ?? []).map((p) => [p.id, p.name]));
@@ -979,6 +1289,14 @@ export default function OverviewPage() {
     }
     return null;
   }, [scanAll, names]);
+
+  const analyzeAllLabel = useMemo(() => {
+    if (analyzeAll.running && analyzeAll.currentId) {
+      const name = names.get(analyzeAll.currentId) ?? analyzeAll.currentId;
+      return `Analyzing ${name}…`;
+    }
+    return null;
+  }, [analyzeAll, names]);
 
   const holdingsMap = useMemo(() => {
     const map = new Map<string, CrossPortfolioMover[]>();
@@ -1032,9 +1350,12 @@ export default function OverviewPage() {
   const totalEquity = overview?.total_equity ?? 0;
   const totalCash   = overview?.total_cash ?? 0;
 
-  // Computed aggregates
-  const portfoliosUp   = enriched.filter((s) => s.day_pnl > 0).length;
-  const portfoliosDown = enriched.filter((s) => s.day_pnl < 0).length;
+  // Computed aggregates — skip portfolios flagged exclude_from_aggregates.
+  // Backend already excludes them from total_equity/total_day_pnl/etc.; this
+  // keeps the frontend-derived counts consistent.
+  const aggregable = enriched.filter((s) => !s.exclude_from_aggregates);
+  const portfoliosUp   = aggregable.filter((s) => s.day_pnl > 0).length;
+  const portfoliosDown = aggregable.filter((s) => s.day_pnl < 0).length;
   const deployedPct    = totalEquity > 0 ? ((totalEquity - totalCash) / totalEquity) * 100 : 0;
 
 
@@ -1048,7 +1369,7 @@ export default function OverviewPage() {
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
-        portfolioCount={enriched.length}
+        portfolioCount={aggregable.length}
         portfoliosUp={portfoliosUp}
         portfoliosDown={portfoliosDown}
         deployedPct={deployedPct}
@@ -1059,6 +1380,20 @@ export default function OverviewPage() {
         onScanAll={handleScanAll}
         scanAllRunning={scanAll.running}
         scanAllLabel={scanAllLabel}
+        onAnalyzeAll={handleAnalyzeAll}
+        analyzeAllRunning={analyzeAll.running}
+        analyzeAllLabel={analyzeAllLabel}
+      />
+
+      {/* Analyze-All review queue — only shown when active */}
+      <ReviewQueuePanel
+        results={portfolioAnalyses}
+        running={analyzeAll.running}
+        currentId={analyzeAll.currentId}
+        names={names}
+        onExecute={handleExecutePortfolio}
+        onDismiss={dismissAnalyzeAll}
+        onNavigate={setPortfolio}
       />
 
       {/* Controls bar: sort + view toggle */}

@@ -134,7 +134,8 @@ def run_ai_allocation(
             held_shares_map=held_shares_map,
         )
 
-        ai_actions = _convert_to_reviewed_actions(valid_buys, ai_sells, regime)
+        response_model = getattr(response, "model", model)
+        ai_actions = _convert_to_reviewed_actions(valid_buys, ai_sells, regime, ai_model=response_model)
         reviewed.extend(ai_actions)
 
         _last_ai_mode = "claude"
@@ -719,6 +720,7 @@ def _convert_to_reviewed_actions(
     valid_buys: list,
     ai_sells: list,
     regime: MarketRegime,
+    ai_model: Optional[str] = None,
 ) -> list[ReviewedAction]:
     """Wrap validated AI allocation as ReviewedAction(APPROVE) objects."""
     result = []
@@ -741,6 +743,7 @@ def _convert_to_reviewed_actions(
             decision=ReviewDecision.APPROVE,
             ai_reasoning=buy["reasoning"],
             confidence=0.9,
+            ai_model=ai_model,
         ))
 
     for sell in ai_sells:
@@ -761,6 +764,7 @@ def _convert_to_reviewed_actions(
             decision=ReviewDecision.APPROVE,
             ai_reasoning=sell["reasoning"],
             confidence=0.9,
+            ai_model=ai_model,
         ))
 
     return result
