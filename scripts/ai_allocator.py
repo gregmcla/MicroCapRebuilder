@@ -109,10 +109,14 @@ def run_ai_allocation(
     model = state.config.get("ai_model", CLAUDE_MODEL)
 
     try:
+        # Per-call timeout overrides the client default (120s in get_ai_client).
+        # Allocator responses can be 90-110s on complex prompts due to max_tokens=16000;
+        # 180s gives headroom without changing the tighter default for ai_review's smaller calls.
         response = client.messages.create(
             model=model,
             max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt}],
+            timeout=180.0,
         )
         response_text = response.content[0].text if response.content else ""
 
