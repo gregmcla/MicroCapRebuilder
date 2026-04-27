@@ -55,3 +55,27 @@ def test_send_message_returns_message_id_on_success(monkeypatch):
         from telegram_notifier import _send_message
         result = _send_message("hello")
         assert result == 42
+
+
+# Task 3: portfolio stats helpers
+
+def test_get_new_tickers_today(tmp_path):
+    today = date.today().isoformat()
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    watchlist = [
+        {"ticker": "NVDA", "added_date": today, "status": "ACTIVE"},
+        {"ticker": "AMD", "added_date": today, "status": "ACTIVE"},
+        {"ticker": "INTC", "added_date": yesterday, "status": "ACTIVE"},
+        {"ticker": "OLD", "added_date": today, "status": "STALE"},
+    ]
+    wl_file = tmp_path / "watchlist.jsonl"
+    wl_file.write_text("\n".join(json.dumps(e) for e in watchlist))
+    from telegram_notifier import _get_new_tickers_today
+    result = _get_new_tickers_today(wl_file)
+    assert set(result) == {"NVDA", "AMD"}
+
+
+def test_get_new_tickers_today_empty_file(tmp_path):
+    from telegram_notifier import _get_new_tickers_today
+    result = _get_new_tickers_today(tmp_path / "missing.jsonl")
+    assert result == []

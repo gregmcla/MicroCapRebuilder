@@ -82,3 +82,62 @@ def _edit_message(message_id: int, text: str, remove_buttons: bool = True) -> No
         requests.post(url, json=payload, timeout=10)
     except Exception as exc:
         log.warning("Telegram editMessageText failed: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Portfolio stats helpers
+# ---------------------------------------------------------------------------
+
+def _get_new_tickers_today(watchlist_file: Path) -> list:
+    if not watchlist_file.exists():
+        return []
+    today = date.today().isoformat()
+    result = []
+    try:
+        with open(watchlist_file) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry = json.loads(line)
+                if entry.get("added_date", "") == today and entry.get("status", "ACTIVE") == "ACTIVE":
+                    result.append(entry["ticker"])
+    except Exception as exc:
+        log.warning("Error reading watchlist %s: %s", watchlist_file, exc)
+    return result
+
+
+def _get_portfolio_stats(portfolio_id: str) -> Optional[dict]:
+    """Load portfolio state and return stats dict for notifications."""
+    try:
+        from portfolio_state import load_portfolio_state
+        state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
+        starting_capital = state.config.get("starting_capital", 0) or 0
+        equity = state.total_equity
+        total_return_dollars = equity - starting_capital
+        total_return_pct = (total_return_dollars / starting_capital * 100) if starting_capital > 0 else 0.0
+        intraday_dollars = 0.0
+        if not state.positions.empty and "day_change" in state.positions.columns:
+            intraday_dollars = float(state.positions["day_change"].sum())
+        prev_equity = equity - intraday_dollars
+        intraday_pct = (intraday_dollars / prev_equity * 100) if prev_equity > 0 else 0.0
+        wl_file = _PORTFOLIOS_DIR / portfolio_id / "watchlist.jsonl"
+        watchlist_size = 0
+        if wl_file.exists():
+            with open(wl_file) as f:
+                watchlist_size = sum(
+                    1 for line in f
+                    if line.strip() and json.loads(line).get("status", "ACTIVE") == "ACTIVE"
+                )
+        return {
+            "equity": equity,
+            "positions_count": state.num_positions,
+            "total_return_pct": total_return_pct,
+            "total_return_dollars": total_return_dollars,
+            "intraday_pct": intraday_pct,
+            "intraday_dollars": intraday_dollars,
+            "watchlist_size": watchlist_size,
+        }
+    except Exception as exc:
+        log.warning("Failed to get stats for %s: %s", portfolio_id, exc)
+        return None
