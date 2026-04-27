@@ -644,14 +644,17 @@ def save_transactions_batch(state: PortfolioState, transactions: list) -> Portfo
     else:
         df_combined = df_new
 
-    # Persist to disk (atomic write — prevents corruption on crash)
-    tmp_file = tx_file.with_name(tx_file.name + ".tmp")
-    try:
-        df_combined.to_csv(tmp_file, index=False)
-        tmp_file.replace(tx_file)
-    except Exception:
-        tmp_file.unlink(missing_ok=True)
-        raise
+    # Cross-process lock — blocks concurrent writers (cron + API races)
+    from portfolio_lock import portfolio_lock
+    with portfolio_lock(state.portfolio_id):
+        # Persist to disk (atomic write — prevents corruption on crash)
+        tmp_file = tx_file.with_name(tx_file.name + ".tmp")
+        try:
+            df_combined.to_csv(tmp_file, index=False)
+            tmp_file.replace(tx_file)
+        except Exception:
+            tmp_file.unlink(missing_ok=True)
+            raise
 
     # Recalculate cash
     new_cash = calculate_cash(df_combined, state.config["starting_capital"])
@@ -813,14 +816,16 @@ def remove_position(state: PortfolioState, ticker: str) -> PortfolioState:
 
 def save_positions(state: PortfolioState) -> None:
     """Persist current positions to CSV."""
+    from portfolio_lock import portfolio_lock
     positions_file = get_positions_file(state.portfolio_id)
     tmp_file = positions_file.with_name(positions_file.name + ".tmp")
-    try:
-        state.positions.to_csv(tmp_file, index=False)
-        tmp_file.replace(positions_file)
-    except Exception:
-        tmp_file.unlink(missing_ok=True)
-        raise
+    with portfolio_lock(state.portfolio_id):
+        try:
+            state.positions.to_csv(tmp_file, index=False)
+            tmp_file.replace(positions_file)
+        except Exception:
+            tmp_file.unlink(missing_ok=True)
+            raise
 
 
 # ─── Snapshot Operations ─────────────────────────────────────────────────────
@@ -866,20 +871,23 @@ def save_snapshot(state: PortfolioState, benchmark_value: Optional[float] = None
 
     # Load existing snapshots, remove today's entry if exists, append new
     snapshots_file = get_daily_snapshots_file(state.portfolio_id)
-    if snapshots_file.exists():
-        df = pd.read_csv(snapshots_file)
-        df = df[df["date"] != today]
-    else:
-        df = pd.DataFrame(columns=DAILY_SNAPSHOT_COLUMNS)
+    # Cross-process lock: read+filter+write must be atomic across cron + API
+    from portfolio_lock import portfolio_lock
+    with portfolio_lock(state.portfolio_id):
+        if snapshots_file.exists():
+            df = pd.read_csv(snapshots_file)
+            df = df[df["date"] != today]
+        else:
+            df = pd.DataFrame(columns=DAILY_SNAPSHOT_COLUMNS)
 
-    df = pd.concat([df, pd.DataFrame([snapshot])], ignore_index=True)
-    tmp_file = snapshots_file.with_name(snapshots_file.name + ".tmp")
-    try:
-        df.to_csv(tmp_file, index=False)
-        tmp_file.replace(snapshots_file)
-    except Exception:
-        tmp_file.unlink(missing_ok=True)
-        raise
+        df = pd.concat([df, pd.DataFrame([snapshot])], ignore_index=True)
+        tmp_file = snapshots_file.with_name(snapshots_file.name + ".tmp")
+        try:
+            df.to_csv(tmp_file, index=False)
+            tmp_file.replace(snapshots_file)
+        except Exception:
+            tmp_file.unlink(missing_ok=True)
+            raise
 
     return state.total_equity, day_pnl
 
