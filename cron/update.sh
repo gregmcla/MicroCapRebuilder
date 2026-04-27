@@ -28,15 +28,28 @@ if [ -z "$PORTFOLIOS" ]; then
     exit 1
 fi
 
+PORTFOLIOS_OK=""
+PORTFOLIOS_FAILED=""
+
 for PORTFOLIO in $PORTFOLIOS; do
     log "Updating: $PORTFOLIO"
-    python3 scripts/update_positions.py --portfolio "$PORTFOLIO" >> "$LOG" 2>&1 \
-        || log "  FAILED: update_positions for $PORTFOLIO"
-    # factor_learning is non-fatal (needs >= 5 completed trades)
-    python3 scripts/factor_learning.py --portfolio "$PORTFOLIO" >> "$LOG" 2>&1 \
-        || true
+    if python3 scripts/update_positions.py --portfolio "$PORTFOLIO" >> "$LOG" 2>&1; then
+        PORTFOLIOS_OK="$PORTFOLIOS_OK $PORTFOLIO"
+        # factor_learning is non-fatal (needs >= 5 completed trades)
+        python3 scripts/factor_learning.py --portfolio "$PORTFOLIO" >> "$LOG" 2>&1 || true
+    else
+        log "  FAILED: update_positions for $PORTFOLIO"
+        PORTFOLIOS_FAILED="$PORTFOLIOS_FAILED $PORTFOLIO"
+    fi
 done
 
 log "=========================================="
 log "UPDATE COMPLETE"
 log "=========================================="
+
+# Send Telegram portfolio snapshot (non-fatal)
+PORTFOLIOS_OK="${PORTFOLIOS_OK# }"
+PORTFOLIOS_FAILED="${PORTFOLIOS_FAILED# }"
+python3 scripts/telegram_notifier.py update-snapshot \
+    --ok "$PORTFOLIOS_OK" \
+    --failed "$PORTFOLIOS_FAILED" >> "$LOG" 2>&1 || true
