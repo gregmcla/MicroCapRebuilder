@@ -7,11 +7,49 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron RE-ENABLED 2026-04-27. Telegram bot fully live: APPROVE/REJECT proposals, /status command for live per-position snapshot. Running 4.6 vs 4.7 model experiment through 2026-05-21.**
+**Operational — 5 active portfolios. Cron RE-ENABLED 2026-04-27. Telegram bot live (APPROVE/REJECT + /status). Just completed Phases 1-3 of audit remediation (12 fixes + 1 regression bug fix). Running 4.6 vs 4.7 model experiment through 2026-05-21.**
+
+**Tomorrow's first cron-driven test**: scan 6:30 AM, analyze 9:35 AM (Telegram proposals fire), update 12pm + 4:15pm. Watch for any unexpected behavior — the audit fixes touched the hot path.
 
 ---
 
-## Recently Completed (2026-04-27) — Telegram Bot Notifications ✅
+## Recently Completed (2026-04-27, evening) — Audit Remediation Phases 1-3
+
+Driven by an Opus-4.7 codebase audit that surfaced 18 issues across architecture, reliability, and security. 12 fixes shipped + 1 regression caught and fixed mid-session. Plan file: `~/.claude/plans/stateful-drifting-pinwheel.md`.
+
+**Phase 1 — Stop financial bleeding:**
+- `077653d7` Fix 1: atomic write for `.last_analysis.json`
+- `1e7f0abf` Fix 2: concurrency guard on `/execute` via atomic rename (race-tested with 5 parallel curls — 1 winner, 4 4xx, no double-execution)
+- `c054725c` Fix 4: `threading.Lock` around `_scan_jobs` (race-tested with 2 parallel scans)
+- `c99d455b` Fix 5: explicit 180s per-call timeout on `ai_allocator.messages.create()`
+
+**Phase 2 — Reliability hardening:**
+- `e468010a` Fix 6: async `httpx.AsyncClient` in `telegram_bot.py` (replaces sync `requests`, frees event loop during execute)
+- `f4583aea` Fix 8: schema validation in `_load_csv` (warns + reindexes on column drift; preserves extras)
+- `601a1701` Fix 9: per-portfolio file lock via `fcntl.flock` (`scripts/portfolio_lock.py` — blocks cron+API write races on positions/transactions/snapshots/watchlist)
+- `3999f9e4` Fix 7 (subagent-driven): `validate_portfolio_id` Depends on every portfolio-scoped route (~24 routes); `field_validator` on `CreatePortfolioRequest.id` rejects path traversal
+
+**Phase 3 — Cleanups:**
+- `293741f3` Fix 10+11: replace manual `.env` parsing with `os.environ.get`; use `CLAUDE_MODEL` in `screener_provider.py` (was hardcoded to `claude-sonnet-4-6`, missed in 4.6→4.7 migration)
+- `7676dde9` Fix 12: `useEffect` cleanup in `CommandBar` (clears scan polling interval on unmount)
+- `71c025c3` Fix 13: replace daemon-thread leak in `stock_discovery` info fetchers (`prewarm_info_for_tickers` + `_get_stock_info`) — `ThreadPoolExecutor` ownership instead of zombie threads
+
+**Regression caught + fixed mid-session:**
+- `089bc780` `POSITION_COLUMNS` was stale (missing `day_change`, `day_change_pct`, `price_high`). Fix 8's reindex was DROPPING those columns from positions.csv on load. Result: dashboard "Today" sort showed 0.0 for every position, didn't sort. Fix: add the three real columns to `POSITION_COLUMNS`; change `_load_csv` to PRESERVE extras instead of dropping them. 21/21 MAX positions now show correct day_change values.
+
+**Phase 4 (deferred — needs separate brainstorming sessions):**
+- Fix 3: atomic transactions+positions rollback (needs Fix 14 first)
+- Fix 14: integration test for analyze→execute pipeline
+- Fix 15: structured logging across `scripts/`
+- Fix 16: split `unified_analysis.py` god functions (612-line `run_unified_analysis` + 354-line `execute_approved_actions`)
+- Fix 17: async-by-default for FastAPI long-running routes
+- Fix 18: split `OverviewPage.tsx` (1515 lines) and `MatrixGrid.tsx` (1316 lines)
+
+**Verification through every fix:** 111/111 tests pass. API + bot both healthy through every restart. Phase 4 should land *after* Fix 14 (test harness) so refactors have a safety net.
+
+---
+
+## Recently Completed (2026-04-27, afternoon) — Telegram Bot Notifications ✅
 
 Merged to main. Bot running from `scripts/telegram_bot.py`, logging to `cron/logs/telegram_bot.log`.
 
