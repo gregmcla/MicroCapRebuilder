@@ -17,6 +17,7 @@ data/portfolios/*/*.jsonl
 data/portfolios/*/*.json
 !data/portfolios/*/config.json
 data/pipeline_status/
+data/telegram/
 data/yf_cache/
 logs/
 reports/
