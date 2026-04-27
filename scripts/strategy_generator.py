@@ -91,16 +91,10 @@ Return ONLY the JSON object, no other text."""
 
 
 def get_api_key() -> Optional[str]:
-    """Get Anthropic API key from environment or .env file."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    env_file = Path(__file__).parent.parent / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if line.startswith("ANTHROPIC_API_KEY="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return None
+    """Get Anthropic API key from environment.
+
+    See screener_provider._get_api_key for rationale on not parsing .env directly."""
+    return os.environ.get("ANTHROPIC_API_KEY")
 
 
 def _clean_json_response(text: str) -> str:

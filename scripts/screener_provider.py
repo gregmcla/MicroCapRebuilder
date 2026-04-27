@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from schema import CLAUDE_MODEL
 from yfscreen import create_query, create_payload, get_data
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -187,16 +188,13 @@ def run_screen(config: dict, portfolio_id: str = None) -> list:
 # ---------------------------------------------------------------------------
 
 def _get_api_key() -> Optional[str]:
-    """Get Anthropic API key from environment or .env file."""
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if key:
-        return key
-    env_file = Path(__file__).parent.parent / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if line.startswith("ANTHROPIC_API_KEY="):
-                return line.split("=", 1)[1].strip().strip('"').strip("'")
-    return None
+    """Get Anthropic API key from environment.
+
+    Cron scripts and run_dashboard.sh source .env via `set -a; source .env; set +a`
+    so the env var is set by the time this runs. Don't manually parse .env here —
+    that pattern breaks under any deployment that exports the var differently
+    (systemd, Docker, CI, manual export)."""
+    return os.environ.get("ANTHROPIC_API_KEY")
 
 
 def _refinement_cache_path(portfolio_id: str) -> Path:
@@ -301,7 +299,7 @@ def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_i
         )
 
         message = client.messages.create(
-            model="claude-sonnet-4-6",
+            model=CLAUDE_MODEL,
             max_tokens=4096,
             messages=[{"role": "user", "content": user_prompt}],
         )

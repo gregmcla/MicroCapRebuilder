@@ -95,12 +95,6 @@ def random_dna():
     import os
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        env_file = Path(__file__).parent.parent.parent / ".env"
-        if env_file.exists():
-            for line in env_file.read_text().splitlines():
-                if line.startswith("ANTHROPIC_API_KEY="):
-                    api_key = line.split("=", 1)[1].strip().strip('"').strip("'")
-    if not api_key:
         raise HTTPException(status_code=500, detail="No API key configured")
 
     try:
