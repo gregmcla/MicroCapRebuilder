@@ -1,11 +1,12 @@
 """Control endpoints for mode toggling and emergency actions."""
 
 import math
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 
+from api.deps import validate_portfolio_id
 from data_files import is_paper_mode, set_paper_mode, load_config
 from portfolio_state import (
     load_portfolio_state,
@@ -32,13 +33,13 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 
 
 @router.get("/mode")
-def get_mode(portfolio_id: str):
+def get_mode(portfolio_id: str = Depends(validate_portfolio_id)):
     """Get current mode (paper/live)."""
     return {"paper_mode": is_paper_mode(portfolio_id)}
 
 
 @router.post("/mode/toggle")
-def toggle_mode(portfolio_id: str):
+def toggle_mode(portfolio_id: str = Depends(validate_portfolio_id)):
     """Toggle between paper and live mode."""
     current = is_paper_mode(portfolio_id)
     new_mode = not current
@@ -51,7 +52,11 @@ def toggle_mode(portfolio_id: str):
 
 
 @router.post("/sell/{ticker}")
-def sell_position(portfolio_id: str, ticker: str, body: SellRequest = SellRequest()):
+def sell_position(
+    ticker: str,
+    body: SellRequest = SellRequest(),
+    portfolio_id: str = Depends(validate_portfolio_id),
+):
     """Manually sell a position (full or partial) at market price."""
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
 
@@ -132,7 +137,7 @@ def sell_position(portfolio_id: str, ticker: str, body: SellRequest = SellReques
 
 
 @router.post("/close-all")
-def close_all(portfolio_id: str):
+def close_all(portfolio_id: str = Depends(validate_portfolio_id)):
     """Emergency close all positions at market price."""
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
 
@@ -206,7 +211,7 @@ def close_all(portfolio_id: str):
 
 
 @router.get("/quote/{ticker}")
-def get_quote(portfolio_id: str, ticker: str):
+def get_quote(ticker: str, portfolio_id: str = Depends(validate_portfolio_id)):
     """Get live price + portfolio risk defaults for a ticker."""
     from portfolio_state import fetch_prices_batch
     import yfinance as yf
@@ -256,7 +261,7 @@ def get_quote(portfolio_id: str, ticker: str):
 
 
 @router.post("/buy")
-def buy_position(portfolio_id: str, body: BuyRequest):
+def buy_position(body: BuyRequest, portfolio_id: str = Depends(validate_portfolio_id)):
     """Manually buy a position at market price."""
     from portfolio_state import fetch_prices_batch
 

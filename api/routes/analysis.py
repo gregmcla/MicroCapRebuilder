@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-from api.deps import serialize
+from fastapi import APIRouter, Depends, HTTPException
+from api.deps import serialize, validate_portfolio_id
 
 from unified_analysis import run_unified_analysis, execute_approved_actions
 
@@ -18,7 +18,7 @@ def _analysis_file(portfolio_id: str) -> Path:
 
 
 @router.post("/analyze")
-def analyze(portfolio_id: str):
+def analyze(portfolio_id: str = Depends(validate_portfolio_id)):
     """Run unified analysis (dry run). Returns proposed buys/sells with AI review."""
     try:
         result = run_unified_analysis(dry_run=True, portfolio_id=portfolio_id)
@@ -40,7 +40,7 @@ def analyze(portfolio_id: str):
 
 
 @router.post("/execute")
-def execute(portfolio_id: str):
+def execute(portfolio_id: str = Depends(validate_portfolio_id)):
     """Execute approved actions from the last analysis run."""
     analysis_file = _analysis_file(portfolio_id)
     if not analysis_file.exists():

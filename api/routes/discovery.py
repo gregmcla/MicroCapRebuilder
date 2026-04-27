@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Query
-from api.deps import serialize
+from fastapi import APIRouter, Depends, HTTPException, Query
+from api.deps import serialize, validate_portfolio_id
 
 from shared_universe import SharedUniverse
 
@@ -69,7 +69,7 @@ def _run_scan_job(portfolio_id: str) -> None:
 
 
 @router.post("/scan")
-def start_scan(portfolio_id: str):
+def start_scan(portfolio_id: str = Depends(validate_portfolio_id)):
     """Start a watchlist discovery scan in the background. Returns immediately."""
     # Lock scope: just the check-and-create. Lock is released BEFORE the scan
     # thread starts so the scan itself runs without holding it.
@@ -93,7 +93,7 @@ def start_scan(portfolio_id: str):
 
 
 @router.get("/watchlist")
-def get_watchlist(portfolio_id: str):
+def get_watchlist(portfolio_id: str = Depends(validate_portfolio_id)):
     """Return active watchlist candidates, sorted by blended rank (score + 0.3*delta) desc."""
     data_dir = Path(__file__).parent.parent.parent / "data" / "portfolios" / portfolio_id
     wl_path = data_dir / "watchlist.jsonl"
@@ -130,7 +130,7 @@ def get_watchlist(portfolio_id: str):
 
 
 @router.get("/scan/status")
-def get_scan_status(portfolio_id: str):
+def get_scan_status(portfolio_id: str = Depends(validate_portfolio_id)):
     """Poll the status of the last scan for this portfolio."""
     with _scan_jobs_lock:
         job = _scan_jobs.get(portfolio_id)

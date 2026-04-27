@@ -5,8 +5,8 @@ import time
 from datetime import date
 
 import pandas as pd
-from fastapi import APIRouter
-from api.deps import serialize
+from fastapi import APIRouter, Depends
+from api.deps import serialize, validate_portfolio_id
 
 from portfolio_state import load_portfolio_state, save_positions, save_snapshot, invalidate_regime_cache
 
@@ -330,7 +330,7 @@ def _serialize_state(state):
 
 
 @router.get("/position/{ticker}/info")
-def get_ticker_info(portfolio_id: str, ticker: str):
+def get_ticker_info(ticker: str, portfolio_id: str = Depends(validate_portfolio_id)):
     """Company name and short description for a ticker."""
     now = time.time()
     cached = _ticker_info_cache.get(ticker)
@@ -391,7 +391,7 @@ def get_ticker_info(portfolio_id: str, ticker: str):
 
 
 @router.get("/position/{ticker}/rationale")
-def get_position_rationale(portfolio_id: str, ticker: str):
+def get_position_rationale(ticker: str, portfolio_id: str = Depends(validate_portfolio_id)):
     """Trade rationale for a current position (from most recent BUY transaction)."""
     import json as _json
     state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
@@ -414,14 +414,14 @@ def get_position_rationale(portfolio_id: str, ticker: str):
 
 
 @router.get("/state")
-def get_state(portfolio_id: str):
+def get_state(portfolio_id: str = Depends(validate_portfolio_id)):
     """Portfolio state without refreshing prices (fast)."""
     state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
     return _serialize_state(state)
 
 
 @router.get("/state/refresh")
-def get_state_refresh(portfolio_id: str):
+def get_state_refresh(portfolio_id: str = Depends(validate_portfolio_id)):
     """Portfolio state with fresh prices (slower)."""
     invalidate_regime_cache()
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)

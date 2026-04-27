@@ -12,11 +12,25 @@ import math
 
 import numpy as np
 import pandas as pd
+from fastapi import HTTPException, Path as FPath
 
 # Make scripts/ importable
 SCRIPTS_DIR = str(Path(__file__).resolve().parent.parent / "scripts")
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
+
+
+def validate_portfolio_id(portfolio_id: str = FPath(...)) -> str:
+    """Reject any portfolio_id not in the registry — prevents path traversal.
+
+    Import is lazy because portfolio_registry depends on scripts/ being on
+    sys.path, which this module sets up at import time.
+    """
+    from portfolio_registry import list_portfolios
+    valid_ids = {p.id for p in list_portfolios(active_only=False)}
+    if portfolio_id not in valid_ids:
+        raise HTTPException(status_code=404, detail=f"Portfolio '{portfolio_id}' not found")
+    return portfolio_id
 
 
 def serialize(obj):

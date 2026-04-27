@@ -7,9 +7,9 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from api.deps import serialize
+from api.deps import serialize, validate_portfolio_id
 
 from portfolio_state import load_portfolio_state
 from strategy_health import get_strategy_health
@@ -286,7 +286,7 @@ Be direct, analytical, and specific. Use numbers. Don't pad. Write in second per
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/intelligence-brief")
-def get_intelligence_brief(portfolio_id: str):
+def get_intelligence_brief(portfolio_id: str = Depends(validate_portfolio_id)):
     """Aggregate endpoint: combines performance, learning, risk, warnings, composition."""
     try:
         state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)
@@ -378,7 +378,7 @@ def get_intelligence_brief(portfolio_id: str):
 
 
 @router.get("/intelligence-brief/audit")
-def get_audit_brief(portfolio_id: str, regenerate: bool = False):
+def get_audit_brief(regenerate: bool = False, portfolio_id: str = Depends(validate_portfolio_id)):
     """AI-generated Portfolio Audit Brief. Cached 10 min per portfolio."""
     from schema import CLAUDE_MODEL
 
@@ -427,7 +427,7 @@ class ChatRequest(BaseModel):
 
 
 @router.post("/intelligence-chat")
-def intelligence_chat(portfolio_id: str, req: ChatRequest):
+def intelligence_chat(req: ChatRequest, portfolio_id: str = Depends(validate_portfolio_id)):
     """Chat with portfolio context injected as system prompt."""
     from schema import CLAUDE_MODEL
 

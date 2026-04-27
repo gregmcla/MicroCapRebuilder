@@ -1,7 +1,7 @@
 """Performance, analytics, and learning endpoints."""
 
-from fastapi import APIRouter
-from api.deps import serialize
+from fastapi import APIRouter, Depends
+from api.deps import serialize, validate_portfolio_id
 
 from strategy_health import get_strategy_health
 from attribution import get_daily_attribution
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 
 
 @router.get("/performance")
-def performance(portfolio_id: str):
+def performance(portfolio_id: str = Depends(validate_portfolio_id)):
     """Strategy health grade, attribution, analytics metrics."""
     health = get_strategy_health(portfolio_id=portfolio_id)
     attribution = get_daily_attribution()
@@ -27,14 +27,14 @@ def performance(portfolio_id: str):
 
 
 @router.get("/report")
-def daily_report(portfolio_id: str):
+def daily_report(portfolio_id: str = Depends(validate_portfolio_id)):
     """Generate and return the daily text report."""
     text = generate_report(portfolio_id=portfolio_id)
     return {"text": text}
 
 
 @router.get("/learning")
-def learning(portfolio_id: str):
+def learning(portfolio_id: str = Depends(validate_portfolio_id)):
     """Factor learning summary and weight suggestions."""
     from portfolio_state import load_portfolio_state
     state = load_portfolio_state(fetch_prices=False, portfolio_id=portfolio_id)

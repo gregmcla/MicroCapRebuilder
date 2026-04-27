@@ -6,7 +6,9 @@ import math
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from api.deps import validate_portfolio_id
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +157,7 @@ def _load_closed_trades(portfolio_id: str, data_dir: Path = DATA_DIR) -> list[di
 
 
 @router.get("/trade-reviews")
-def get_trade_reviews(portfolio_id: str) -> dict:
+def get_trade_reviews(portfolio_id: str = Depends(validate_portfolio_id)) -> dict:
     """Return all closed trades for a portfolio as enriched objects."""
     trades = _load_closed_trades(portfolio_id)
     return {"trades": trades}
@@ -206,7 +208,7 @@ Write a 3-4 sentence synthesis that explicitly connects: (1) whether the entry t
 
 
 @router.post("/trade-reviews/{trade_id}/analyze")
-def analyze_trade(portfolio_id: str, trade_id: str) -> dict:
+def analyze_trade(trade_id: str, portfolio_id: str = Depends(validate_portfolio_id)) -> dict:
     """Call Claude Haiku to synthesize entry thesis vs exit outcome. Not persisted.
 
     Note: trade_id is a lookup key (BUY transaction_id), not a filesystem path.

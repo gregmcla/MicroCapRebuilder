@@ -2,12 +2,13 @@
 """Portfolio management endpoints."""
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
-from pydantic import BaseModel
-from api.deps import serialize
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from pydantic import BaseModel, field_validator
+from api.deps import serialize, validate_portfolio_id
 
 from portfolio_registry import (
     list_portfolios, create_portfolio,
@@ -48,6 +49,16 @@ class CreatePortfolioRequest(BaseModel):
     sector_weights: dict[str, int] | None = None
     ai_driven: bool = False
     strategy_dna: str | None = None
+
+    @field_validator("id")
+    @classmethod
+    def safe_id(cls, v: str) -> str:
+        # Prevents path traversal — id is used to construct filesystem paths.
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", v):
+            raise ValueError(
+                "id must be alphanumeric/dash/underscore, 1-64 chars, start with alphanumeric"
+            )
+        return v
 
 
 @router.get("")
@@ -139,7 +150,7 @@ def suggest_config(req: SuggestConfigRequest):
 
 
 @router.get("/{portfolio_id}/config")
-def get_portfolio_config(portfolio_id: str):
+def get_portfolio_config(portfolio_id: str = Depends(validate_portfolio_id)):
     """Return the raw config.json for a portfolio."""
     path = _config_path(portfolio_id)
     if not path.exists():
@@ -167,7 +178,11 @@ def _trigger_scan(portfolio_id: str):
 
 
 @router.put("/{portfolio_id}/config")
-def update_portfolio_config(portfolio_id: str, req: UpdateConfigRequest, background_tasks: BackgroundTasks):
+def update_portfolio_config(
+    req: UpdateConfigRequest,
+    background_tasks: BackgroundTasks,
+    portfolio_id: str = Depends(validate_portfolio_id),
+):
     """Deep-merge changes into config.json and trigger a watchlist rescan."""
     path = _config_path(portfolio_id)
     if not path.exists():
@@ -184,7 +199,10 @@ class RenamePortfolioRequest(BaseModel):
 
 
 @router.put("/{portfolio_id}/rename")
-def rename_portfolio_endpoint(portfolio_id: str, req: RenamePortfolioRequest):
+def rename_portfolio_endpoint(
+    req: RenamePortfolioRequest,
+    portfolio_id: str = Depends(validate_portfolio_id),
+):
     """Update the display name of a portfolio."""
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="Name cannot be empty")
@@ -196,7 +214,7 @@ def rename_portfolio_endpoint(portfolio_id: str, req: RenamePortfolioRequest):
 
 
 @router.delete("/{portfolio_id}")
-def delete_portfolio(portfolio_id: str):
+def delete_portfolio(portfolio_id: str = Depends(validate_portfolio_id)):
     archive_portfolio(portfolio_id)
     return {"message": f"Archived portfolio '{portfolio_id}'"}
 
