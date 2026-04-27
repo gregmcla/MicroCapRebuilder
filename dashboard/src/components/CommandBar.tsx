@@ -1,6 +1,6 @@
 /** Command bar — UPDATE · SCAN · ANALYZE · EXECUTE. Sits below TopBar. */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/store";
 import type { ScanResult } from "../lib/types";
@@ -121,6 +121,13 @@ export function ScanButton() {
   const stop = () => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   };
+
+  // Clear the polling interval if the component unmounts mid-scan.
+  // Without this, navigating away while a scan was running left the interval
+  // alive — kept making API calls until the page closed.
+  useEffect(() => {
+    return () => stop();
+  }, []);
 
   const handle = async () => {
     play("scan");
