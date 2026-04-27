@@ -196,7 +196,7 @@ def send_scan_summary(ok_portfolios: list, failed_portfolios: list) -> None:
     _send_message(text)
 
 
-def send_single_portfolio_scan(portfolio_id: str, scan_stats: Optional[dict] = None) -> None:
+def send_single_portfolio_scan(portfolio_id: str) -> None:
     s = _get_portfolio_stats(portfolio_id)
     if not s:
         return
@@ -229,12 +229,13 @@ def _get_sell_enrichment(state, ticker: str) -> dict:
                 from datetime import date as _date
                 d = _date.fromisoformat(str(entry_date)[:10])
                 days_held = (_date.today() - d).days
-            except Exception:
-                pass
+            except Exception as exc:
+                log.debug("Could not parse entry_date %r: %s", entry_date, exc)
         return_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0.0
         return_dollars = (current_price - avg_cost) * shares
         return {"days_held": days_held, "return_pct": return_pct, "return_dollars": return_dollars}
-    except Exception:
+    except Exception as exc:
+        log.debug("_get_sell_enrichment failed for %s: %s", ticker, exc)
         return {}
 
 
@@ -308,7 +309,8 @@ def _is_expired(pending: dict) -> bool:
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         return datetime.now(timezone.utc) >= expires
-    except Exception:
+    except Exception as exc:
+        log.warning("Could not parse expires_at from pending record: %s", exc)
         return True
 
 
