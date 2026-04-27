@@ -22,7 +22,7 @@ from pathlib import Path
 
 import requests
 from telegram import Update
-from telegram.ext import Application, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _SCRIPTS_DIR.parent
@@ -192,6 +192,89 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 # ---------------------------------------------------------------------------
+# /status command
+# ---------------------------------------------------------------------------
+
+def _fmt_pnl(val: float) -> str:
+    sign = "+" if val >= 0 else ""
+    return f"{sign}{val:.1f}%"
+
+
+def _fmt_day(val: float) -> str:
+    arrow = "↑" if val >= 0 else "↓"
+    sign = "+" if val >= 0 else ""
+    return f"{arrow}{sign}{val:.1f}%"
+
+
+def _build_portfolio_status(portfolio_id: str, state: dict) -> str:
+    name = portfolio_id.upper()
+    positions = state.get("positions", [])
+    cash = state.get("cash", 0) or 0
+    pos_value = sum(p.get("market_value", 0) or 0 for p in positions)
+    total = pos_value + cash
+    day_pnl = sum(p.get("day_change", 0) or 0 for p in positions)
+    day_sign = "+" if day_pnl >= 0 else ""
+
+    header = (
+        f"📊 {name}\n"
+        f"Total ${total:,.0f}  {day_sign}${day_pnl:,.0f} today  |  {len(positions)} pos\n"
+    )
+
+    if not positions:
+        return header + "  (no open positions)\n"
+
+    # Sort by market value descending
+    sorted_pos = sorted(positions, key=lambda p: p.get("market_value", 0) or 0, reverse=True)
+
+    lines = ["```"]
+    lines.append(f"{'TICKER':<7} {'PRICE':>8} {'P&L%':>7} {'TODAY':>7}")
+    lines.append("─" * 33)
+    for p in sorted_pos:
+        ticker = (p.get("ticker") or "")[:6]
+        price = p.get("current_price") or 0
+        pnl_pct = p.get("unrealized_pnl_pct") or 0
+        day_pct = p.get("day_change_pct") or 0
+        lines.append(
+            f"{ticker:<7} ${price:>7.2f} {_fmt_pnl(pnl_pct):>7} {_fmt_day(day_pct):>7}"
+        )
+    lines.append("```")
+    lines.append(f"Cash ${cash:,.0f}")
+
+    return header + "\n".join(lines)
+
+
+async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    msg = await update.message.reply_text("⏳ Fetching live positions...")
+
+    try:
+        resp = requests.get(f"{_API_BASE}/api/portfolios", timeout=10)
+        portfolios = resp.json().get("portfolios", [])
+        portfolio_ids = [p["id"] for p in portfolios]
+    except Exception as exc:
+        await msg.edit_text(f"❌ Could not fetch portfolios: {exc}")
+        return
+
+    first = True
+    for pid in portfolio_ids:
+        try:
+            state_resp = requests.get(f"{_API_BASE}/api/{pid}/state", timeout=30)
+            state = state_resp.json()
+        except Exception as exc:
+            log.warning("Could not fetch state for %s: %s", pid, exc)
+            continue
+
+        text = _build_portfolio_status(pid, state)
+        if first:
+            await msg.edit_text(text, parse_mode="Markdown")
+            first = False
+        else:
+            await update.message.reply_text(text, parse_mode="Markdown")
+
+    if first:
+        await msg.edit_text("No portfolio data available.")
+
+
+# ---------------------------------------------------------------------------
 # Expiry background task
 # ---------------------------------------------------------------------------
 
@@ -234,6 +317,7 @@ def main() -> None:
         .build()
     )
     application.add_handler(CallbackQueryHandler(handle_callback))
+    application.add_handler(CommandHandler("status", handle_status))
 
     log.info("Starting long polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
