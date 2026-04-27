@@ -262,10 +262,11 @@ def load_portfolio_state(fetch_prices: bool = True, portfolio_id: str | None = N
 def _load_csv(path, columns) -> pd.DataFrame:
     """Load a CSV file, returning empty DataFrame with correct columns if missing.
 
-    Validates loaded headers against the expected column list. Drift (missing
-    or extra columns) is logged loudly and the frame is reindexed so downstream
-    code sees the expected schema. Without this, a CSV whose header drifted via
-    manual edit or partial migration would silently corrupt every consumer."""
+    Validates loaded headers against the expected column list. Missing columns
+    are added (filled with NaN) so downstream code sees the expected schema.
+    Extra columns are PRESERVED — they're typically forward-compat fields
+    (newer code added them; older _load_csv shouldn't silently drop). Both
+    drifts are logged loudly so the next reader can investigate."""
     if path.exists():
         df = pd.read_csv(path)
         if not df.empty:
@@ -277,9 +278,11 @@ def _load_csv(path, columns) -> pd.DataFrame:
                 print(
                     f"[WARN] CSV schema drift in {path}: "
                     f"missing={sorted(missing)}, extra={sorted(extra)} — "
-                    f"reindexing to expected columns"
+                    f"adding missing as NaN, preserving extras"
                 )
-                df = df.reindex(columns=list(columns))
+                # Expected columns first (preserve declared order), then extras
+                keep_cols = list(columns) + sorted(extra)
+                df = df.reindex(columns=keep_cols)
             return df
     return pd.DataFrame(columns=columns)
 

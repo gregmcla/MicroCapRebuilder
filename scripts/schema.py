@@ -38,6 +38,9 @@ POSITION_COLUMNS = [
     "stop_loss",        # Current stop loss level
     "take_profit",      # Current take profit level
     "entry_date",       # Date of first purchase
+    "day_change",       # Total dollar change today (position-level, not per-share)
+    "day_change_pct",   # Percent change today
+    "price_high",       # Highest price since entry — used for trailing stops
 ]
 
 # ─── Daily Snapshots Schema ───────────────────────────────────────────────────
