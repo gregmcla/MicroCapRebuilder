@@ -20,7 +20,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import requests
+import httpx
+import requests  # used only by sync expiry-loop helper _edit_message_sync
 from telegram import Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
@@ -156,10 +157,10 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     log.info("APPROVE received for %s — calling execute endpoint", portfolio_id)
 
     try:
-        resp = requests.post(
-            f"{_API_BASE}/api/{portfolio_id}/execute",
-            timeout=300,
-        )
+        # Async http so the asyncio event loop stays responsive — REJECT taps,
+        # /status commands, and the expiry loop continue working while execute runs.
+        async with httpx.AsyncClient(timeout=300.0) as http:
+            resp = await http.post(f"{_API_BASE}/api/{portfolio_id}/execute")
         if resp.status_code == 200:
             data_resp = resp.json()
             executed = data_resp.get("executed", {})
@@ -257,29 +258,31 @@ def _build_portfolio_status(portfolio_id: str, state: dict) -> str:
 async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = await update.message.reply_text("⏳ Fetching live positions...")
 
-    try:
-        resp = requests.get(f"{_API_BASE}/api/portfolios", timeout=10)
-        portfolios = resp.json().get("portfolios", [])
-        portfolio_ids = [p["id"] for p in portfolios]
-    except Exception as exc:
-        await msg.edit_text(f"❌ Could not fetch portfolios: {exc}")
-        return
-
-    first = True
-    for pid in portfolio_ids:
+    # One AsyncClient for all calls — connection reuse + non-blocking event loop
+    async with httpx.AsyncClient(timeout=60.0) as http:
         try:
-            state_resp = requests.get(f"{_API_BASE}/api/{pid}/state/refresh", timeout=60)
-            state = state_resp.json()
+            resp = await http.get(f"{_API_BASE}/api/portfolios", timeout=10.0)
+            portfolios = resp.json().get("portfolios", [])
+            portfolio_ids = [p["id"] for p in portfolios]
         except Exception as exc:
-            log.warning("Could not fetch state for %s: %s", pid, exc)
-            continue
+            await msg.edit_text(f"❌ Could not fetch portfolios: {exc}")
+            return
 
-        text = _build_portfolio_status(pid, state)
-        if first:
-            await msg.edit_text(text, parse_mode="Markdown")
-            first = False
-        else:
-            await update.message.reply_text(text, parse_mode="Markdown")
+        first = True
+        for pid in portfolio_ids:
+            try:
+                state_resp = await http.get(f"{_API_BASE}/api/{pid}/state/refresh")
+                state = state_resp.json()
+            except Exception as exc:
+                log.warning("Could not fetch state for %s: %s", pid, exc)
+                continue
+
+            text = _build_portfolio_status(pid, state)
+            if first:
+                await msg.edit_text(text, parse_mode="Markdown")
+                first = False
+            else:
+                await update.message.reply_text(text, parse_mode="Markdown")
 
     if first:
         await msg.edit_text("No portfolio data available.")
