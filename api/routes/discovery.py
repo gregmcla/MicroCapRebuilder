@@ -43,6 +43,13 @@ def _run_scan_job(portfolio_id: str) -> None:
                     stats["elapsed_seconds"] = round(elapsed, 1)
                 job["status"] = "complete"
                 job["result"] = stats
+
+                # Send Telegram notification (non-fatal — dashboard scans are single-portfolio)
+                try:
+                    from telegram_notifier import send_single_portfolio_scan
+                    send_single_portfolio_scan(portfolio_id)
+                except Exception as e:
+                    pass
             except concurrent.futures.TimeoutError:
                 job["status"] = "error"
                 job["error"] = f"Scan timed out after {SCAN_TIMEOUT_SECONDS}s — try again (cache will be warmer)"

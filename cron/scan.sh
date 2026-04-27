@@ -29,18 +29,29 @@ if [ -z "$PORTFOLIOS" ]; then
 fi
 COUNT=0
 FAILED=0
+PORTFOLIOS_OK=""
+PORTFOLIOS_FAILED=""
 
 for PORTFOLIO in $PORTFOLIOS; do
     log "Scanning: $PORTFOLIO"
     if python3 scripts/watchlist_manager.py --update --portfolio "$PORTFOLIO" >> "$LOG" 2>&1; then
         log "  ok: $PORTFOLIO"
         COUNT=$((COUNT + 1))
+        PORTFOLIOS_OK="$PORTFOLIOS_OK $PORTFOLIO"
     else
         log "  FAILED: $PORTFOLIO (continuing)"
         FAILED=$((FAILED + 1))
+        PORTFOLIOS_FAILED="$PORTFOLIOS_FAILED $PORTFOLIO"
     fi
 done
 
 log "=========================================="
 log "SCAN COMPLETE -- $COUNT ok, $FAILED failed"
 log "=========================================="
+
+# Send Telegram scan summary (non-fatal)
+PORTFOLIOS_OK="${PORTFOLIOS_OK# }"
+PORTFOLIOS_FAILED="${PORTFOLIOS_FAILED# }"
+python3 scripts/telegram_notifier.py scan-summary \
+    --ok "$PORTFOLIOS_OK" \
+    --failed "$PORTFOLIOS_FAILED" >> "$LOG" 2>&1 || true
