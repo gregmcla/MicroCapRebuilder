@@ -141,3 +141,62 @@ def _get_portfolio_stats(portfolio_id: str) -> Optional[dict]:
     except Exception as exc:
         log.warning("Failed to get stats for %s: %s", portfolio_id, exc)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Scan summary
+# ---------------------------------------------------------------------------
+
+def _build_scan_message(stats_map: dict, failed: list, elapsed_seconds: float) -> str:
+    now = datetime.now()
+    dow = now.strftime("%a")
+    ts = now.strftime("%b %-d, %-I:%M %p")
+    lines = [f"Scan Complete — {dow} {ts}", ""]
+    for portfolio_id, s in stats_map.items():
+        new = s.get("new_tickers", [])
+        new_str = f"  +{len(new)} new  " + " · ".join(new[:5]) if new else "  no change"
+        watchlist_str = f"Watchlist: {s['watchlist_size']}{new_str}"
+        equity_str = f"${s['equity']:,.0f} equity"
+        total_str = f"total {_fmt_pct(s['total_return_pct'])} ({_fmt_dollar(s['total_return_dollars'])})"
+        intraday_str = f"Today: {_fmt_pct(s['intraday_pct'])} ({_fmt_dollar(s['intraday_dollars'])}) vs yesterday's close"
+        lines += [
+            portfolio_id.upper(),
+            f"  {watchlist_str}",
+            f"  {s['positions_count']} positions · {equity_str} · {total_str}",
+            f"  {intraday_str}",
+            "",
+        ]
+    for pid in failed:
+        lines += [f"{pid.upper()} ({pid})  ⚠️ scan failed", ""]
+    mins = int(elapsed_seconds // 60)
+    secs = int(elapsed_seconds % 60)
+    elapsed_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+    total_count = len(stats_map) + len(failed)
+    lines.append(f"{total_count} portfolio{'s' if total_count != 1 else ''} · {elapsed_str}")
+    return "\n".join(lines).strip()
+
+
+def send_scan_summary(ok_portfolios: list, failed_portfolios: list) -> None:
+    import time as _time
+    start = _time.monotonic()
+    stats_map: dict = {}
+    for pid in ok_portfolios:
+        s = _get_portfolio_stats(pid)
+        if s:
+            wl_file = _PORTFOLIOS_DIR / pid / "watchlist.jsonl"
+            s["new_tickers"] = _get_new_tickers_today(wl_file)
+            stats_map[pid] = s
+    elapsed = _time.monotonic() - start
+    text = _build_scan_message(stats_map, failed=failed_portfolios, elapsed_seconds=elapsed)
+    _send_message(text)
+
+
+def send_single_portfolio_scan(portfolio_id: str, scan_stats: Optional[dict] = None) -> None:
+    s = _get_portfolio_stats(portfolio_id)
+    if not s:
+        return
+    wl_file = _PORTFOLIOS_DIR / portfolio_id / "watchlist.jsonl"
+    s["new_tickers"] = _get_new_tickers_today(wl_file)
+    stats_map = {portfolio_id: s}
+    text = _build_scan_message(stats_map, failed=[], elapsed_seconds=0)
+    _send_message(text)

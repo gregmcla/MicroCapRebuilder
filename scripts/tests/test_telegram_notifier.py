@@ -79,3 +79,50 @@ def test_get_new_tickers_today_empty_file(tmp_path):
     from telegram_notifier import _get_new_tickers_today
     result = _get_new_tickers_today(tmp_path / "missing.jsonl")
     assert result == []
+
+
+# Task 4: scan summary
+
+def test_build_scan_message_contains_portfolio_names():
+    from telegram_notifier import _build_scan_message
+    stats_map = {
+        "max": {
+            "equity": 1_240_000, "positions_count": 8,
+            "total_return_pct": 12.3, "total_return_dollars": 136_000,
+            "intraday_pct": 0.82, "intraday_dollars": 10_100,
+            "watchlist_size": 47, "new_tickers": ["NVDA", "AMD", "INTC"],
+        },
+        "gov-infra": {
+            "equity": 284_000, "positions_count": 5,
+            "total_return_pct": 4.1, "total_return_dollars": 11_000,
+            "intraday_pct": -0.3, "intraday_dollars": -850,
+            "watchlist_size": 38, "new_tickers": ["GD"],
+        },
+    }
+    msg = _build_scan_message(stats_map, failed=[], elapsed_seconds=134)
+    assert "MAX" in msg
+    assert "GOV-INFRA" in msg
+    assert "NVDA" in msg
+    assert "+0.82%" in msg
+    assert "2m 14s" in msg
+
+
+def test_build_scan_message_no_new_tickers():
+    from telegram_notifier import _build_scan_message
+    stats_map = {
+        "max": {
+            "equity": 1_000_000, "positions_count": 5,
+            "total_return_pct": 0.0, "total_return_dollars": 0,
+            "intraday_pct": 0.0, "intraday_dollars": 0,
+            "watchlist_size": 40, "new_tickers": [],
+        },
+    }
+    msg = _build_scan_message(stats_map, failed=[], elapsed_seconds=60)
+    assert "no change" in msg
+
+
+def test_build_scan_message_failed_portfolio():
+    from telegram_notifier import _build_scan_message
+    msg = _build_scan_message({}, failed=["bad-portfolio"], elapsed_seconds=10)
+    assert "bad-portfolio" in msg
+    assert "failed" in msg.lower()
