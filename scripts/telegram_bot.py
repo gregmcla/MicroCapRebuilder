@@ -195,15 +195,24 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 # /status command
 # ---------------------------------------------------------------------------
 
-def _fmt_pnl(val: float) -> str:
+def _fmt_dollars(val: float) -> str:
+    sign = "+" if val >= 0 else "-"
+    abs_val = abs(val)
+    if abs_val >= 1_000_000:
+        return f"{sign}${abs_val / 1_000_000:.1f}M"
+    if abs_val >= 1_000:
+        return f"{sign}${abs_val / 1_000:.1f}k"
+    return f"{sign}${abs_val:.0f}"
+
+
+def _fmt_pct(val: float) -> str:
     sign = "+" if val >= 0 else ""
     return f"{sign}{val:.1f}%"
 
 
-def _fmt_day(val: float) -> str:
+def _fmt_day(val: float, dollars: float) -> str:
     arrow = "↑" if val >= 0 else "↓"
-    sign = "+" if val >= 0 else ""
-    return f"{arrow}{sign}{val:.1f}%"
+    return f"{arrow}{_fmt_dollars(dollars)} {_fmt_pct(val)}"
 
 
 def _build_portfolio_status(portfolio_id: str, state: dict) -> str:
@@ -213,11 +222,9 @@ def _build_portfolio_status(portfolio_id: str, state: dict) -> str:
     pos_value = sum(p.get("market_value", 0) or 0 for p in positions)
     total = pos_value + cash
     day_pnl = sum(p.get("day_change", 0) or 0 for p in positions)
-    day_sign = "+" if day_pnl >= 0 else ""
-
     header = (
         f"📊 {name}\n"
-        f"Total ${total:,.0f}  {day_sign}${day_pnl:,.0f} today  |  {len(positions)} pos\n"
+        f"Total ${total:,.0f}  {_fmt_dollars(day_pnl)} today  |  {len(positions)} pos\n"
     )
 
     if not positions:
@@ -227,15 +234,19 @@ def _build_portfolio_status(portfolio_id: str, state: dict) -> str:
     sorted_pos = sorted(positions, key=lambda p: p.get("market_value", 0) or 0, reverse=True)
 
     lines = ["```"]
-    lines.append(f"{'TICKER':<7} {'PRICE':>8} {'P&L%':>7} {'TODAY':>7}")
-    lines.append("─" * 33)
+    lines.append(f"{'TICKER':<7} {'PRICE':>8}  {'P&L':>13}  {'TODAY':>13}")
+    lines.append("─" * 46)
     for p in sorted_pos:
         ticker = (p.get("ticker") or "")[:6]
         price = p.get("current_price") or 0
         pnl_pct = p.get("unrealized_pnl_pct") or 0
+        pnl_dollars = p.get("unrealized_pnl") or 0
         day_pct = p.get("day_change_pct") or 0
+        day_dollars = p.get("day_change") or 0
+        pnl_str = f"{_fmt_dollars(pnl_dollars)} {_fmt_pct(pnl_pct)}"
+        day_str = _fmt_day(day_pct, day_dollars)
         lines.append(
-            f"{ticker:<7} ${price:>7.2f} {_fmt_pnl(pnl_pct):>7} {_fmt_day(day_pct):>7}"
+            f"{ticker:<7} ${price:>7.2f}  {pnl_str:>13}  {day_str:>13}"
         )
     lines.append("```")
     lines.append(f"Cash ${cash:,.0f}")
