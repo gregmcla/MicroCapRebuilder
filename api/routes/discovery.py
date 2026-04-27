@@ -18,7 +18,10 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 global_router = APIRouter(prefix="/api")
 
 # In-memory job store: portfolio_id -> job dict
+# Lock protects the dict against the request thread + background scan thread
+# both mutating job state without coordination.
 _scan_jobs: Dict[str, Dict[str, Any]] = {}
+_scan_jobs_lock = threading.Lock()
 
 SCAN_TIMEOUT_SECONDS = 720  # 12 minutes — covers 3000-ticker cold-cache scans
 
@@ -27,7 +30,8 @@ def _run_scan_job(portfolio_id: str) -> None:
     """Run scan in a background thread and update the job store."""
     from watchlist_manager import update_watchlist
 
-    job = _scan_jobs[portfolio_id]
+    with _scan_jobs_lock:
+        job = _scan_jobs[portfolio_id]
     start = datetime.now(timezone.utc)
 
     def _do_scan():
@@ -41,8 +45,9 @@ def _run_scan_job(portfolio_id: str) -> None:
                 elapsed = (datetime.now(timezone.utc) - start).total_seconds()
                 if stats and isinstance(stats, dict):
                     stats["elapsed_seconds"] = round(elapsed, 1)
-                job["status"] = "complete"
-                job["result"] = stats
+                with _scan_jobs_lock:
+                    job["status"] = "complete"
+                    job["result"] = stats
 
                 # Send Telegram notification (non-fatal — dashboard scans are single-portfolio)
                 try:
@@ -51,29 +56,35 @@ def _run_scan_job(portfolio_id: str) -> None:
                 except Exception as e:
                     pass
             except concurrent.futures.TimeoutError:
-                job["status"] = "error"
-                job["error"] = f"Scan timed out after {SCAN_TIMEOUT_SECONDS}s — try again (cache will be warmer)"
+                with _scan_jobs_lock:
+                    job["status"] = "error"
+                    job["error"] = f"Scan timed out after {SCAN_TIMEOUT_SECONDS}s — try again (cache will be warmer)"
     except Exception as e:
-        job["status"] = "error"
-        job["error"] = str(e)
+        with _scan_jobs_lock:
+            job["status"] = "error"
+            job["error"] = str(e)
     finally:
-        job["finished_at"] = datetime.now(timezone.utc).isoformat()
+        with _scan_jobs_lock:
+            job["finished_at"] = datetime.now(timezone.utc).isoformat()
 
 
 @router.post("/scan")
 def start_scan(portfolio_id: str):
     """Start a watchlist discovery scan in the background. Returns immediately."""
-    existing = _scan_jobs.get(portfolio_id)
-    if existing and existing["status"] == "running":
-        return {"status": "running", "message": "Scan already in progress"}
+    # Lock scope: just the check-and-create. Lock is released BEFORE the scan
+    # thread starts so the scan itself runs without holding it.
+    with _scan_jobs_lock:
+        existing = _scan_jobs.get(portfolio_id)
+        if existing and existing["status"] == "running":
+            return {"status": "running", "message": "Scan already in progress"}
 
-    _scan_jobs[portfolio_id] = {
-        "status": "running",
-        "started_at": datetime.now(timezone.utc).isoformat(),
-        "result": None,
-        "error": None,
-        "finished_at": None,
-    }
+        _scan_jobs[portfolio_id] = {
+            "status": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "result": None,
+            "error": None,
+            "finished_at": None,
+        }
 
     thread = threading.Thread(target=_run_scan_job, args=(portfolio_id,), daemon=True)
     thread.start()
@@ -121,16 +132,18 @@ def get_watchlist(portfolio_id: str):
 @router.get("/scan/status")
 def get_scan_status(portfolio_id: str):
     """Poll the status of the last scan for this portfolio."""
-    job = _scan_jobs.get(portfolio_id)
-    if not job:
-        return {"status": "idle"}
-    return {
-        "status": job["status"],
-        "started_at": job["started_at"],
-        "finished_at": job["finished_at"],
-        "result": job["result"],
-        "error": job["error"],
-    }
+    with _scan_jobs_lock:
+        job = _scan_jobs.get(portfolio_id)
+        if not job:
+            return {"status": "idle"}
+        # Snapshot the dict under the lock so the response is internally consistent
+        return {
+            "status": job["status"],
+            "started_at": job["started_at"],
+            "finished_at": job["finished_at"],
+            "result": job["result"],
+            "error": job["error"],
+        }
 
 
 @global_router.get("/convergent-signals")
