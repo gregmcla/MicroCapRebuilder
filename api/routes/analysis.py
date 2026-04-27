@@ -45,11 +45,27 @@ def execute(portfolio_id: str):
     analysis_file = _analysis_file(portfolio_id)
     if not analysis_file.exists():
         raise HTTPException(status_code=400, detail="No analysis to execute. Run analyze first.")
+
+    # Concurrency guard: atomically claim the analysis by renaming it.
+    # Only one caller wins; concurrent /execute hits get 409. On exception,
+    # we rename back so the user can retry.
+    executing_file = analysis_file.with_name(".executing.json")
     try:
-        with open(analysis_file) as f:
+        analysis_file.rename(executing_file)
+    except FileNotFoundError:
+        raise HTTPException(status_code=409, detail="Already executing or no analysis available.")
+
+    try:
+        with open(executing_file) as f:
             last_analysis = json.load(f)
         result = execute_approved_actions(last_analysis, portfolio_id=portfolio_id)
-        analysis_file.unlink(missing_ok=True)
+        executing_file.unlink(missing_ok=True)
         return serialize(result)
     except Exception as e:
+        # Restore the analysis file so the user can retry after fixing the issue
+        try:
+            executing_file.rename(analysis_file)
+        except Exception as restore_exc:
+            # Couldn't restore — leave the executing file in place for manual recovery
+            print(f"[execute] Could not restore analysis file after failure: {restore_exc}")
         raise HTTPException(status_code=500, detail=str(e))
