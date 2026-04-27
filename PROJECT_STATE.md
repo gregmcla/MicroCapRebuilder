@@ -7,7 +7,36 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron still PAUSED since 2026-04-03 (user deferred re-enable). Now running 4.6 vs 4.7 model experiment through 2026-05-21.**
+**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron still PAUSED since 2026-04-03 (user deferred re-enable). Now running 4.6 vs 4.7 model experiment through 2026-05-21. Telegram notifications implemented — awaiting bot token to go live.**
+
+---
+
+## Recently Completed (2026-04-27) — Telegram Bot Notifications
+
+Feature branch: `feature/telegram-notifications` (9 commits, worktree at `.worktrees/feature-telegram-notifications`). NOT YET MERGED TO MAIN.
+
+**New files:**
+- `scripts/telegram_notifier.py` — send-only notifier (scan summary, analysis proposals with APPROVE/REJECT buttons, position snapshots). 18 tests passing.
+- `scripts/telegram_bot.py` — long-running async PTB 22.7 bot. APPROVE taps call `/api/{portfolio_id}/execute`. REJECT = silent cleanup. 60-min expiry loop. Watchdog-monitored.
+- `cron/analyze.sh` — new cron: calls `/analyze` API per portfolio, then sends Telegram proposals. No auto-execute.
+
+**Modified files:**
+- `cron/scan.sh` — tracks OK/FAILED per portfolio, sends consolidated scan summary
+- `cron/update.sh` — tracks OK/FAILED per portfolio, sends portfolio snapshot
+- `cron/api_watchdog.sh` — restructured (removed early `exit 0`), added bot watchdog block
+- `api/routes/discovery.py` — dashboard SCAN button sends single-portfolio Telegram notification
+- `.gitignore` — `data/telegram/` added
+- `crontab` — `analyze.sh` entry added (paused); crontab backup at `cron/crontab_backup_20260427.txt`
+
+**Setup remaining (Task 14):**
+1. Create bot via @BotFather → get `TELEGRAM_BOT_TOKEN`
+2. Get `TELEGRAM_CHAT_ID` (message bot, call getUpdates)
+3. Add both to `.env` + `TELEGRAM_APPROVAL_TIMEOUT_MINUTES=60`
+4. Start bot: `python3 scripts/telegram_bot.py &` (watchdog auto-restarts after that)
+5. When cron re-enabled: uncomment `analyze.sh` line (not `execute.sh`) in crontab
+
+**Spec:** `docs/superpowers/specs/2026-04-27-telegram-notifications-design.md`
+**Plan:** `docs/superpowers/plans/2026-04-27-telegram-notifications.md`
 
 ---
 
