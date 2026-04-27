@@ -257,7 +257,7 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     first = True
     for pid in portfolio_ids:
         try:
-            state_resp = requests.get(f"{_API_BASE}/api/{pid}/state", timeout=30)
+            state_resp = requests.get(f"{_API_BASE}/api/{pid}/state/refresh", timeout=60)
             state = state_resp.json()
         except Exception as exc:
             log.warning("Could not fetch state for %s: %s", pid, exc)
