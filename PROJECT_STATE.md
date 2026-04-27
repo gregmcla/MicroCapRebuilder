@@ -7,7 +7,7 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron RE-ENABLED 2026-04-27 (scan/analyze/update — execute.sh stays disabled, replaced by Telegram approval flow). Running 4.6 vs 4.7 model experiment through 2026-05-21. Telegram notifications LIVE — bot running, APPROVE/REJECT smoke tested.**
+**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron RE-ENABLED 2026-04-27. Telegram bot fully live: APPROVE/REJECT proposals, /status command for live per-position snapshot. Running 4.6 vs 4.7 model experiment through 2026-05-21.**
 
 ---
 
