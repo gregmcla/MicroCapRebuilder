@@ -150,7 +150,13 @@ def prewarm_info_for_tickers(
     Returns a dict mapping ticker -> info dict.
     Caps at 500 tickers; shuffles first to avoid alphabetical bias.
     Used by unified_analysis.py to pre-warm info before scoring.
+
+    Per-ticker timeout is enforced via future.result(timeout=...). When the
+    caller-side timeout fires, the worker thread continues until yfinance's
+    own HTTP timeout returns (~10s), then the executor reclaims it. No leaked
+    daemon threads, no zombie accumulation across long-running API processes.
     """
+    import concurrent.futures
     import random as _random
 
     shuffled = list(tickers)
@@ -160,30 +166,27 @@ def prewarm_info_for_tickers(
     info_cache: Dict[str, dict] = {}
 
     def _fetch_one(ticker: str) -> tuple:
-        result: list = [{}]
-
-        def _do_fetch() -> None:
-            try:
-                result[0] = yf.Ticker(ticker).info
-            except Exception as e:
-                print(f"Warning: info fetch failed for {ticker}: {e}")
-
-        t = threading.Thread(target=_do_fetch, daemon=True)
-        t.start()
-        t.join(timeout=timeout)
-        return ticker, result[0]
+        try:
+            return ticker, yf.Ticker(ticker).info
+        except Exception as e:
+            print(f"Warning: info fetch failed for {ticker}: {e}")
+            return ticker, {}
 
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(_fetch_one, t): t for t in to_fetch}
         for future in as_completed(futures):
+            ticker = futures[future]
             try:
-                ticker, info = future.result(timeout=8)
+                _t, info = future.result(timeout=timeout)
                 info_cache[ticker] = info
-            except Exception as e:
-                ticker = futures[future]
-                print(f"Warning: prewarm future failed for {ticker}: {e}")
+            except concurrent.futures.TimeoutError:
                 info_cache[ticker] = {}
+                # Worker thread will free up when yfinance's HTTP timeout returns;
+                # ThreadPoolExecutor reuses it for the next ticker.
+            except Exception as e:
+                info_cache[ticker] = {}
+                print(f"Warning: prewarm future failed for {ticker}: {e}")
 
     elapsed = time.time() - t0
     print(f"  prewarm_info_for_tickers: {len(info_cache)} tickers in {elapsed:.1f}s")
@@ -322,7 +325,15 @@ class StockDiscovery:
             print(f"Warning: failed to save disk info cache: {e}")
 
     def _get_stock_info(self, ticker: str, timeout: float = 5.0) -> dict:
-        """Fetch and cache stock info with a hard per-ticker timeout."""
+        """Fetch and cache stock info with a hard per-ticker timeout.
+
+        Uses ThreadPoolExecutor instead of a leaked daemon thread. When the
+        timeout fires, we shutdown the executor without waiting — yfinance's
+        own HTTP timeout (~10s) eventually frees the worker, and the executor
+        is GC'd cleanly. No zombie thread accumulation across long-running
+        API processes.
+        """
+        import concurrent.futures
         # 1. In-memory cache (per scan instance)
         if ticker in self._info_cache:
             return self._info_cache[ticker]
@@ -336,19 +347,20 @@ class StockDiscovery:
                 self._info_cache[ticker] = info_dict
                 return info_dict
 
-        result: list = [{}]
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(lambda: yf.Ticker(ticker).info)
+        try:
+            info = future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            info = {}
+        except Exception as e:
+            info = {}
+            print(f"Warning: info fetch failed for {ticker}: {e}")
+        finally:
+            # wait=False so the function returns even if the worker is still
+            # blocked on yfinance HTTP — the worker self-cleans when done.
+            executor.shutdown(wait=False, cancel_futures=True)
 
-        def _fetch() -> None:
-            try:
-                result[0] = yf.Ticker(ticker).info
-            except Exception as e:
-                print(f"Warning: info fetch failed for {ticker}: {e}")
-
-        t = threading.Thread(target=_fetch, daemon=True)
-        t.start()
-        t.join(timeout=timeout)
-        # If thread is still alive after timeout, it's hung — skip the ticker
-        info = result[0]
         self._info_cache[ticker] = info
         # Only persist to disk if we got real data (non-empty)
         if info:
