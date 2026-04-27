@@ -24,8 +24,16 @@ def analyze(portfolio_id: str):
         result = run_unified_analysis(dry_run=True, portfolio_id=portfolio_id)
         analysis_file = _analysis_file(portfolio_id)
         serialized = serialize(result)
-        with open(analysis_file, "w") as f:
-            json.dump(serialized, f)
+        # Atomic write: tmp + replace prevents corruption if process is killed mid-write.
+        # A subsequent /execute reading a partial JSON would 500 or act on garbage.
+        tmp_file = analysis_file.with_name(analysis_file.name + ".tmp")
+        try:
+            with open(tmp_file, "w") as f:
+                json.dump(serialized, f)
+            tmp_file.replace(analysis_file)
+        except Exception:
+            tmp_file.unlink(missing_ok=True)
+            raise
         return serialized
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
