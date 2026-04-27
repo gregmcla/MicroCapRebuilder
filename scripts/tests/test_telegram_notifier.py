@@ -126,3 +126,115 @@ def test_build_scan_message_failed_portfolio():
     msg = _build_scan_message({}, failed=["bad-portfolio"], elapsed_seconds=10)
     assert "bad-portfolio" in msg
     assert "failed" in msg.lower()
+
+
+# Task 5: analysis proposals
+
+def test_build_proposals_message_buy():
+    from telegram_notifier import _build_proposals_message
+    approved = [
+        {
+            "original": {
+                "action_type": "BUY",
+                "ticker": "NVDA",
+                "total_value": 2500.0,
+                "quant_score": 78.0,
+                "reason": "SIGNAL",
+            },
+            "ai_reasoning": "breakout momentum",
+            "decision": "APPROVE",
+        }
+    ]
+    msg = _build_proposals_message(
+        portfolio_id="max",
+        approved=approved,
+        sell_enrichment={},
+        cash_after=142500,
+        regime="BULL",
+        ai_mode="claude",
+        intraday_pct=0.82,
+        intraday_dollars=10100,
+        expires_at=datetime(2026, 4, 28, 10, 35),
+    )
+    assert "NVDA" in msg
+    assert "$2,500" in msg
+    assert "78" in msg
+    assert "BUYS (1)" in msg
+
+
+def test_build_proposals_message_sell_enrichment():
+    from telegram_notifier import _build_proposals_message
+    approved = [
+        {
+            "original": {
+                "action_type": "SELL",
+                "ticker": "INTC",
+                "shares": 50,
+                "price": 66.78,
+                "reason": "STOP_LOSS",
+            },
+            "ai_reasoning": "stop triggered",
+            "decision": "APPROVE",
+        }
+    ]
+    sell_enrichment = {
+        "INTC": {"days_held": 14, "return_pct": -8.2, "return_dollars": -1240}
+    }
+    msg = _build_proposals_message(
+        portfolio_id="max",
+        approved=approved,
+        sell_enrichment=sell_enrichment,
+        cash_after=142500,
+        regime="BULL",
+        ai_mode="claude",
+        intraday_pct=0.82,
+        intraday_dollars=10100,
+        expires_at=datetime(2026, 4, 28, 10, 35),
+    )
+    assert "INTC" in msg
+    assert "14d" in msg
+    assert "-8.20%" in msg
+
+
+def test_write_and_read_pending_file(tmp_path):
+    import importlib
+    import telegram_notifier as tn
+    original = tn._PENDING_DIR
+    tn._PENDING_DIR = tmp_path
+    expires = datetime(2026, 4, 28, 10, 35, tzinfo=timezone.utc)
+    tn._write_pending("max", message_id=99, expires_at=expires)
+    pending_file = tmp_path / "max.json"
+    assert pending_file.exists()
+    data = json.loads(pending_file.read_text())
+    assert data["portfolio_id"] == "max"
+    assert data["message_id"] == 99
+    tn._PENDING_DIR = original
+
+
+def test_is_expired_true():
+    from telegram_notifier import _is_expired
+    past = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    assert _is_expired({"expires_at": past}) is True
+
+
+def test_is_expired_false():
+    from telegram_notifier import _is_expired
+    future = (datetime.now(timezone.utc) + timedelta(minutes=30)).isoformat()
+    assert _is_expired({"expires_at": future}) is False
+
+
+# Task 6: update snapshot
+
+def test_build_update_snapshot_message():
+    from telegram_notifier import _build_update_snapshot_message
+    stats_map = {
+        "max": {
+            "equity": 1_240_000, "positions_count": 8,
+            "total_return_pct": 12.3, "total_return_dollars": 136_000,
+            "intraday_pct": 1.2, "intraday_dollars": 14_800,
+        },
+    }
+    msg = _build_update_snapshot_message(stats_map, failed=[], label="4:15 PM update")
+    assert "MAX" in msg
+    assert "+1.20%" in msg
+    assert "4:15 PM update" in msg

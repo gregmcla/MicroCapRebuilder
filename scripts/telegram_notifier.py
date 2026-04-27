@@ -200,3 +200,230 @@ def send_single_portfolio_scan(portfolio_id: str, scan_stats: Optional[dict] = N
     stats_map = {portfolio_id: s}
     text = _build_scan_message(stats_map, failed=[], elapsed_seconds=0)
     _send_message(text)
+
+
+# ---------------------------------------------------------------------------
+# Analysis proposals
+# ---------------------------------------------------------------------------
+
+def _get_sell_enrichment(state, ticker: str) -> dict:
+    try:
+        if state.positions.empty:
+            return {}
+        row = state.positions[state.positions["ticker"] == ticker]
+        if row.empty:
+            return {}
+        r = row.iloc[0]
+        entry_date = r.get("entry_date", "")
+        avg_cost = float(r.get("avg_cost_basis", 0) or 0)
+        current_price = float(r.get("current_price", 0) or 0)
+        shares = float(r.get("shares", 0) or 0)
+        days_held = 0
+        if entry_date:
+            try:
+                from datetime import date as _date
+                d = _date.fromisoformat(str(entry_date)[:10])
+                days_held = (_date.today() - d).days
+            except Exception:
+                pass
+        return_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0.0
+        return_dollars = (current_price - avg_cost) * shares
+        return {"days_held": days_held, "return_pct": return_pct, "return_dollars": return_dollars}
+    except Exception:
+        return {}
+
+
+def _build_proposals_message(
+    portfolio_id: str,
+    approved: list,
+    sell_enrichment: dict,
+    cash_after: float,
+    regime: str,
+    ai_mode: str,
+    intraday_pct: float,
+    intraday_dollars: float,
+    expires_at: datetime,
+) -> str:
+    buys = [a for a in approved if a.get("original", {}).get("action_type") == "BUY"]
+    sells = [a for a in approved if a.get("original", {}).get("action_type") == "SELL"]
+    now_str = datetime.now().strftime("%-I:%M %p")
+    expires_str = expires_at.strftime("%-I:%M %p")
+    mode_str = "AI mode" if ai_mode == "claude" else "mechanical"
+    lines = [
+        f"{portfolio_id.upper()} · {regime} · {mode_str}",
+        f"Analyzed {now_str} · expires {expires_str}",
+        "",
+    ]
+    if buys:
+        lines.append(f"BUYS ({len(buys)})")
+        for a in buys:
+            orig = a["original"]
+            ticker = orig.get("ticker", "?")
+            value = orig.get("total_value", 0) or 0
+            score = orig.get("quant_score", 0) or 0
+            reasoning = (a.get("ai_reasoning") or orig.get("reason", ""))[:60]
+            lines.append(f"  {ticker:<8} ${value:,.0f}   score {score:.0f}   {reasoning}")
+        lines.append("")
+    if sells:
+        lines.append(f"SELLS ({len(sells)})")
+        for a in sells:
+            orig = a["original"]
+            ticker = orig.get("ticker", "?")
+            reason = orig.get("reason", "SIGNAL").replace("_", " ").lower()
+            enr = sell_enrichment.get(ticker, {})
+            days = enr.get("days_held", 0)
+            ret_pct = enr.get("return_pct", 0.0)
+            ret_dollars = enr.get("return_dollars", 0.0)
+            hold_str = f"held {days}d" if days else ""
+            ret_str = f"{_fmt_pct(ret_pct)} ({_fmt_dollar(ret_dollars)})"
+            suffix = f"   {hold_str} · {ret_str}" if hold_str else f"   {ret_str}"
+            lines.append(f"  {ticker:<8} 100%   {reason}{suffix}")
+        lines.append("")
+    lines.append(f"Cash after: ${cash_after:,.0f}")
+    lines.append(f"Today: {_fmt_pct(intraday_pct)} ({_fmt_dollar(intraday_dollars)}) vs yesterday's close")
+    return "\n".join(lines).strip()
+
+
+def _write_pending(portfolio_id: str, message_id: int, expires_at: datetime) -> None:
+    _PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+    data = {
+        "portfolio_id": portfolio_id,
+        "message_id": message_id,
+        "chat_id": chat_id,
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires_at.isoformat(),
+    }
+    (_PENDING_DIR / f"{portfolio_id}.json").write_text(json.dumps(data))
+
+
+def _is_expired(pending: dict) -> bool:
+    try:
+        expires = datetime.fromisoformat(pending["expires_at"])
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) >= expires
+    except Exception:
+        return True
+
+
+def send_analysis_proposals(portfolio_id: str) -> None:
+    analysis_file = _PORTFOLIOS_DIR / portfolio_id / ".last_analysis.json"
+    if not analysis_file.exists():
+        log.warning("No analysis file for %s", portfolio_id)
+        return
+    with open(analysis_file) as f:
+        result = json.load(f)
+    approved = result.get("approved", [])
+    if not approved:
+        return
+    try:
+        from portfolio_state import load_portfolio_state
+        state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
+        sell_enrichment = {}
+        for a in approved:
+            orig = a.get("original", {})
+            if orig.get("action_type") == "SELL":
+                ticker = orig.get("ticker", "")
+                if ticker:
+                    sell_enrichment[ticker] = _get_sell_enrichment(state, ticker)
+        intraday_dollars = 0.0
+        if not state.positions.empty and "day_change" in state.positions.columns:
+            intraday_dollars = float(state.positions["day_change"].sum())
+        prev_equity = state.total_equity - intraday_dollars
+        intraday_pct = (intraday_dollars / prev_equity * 100) if prev_equity > 0 else 0.0
+        cash_after = state.cash
+    except Exception as exc:
+        log.warning("Could not load state for enrichment: %s", exc)
+        sell_enrichment = {}
+        intraday_pct = 0.0
+        intraday_dollars = 0.0
+        cash_after = 0.0
+    timeout_minutes = int(os.getenv("TELEGRAM_APPROVAL_TIMEOUT_MINUTES", "60"))
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=timeout_minutes)
+    text = _build_proposals_message(
+        portfolio_id=portfolio_id,
+        approved=approved,
+        sell_enrichment=sell_enrichment,
+        cash_after=cash_after,
+        regime=result.get("regime", "UNKNOWN"),
+        ai_mode=result.get("ai_mode", "unknown"),
+        intraday_pct=intraday_pct,
+        intraday_dollars=intraday_dollars,
+        expires_at=expires_at,
+    )
+    reply_markup = {
+        "inline_keyboard": [[
+            {"text": "✅ APPROVE", "callback_data": f"approve:{portfolio_id}"},
+            {"text": "❌ REJECT", "callback_data": f"reject:{portfolio_id}"},
+        ]]
+    }
+    message_id = _send_message(text, reply_markup=reply_markup)
+    if message_id:
+        _write_pending(portfolio_id, message_id, expires_at)
+
+
+# ---------------------------------------------------------------------------
+# Update snapshot + CLI
+# ---------------------------------------------------------------------------
+
+def _build_update_snapshot_message(stats_map: dict, failed: list, label: str) -> str:
+    now_str = datetime.now().strftime("%-I:%M %p")
+    dow = datetime.now().strftime("%a %b %-d")
+    lines = [f"Portfolio Update — {dow}, {now_str}", ""]
+    for portfolio_id, s in stats_map.items():
+        equity_str = f"${s['equity']:,.0f} equity"
+        total_str = f"total {_fmt_pct(s['total_return_pct'])} ({_fmt_dollar(s['total_return_dollars'])})"
+        intraday_str = f"Today: {_fmt_pct(s['intraday_pct'])} ({_fmt_dollar(s['intraday_dollars'])}) vs yesterday's close"
+        lines += [
+            portfolio_id.upper(),
+            f"  {s['positions_count']} positions · {equity_str} · {total_str}",
+            f"  {intraday_str}",
+            "",
+        ]
+    for pid in failed:
+        lines += [f"{pid.upper()}  ⚠️ update failed", ""]
+    total_count = len(stats_map) + len(failed)
+    lines.append(f"{total_count} portfolio{'s' if total_count != 1 else ''} · {label}")
+    return "\n".join(lines).strip()
+
+
+def send_update_snapshot(ok_portfolios: list, failed_portfolios: list) -> None:
+    stats_map: dict = {}
+    for pid in ok_portfolios:
+        s = _get_portfolio_stats(pid)
+        if s:
+            stats_map[pid] = s
+    label = datetime.now().strftime("%-I:%M %p update")
+    text = _build_update_snapshot_message(stats_map, failed=failed_portfolios, label=label)
+    _send_message(text)
+
+
+if __name__ == "__main__":
+    import argparse
+    logging.basicConfig(level=logging.WARNING)
+    parser = argparse.ArgumentParser(description="GScott Telegram Notifier")
+    sub = parser.add_subparsers(dest="command", required=True)
+    p_scan = sub.add_parser("scan-summary")
+    p_scan.add_argument("--ok", default="")
+    p_scan.add_argument("--failed", default="")
+    p_proposals = sub.add_parser("proposals")
+    p_proposals.add_argument("--portfolio", required=True)
+    p_update = sub.add_parser("update-snapshot")
+    p_update.add_argument("--ok", default="")
+    p_update.add_argument("--failed", default="")
+    p_single = sub.add_parser("single-scan")
+    p_single.add_argument("--portfolio", required=True)
+    args = parser.parse_args()
+    if args.command == "scan-summary":
+        ok = [p for p in args.ok.split() if p]
+        failed = [p for p in args.failed.split() if p]
+        send_scan_summary(ok, failed)
+    elif args.command == "proposals":
+        send_analysis_proposals(args.portfolio)
+    elif args.command == "update-snapshot":
+        ok = [p for p in args.ok.split() if p]
+        failed = [p for p in args.failed.split() if p]
+        send_update_snapshot(ok, failed)
+    elif args.command == "single-scan":
+        send_single_portfolio_scan(args.portfolio)
