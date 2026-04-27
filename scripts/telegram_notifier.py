@@ -265,8 +265,14 @@ def _build_proposals_message(
         for a in buys:
             orig = a["original"]
             ticker = orig.get("ticker", "?")
-            value = orig.get("total_value", 0) or 0
-            score = orig.get("quant_score", 0) or 0
+            # total_value present in mechanical mode; AI allocator uses shares * price
+            value = orig.get("total_value") or (
+                (orig.get("shares") or 0) * (orig.get("price") or 0)
+            )
+            # quant_score populated in mechanical mode; AI allocator uses price_momentum factor
+            score = orig.get("quant_score") or (
+                orig.get("factor_scores", {}).get("price_momentum", 0)
+            )
             reasoning = (a.get("ai_reasoning") or orig.get("reason", ""))[:60]
             lines.append(f"  {ticker:<8} ${value:,.0f}   score {score:.0f}   {reasoning}")
         lines.append("")
