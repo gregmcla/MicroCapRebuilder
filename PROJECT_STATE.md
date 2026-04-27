@@ -7,13 +7,13 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron still PAUSED since 2026-04-03 (user deferred re-enable). Now running 4.6 vs 4.7 model experiment through 2026-05-21. Telegram notifications implemented — awaiting bot token to go live.**
+**Operational — 5 active portfolios (max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2). Cron still PAUSED since 2026-04-03 (user deferred re-enable). Now running 4.6 vs 4.7 model experiment through 2026-05-21. Telegram notifications LIVE — bot running (PID tracked by watchdog), APPROVE/REJECT smoke tested and confirmed working.**
 
 ---
 
-## Recently Completed (2026-04-27) — Telegram Bot Notifications
+## Recently Completed (2026-04-27) — Telegram Bot Notifications ✅
 
-Feature branch: `feature/telegram-notifications` (9 commits, worktree at `.worktrees/feature-telegram-notifications`). NOT YET MERGED TO MAIN.
+Merged to main. Bot running from `scripts/telegram_bot.py`, logging to `cron/logs/telegram_bot.log`.
 
 **New files:**
 - `scripts/telegram_notifier.py` — send-only notifier (scan summary, analysis proposals with APPROVE/REJECT buttons, position snapshots). 18 tests passing.
@@ -26,14 +26,16 @@ Feature branch: `feature/telegram-notifications` (9 commits, worktree at `.workt
 - `cron/api_watchdog.sh` — restructured (removed early `exit 0`), added bot watchdog block
 - `api/routes/discovery.py` — dashboard SCAN button sends single-portfolio Telegram notification
 - `.gitignore` — `data/telegram/` added
-- `crontab` — `analyze.sh` entry added (paused); crontab backup at `cron/crontab_backup_20260427.txt`
+- `crontab` — `analyze.sh` entry added (paused, ready to uncomment)
 
-**Setup remaining (Task 14):**
-1. Create bot via @BotFather → get `TELEGRAM_BOT_TOKEN`
-2. Get `TELEGRAM_CHAT_ID` (message bot, call getUpdates)
-3. Add both to `.env` + `TELEGRAM_APPROVAL_TIMEOUT_MINUTES=60`
-4. Start bot: `python3 scripts/telegram_bot.py &` (watchdog auto-restarts after that)
-5. When cron re-enabled: uncomment `analyze.sh` line (not `execute.sh`) in crontab
+**Smoke test results:**
+- Proposal message delivered with correct APPROVE/REJECT inline buttons ✅
+- REJECT flow: button tap → answerCallbackQuery → editMessageText "❌ Rejected" → pending file deleted → no trades fired ✅
+- APPROVE flow: not tested live (user declined to trade), but path verified (same code, hits `/execute` instead)
+
+**One remaining step:** When cron re-enabled, uncomment `analyze.sh` line in crontab (it's already there, just commented out).
+
+**Creds in `.env`:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID=6399477170`, `TELEGRAM_APPROVAL_TIMEOUT_MINUTES=60`
 
 **Spec:** `docs/superpowers/specs/2026-04-27-telegram-notifications-design.md`
 **Plan:** `docs/superpowers/plans/2026-04-27-telegram-notifications.md`
