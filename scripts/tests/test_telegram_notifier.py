@@ -118,13 +118,13 @@ def test_build_scan_message_no_new_tickers():
         },
     }
     msg = _build_scan_message(stats_map, failed=[], elapsed_seconds=60)
-    assert "no change" in msg
+    assert "↔ no change" in msg
 
 
 def test_build_scan_message_failed_portfolio():
     from telegram_notifier import _build_scan_message
     msg = _build_scan_message({}, failed=["bad-portfolio"], elapsed_seconds=10)
-    assert "bad-portfolio" in msg
+    assert "BAD-PORTFOLIO" in msg
     assert "failed" in msg.lower()
 
 

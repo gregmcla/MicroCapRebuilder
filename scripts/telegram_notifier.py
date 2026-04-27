@@ -78,10 +78,16 @@ def _edit_message(message_id: int, text: str, remove_buttons: bool = True) -> No
     if remove_buttons:
         payload["reply_markup"] = json.dumps({"inline_keyboard": []})
     url = _TELEGRAM_API.format(token=token, method="editMessageText")
-    try:
-        requests.post(url, json=payload, timeout=10)
-    except Exception as exc:
-        log.warning("Telegram editMessageText failed: %s", exc)
+    for attempt in range(3):
+        try:
+            resp = requests.post(url, json=payload, timeout=10)
+            if resp.ok:
+                return
+            log.warning("Telegram editMessageText %s: %s", resp.status_code, resp.text[:200])
+        except Exception as exc:
+            log.warning("Telegram editMessageText attempt %d failed: %s", attempt + 1, exc)
+        if attempt < 2:
+            time.sleep(2 ** attempt)
 
 
 # ---------------------------------------------------------------------------
@@ -151,10 +157,10 @@ def _build_scan_message(stats_map: dict, failed: list, elapsed_seconds: float) -
     now = datetime.now()
     dow = now.strftime("%a")
     ts = now.strftime("%b %-d, %-I:%M %p")
-    lines = [f"Scan Complete — {dow} {ts}", ""]
+    lines = [f"🔍 Scan Complete — {dow} {ts}", ""]
     for portfolio_id, s in stats_map.items():
         new = s.get("new_tickers", [])
-        new_str = f"  +{len(new)} new  " + " · ".join(new[:5]) if new else "  no change"
+        new_str = f"  +{len(new)} new  " + " · ".join(new[:5]) if new else "  ↔ no change"
         watchlist_str = f"Watchlist: {s['watchlist_size']}{new_str}"
         equity_str = f"${s['equity']:,.0f} equity"
         total_str = f"total {_fmt_pct(s['total_return_pct'])} ({_fmt_dollar(s['total_return_dollars'])})"
@@ -167,7 +173,7 @@ def _build_scan_message(stats_map: dict, failed: list, elapsed_seconds: float) -
             "",
         ]
     for pid in failed:
-        lines += [f"{pid.upper()} ({pid})  ⚠️ scan failed", ""]
+        lines += [f"{pid.upper()}  ⚠️ scan failed", ""]
     mins = int(elapsed_seconds // 60)
     secs = int(elapsed_seconds % 60)
     elapsed_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
@@ -177,8 +183,7 @@ def _build_scan_message(stats_map: dict, failed: list, elapsed_seconds: float) -
 
 
 def send_scan_summary(ok_portfolios: list, failed_portfolios: list) -> None:
-    import time as _time
-    start = _time.monotonic()
+    start = time.monotonic()
     stats_map: dict = {}
     for pid in ok_portfolios:
         s = _get_portfolio_stats(pid)
@@ -186,7 +191,7 @@ def send_scan_summary(ok_portfolios: list, failed_portfolios: list) -> None:
             wl_file = _PORTFOLIOS_DIR / pid / "watchlist.jsonl"
             s["new_tickers"] = _get_new_tickers_today(wl_file)
             stats_map[pid] = s
-    elapsed = _time.monotonic() - start
+    elapsed = time.monotonic() - start
     text = _build_scan_message(stats_map, failed=failed_portfolios, elapsed_seconds=elapsed)
     _send_message(text)
 
@@ -250,7 +255,7 @@ def _build_proposals_message(
     expires_str = expires_at.strftime("%-I:%M %p")
     mode_str = "AI mode" if ai_mode == "claude" else "mechanical"
     lines = [
-        f"{portfolio_id.upper()} · {regime} · {mode_str}",
+        f"📊 {portfolio_id.upper()} · {regime} · {mode_str}",
         f"Analyzed {now_str} · expires {expires_str}",
         "",
     ]
@@ -370,7 +375,7 @@ def send_analysis_proposals(portfolio_id: str) -> None:
 def _build_update_snapshot_message(stats_map: dict, failed: list, label: str) -> str:
     now_str = datetime.now().strftime("%-I:%M %p")
     dow = datetime.now().strftime("%a %b %-d")
-    lines = [f"Portfolio Update — {dow}, {now_str}", ""]
+    lines = [f"📈 Portfolio Update — {dow}, {now_str}", ""]
     for portfolio_id, s in stats_map.items():
         equity_str = f"${s['equity']:,.0f} equity"
         total_str = f"total {_fmt_pct(s['total_return_pct'])} ({_fmt_dollar(s['total_return_dollars'])})"
