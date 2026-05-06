@@ -16,6 +16,13 @@ export const ACCENT_GREEN = "#4ade80";
 export const DANGER_RED = "#f87171";
 export const MATRIX_FONT = "'Azeret Mono','JetBrains Mono','Fira Code',monospace";
 
+export const HEAT_COLOR: Record<string, string> = {
+  SPIKING: "#f87171",
+  HOT: "#fb923c",
+  WARM: "#facc15",
+  COLD: "#555",
+};
+
 export function portfolioAbbr(id: string): string {
   const map: Record<string, string> = {
     microcap: "MC", ai: "AI", sph: "SP", new: "NW",
