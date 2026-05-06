@@ -291,6 +291,356 @@ def _run_ai_driven_analysis(
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
 
+def _run_enhanced_layers_step2(
+    state,
+    layer1_output: dict,
+    regime,
+    preservation_active: bool,
+    config: dict,
+    portfolio_id: str | None,
+    proposed_actions: list,
+    info_cache: dict,
+) -> tuple[list, dict]:
+    """
+    Step 2 (enhanced path): Layer 2 Opportunity Management + Layer 3 Composition.
+
+    Pre-warms info + social signals from the watchlist, runs OpportunityLayer to
+    score candidates and propose buys, then CompositionLayer to filter for sector
+    overlap and add rebalancing/rotation sells. Returns the updated
+    `proposed_actions` list (BUYs are replaced with the Layer 3 filtered set;
+    SELLs from rebalance/rotation are appended) and the info_cache.
+
+    Capital preservation mode (Bug #8): rotation BUYs are blocked when
+    preservation_active is True so we don't open new high-risk legs while in
+    drawdown protection — but the rotation SELL side still executes.
+    """
+    print("\nRunning Layer 2: Opportunity Management...")
+    layer2 = OpportunityLayer(config)
+
+    social_signals: dict = {}
+    try:
+        from watchlist_manager import WatchlistManager
+        _wm = WatchlistManager(portfolio_id=portfolio_id)
+        _wl_entries = _wm._load_watchlist()
+        _wl_tickers = [e.ticker for e in _wl_entries if e.status == "ACTIVE"]
+        if _wl_tickers:
+            try:
+                info_cache = prewarm_info_for_tickers(_wl_tickers)
+            except Exception as e:
+                _diag.warning("Info pre-warm failed (non-fatal): %s", e)
+            if not os.environ.get("DISABLE_SOCIAL"):
+                try:
+                    from social_sentiment import SocialSentimentProvider
+                    provider = SocialSentimentProvider(portfolio_id=portfolio_id)
+                    social_signals = provider.get_signals(_wl_tickers)
+                except Exception as e:
+                    _diag.warning("Social sentiment fetch failed (non-fatal): %s", e)
+    except Exception as e:
+        _diag.warning("Watchlist pre-warm failed (non-fatal): %s", e)
+
+    layer2_output = layer2.process(state, layer1_output, social_signals=social_signals, info_cache=info_cache)
+
+    stop_loss_pct = config.get("default_stop_loss_pct", 8.0)
+    take_profit_pct = config.get("default_take_profit_pct", 20.0)
+
+    for buy_proposal in layer2_output["buy_proposals"]:
+        conviction = buy_proposal.conviction_score
+        proposed_actions.append(ProposedAction(
+            action_type="BUY",
+            ticker=buy_proposal.ticker,
+            shares=buy_proposal.shares,
+            price=buy_proposal.price,
+            stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
+            take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
+            quant_score=conviction.composite_score,
+            factor_scores=conviction.factors,
+            regime=regime.value,
+            reason=buy_proposal.rationale,
+            reentry_context=buy_proposal.reentry_context,
+        ))
+        patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
+        print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
+
+    if layer2_output.get("rotation_sells"):
+        print(f"\n  🔄 Portfolio Rotation: {len(layer2_output['rotation_sells'])} swap(s) proposed")
+        for sell, buy in zip(layer2_output["rotation_sells"], layer2_output["rotation_buys"]):
+            print(f"     SELL {sell.ticker} → BUY {buy.ticker} ({sell.reason})")
+
+    rotation_buy_tickers = {b.ticker for b in layer2_output.get("rotation_buys", [])}
+    all_buys = layer2_output["buy_proposals"] + layer2_output.get("rotation_buys", [])
+    layer2_for_l3 = {**layer2_output, "buy_proposals": all_buys}
+
+    l3_sector_map = _build_sector_map(state)
+    print("\nRunning Layer 3: Portfolio Composition...")
+    layer3 = CompositionLayer(config)
+    layer3_output = layer3.process(state, layer1_output, layer2_for_l3, sector_map=l3_sector_map)
+
+    # Replace BUYs with Layer-3-filtered set
+    proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
+    for buy_proposal in layer3_output["filtered_buys"]:
+        is_rotation_buy = buy_proposal.ticker in rotation_buy_tickers
+        if preservation_active and is_rotation_buy:
+            print(f"  🛡️  Blocked rotation BUY {buy_proposal.ticker}: capital preservation mode active (rotation SELL side still executes)")
+            continue
+        conviction = buy_proposal.conviction_score
+        proposed_actions.append(ProposedAction(
+            action_type="BUY",
+            ticker=buy_proposal.ticker,
+            shares=buy_proposal.shares,
+            price=buy_proposal.price,
+            stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
+            take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
+            quant_score=conviction.composite_score,
+            factor_scores=conviction.factors,
+            regime=regime.value,
+            reason=buy_proposal.rationale,
+            reentry_context=buy_proposal.reentry_context,
+        ))
+
+    for rebalance_sell in layer3_output["rebalance_sells"]:
+        proposed_actions.append(ProposedAction(
+            action_type="SELL",
+            ticker=rebalance_sell.ticker,
+            shares=rebalance_sell.shares,
+            price=rebalance_sell.current_price,
+            reason=rebalance_sell.reason,
+            stop_loss=0.0,
+            take_profit=0.0,
+            quant_score=0,
+            factor_scores={},
+            regime=regime.value,
+        ))
+
+    for sell_proposal in layer2_output.get("rotation_sells", []):
+        proposed_actions.append(ProposedAction(
+            action_type="SELL",
+            ticker=sell_proposal.ticker,
+            shares=sell_proposal.shares,
+            price=sell_proposal.current_price,
+            stop_loss=sell_proposal.stop_loss,
+            take_profit=sell_proposal.take_profit,
+            quant_score=0,
+            factor_scores={},
+            regime=regime.value,
+            reason=sell_proposal.reason,
+            source_proposal=sell_proposal,
+        ))
+
+    for warning in layer3_output["warnings"]:
+        print(f"  ⚠️  {warning}")
+    for blocked in layer3_output["blocked_buys"]:
+        violation = next((v for v in layer3_output["violations"] if v.ticker == blocked.ticker), None)
+        if violation:
+            print(f"  🚫 Blocked {blocked.ticker}: {violation.description}")
+
+    num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
+    print(f"  Found {num_buys} buy candidate(s)")
+    print()
+    return proposed_actions, info_cache
+
+
+def _run_fallback_scoring_step2(
+    state,
+    regime,
+    preservation_active: bool,
+    config: dict,
+    position_multiplier: float,
+    proposed_actions: list,
+) -> list:
+    """
+    Step 2 (fallback path): basic StockScorer scoring when enhanced layers are
+    disabled. Skips buying entirely under BEAR regime, preservation mode, or at
+    max positions. Otherwise scores the watchlist (filtered to non-held tickers),
+    takes top candidates with composite >= 60, sizes by risk_per_trade_pct *
+    position_multiplier, caps to remaining cash.
+    """
+    print("Scoring watchlist candidates...")
+
+    if regime == MarketRegime.BEAR:
+        print("  ⚠️  Bear market - skipping new buys")
+        return proposed_actions
+    if preservation_active:
+        print("  ⚠️  Preservation mode - skipping new buys")
+        return proposed_actions
+    if state.num_positions >= config.get("max_positions", 15):
+        print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
+        return proposed_actions
+
+    watchlist = load_watchlist(portfolio_id=state.portfolio_id)
+    current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+    candidates = [t for t in watchlist if t not in current_tickers]
+    if not candidates:
+        return proposed_actions
+
+    scorer = StockScorer(config=config)
+    scored_results = scorer.score_watchlist(candidates)
+    scored = []
+    for s in scored_results:
+        if s:
+            scored.append({
+                "ticker": s.ticker,
+                "composite_score": s.composite_score,
+                "current_price": s.current_price,
+                "factor_scores": {
+                    "price_momentum": s.price_momentum_score,
+                    "earnings_growth": s.earnings_growth_score,
+                    "quality": s.quality_score,
+                    "value_timing": s.value_timing_score,
+                    "volume": s.volume_score,
+                    "volatility": s.volatility_score,
+                },
+                "data_completeness": s.data_completeness,
+            })
+
+    top_candidates = [s for s in scored if s.get("composite_score", 0) >= 60]
+    top_candidates = sorted(top_candidates, key=lambda x: x.get("composite_score", 0), reverse=True)
+
+    risk_per_trade = config.get("risk_per_trade_pct", 10.0) / 100
+    max_position_value = state.total_equity * risk_per_trade * position_multiplier
+    stop_loss_pct = config.get("default_stop_loss_pct", 8.0) / 100
+    take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
+
+    slots_available = config.get("max_positions", 15) - state.num_positions
+    remaining_cash = state.cash
+
+    for i, candidate in enumerate(top_candidates[:slots_available]):
+        ticker = candidate["ticker"]
+        price = candidate.get("current_price", 0)
+        score = candidate.get("composite_score", 0)
+        factor_scores = candidate.get("factor_scores", {})
+        if price <= 0:
+            continue
+        position_value = min(max_position_value, remaining_cash)
+        shares = int(position_value / price)
+        if shares < 1:
+            print(f"  ⏸️ Skipping {ticker} - insufficient cash (${remaining_cash:.0f} remaining)")
+            continue
+        actual_cost = shares * price
+        if actual_cost > remaining_cash:
+            shares = int(remaining_cash / price)
+            if shares < 1:
+                continue
+            actual_cost = shares * price
+        stop_loss = round(price * (1 - stop_loss_pct), 2)
+        take_profit = round(price * (1 + take_profit_pct), 2)
+        proposed_actions.append(ProposedAction(
+            action_type="BUY",
+            ticker=ticker,
+            shares=shares,
+            price=price,
+            stop_loss=stop_loss,
+            take_profit=take_profit,
+            quant_score=score,
+            factor_scores=factor_scores,
+            regime=regime.value,
+            reason=f"Quant score {score:.0f}/100 - Rank #{i+1}",
+        ))
+        remaining_cash -= actual_cost
+        print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f} (${actual_cost:.0f}, ${remaining_cash:.0f} remaining)")
+
+    return proposed_actions
+
+
+def _run_layer1_risk(config: dict, state, regime) -> tuple[list, dict]:
+    """
+    Step 1 of the analysis pipeline: run RiskLayer to surface stop/target
+    triggers, deterioration alerts, and dynamic stops. Returns
+    (proposed_sell_actions, layer1_output) so the caller can both feed the
+    proposed_actions list and pass layer1_output to downstream layers.
+
+    Pure side-effect-free except for the ergonomic console prints (urgency
+    emojis, deterioration warnings, updated stops). No state mutations.
+    """
+    print("Running Layer 1: Risk Management...")
+    layer1 = RiskLayer(config)
+    layer1_output = layer1.process(state)
+
+    proposed: list = []
+    for sell_proposal in layer1_output["sell_proposals"]:
+        proposed.append(ProposedAction(
+            action_type="SELL",
+            ticker=sell_proposal.ticker,
+            shares=sell_proposal.shares,
+            price=sell_proposal.current_price,
+            stop_loss=sell_proposal.stop_loss,
+            take_profit=sell_proposal.take_profit,
+            quant_score=0,
+            factor_scores={},
+            regime=regime.value,
+            reason=sell_proposal.reason,
+        ))
+        emoji = "🚨" if sell_proposal.urgency_score >= 90 else \
+                "🔴" if sell_proposal.urgency_score >= 70 else \
+                "🟡" if sell_proposal.urgency_score >= 50 else "🟢"
+        print(f"  {emoji} {sell_proposal.ticker}: {sell_proposal.reason} (urgency={sell_proposal.urgency_score})")
+
+    if layer1_output["deterioration_alerts"]:
+        print(f"\n  ⚠️  {len(layer1_output['deterioration_alerts'])} position(s) deteriorating:")
+        for alert in layer1_output["deterioration_alerts"]:
+            print(f"     {alert.ticker}: Score dropped {alert.score_drop:.0f} points ({alert.entry_score:.0f} → {alert.current_score:.0f})")
+
+    if layer1_output["updated_stops"]:
+        print(f"\n  📊 Dynamic stops calculated for {len(layer1_output['updated_stops'])} position(s)")
+        for ticker, stops in layer1_output["updated_stops"].items():
+            if stops.stop_type != "fixed":
+                print(f"     {ticker}: ${stops.recommended_stop:.2f} ({stops.stop_type} stop)")
+
+    num_sells = len([a for a in proposed if a.action_type == "SELL"])
+    print(f"\n  Found {num_sells} sell trigger(s)")
+    print()
+    return proposed, layer1_output
+
+
+def _assemble_analysis_result(
+    proposed_actions: list,
+    reviewed_actions: list,
+    portfolio_context: dict,
+    stale_positions: dict,
+    regime,
+) -> dict:
+    """
+    Build the final result dict for run_unified_analysis (mechanical paths
+    only — the AI-driven path constructs its result inside _run_ai_driven_analysis).
+
+    Includes the modified-BUY micro-position floor filter so the AI can't
+    accidentally cap a buy down to 1 share @ $12 and have execute later quietly
+    drop it. We surface the drop here at review time.
+    """
+    approved = [r for r in reviewed_actions if r.decision == ReviewDecision.APPROVE]
+    modified = [r for r in reviewed_actions if r.decision == ReviewDecision.MODIFY]
+    vetoed = [r for r in reviewed_actions if r.decision == ReviewDecision.VETO]
+
+    def _above_min_notional(r: ReviewedAction) -> bool:
+        if r.original.action_type != "BUY":
+            return True
+        shares = r.modified_shares or r.original.shares
+        price = r.original.price
+        min_notional = max(price * 5, 250.0)
+        return shares * price >= min_notional
+
+    modified = [r for r in modified if _above_min_notional(r)]
+
+    return {
+        "proposed_actions": proposed_actions,
+        "reviewed_actions": reviewed_actions,
+        "approved": approved,
+        "modified": modified,
+        "vetoed": vetoed,
+        "summary": {
+            "total_proposed": len(proposed_actions),
+            "approved": len(approved),
+            "modified": len(modified),
+            "vetoed": len(vetoed),
+            "can_execute": len(approved) + len(modified) > 0,
+        },
+        "portfolio_context": portfolio_context,
+        "regime": regime.value,
+        "timestamp": datetime.now().isoformat(),
+        "stale_positions": stale_positions,
+        "ai_mode": "mechanical",
+    }
+
+
 def _build_portfolio_context(
     state,
     proposed_actions: list,
@@ -450,51 +800,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
 
     info_cache: dict = {}  # Pre-warmed fundamental data for scoring and AI review
 
-    proposed_actions = []
-
-    # ─── Step 1: Layer 1 Risk Management (Dynamic Stops + Re-evaluation) ─────
-    print("Running Layer 1: Risk Management...")
-
-    layer1 = RiskLayer(config)
-    layer1_output = layer1.process(state)
-
-    # Convert SellProposal objects to ProposedAction objects
-    for sell_proposal in layer1_output["sell_proposals"]:
-        proposed_actions.append(ProposedAction(
-            action_type="SELL",
-            ticker=sell_proposal.ticker,
-            shares=sell_proposal.shares,
-            price=sell_proposal.current_price,
-            stop_loss=sell_proposal.stop_loss,
-            take_profit=sell_proposal.take_profit,
-            quant_score=0,  # N/A for sells
-            factor_scores={},
-            regime=regime.value,
-            reason=sell_proposal.reason
-        ))
-
-        # Print with appropriate emoji based on urgency
-        emoji = "🚨" if sell_proposal.urgency_score >= 90 else \
-                "🔴" if sell_proposal.urgency_score >= 70 else \
-                "🟡" if sell_proposal.urgency_score >= 50 else "🟢"
-        print(f"  {emoji} {sell_proposal.ticker}: {sell_proposal.reason} (urgency={sell_proposal.urgency_score})")
-
-    # Report deterioration alerts (warnings, not sells)
-    if layer1_output["deterioration_alerts"]:
-        print(f"\n  ⚠️  {len(layer1_output['deterioration_alerts'])} position(s) deteriorating:")
-        for alert in layer1_output["deterioration_alerts"]:
-            print(f"     {alert.ticker}: Score dropped {alert.score_drop:.0f} points ({alert.entry_score:.0f} → {alert.current_score:.0f})")
-
-    # Report updated stops
-    if layer1_output["updated_stops"]:
-        print(f"\n  📊 Dynamic stops calculated for {len(layer1_output['updated_stops'])} position(s)")
-        for ticker, stops in layer1_output["updated_stops"].items():
-            if stops.stop_type != "fixed":
-                print(f"     {ticker}: ${stops.recommended_stop:.2f} ({stops.stop_type} stop)")
-
-    num_sells = len([a for a in proposed_actions if a.action_type == "SELL"])
-    print(f"\n  Found {num_sells} sell trigger(s)")
-    print()
+    # Step 1: Layer 1 risk management (mechanical sell triggers).
+    proposed_actions, layer1_output = _run_layer1_risk(config, state, regime)
 
     # ─── AI-Driven Mode Branch ────────────────────────────────────────────────
     # For AI-driven portfolios, Layers 2-4 and AI review are replaced by a
@@ -512,245 +819,28 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         )
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
-    # Use Layer 2 (Opportunity Management) if enabled, otherwise fallback to basic scoring
+    # Two paths: enhanced layers (Opportunity + Composition) when configured,
+    # otherwise the basic StockScorer fallback. Both extracted to helpers (Fix 16).
     if config.get("enhanced_trading", {}).get("enable_layers", False):
-        print("\nRunning Layer 2: Opportunity Management...")
-        layer2 = OpportunityLayer(config)
-
-        # Fetch watchlist tickers once — used for both info pre-warm and social signals
-        social_signals = {}
-        try:
-            from watchlist_manager import WatchlistManager
-            _wm = WatchlistManager(portfolio_id=portfolio_id)
-            _wl_entries = _wm._load_watchlist()
-            _wl_tickers = [e.ticker for e in _wl_entries if e.status == "ACTIVE"]
-            if _wl_tickers:
-                # Pre-warm fundamental info cache for scoring
-                try:
-                    info_cache = prewarm_info_for_tickers(_wl_tickers)
-                except Exception as e:
-                    print(f"[analysis] Info pre-warm failed (non-fatal): {e}")
-                # Social signals (disabled when DISABLE_SOCIAL=true)
-                if not os.environ.get("DISABLE_SOCIAL"):
-                    try:
-                        from social_sentiment import SocialSentimentProvider
-                        provider = SocialSentimentProvider(portfolio_id=portfolio_id)
-                        social_signals = provider.get_signals(_wl_tickers)
-                    except Exception as e:
-                        print(f"[analysis] Social sentiment fetch failed (non-fatal): {e}")
-        except Exception as e:
-            print(f"[analysis] Watchlist pre-warm failed (non-fatal): {e}")
-
-        layer2_output = layer2.process(state, layer1_output, social_signals=social_signals, info_cache=info_cache)
-
-        # Convert BuyProposal to ProposedAction for AI review
-        stop_loss_pct = config.get("default_stop_loss_pct", 8.0)
-        take_profit_pct = config.get("default_take_profit_pct", 20.0)
-
-        for buy_proposal in layer2_output["buy_proposals"]:
-            conviction = buy_proposal.conviction_score
-
-            proposed_actions.append(ProposedAction(
-                action_type="BUY",
-                ticker=buy_proposal.ticker,
-                shares=buy_proposal.shares,
-                price=buy_proposal.price,
-                stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
-                take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
-                quant_score=conviction.composite_score,
-                factor_scores=conviction.factors,
-                regime=regime.value,
-                reason=buy_proposal.rationale,
-                reentry_context=buy_proposal.reentry_context,
-            ))
-
-            # Enhanced display with conviction info
-            patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
-            print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
-
-        # Log rotation proposals
-        if layer2_output.get("rotation_sells"):
-            print(f"\n  🔄 Portfolio Rotation: {len(layer2_output['rotation_sells'])} swap(s) proposed")
-            for sell, buy in zip(layer2_output["rotation_sells"], layer2_output["rotation_buys"]):
-                print(f"     SELL {sell.ticker} → BUY {buy.ticker} ({sell.reason})")
-
-        # Track rotation buy tickers so we can block them under preservation (Bug #8)
-        rotation_buy_tickers = {b.ticker for b in layer2_output.get("rotation_buys", [])}
-
-        # Merge rotation buys into Layer 3 input so composition checks them too
-        all_buys = layer2_output["buy_proposals"] + layer2_output.get("rotation_buys", [])
-        layer2_for_l3 = {**layer2_output, "buy_proposals": all_buys}
-
-        # Build sector_map from watchlist so Layer 3 can resolve sectors for
-        # proposed buys (watchlist candidates won't be in the static file yet).
-        l3_sector_map = _build_sector_map(state)
-
-        # Run Layer 3: Portfolio Composition
-        print("\nRunning Layer 3: Portfolio Composition...")
-        layer3 = CompositionLayer(config)
-        layer3_output = layer3.process(state, layer1_output, layer2_for_l3, sector_map=l3_sector_map)
-
-        # Remove originally proposed buys and add only filtered buys
-        proposed_actions = [a for a in proposed_actions if a.action_type != "BUY"]
-
-        # Add filtered buys back — skip rotation buys when preservation is active (Bug #8)
-        for buy_proposal in layer3_output["filtered_buys"]:
-            is_rotation_buy = buy_proposal.ticker in rotation_buy_tickers
-            if preservation_active and is_rotation_buy:
-                print(f"  🛡️  Blocked rotation BUY {buy_proposal.ticker}: capital preservation mode active (rotation SELL side still executes)")
-                continue
-            conviction = buy_proposal.conviction_score
-            proposed_actions.append(ProposedAction(
-                action_type="BUY",
-                ticker=buy_proposal.ticker,
-                shares=buy_proposal.shares,
-                price=buy_proposal.price,
-                stop_loss=buy_proposal.price * (1 - stop_loss_pct / 100),
-                take_profit=buy_proposal.price * (1 + take_profit_pct / 100),
-                quant_score=conviction.composite_score,
-                factor_scores=conviction.factors,
-                regime=regime.value,
-                reason=buy_proposal.rationale,
-                reentry_context=buy_proposal.reentry_context,
-            ))
-
-        # Add rebalancing sells
-        for rebalance_sell in layer3_output["rebalance_sells"]:
-            proposed_actions.append(ProposedAction(
-                action_type="SELL",
-                ticker=rebalance_sell.ticker,
-                shares=rebalance_sell.shares,
-                price=rebalance_sell.current_price,
-                reason=rebalance_sell.reason,
-                stop_loss=0.0,
-                take_profit=0.0,
-                quant_score=0,
-                factor_scores={},
-                regime=regime.value,
-            ))
-
-        # Add rotation sells
-        for sell_proposal in layer2_output.get("rotation_sells", []):
-            proposed_actions.append(ProposedAction(
-                action_type="SELL",
-                ticker=sell_proposal.ticker,
-                shares=sell_proposal.shares,
-                price=sell_proposal.current_price,
-                stop_loss=sell_proposal.stop_loss,
-                take_profit=sell_proposal.take_profit,
-                quant_score=0,
-                factor_scores={},
-                regime=regime.value,
-                reason=sell_proposal.reason,
-                source_proposal=sell_proposal,
-            ))
-
-        # Display composition warnings
-        for warning in layer3_output["warnings"]:
-            print(f"  ⚠️  {warning}")
-
-        # Display blocked buys
-        for blocked in layer3_output["blocked_buys"]:
-            violation = next((v for v in layer3_output["violations"] if v.ticker == blocked.ticker), None)
-            if violation:
-                print(f"  🚫 Blocked {blocked.ticker}: {violation.description}")
-
-        num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
-        print(f"  Found {num_buys} buy candidate(s)")
-        print()
+        proposed_actions, info_cache = _run_enhanced_layers_step2(
+            state=state,
+            layer1_output=layer1_output,
+            regime=regime,
+            preservation_active=preservation_active,
+            config=config,
+            portfolio_id=portfolio_id,
+            proposed_actions=proposed_actions,
+            info_cache=info_cache,
+        )
     else:
-        # Fallback to basic scoring if Layer 2 disabled
-        print("Scoring watchlist candidates...")
-
-        # Skip buying in bear markets or preservation mode
-        if regime == MarketRegime.BEAR:
-            print("  ⚠️  Bear market - skipping new buys")
-        elif preservation_active:
-            print("  ⚠️  Preservation mode - skipping new buys")
-        elif state.num_positions >= config.get("max_positions", 15):
-            print(f"  ⚠️  At max positions ({state.num_positions}) - skipping new buys")
-        else:
-            watchlist = load_watchlist(portfolio_id=state.portfolio_id)
-            current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
-            candidates = [t for t in watchlist if t not in current_tickers]
-
-            if candidates:
-                scorer = StockScorer(config=config)
-                scored_results = scorer.score_watchlist(candidates)
-                # Convert StockScore objects to dicts with factor_scores built from individual attributes
-                scored = []
-                for s in scored_results:
-                    if s:
-                        scored.append({
-                            "ticker": s.ticker,
-                            "composite_score": s.composite_score,
-                            "current_price": s.current_price,
-                            "factor_scores": {
-                                "price_momentum": s.price_momentum_score,
-                                "earnings_growth": s.earnings_growth_score,
-                                "quality": s.quality_score,
-                                "value_timing": s.value_timing_score,
-                                "volume": s.volume_score,
-                                "volatility": s.volatility_score,
-                            },
-                            "data_completeness": s.data_completeness,
-                        })
-
-                # Filter to top candidates with score >= 60
-                top_candidates = [s for s in scored if s.get("composite_score", 0) >= 60]
-                top_candidates = sorted(top_candidates, key=lambda x: x.get("composite_score", 0), reverse=True)
-
-                # Calculate position size
-                risk_per_trade = config.get("risk_per_trade_pct", 10.0) / 100
-                max_position_value = state.total_equity * risk_per_trade * position_multiplier
-                stop_loss_pct = config.get("default_stop_loss_pct", 8.0) / 100
-                take_profit_pct = config.get("default_take_profit_pct", 20.0) / 100
-
-                slots_available = config.get("max_positions", 15) - state.num_positions
-                remaining_cash = state.cash  # Track how much cash is left as we propose buys
-
-                for i, candidate in enumerate(top_candidates[:slots_available]):
-                    ticker = candidate["ticker"]
-                    price = candidate.get("current_price", 0)
-                    score = candidate.get("composite_score", 0)
-                    factor_scores = candidate.get("factor_scores", {})
-
-                    if price <= 0:
-                        continue
-
-                    # Calculate position size (capped by remaining cash)
-                    position_value = min(max_position_value, remaining_cash)
-                    shares = int(position_value / price)
-                    if shares < 1:
-                        print(f"  ⏸️ Skipping {ticker} - insufficient cash (${remaining_cash:.0f} remaining)")
-                        continue
-
-                    actual_cost = shares * price
-                    if actual_cost > remaining_cash:
-                        # Reduce shares to fit remaining cash
-                        shares = int(remaining_cash / price)
-                        if shares < 1:
-                            continue
-                        actual_cost = shares * price
-
-                    stop_loss = round(price * (1 - stop_loss_pct), 2)
-                    take_profit = round(price * (1 + take_profit_pct), 2)
-
-                    proposed_actions.append(ProposedAction(
-                        action_type="BUY",
-                        ticker=ticker,
-                        shares=shares,
-                        price=price,
-                        stop_loss=stop_loss,
-                        take_profit=take_profit,
-                        quant_score=score,
-                        factor_scores=factor_scores,
-                        regime=regime.value,
-                        reason=f"Quant score {score:.0f}/100 - Rank #{i+1}"
-                    ))
-                    remaining_cash -= actual_cost
-                    print(f"  📈 {ticker}: Score {score:.0f}, {shares} shares @ ${price:.2f} (${actual_cost:.0f}, ${remaining_cash:.0f} remaining)")
-
+        proposed_actions = _run_fallback_scoring_step2(
+            state=state,
+            regime=regime,
+            preservation_active=preservation_active,
+            config=config,
+            position_multiplier=position_multiplier,
+            proposed_actions=proposed_actions,
+        )
         num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
         print(f"  Found {num_buys} buy candidate(s)")
         print()
@@ -875,46 +965,13 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context, info_cache=info_cache)
     print(format_review_summary(reviewed_actions))
 
-    # ─── Build Result ─────────────────────────────────────────────────────────
-    approved = [r for r in reviewed_actions if r.decision == ReviewDecision.APPROVE]
-    modified = [r for r in reviewed_actions if r.decision == ReviewDecision.MODIFY]
-    vetoed = [r for r in reviewed_actions if r.decision == ReviewDecision.VETO]
-
-    # Drop any modified BUY proposals where the AI set shares so low the
-    # position would be below the minimum notional floor (e.g. 1 share @ $12)
-    def _above_min_notional(r: ReviewedAction) -> bool:
-        if r.original.action_type != "BUY":
-            return True
-        shares = r.modified_shares or r.original.shares
-        price = r.original.price
-        min_notional = max(price * 5, 250.0)
-        return shares * price >= min_notional
-
-    modified = [r for r in modified if _above_min_notional(r)]
-
-    result = {
-        "proposed_actions": proposed_actions,
-        "reviewed_actions": reviewed_actions,
-        "approved": approved,
-        "modified": modified,
-        "vetoed": vetoed,
-        "summary": {
-            "total_proposed": len(proposed_actions),
-            "approved": len(approved),
-            "modified": len(modified),
-            "vetoed": len(vetoed),
-            "can_execute": len(approved) + len(modified) > 0,
-        },
-        "portfolio_context": portfolio_context,
-        "regime": regime.value,
-        "timestamp": datetime.now().isoformat(),
-        # stale_positions: dict of ticker -> consecutive_days without a price update (>= 2)
-        # Surfaced here so the API and dashboard can display a warning to the user.
-        "stale_positions": stale_positions,
-        "ai_mode": "mechanical",
-    }
-
-    return result
+    return _assemble_analysis_result(
+        proposed_actions=proposed_actions,
+        reviewed_actions=reviewed_actions,
+        portfolio_context=portfolio_context,
+        stale_positions=stale_positions,
+        regime=regime,
+    )
 
 
 def _normalize_reviewed_action(r):
