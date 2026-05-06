@@ -9,14 +9,71 @@ full result sets from yfscreen.
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from cache_layer import TTL, cache_key, get_logger
 from schema import CLAUDE_MODEL
 from yfscreen import create_query, create_payload, get_data
 
 DATA_DIR = Path(__file__).parent.parent / "data"
+
+_screener_log = get_logger("screener")
+_refinement_log = get_logger("refinement")
+
+# Hash files older than this get swept on every call. Keeps the per-portfolio
+# cache directory from growing unbounded as filters drift over time.
+_HASH_FILE_RETENTION_SECONDS = 7 * 86_400  # 7 days
+
+
+def _filter_signature(config: dict) -> dict:
+    """
+    Pull just the screener filter fields out of config and normalize them.
+
+    Used as input to cache_key(). Sorting `sectors` and `industries` makes the
+    hash insensitive to list ordering — what matters is the *set* of filters,
+    not the order they happen to appear in.
+    """
+    return {
+        "sectors": sorted(config.get("sectors") or []),
+        "industries": sorted(config.get("industries") or []),
+        "market_cap_min": config.get("market_cap_min"),
+        "market_cap_max": config.get("market_cap_max"),
+        "region": config.get("region", "us"),
+    }
+
+
+def _screener_cache_path(portfolio_id: str, key: str) -> Path:
+    return DATA_DIR / "portfolios" / portfolio_id / f"screener_cache.{key}.json"
+
+
+def _refinement_cache_path(portfolio_id: str, key: str) -> Path:
+    return DATA_DIR / "portfolios" / portfolio_id / f"refinement_cache.{key}.json"
+
+
+def _sweep_stale_cache_files(portfolio_id: str, prefix: str) -> int:
+    """
+    Remove `prefix.*.json` files older than _HASH_FILE_RETENTION_SECONDS.
+
+    Each filter change creates a new hash file; without sweeping, the per-portfolio
+    cache dir grows unbounded as users iterate on configs. Returns the number of
+    files deleted (for logging).
+    """
+    portfolio_dir = DATA_DIR / "portfolios" / portfolio_id
+    if not portfolio_dir.exists():
+        return 0
+    now = time.time()
+    deleted = 0
+    for f in portfolio_dir.glob(f"{prefix}.*.json"):
+        try:
+            if now - f.stat().st_mtime > _HASH_FILE_RETENTION_SECONDS:
+                f.unlink(missing_ok=True)
+                deleted += 1
+        except OSError:
+            pass
+    return deleted
 
 
 def build_screener_filters(config: dict) -> list:
@@ -92,28 +149,38 @@ def run_screen(config: dict, portfolio_id: str = None) -> list:
         List of ticker strings.
     """
     # --- cache check ---
+    # Cache key hashes the filter signature: any change to sectors/industries/cap
+    # bounds/region produces a different hash → different file → guaranteed miss.
+    # This is the fix for the bug where editing config silently served stale
+    # results until the 24h TTL expired.
     cache_path = None
+    key = ""
     if portfolio_id:
-        cache_path = DATA_DIR / "portfolios" / portfolio_id / "screener_cache.json"
+        key = cache_key(_filter_signature(config))
+        cache_path = _screener_cache_path(portfolio_id, key)
         if cache_path.exists():
             try:
                 with cache_path.open() as f:
                     cached = json.load(f)
                 ts = datetime.fromisoformat(cached["timestamp"])
                 now = datetime.now(timezone.utc)
-                # make ts timezone-aware if needed
                 if ts.tzinfo is None:
                     ts = ts.replace(tzinfo=timezone.utc)
-                age_hours = (now - ts).total_seconds() / 3600
-                if age_hours < 24:
+                age_seconds = (now - ts).total_seconds()
+                if age_seconds < TTL.UNIVERSE_DAILY:
                     tickers = cached["tickers"]
+                    _screener_log.hit(key, age_seconds, count=cached.get("count", len(tickers)))
                     print(
                         f"[screener] Using cached results ({cached['count']} tickers,"
-                        f" {age_hours:.1f}h old)"
+                        f" {age_seconds / 3600:.1f}h old)"
                     )
                     return tickers
+                _screener_log.miss(key, reason="ttl_expired", age_s=int(age_seconds))
             except Exception as e:
+                _screener_log.miss(key, reason="read_error", error=str(e))
                 print(f"[screener] Cache read error, re-running screen: {e}")
+        else:
+            _screener_log.miss(key, reason="absent")
 
     # --- build query ---
     filters = build_screener_filters(config)
@@ -167,18 +234,25 @@ def run_screen(config: dict, portfolio_id: str = None) -> list:
     if cache_path is not None:
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
-            with cache_path.open("w") as f:
-                json.dump(
-                    {
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "count": len(unique),
-                        "tickers": unique,
-                    },
-                    f,
-                    indent=2,
-                )
+            payload_str = json.dumps(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "count": len(unique),
+                    "tickers": unique,
+                    "filter_signature": _filter_signature(config),
+                },
+                indent=2,
+            )
+            cache_path.write_text(payload_str)
+            _screener_log.write(key, size_bytes=len(payload_str), count=len(unique))
         except Exception as e:
             print(f"[screener] Cache write error: {e}")
+
+        # Sweep stale hash files (>7d) so the dir doesn't grow forever as
+        # users iterate on filters. Cheap; runs at most once per scan.
+        swept = _sweep_stale_cache_files(portfolio_id, "screener_cache")
+        if swept:
+            _screener_log.evict(key, reason="retention_sweep", count=swept)
 
     return unique
 
@@ -197,15 +271,29 @@ def _get_api_key() -> Optional[str]:
     return os.environ.get("ANTHROPIC_API_KEY")
 
 
-def _refinement_cache_path(portfolio_id: str) -> Path:
-    """Return path to the refinement cache file for a portfolio."""
-    return DATA_DIR / "portfolios" / portfolio_id / "refinement_cache.json"
+def _refinement_key(prompt_text: str, upstream_tickers: list[str]) -> str:
+    """
+    Hash the refinement prompt + an upstream-result fingerprint.
+
+    Including upstream_tickers means refinement auto-invalidates whenever the
+    screener feeding it produces a different ticker set. Editing the prompt
+    alone OR widening/narrowing the screener ALONE both bust the cache.
+    Without this, prompt edits would silently serve stale Claude output for
+    up to 7 days.
+    """
+    upstream_hash = cache_key(sorted(upstream_tickers))
+    return cache_key({"prompt": prompt_text, "upstream": upstream_hash})
 
 
-def _load_refinement_cache(portfolio_id: str, max_age_days: int = 7) -> Optional[list]:
+def _load_refinement_cache(
+    portfolio_id: str,
+    key: str,
+    max_age_days: int = 7,
+) -> Optional[list]:
     """Load refinement cache if it exists and is within max_age_days."""
-    cache_path = _refinement_cache_path(portfolio_id)
+    cache_path = _refinement_cache_path(portfolio_id, key)
     if not cache_path.exists():
+        _refinement_log.miss(key, reason="absent")
         return None
     try:
         with cache_path.open() as f:
@@ -214,32 +302,40 @@ def _load_refinement_cache(portfolio_id: str, max_age_days: int = 7) -> Optional
         now = datetime.now(timezone.utc)
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
-        age_days = (now - ts).total_seconds() / 86400
-        if age_days < max_age_days:
-            print(f"[refinement] Using cached results ({cached['count']} tickers, {age_days:.1f}d old)")
+        age_seconds = (now - ts).total_seconds()
+        if age_seconds < max_age_days * 86_400:
+            _refinement_log.hit(key, age_seconds, count=cached.get("count", 0))
+            print(f"[refinement] Using cached results ({cached['count']} tickers, {age_seconds / 86_400:.1f}d old)")
             return cached["tickers"]
+        _refinement_log.miss(key, reason="ttl_expired", age_s=int(age_seconds))
     except Exception as e:
+        _refinement_log.miss(key, reason="read_error", error=str(e))
         print(f"[refinement] Cache read error: {e}")
     return None
 
 
-def _save_refinement_cache(tickers: list, portfolio_id: str) -> None:
+def _save_refinement_cache(tickers: list, portfolio_id: str, key: str) -> None:
     """Save refinement results to cache."""
-    cache_path = _refinement_cache_path(portfolio_id)
+    cache_path = _refinement_cache_path(portfolio_id, key)
     try:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        with cache_path.open("w") as f:
-            json.dump(
-                {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "count": len(tickers),
-                    "tickers": tickers,
-                },
-                f,
-                indent=2,
-            )
+        payload = json.dumps(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "count": len(tickers),
+                "tickers": tickers,
+            },
+            indent=2,
+        )
+        cache_path.write_text(payload)
+        _refinement_log.write(key, size_bytes=len(payload), count=len(tickers))
     except Exception as e:
         print(f"[refinement] Cache write error: {e}")
+
+    # Same sweep as screener — keep dir bounded.
+    swept = _sweep_stale_cache_files(portfolio_id, "refinement_cache")
+    if swept:
+        _refinement_log.evict(key, reason="retention_sweep", count=swept)
 
 
 def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_id: str = None) -> list:
@@ -265,9 +361,13 @@ def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_i
     if not prompt_text:
         return tickers
 
-    # Check cache
+    # Check cache. Key combines prompt + upstream ticker set so that any change
+    # to either invalidates the cache automatically. No more "edit refinement
+    # prompt, get last week's filtered result for 7 days."
+    refinement_key = ""
     if portfolio_id:
-        cached = _load_refinement_cache(portfolio_id)
+        refinement_key = _refinement_key(prompt_text, tickers)
+        cached = _load_refinement_cache(portfolio_id, refinement_key)
         if cached is not None:
             # Validate cached tickers against current ticker set
             original_set = set(tickers)
@@ -320,8 +420,8 @@ def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_i
 
         print(f"[refinement] Claude filtered {len(tickers)} → {len(filtered)} tickers")
 
-        if portfolio_id:
-            _save_refinement_cache(filtered, portfolio_id)
+        if portfolio_id and refinement_key:
+            _save_refinement_cache(filtered, portfolio_id, refinement_key)
 
         return filtered
 

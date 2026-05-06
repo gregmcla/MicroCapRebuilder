@@ -5,9 +5,15 @@ DataFrame-level disk cache for yfinance downloads.
 yfinance ≥ 0.2.50 uses curl_cffi internally and rejects custom requests-cache
 sessions. This module caches the *output* DataFrames to disk instead.
 
-- Cache TTL: 4 hours (configurable via YF_CACHE_TTL_SECONDS env var)
+- Tiered TTL: 1h during US market hours (9:30-16:00 ET), 12h overnight.
+  Override globally via YF_CACHE_TTL_SECONDS env var (used by tests + manual
+  cache stretching when yfinance is rate-limiting).
 - Backend: pickle files in data/yf_cache/
 - Thread-safe: uses file-level locking via a lock dict
+- Defense: content validation rejects MultiIndex DataFrames whose ticker label
+  doesn't match the request (Fix 19a).
+- Observability: every read/write/eviction emits a structured log event via
+  cache_layer.CacheLogger.
 
 Usage:
     from yf_session import cached_download
@@ -26,10 +32,27 @@ from typing import Union
 import pandas as pd
 import yfinance as yf
 
+from cache_layer import bars_ttl, get_logger
+
 _CACHE_DIR = Path(__file__).parent.parent / "data" / "yf_cache"
-_TTL = int(os.environ.get("YF_CACHE_TTL_SECONDS", 14400))  # 4 hour default
+# Optional global override for tests / manual cache stretching. When set, it
+# takes precedence over the tiered intraday/overnight values; leave unset for
+# normal operation so bars_ttl() chooses based on market hours.
+_TTL_OVERRIDE: int | None = (
+    int(os.environ["YF_CACHE_TTL_SECONDS"])
+    if os.environ.get("YF_CACHE_TTL_SECONDS")
+    else None
+)
 _locks: dict[str, threading.Lock] = {}
 _locks_lock = threading.Lock()
+_log = get_logger("yf_bars")
+
+
+def _current_ttl() -> int:
+    """Pick the right TTL: env override beats tiered, tiered picks intraday vs overnight."""
+    if _TTL_OVERRIDE is not None:
+        return _TTL_OVERRIDE
+    return bars_ttl()
 
 
 def _get_lock(key: str) -> threading.Lock:
@@ -68,24 +91,32 @@ def cached_download(
     )
 
     lock = _get_lock(cache_key)
+    ttl = _current_ttl()
     with lock:
         # Cache hit?
         if cache_file.exists():
             age = time.time() - cache_file.stat().st_mtime
-            if age < _TTL:
+            if age < ttl:
                 try:
                     with open(cache_file, "rb") as f:
                         cached_df = pickle.load(f)
                     if _content_matches_tickers(cached_df, expected_tickers):
+                        _log.hit(cache_key, age, ticker=ticker_str, period=period, ttl=ttl)
                         return cached_df
+                    _log.evict(cache_key, reason="content_mismatch", ticker=ticker_str)
                     print(
                         f"Warning: cache content mismatch for {tickers} ({cache_key[:8]}); "
                         "deleting and refetching"
                     )
                     cache_file.unlink(missing_ok=True)
                 except Exception as e:
+                    _log.evict(cache_key, reason="corrupt", error=str(e))
                     print(f"Warning: corrupt cache file, removing: {e}")
                     cache_file.unlink(missing_ok=True)
+            else:
+                _log.miss(cache_key, reason="ttl_expired", age_s=int(age), ttl=ttl, ticker=ticker_str)
+        else:
+            _log.miss(cache_key, reason="absent", ticker=ticker_str, period=period)
 
         # Cache miss — download with hard timeout to prevent indefinite hangs
         _DOWNLOAD_TIMEOUT = 60  # seconds per batch chunk
@@ -110,6 +141,7 @@ def cached_download(
         # writing that to disk poisons future scoring with hallucinated prices (HUT@$74 incident).
         if not df.empty:
             if not _content_matches_tickers(df, expected_tickers):
+                _log.evict(cache_key, reason="download_mismatch", ticker=ticker_str)
                 print(
                     f"Warning: yf.download returned mismatched ticker data for {tickers}; "
                     "discarding response, not caching"
@@ -118,6 +150,7 @@ def cached_download(
             try:
                 with open(cache_file, "wb") as f:
                     pickle.dump(df, f)
+                _log.write(cache_key, size_bytes=cache_file.stat().st_size, ticker=ticker_str, period=period)
             except Exception as e:
                 print(f"Warning: failed to write cache file: {e}")
 

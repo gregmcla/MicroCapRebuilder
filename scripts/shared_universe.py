@@ -20,6 +20,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List
 
+from cache_layer import get_logger
+
+_log = get_logger("shared_scan")
+
 
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_CACHE_DIR = SCRIPT_DIR.parent / "data" / "shared_scan_cache"
@@ -125,10 +129,16 @@ class SharedUniverse:
     def _load_portfolio_results(self, portfolio_id: str) -> List[SharedScanResult]:
         cache_file = self._cache_file(portfolio_id)
         if not cache_file.exists():
+            _log.miss(portfolio_id, reason="absent")
             return []
         try:
-            return [SharedScanResult(**entry) for entry in json.loads(cache_file.read_text())]
+            data = json.loads(cache_file.read_text())
+            results = [SharedScanResult(**entry) for entry in data]
+            age = (datetime.now().timestamp() - cache_file.stat().st_mtime)
+            _log.hit(portfolio_id, age, count=len(results))
+            return results
         except Exception as e:
+            _log.miss(portfolio_id, reason="read_error", error=str(e))
             print(f"  Shared cache load error for {portfolio_id}: {e}")
             return []
 
@@ -138,3 +148,4 @@ class SharedUniverse:
         tmp = target.with_suffix(".tmp")
         tmp.write_text(data)
         tmp.rename(target)
+        _log.write(portfolio_id, size_bytes=len(data), count=len(results))

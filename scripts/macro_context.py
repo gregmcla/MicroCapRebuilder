@@ -22,6 +22,9 @@ from typing import Optional
 import yfinance as yf
 
 from yf_session import cached_download
+from cache_layer import get_logger as _get_cache_logger
+
+_cache_log = _get_cache_logger("news")
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +89,7 @@ def _save_cached_headlines(ticker: str, headlines: list[dict]) -> None:
         cache_file = _NEWS_CACHE_DIR / f"{ticker.upper()}.json"
         with open(cache_file, "w") as f:
             json.dump(headlines, f)
+        _cache_log.write(ticker.upper(), count=len(headlines))
     except Exception as e:
         logger.warning("macro_context: cache write failed for %s: %s", ticker, e)
 
@@ -95,12 +99,16 @@ def _load_cached_headlines(ticker: str, ttl_seconds: int) -> Optional[list[dict]
     try:
         cache_file = _NEWS_CACHE_DIR / f"{ticker.upper()}.json"
         if not cache_file.exists():
+            _cache_log.miss(ticker.upper(), reason="absent")
             return None
         age = time.time() - cache_file.stat().st_mtime
         if age > ttl_seconds:
+            _cache_log.miss(ticker.upper(), reason="ttl_expired", age_s=int(age))
             return None
         with open(cache_file) as f:
-            return json.load(f)
+            data = json.load(f)
+        _cache_log.hit(ticker.upper(), age, count=len(data) if isinstance(data, list) else 0)
+        return data
     except Exception as e:
         logger.warning("macro_context: cache read failed for %s: %s", ticker, e)
         return None

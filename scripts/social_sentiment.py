@@ -20,11 +20,16 @@ from typing import Optional
 
 import requests
 
+from cache_layer import TTL, get_logger
+
 DATA_DIR = Path(__file__).parent.parent / "data"
 SOCIAL_CACHE_DIR = DATA_DIR / "social_cache"
 SOCIAL_CACHE_DIR.mkdir(exist_ok=True)
 
-CACHE_TTL = 7200  # 2 hours
+# Tightened from 2h → 1h (Fix 19c). Sentiment shifts faster than 2 hours;
+# stale heat readings led to "WARM" labels on names that had cooled overnight.
+CACHE_TTL = TTL.SOCIAL_SHORT  # 1 hour
+_log = get_logger("social")
 
 APE_URL = "https://apewisdom.io/api/v1.0/filter/all-stocks/page/1"
 ST_URL = "https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json"
@@ -178,11 +183,18 @@ class SocialSentimentProvider:
     def _is_fresh(self, ticker: str, now: float) -> bool:
         entry = self._cache.get(ticker)
         if not entry:
+            _log.miss(f"{self.portfolio_id}:{ticker}", reason="absent")
             return False
         # Error entries are never considered fresh — always re-fetch
         if entry.get("error"):
+            _log.miss(f"{self.portfolio_id}:{ticker}", reason="prior_error")
             return False
-        return (now - entry.get("fetched_at", 0)) < CACHE_TTL
+        age = now - entry.get("fetched_at", 0)
+        if age < CACHE_TTL:
+            _log.hit(f"{self.portfolio_id}:{ticker}", age)
+            return True
+        _log.miss(f"{self.portfolio_id}:{ticker}", reason="ttl_expired", age_s=int(age))
+        return False
 
     def _load_cache(self) -> dict:
         if self._cache_file.exists():

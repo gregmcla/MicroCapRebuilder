@@ -61,6 +61,10 @@ _REGIME_CACHE_TTL = 3600  # 1 hour
 _price_cache: dict = {}  # portfolio_id -> (fetch_time, prices, failures, prev_closes)
 _PRICE_CACHE_TTL = 60    # seconds
 
+from cache_layer import get_logger as _cl_get_logger
+_regime_log = _cl_get_logger("regime")
+_price_log = _cl_get_logger("position_prices")
+
 
 def _fetch_current_prices(
     tickers: list,
@@ -86,8 +90,13 @@ def _fetch_current_prices(
     cached = _price_cache.get(portfolio_id)
     if not bypass_cache and cached:
         fetch_time, prices, failures, prev_closes = cached
-        if now - fetch_time < _PRICE_CACHE_TTL:
+        age = now - fetch_time
+        if age < _PRICE_CACHE_TTL:
+            _price_log.hit(portfolio_id or "default", age, count=len(prices))
             return prices, failures, prev_closes
+        _price_log.miss(portfolio_id or "default", reason="ttl_expired", age_s=int(age))
+    elif not bypass_cache:
+        _price_log.miss(portfolio_id or "default", reason="absent")
 
     try:
         from public_quotes import fetch_live_quotes, is_configured as public_configured
@@ -133,12 +142,19 @@ def _get_cached_regime_analysis(config: dict = None) -> RegimeAnalysis:
 
     now = time.time()
     cached = _regime_cache.get(benchmark)
-    if cached is not None and (now - cached[1]) < _REGIME_CACHE_TTL:
-        return cached[0]
+    if cached is not None:
+        age = now - cached[1]
+        if age < _REGIME_CACHE_TTL:
+            _regime_log.hit(benchmark, age)
+            return cached[0]
+        _regime_log.miss(benchmark, reason="ttl_expired", age_s=int(age))
+    else:
+        _regime_log.miss(benchmark, reason="absent")
 
     analysis = _fetch_regime_analysis(benchmark_symbol=benchmark,
                                       fallback_benchmark=fallback)
     _regime_cache[benchmark] = (analysis, now)
+    _regime_log.write(benchmark)
     return analysis
 
 

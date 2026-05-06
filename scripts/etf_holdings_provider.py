@@ -22,6 +22,10 @@ from typing import Dict, List, Optional, Set
 
 import yfinance as yf
 
+from cache_layer import get_logger
+
+_log = get_logger("etf_holdings")
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
@@ -190,7 +194,16 @@ class ETFHoldingsProvider:
         if use_cache and self._is_cache_fresh(etf_symbol):
             cached = self._cache.get("holdings", {}).get(etf_symbol, [])
             if cached:
+                last = self._cache.get("last_updated", {}).get(etf_symbol)
+                age = 0
+                if last:
+                    try:
+                        age = (datetime.now() - datetime.fromisoformat(last)).total_seconds()
+                    except (ValueError, TypeError):
+                        age = 0
+                _log.hit(etf_symbol, age, count=len(cached))
                 return cached
+        _log.miss(etf_symbol, reason="absent_or_stale")
 
         holdings = []
 
@@ -226,6 +239,7 @@ class ETFHoldingsProvider:
                 self._cache.setdefault("holdings", {})[etf_symbol] = holdings
                 self._cache.setdefault("last_updated", {})[etf_symbol] = datetime.now().isoformat()
                 self._save_cache()
+                _log.write(etf_symbol, count=len(holdings))
 
                 print(f"  Fetched {len(holdings)} holdings from {etf_symbol}")
             else:

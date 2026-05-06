@@ -74,6 +74,9 @@ def get_system_logs():
     return {"days": days}
 
 
+from cache_layer import get_logger as _cl_get_logger
+_narrative_log = _cl_get_logger("narrative")
+
 # In-memory narrative cache: {date_str: {"result": response_dict, "cached_at": datetime}}
 _narrative_cache: dict[str, dict] = {}
 _NARRATIVE_CACHE_TTL_SECONDS = 600  # 10 minutes
@@ -216,9 +219,15 @@ def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
         entry = _narrative_cache[target_date]
         age = (datetime.now() - entry["cached_at"]).total_seconds()
         if age < _NARRATIVE_CACHE_TTL_SECONDS:
+            _narrative_log.hit(target_date, age)
             cached = dict(entry["result"])
             cached["cached"] = True
             return cached
+        _narrative_log.miss(target_date, reason="ttl_expired", age_s=int(age))
+    elif regenerate:
+        _narrative_log.miss(target_date, reason="forced_regenerate")
+    else:
+        _narrative_log.miss(target_date, reason="absent")
 
     try:
         day_summary = build_day_summary(CRON_LOGS_DIR, PORTFOLIOS_DIR, target_date)
@@ -256,6 +265,7 @@ def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
         "cached": False,
     }
     _narrative_cache[target_date] = {"result": result, "cached_at": datetime.now()}
+    _narrative_log.write(target_date)
     return result
 
 

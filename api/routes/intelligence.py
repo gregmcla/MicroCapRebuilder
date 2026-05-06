@@ -22,6 +22,9 @@ router = APIRouter(prefix="/api/{portfolio_id}")
 
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
+from cache_layer import get_logger as _cl_get_logger
+_audit_log = _cl_get_logger("audit")
+
 # ── Audit brief cache — keyed by portfolio_id, expires every 10 min ──────────
 _audit_cache: dict[str, dict] = {}
 _AUDIT_CACHE_TTL = 600  # seconds
@@ -387,9 +390,15 @@ def get_audit_brief(regenerate: bool = False, portfolio_id: str = Depends(valida
         entry = _audit_cache[cache_key]
         age = (datetime.now() - entry["cached_at"]).total_seconds()
         if age < _AUDIT_CACHE_TTL:
+            _audit_log.hit(cache_key, age)
             result = dict(entry["result"])
             result["cached"] = True
             return result
+        _audit_log.miss(cache_key, reason="ttl_expired", age_s=int(age))
+    elif regenerate:
+        _audit_log.miss(cache_key, reason="forced_regenerate")
+    else:
+        _audit_log.miss(cache_key, reason="absent")
 
     context = _build_audit_context(portfolio_id)
     prompt = _build_audit_prompt(context)
@@ -419,6 +428,7 @@ def get_audit_brief(regenerate: bool = False, portfolio_id: str = Depends(valida
         "error": None,
     }
     _audit_cache[cache_key] = {"result": result, "cached_at": datetime.now()}
+    _audit_log.write(cache_key)
     return result
 
 

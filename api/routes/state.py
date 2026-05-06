@@ -11,6 +11,9 @@ from api.deps import serialize, validate_portfolio_id
 from portfolio_state import load_portfolio_state, save_positions, save_snapshot, invalidate_regime_cache
 
 # In-memory cache for ticker company info (name + description) — 24hr TTL
+from cache_layer import get_logger as _cl_get_logger
+_ticker_info_log = _cl_get_logger("ticker_info")
+
 _ticker_info_cache: dict[str, tuple[dict, float]] = {}
 _TICKER_INFO_TTL = 86400
 
@@ -334,8 +337,14 @@ def get_ticker_info(ticker: str, portfolio_id: str = Depends(validate_portfolio_
     """Company name and short description for a ticker."""
     now = time.time()
     cached = _ticker_info_cache.get(ticker)
-    if cached and now - cached[1] < _TICKER_INFO_TTL:
-        return cached[0]
+    if cached:
+        age = now - cached[1]
+        if age < _TICKER_INFO_TTL:
+            _ticker_info_log.hit(ticker, age)
+            return cached[0]
+        _ticker_info_log.miss(ticker, reason="ttl_expired", age_s=int(age))
+    else:
+        _ticker_info_log.miss(ticker, reason="absent")
 
     result: dict = {"ticker": ticker, "name": ticker, "description": None, "sector": None}
 
@@ -387,6 +396,7 @@ def get_ticker_info(ticker: str, portfolio_id: str = Depends(validate_portfolio_
     # (empty result happens when yfinance is rate-limited during concurrent scans)
     if result.get("name") != ticker or result.get("sector") is not None:
         _ticker_info_cache[ticker] = (result, now)
+        _ticker_info_log.write(ticker)
     return result
 
 

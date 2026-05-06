@@ -16,6 +16,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
 
+from cache_layer import get_logger
+
+_log = get_logger("exchange_universe")
+
 # ─── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
@@ -44,15 +48,26 @@ class ExchangeUniverseProvider:
         """Return all US common stock tickers, using cache when fresh."""
         cache = self._load_cache()
         if cache and self._is_fresh(cache) and "tickers" in cache:
+            cached_at = cache.get("cached_at") or cache.get("last_updated")
+            age = 0
+            if cached_at:
+                try:
+                    age = (datetime.now() - datetime.fromisoformat(cached_at)).total_seconds()
+                except (ValueError, TypeError):
+                    age = 0
+            _log.hit("exchange_listings", age, count=len(cache["tickers"]))
             return cache["tickers"]
+        _log.miss("exchange_listings", reason="absent_or_stale")
 
         try:
             tickers = self._download_and_parse()
             self._save_cache(tickers)
+            _log.write("exchange_listings", count=len(tickers))
             print(f"  [ExchangeUniverse] Downloaded {len(tickers):,} tickers from exchange listings")
             return tickers
         except Exception as e:
             if cache and "tickers" in cache:
+                _log.hit("exchange_listings", 0, count=len(cache["tickers"]), reason="download_fallback")
                 print(f"  [ExchangeUniverse] Download failed ({e}), using {len(cache['tickers']):,} cached tickers")
                 return cache["tickers"]
             print(f"  [ExchangeUniverse] Download failed ({e}) and no cache available, returning empty list")
