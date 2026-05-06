@@ -89,8 +89,10 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `strategy_health.py` — A-F grading
 - `strategy_pivot.py` — PIVOT recommendations
 - `capital_preservation.py` — capital preservation system
-- `yf_session.py` — DataFrame-level disk cache for yfinance (4hr TTL, curl_cffi compat)
+- `yf_session.py` — DataFrame-level disk cache for yfinance. Tiered TTL via `cache_layer.bars_ttl()` — 1h during US market hours (9:30-16:00 ET), 12h overnight. `YF_CACHE_TTL_SECONDS` env var still honored as a global override. Includes content validation: a cached/downloaded DataFrame whose MultiIndex ticker label diverges from the request is rejected (Fix 19a — caught the HUT-cache-poisoned-with-MNDY-data incident).
 - `public_quotes.py` — real-time price wrapper around publicdotcom-py SDK; primary price source in execute + load_portfolio_state; falls back to yfinance (`PUBLIC_API_KEY` env var required)
+- `cache_layer.py` — shared cache utilities (Fix 19): `cache_key(parts)` for canonical hash, `CacheLogger` for structured cache events, `TTL` constants tiered by data volatility (BARS_INTRADAY/OVERNIGHT, UNIVERSE_DAILY, FUNDAMENTALS_QUARTERLY, NEWS_SHORT, SOCIAL_SHORT, AI_EPHEMERAL), `is_market_hours()` helper.
+- `logging_setup.py` — `configure_logging()` + `get_logger(name)` for consistent stdlib logging across cron scripts and API. Wired into `api/main.py` startup (Fix 15).
 - `schema.py` — column constants and enums
 - `execute_sells.py`, `update_positions.py`, `pick_from_watchlist.py` — daily pipeline scripts
 
@@ -109,6 +111,7 @@ Thin REST layer. No business logic here.
 - `api/routes/discovery.py` — scan (`/api/{portfolio_id}/scan`)
 - `api/routes/market.py` — market indices + charts (`/api/market/...`)
 - `api/routes/system.py` — system logs + narrative (`/api/system/...`)
+- `api/routes/cache.py` — manual cache invalidation (`POST /api/{portfolio_id}/cache/invalidate?scope=screener|refinement|all`)
 
 ### 3. React Dashboard (`dashboard/`)
 Vite + React 19 + Tailwind v4 + TanStack Query + Zustand.
@@ -137,15 +140,25 @@ MicroCapRebuilder/
 │   │       ├── positions.csv
 │   │       ├── transactions.csv
 │   │       ├── daily_snapshots.csv
-│   │       └── watchlist.jsonl
+│   │       ├── watchlist.jsonl
+│   │       ├── screener_cache.{hash}.json    # Hash-keyed by filter inputs (Fix 19)
+│   │       └── refinement_cache.{hash}.json  # Hash-keyed by prompt + upstream
 │   ├── portfolios.json             # Registry of all portfolios
-│   └── yf_cache/                   # yfinance disk cache (4hr TTL, gitignored)
+│   └── yf_cache/                   # yfinance disk cache (tiered TTL, gitignored)
+├── tests/
+│   ├── integration/                # Fix 14: 17-test analyze→execute regression suite
+│   │   ├── conftest.py             # seed_portfolio + mock_anthropic/yfinance/etc.
+│   │   ├── fixtures/               # mock_responses, seed_portfolio helpers
+│   │   ├── test_analyze_pipeline.py
+│   │   ├── test_execute_pipeline.py
+│   │   └── test_pipeline_e2e.py
+│   └── test_cache_layer.py         # 15 unit tests for cache_layer module
 ├── docs/plans/                     # Design documents and implementation plans
 ├── run_dashboard.sh                # Launches API (8001) + React dev (5173)
 └── run_daily.sh                    # Daily trading pipeline
 ```
 
-**Active portfolios (as of 2026-03-27):** microcap, adjacent-supporters-of-ai, boomers, max, defense-tech, asymmetric-catalyst-hunters, catalyst-momentum-scalper, cash-cow-compounders, momentum-scalper, vcx-ai-concentration, yolo-degen-momentum, microcap-momentum-compounder, asymmetric-microcap-compounder (13 active)
+**Active portfolios (as of 2026-05-06): 35** — registry at `data/portfolios.json`. Notable additions since 2026-04-27: cluster-ignition (Fix 19 live test bed), max2, deep-value-swinger, falling-knife-bounce-hunter, quality-momentum-growth, quality-smallcap-value, small-cap-squeeze-momentum, multi-sector-aggressive, sector-momentum-rotation, yolo-momentum-chaos, baseball-industry, high-conviction-compounders, 2-day-max-alpha-blitz, 2-day-maximum-aggression, diversified-all-cap-core. Use `python3 -c "import json; print(list(json.load(open('data/portfolios.json'))['portfolios']))"` for the live list.
 
 ---
 
@@ -183,6 +196,7 @@ All portfolio-scoped routes use `/api/{portfolio_id}/` prefix.
 | GET | `/api/system/logs` | 30-day pipeline health summaries (scan/execute/update/watchdog) |
 | GET | `/api/system/narrative` | Claude daily briefing (10-min cache; `?regenerate=true` to bypass) |
 | GET | `/api/convergent-signals` | Tickers found by 2+ portfolios; `?min_portfolios=N` (default 2, ge=1) |
+| POST | `/api/{portfolio_id}/cache/invalidate` | Manual cache bust (`?scope=screener\|refinement\|all`) — Fix 19 |
 
 ---
 
@@ -287,18 +301,39 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 
 ---
 
-## yfinance Cache (`scripts/yf_session.py`)
+## Caching (Fix 19)
 
-- **yfinance ≥ 0.2.50 uses curl_cffi** — rejects custom requests-cache sessions
-- **Solution:** DataFrame-level pickle cache in `data/yf_cache/` with **4hr TTL**
-- Use `from yf_session import cached_download` — never pass `session=` to yf.download()
-- `yf.Ticker(ticker).info` must have a per-ticker timeout (5s) to prevent hanging scans
-- TTL configurable via `YF_CACHE_TTL_SECONDS` env var
+Three caches dominate the hot path. All use `scripts/cache_layer.py`:
+
+- **yfinance bars** (`yf_session.cached_download`) — pickle files in `data/yf_cache/`, tiered TTL: 1h during US market hours, 12h overnight via `cache_layer.bars_ttl()`. `YF_CACHE_TTL_SECONDS` overrides both for tests/manual stretching. Content validation rejects mismatched-ticker DataFrames before they reach the scorer.
+- **Screener results** (`screener_provider.run_screen`) — JSON at `data/portfolios/{id}/screener_cache.{hash}.json`. Hash includes sectors, industries, market_cap_min/max, region. Edit any of those → different hash → guaranteed cache miss. 24h TTL. Old hash files swept after 7 days.
+- **Refinement results** (`screener_provider.maybe_refine_with_claude`) — JSON at `data/portfolios/{id}/refinement_cache.{hash}.json`. Hash includes prompt text + upstream-screener-result fingerprint. Refinement auto-invalidates whenever screener invalidates. 7d TTL.
+
+**Manual bust**: `POST /api/{portfolio_id}/cache/invalidate?scope=screener|refinement|all` — globs and deletes both hash-keyed and any legacy non-hashed files.
+
+**Observability**: every cache hit/miss/write/evict goes through `CacheLogger` and emits a structured `logging.getLogger("cache")` event with name, key prefix, age, reason, size. Watch `/tmp/uvicorn.log` to see live cache behavior.
+
+**yfinance gotchas**:
+- yfinance ≥ 0.2.50 uses curl_cffi — never pass `session=` to `yf.download()`.
+- `yf.Ticker(ticker).info` must have a per-ticker timeout (5s) to prevent hanging scans.
+- Use `from yf_session import cached_download` for all OHLCV reads — never call `yf.download` directly outside `yf_session.py`.
+
+---
+
+## Tests
+
+- **Run everything**: `python3 -m pytest tests/ scripts/tests/` — should be 242+ green.
+- **Integration suite** (Fix 14, regression-critical): `python3 -m pytest tests/integration/ -v`. 17 tests cover all 3 analysis branches (AI-driven, enhanced layers, fallback) and 8 known regressions (phantom sells, double-execute race, atomic .last_analysis write, cash double-count, stale-price filter, factor_scores, ai_mode round-trip, micro-position floor + insufficient cash, atomic transactions+positions rollback).
+- Each integration test creates a real fixture portfolio at `data/portfolios/_test_pipeline_<hex>/` and tears down after. Anthropic, yfinance, Public.com, social, news are all mocked. Suite runs hermetically in ~4 seconds.
+- **When you touch `unified_analysis.py`, `yf_session.py`, `screener_provider.py`, or anything in the `execute_approved_actions` write path, run the integration suite first.** It will catch the regressions that have hit production before.
 
 ---
 
 ## Known Gotchas
 
+- **`execute_approved_actions` writes are atomic** (Fix 3): the entire save block is wrapped in `_atomic_state_writes(portfolio_id)` which snapshots positions.csv + transactions.csv + daily_snapshots.csv at entry and restores all three on any exception. Don't add a write to one of those files outside the `with` block — it'll escape the rollback guard.
+- **Cache file naming changed (Fix 19)**: per-portfolio caches are now `screener_cache.{16-hex-hash}.json` and `refinement_cache.{hash}.json`. Legacy non-hashed `screener_cache.json` files exist on some old portfolios — they're ignored by current code (cache miss → fresh fetch). The cache-invalidate endpoint cleans both naming styles.
+- **Don't add a new disk cache without going through `cache_layer.cache_key()` + `CacheLogger`**. Ad-hoc caches were the source of multiple silent-staleness bugs before Fix 19. Hash the inputs; log the events.
 - `ALE`, `JBT` tickers appear delisted — fail price fetch consistently
 - **Duplicate tickers across portfolios** (e.g., APA in largeboi + new + klop): `ConstellationMap` uses `nodeKey = "ticker:portfolioId"` for hover/click identity — never use ticker alone as a node key. `positions.find()` must match both `ticker` AND `portfolio_id`.
 - **day_change "immediate" after buy**: `bought_today` positions use `avg_cost_basis` as baseline. If yfinance cache was stale at analyze time, the recorded buy price differs from fresh prices → shows non-zero day_change on first UPDATE. This is expected behavior, not a bug.
