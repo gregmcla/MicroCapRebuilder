@@ -132,10 +132,16 @@ def run_ai_allocation(
         )
         effective_cash = available_cash + claude_sell_proceeds
 
+        # Opt-in only: pass max_positions when enforce_max_positions=true so
+        # existing AI-driven portfolios (which were running without this cap)
+        # aren't retroactively affected. New portfolios get the flag set to
+        # true at creation in portfolio_registry.create_portfolio().
+        enforce_cap = bool(state.config.get("enforce_max_positions", False))
         valid_buys, ai_sells = _validate_allocation(
             allocation_data, effective_cash, state.total_equity, scored_candidates,
             held_tickers=held_tickers,
             held_shares_map=held_shares_map,
+            max_positions=state.config.get("max_positions") if enforce_cap else None,
         )
 
         response_model = getattr(response, "model", model)
@@ -584,9 +590,27 @@ def _validate_allocation(
     scored_candidates: list,
     held_tickers: set = None,
     held_shares_map: dict = None,
+    max_positions: int | None = None,
 ) -> tuple[list, list]:
     """
     Enforce hard constraints on AI allocation output.
+
+    Args:
+        max_positions: Optional total-position cap. When provided AND the caller
+            has opted in (see `enforce_max_positions` flag in run_ai_allocation),
+            new BUYs are truncated so
+            `held_after_sells + new_buys <= max_positions`. Without this cap,
+            Claude's max_positions in the prompt was advisory only — it routinely
+            proposed more BUYs than the config allowed (live bug 2026-05-06:
+            cluster-ignition with max_positions=8 received 10 BUYs through
+            execute, opening positions over the configured cap).
+
+            Disabled by default for backward compatibility — existing AI-driven
+            portfolios were running without this cap before 2026-05-06 and
+            their position-count behavior shouldn't change retroactively. Set
+            `enforce_max_positions: true` in a portfolio's config to opt in
+            (new portfolios created via the dashboard get this flag set to true
+            automatically).
 
     Returns:
         (valid_buys, ai_sells) — filtered and capped lists
@@ -714,6 +738,27 @@ def _validate_allocation(
             "price": price,
             "reasoning": sell.get("reasoning", "AI-initiated sell"),
         })
+
+    # ── Total position-count cap ────────────────────────────────────────────
+    # Claude's prompt mentions max_positions but Claude doesn't always honor it.
+    # After Claude's own sells execute, the held count drops by however many
+    # held positions Claude is selling. The remaining slot budget is the cap on
+    # NEW buys. Trim from the end of valid_buys so we keep Claude's preferred
+    # ordering (highest-conviction first) and drop the marginal extras.
+    if max_positions is not None and max_positions >= 0:
+        held_after_sells = len(held_tickers) - sum(
+            1 for s in ai_sells if s["ticker"] in held_tickers
+        )
+        slot_budget = max(0, max_positions - held_after_sells)
+        if len(valid_buys) > slot_budget:
+            dropped = valid_buys[slot_budget:]
+            valid_buys = valid_buys[:slot_budget]
+            for d in dropped:
+                print(
+                    f"  [Validate] Dropping BUY {d['ticker']}: would exceed "
+                    f"max_positions={max_positions} "
+                    f"(held_after_sells={held_after_sells}, slots={slot_budget})"
+                )
 
     return valid_buys, ai_sells
 

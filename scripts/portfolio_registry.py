@@ -590,6 +590,12 @@ def create_portfolio(
         # Larger watchlist gives Claude more candidates to reason across
         config.setdefault("discovery", {}).setdefault("watchlist", {})
         config["discovery"]["watchlist"]["total_watchlist_slots"] = 500
+        # Enforce max_positions cap on AI proposals from creation onward.
+        # Existing portfolios don't set this and keep their pre-2026-05-06
+        # behavior (Claude's max_positions in the prompt is advisory only).
+        # New portfolios opt in by default; cap is enforced in
+        # ai_allocator._validate_allocation when this flag is true.
+        config["enforce_max_positions"] = True
 
     # Write config
     config_path = portfolio_dir / "config.json"

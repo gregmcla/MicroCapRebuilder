@@ -366,3 +366,112 @@ def test_analyze_stop_loss_triggered(
     assert any(s["ticker"] == "AAPL" for s in sells), (
         f"Expected a SELL proposal for AAPL when current<stop, got {sells}"
     )
+
+
+# ── Test 6: AI allocator BUYs are capped to max_positions ────────────────────
+def test_ai_allocator_caps_buys_to_max_positions(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+):
+    """
+    Regression for the live bug Greg hit 2026-05-06: cluster-ignition with
+    max_positions=8 received 10 BUYs from Claude through analyze + execute,
+    opening 10 positions over the configured cap.
+
+    With the fix in place: Claude proposes 10 BUYs, _validate_allocation drops
+    the marginal extras so only `max_positions - held` BUYs reach reviewed.
+    """
+    mock_yfinance.prices = {}
+    mock_public_com.prices = {}
+
+    sp = seed_portfolio(
+        starting_capital=1_000_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "max_positions": 4,
+            "enforce_max_positions": True,
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[],
+        transactions=[],
+        watchlist=[],
+    )
+
+    mock_anthropic.next_response = ai_allocator_buy_basket(
+        ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ"],
+        shares_each=10,
+        price_each=50.0,
+    )
+
+    from unified_analysis import run_unified_analysis
+    result = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+
+    assert result.get("ai_mode") == "claude"
+    reviewed = result.get("reviewed_actions") or []
+    buys = [
+        a for a in reviewed
+        if (
+            getattr(getattr(a, "original", None), "action_type", None) == "BUY"
+            or (isinstance(a, dict) and a.get("original", {}).get("action_type") == "BUY")
+        )
+    ]
+    assert len(buys) == 4, (
+        f"max_positions=4 + enforce_max_positions=true should cap BUYs to 4; got {len(buys)}"
+    )
+
+
+def test_ai_allocator_no_cap_when_flag_absent(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+):
+    """
+    Backward-compatibility guard: portfolios without `enforce_max_positions`
+    flag in their config (i.e. all portfolios that existed before 2026-05-06)
+    must keep their old behavior — Claude's BUY count is NOT truncated.
+
+    This codifies that the cap is opt-in. If someone refactors the validator
+    and accidentally makes the cap default-on, this test fails and the
+    existing 35 portfolios are protected.
+    """
+    mock_yfinance.prices = {}
+    mock_public_com.prices = {}
+
+    sp = seed_portfolio(
+        starting_capital=1_000_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "max_positions": 4,
+            # NOTE: no `enforce_max_positions` key → opt-out (old behavior)
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[], transactions=[], watchlist=[],
+    )
+
+    mock_anthropic.next_response = ai_allocator_buy_basket(
+        ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ"],
+        shares_each=10, price_each=50.0,
+    )
+
+    from unified_analysis import run_unified_analysis
+    result = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+
+    reviewed = result.get("reviewed_actions") or []
+    buys = [
+        a for a in reviewed
+        if (
+            getattr(getattr(a, "original", None), "action_type", None) == "BUY"
+            or (isinstance(a, dict) and a.get("original", {}).get("action_type") == "BUY")
+        )
+    ]
+    assert len(buys) == 10, (
+        f"Without enforce_max_positions=true, the cap must NOT apply; "
+        f"existing portfolios should see all 10 BUYs as before. Got {len(buys)}."
+    )
