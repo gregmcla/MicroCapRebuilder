@@ -65,6 +65,9 @@ from cache_layer import get_logger as _cl_get_logger
 _regime_log = _cl_get_logger("regime")
 _price_log = _cl_get_logger("position_prices")
 
+from logging_setup import get_logger as _get_diag_logger
+_diag = _get_diag_logger(__name__)
+
 
 def _fetch_current_prices(
     tickers: list,
@@ -503,7 +506,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                 else:
                     failures.append(ticker)
             except Exception as e:
-                print(f"Warning: price fetch failed for {ticker}: {e}")
+                _diag.warning("price fetch failed for %s: %s", ticker, e)
                 failures.append(ticker)
 
     return prices, failures, prev_closes
@@ -569,7 +572,7 @@ def fetch_benchmark_value(config: dict) -> Optional[float]:
                 close_col = flatten_yf_close(df)
                 return round(float(close_col.iloc[-1]), 2)
         except Exception as e:
-            print(f"Warning: benchmark fetch failed for {symbol}: {e}")
+            _diag.warning("benchmark fetch failed for %s: %s", symbol, e)
             continue
     return None
 

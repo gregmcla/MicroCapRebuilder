@@ -58,6 +58,9 @@ from portfolio_state import (
     fetch_prices_batch,
 )
 from public_quotes import fetch_live_quotes, is_configured as public_api_configured
+
+from logging_setup import get_logger as _get_diag_logger
+_diag = _get_diag_logger(__name__)
 from risk_layer import RiskLayer
 from stock_discovery import prewarm_info_for_tickers
 from execution_sequencer import ExecutionSequencer
@@ -87,7 +90,7 @@ def _build_sector_map(state) -> dict:
                         if entry.get("sector") and entry["ticker"] not in sector_map:
                             sector_map[entry["ticker"]] = entry["sector"]
     except Exception as e:
-        print(f"Warning: failed to build sector map from watchlist: {e}")
+        _diag.warning("failed to build sector map from watchlist: %s", e)
     return sector_map
 
 

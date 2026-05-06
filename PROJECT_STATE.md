@@ -40,7 +40,7 @@ Driven by an Opus-4.7 codebase audit that surfaced 18 issues across architecture
 **Phase 4 (deferred — needs separate brainstorming sessions):**
 - ~~Fix 3: atomic transactions+positions rollback~~ ✅ **shipped 2026-05-06** — `_atomic_state_writes()` context manager in `unified_analysis.py` snapshots positions.csv + transactions.csv + daily_snapshots.csv before any write; restores on exception. Wraps the entire save block. Test 17 flipped from xfail to pass.
 - ~~Fix 14: integration test for analyze→execute pipeline~~ ✅ **shipped 2026-05-06** — see below
-- Fix 15: structured logging across `scripts/`
+- ~~Fix 15: structured logging across `scripts/`~~ ✅ **shipped 2026-05-06** — new `scripts/logging_setup.py` (configure_logging + get_logger). Wired into `api/main.py` startup. Migrated key warning sites in `yf_session.py`, `portfolio_state.py`, `unified_analysis.py` from `print(f"Warning: ...")` to `log.warning(...)`. Pattern documented in module docstring; remaining `print()` calls in other modules can migrate as they're touched (no need to convert in one go — they're not breaking anything, just inconsistent).
 - Fix 16: split `unified_analysis.py` god functions (612-line `run_unified_analysis` + 354-line `execute_approved_actions`)
 - Fix 17: async-by-default for FastAPI long-running routes
 - Fix 18: split `OverviewPage.tsx` (1515 lines) and `MatrixGrid.tsx` (1316 lines)

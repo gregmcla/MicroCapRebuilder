@@ -33,6 +33,9 @@ import pandas as pd
 import yfinance as yf
 
 from cache_layer import bars_ttl, get_logger
+from logging_setup import get_logger as _get_diag_logger
+
+_diag = _get_diag_logger(__name__)
 
 _CACHE_DIR = Path(__file__).parent.parent / "data" / "yf_cache"
 # Optional global override for tests / manual cache stretching. When set, it
@@ -111,7 +114,7 @@ def cached_download(
                     cache_file.unlink(missing_ok=True)
                 except Exception as e:
                     _log.evict(cache_key, reason="corrupt", error=str(e))
-                    print(f"Warning: corrupt cache file, removing: {e}")
+                    _diag.warning("corrupt cache file, removing: %s", e)
                     cache_file.unlink(missing_ok=True)
             else:
                 _log.miss(cache_key, reason="ttl_expired", age_s=int(age), ttl=ttl, ticker=ticker_str)
@@ -126,14 +129,14 @@ def cached_download(
             try:
                 result[0] = yf.download(tickers, period=period, **kwargs)
             except Exception as e:
-                print(f"Warning: yf.download failed for {tickers}: {e}")
+                _diag.warning("yf.download failed for %s: %s", tickers, e)
 
         t = threading.Thread(target=_do_download, daemon=True)
         t.start()
         t.join(timeout=_DOWNLOAD_TIMEOUT)
         if t.is_alive():
             ticker_label = tickers if isinstance(tickers, str) else f"{len(tickers)} tickers"
-            print(f"Warning: yf.download timed out after {_DOWNLOAD_TIMEOUT}s for {ticker_label}")
+            _diag.warning("yf.download timed out after %ss for %s", _DOWNLOAD_TIMEOUT, ticker_label)
         df = result[0]
 
         # Persist non-empty results — but only if the response actually matches the request.
@@ -152,7 +155,7 @@ def cached_download(
                     pickle.dump(df, f)
                 _log.write(cache_key, size_bytes=cache_file.stat().st_size, ticker=ticker_str, period=period)
             except Exception as e:
-                print(f"Warning: failed to write cache file: {e}")
+                _diag.warning("failed to write cache file: %s", e)
 
         return df
 

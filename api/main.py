@@ -15,6 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 # Ensure scripts/ is on sys.path before route imports
 import api.deps  # noqa: F401
 
+# Configure structured logging once at startup so every cache hit / warn /
+# error from `scripts/` and `api/` lands in /tmp/uvicorn.log with consistent
+# formatting (Fix 15). Reads LOG_LEVEL env var; default INFO.
+from logging_setup import configure_logging  # noqa: E402
+
+configure_logging()
+
 from api.routes import state, risk, performance, analysis, market, controls, discovery, portfolios
 from api.routes import system as system_routes
 from api.routes import intelligence as intelligence_routes
