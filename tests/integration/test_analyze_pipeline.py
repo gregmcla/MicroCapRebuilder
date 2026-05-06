@@ -475,3 +475,88 @@ def test_ai_allocator_no_cap_when_flag_absent(
         f"Without enforce_max_positions=true, the cap must NOT apply; "
         f"existing portfolios should see all 10 BUYs as before. Got {len(buys)}."
     )
+
+
+def test_sizing_block_in_prompt_when_enforce_flag_set(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+):
+    """
+    With `enforce_max_positions: true`, the AI allocator prompt must include
+    a SIZING TARGETS block that surfaces initial_deployment_target_pct and
+    max_position_pct so Claude has an anchor for sizing. Without this anchor,
+    Claude undersizes (cluster-ignition deployed only 24% of book on 2026-05-06
+    despite a 90% deployment target in config).
+    """
+    from fixtures.mock_responses import ai_allocator_buy_basket
+    mock_yfinance.prices = {}
+    mock_public_com.prices = {}
+
+    sp = seed_portfolio(
+        starting_capital=1_000_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "max_positions": 6,
+            "max_position_pct": 8.0,
+            "initial_deployment_target_pct": 90.0,
+            "enforce_max_positions": True,
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[], transactions=[], watchlist=[],
+    )
+
+    mock_anthropic.next_response = ai_allocator_buy_basket(["AAA"], shares_each=10, price_each=50.0)
+
+    from unified_analysis import run_unified_analysis
+    run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+
+    # Inspect the prompt that was actually sent to Claude
+    assert mock_anthropic.calls, "AI allocator was not called"
+    prompt = mock_anthropic.calls[0]["messages"][0]["content"]
+    assert "SIZING TARGETS" in prompt, "sizing block missing from enforced prompt"
+    assert "Deployment target" in prompt and "90%" in prompt, "deployment target % not in prompt"
+    assert "Standard position size" in prompt and "8%" in prompt, "max_position_pct not in prompt"
+
+
+def test_sizing_block_absent_when_flag_not_set(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+):
+    """
+    Without `enforce_max_positions: true`, the prompt MUST NOT include the
+    SIZING TARGETS block — preserves the prompt shape for the 35 existing
+    portfolios that were running before this change.
+    """
+    from fixtures.mock_responses import ai_allocator_buy_basket
+    mock_yfinance.prices = {}
+    mock_public_com.prices = {}
+
+    sp = seed_portfolio(
+        starting_capital=1_000_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "max_positions": 6,
+            # NOTE: no `enforce_max_positions` key
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[], transactions=[], watchlist=[],
+    )
+
+    mock_anthropic.next_response = ai_allocator_buy_basket(["AAA"], shares_each=10, price_each=50.0)
+
+    from unified_analysis import run_unified_analysis
+    run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+
+    prompt = mock_anthropic.calls[0]["messages"][0]["content"]
+    assert "SIZING TARGETS" not in prompt, (
+        "sizing block leaked into prompt for a non-opted-in portfolio — "
+        "would change behavior for the 35 existing AI-driven portfolios"
+    )

@@ -403,6 +403,37 @@ def _build_allocation_prompt(
     else:
         regime_block = f"MARKET REGIME: {regime.value}\n"
 
+    # ─── Sizing authority phrasing (rephrased when sizing targets are enforced) ──
+    if state.config.get("enforce_max_positions", False):
+        _authority_sizing_line = (
+            "You set position sizes based on conviction, but ANCHORED on the "
+            "SIZING TARGETS above. Standard names land at the standard size; "
+            "high-conviction setups can flex up. Don't drift small as a default."
+        )
+    else:
+        _authority_sizing_line = "You determine position sizes based on conviction, not config percentages"
+
+    # ─── Sizing-target block (opt-in via enforce_max_positions) ────────────────
+    # Without this block, Claude has no anchor between the 25% safety ceiling and
+    # zero — it tends to undersize at 4-5% per position and under-deploys
+    # capital. When enforced, surface the actual config intent so Claude sizes
+    # within the user's design rather than defaulting to its own conservatism.
+    _sizing_block = ""
+    if state.config.get("enforce_max_positions", False):
+        deployment_target_pct = state.config.get("initial_deployment_target_pct", 90.0)
+        max_position_pct = state.config.get("max_position_pct", 8.0)
+        deploy_target_cash = available_cash * deployment_target_pct / 100
+        std_pos_value = state.total_equity * max_position_pct / 100
+        max_pos_value = state.total_equity * 0.25
+        _sizing_block = (
+            "SIZING TARGETS (config-driven, this portfolio):\n"
+            f"  - Deployment target: deploy ~{deployment_target_pct:.0f}% of available cash this cycle "
+            f"(~${deploy_target_cash:,.0f}). Holding large idle cash without justification is misalignment.\n"
+            f"  - Standard position size: ~{max_position_pct:.0f}% of equity (~${std_pos_value:,.0f}) for normal-conviction names.\n"
+            f"  - High-conviction ceiling: 25% of equity (${max_pos_value:,.0f}) — only for the strongest setups.\n"
+            "  - These are anchors. Your conviction modulates around them; don't hold cash by default.\n"
+        )
+
     # ─── Cash idle time note ────────────────────────────────────────────────────
     _cash_idle_note = ""
     if prompt_extras is not None:
@@ -523,7 +554,7 @@ PORTFOLIO STATE:
 {l1_block}
 {recently_sold_block}
 {candidates_block}
-
+{_sizing_block}
 HARD CONSTRAINTS (non-negotiable):
 1. Total cost of ALL buys MUST NOT exceed available cash: ${available_cash:,.2f}
 2. Every BUY entry in allocation_plan MUST include stop_loss and take_profit
@@ -537,7 +568,7 @@ YOUR AUTHORITY:
 - You MAY skip high-scoring stocks that don't fit the strategy
 - You MAY propose 0 buys if conditions don't warrant new positions
 - You MAY propose additional sells (beyond Layer 1) if positions are misaligned with the strategy
-- You determine position sizes based on conviction, not config percentages
+- {_authority_sizing_line}
 - You MAY TRIM positions instead of full exits. Set "shares" to less than the held quantity to partially sell. Use trims when:
   * A winner has run hard and you want to lock in some profit but keep upside (sell 25-50%)
   * A position is oversized vs conviction or sector cap and needs to be reduced
