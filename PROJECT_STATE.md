@@ -38,7 +38,7 @@ Driven by an Opus-4.7 codebase audit that surfaced 18 issues across architecture
 - `089bc780` `POSITION_COLUMNS` was stale (missing `day_change`, `day_change_pct`, `price_high`). Fix 8's reindex was DROPPING those columns from positions.csv on load. Result: dashboard "Today" sort showed 0.0 for every position, didn't sort. Fix: add the three real columns to `POSITION_COLUMNS`; change `_load_csv` to PRESERVE extras instead of dropping them. 21/21 MAX positions now show correct day_change values.
 
 **Phase 4 (deferred — needs separate brainstorming sessions):**
-- Fix 3: atomic transactions+positions rollback (needs Fix 14 first ✅)
+- ~~Fix 3: atomic transactions+positions rollback~~ ✅ **shipped 2026-05-06** — `_atomic_state_writes()` context manager in `unified_analysis.py` snapshots positions.csv + transactions.csv + daily_snapshots.csv before any write; restores on exception. Wraps the entire save block. Test 17 flipped from xfail to pass.
 - ~~Fix 14: integration test for analyze→execute pipeline~~ ✅ **shipped 2026-05-06** — see below
 - Fix 15: structured logging across `scripts/`
 - Fix 16: split `unified_analysis.py` god functions (612-line `run_unified_analysis` + 354-line `execute_approved_actions`)

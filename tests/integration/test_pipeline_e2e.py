@@ -110,15 +110,6 @@ def test_full_round_trip_ai_driven(
     assert status["executed"]["buys"] >= 1
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Fix 3 (atomic transactions+positions rollback) is deferred. "
-        "Pre-Fix-3 behavior writes transactions.csv even when positions.csv "
-        "save fails — this test will start passing once Fix 3 lands and "
-        "wraps the two writes in a single atomic unit."
-    ),
-    strict=False,
-)
 def test_full_round_trip_with_failure_recovery(
     seed_portfolio,
     mock_anthropic,

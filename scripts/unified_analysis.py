@@ -41,7 +41,13 @@ from ai_review import (
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem
 from factor_learning import apply_weight_adjustments as _apply_weight_adjustments, FactorLearner
-from data_files import get_mode_indicator, get_transactions_file
+from contextlib import contextmanager
+from data_files import (
+    get_daily_snapshots_file,
+    get_mode_indicator,
+    get_positions_file,
+    get_transactions_file,
+)
 from portfolio_state import (
     load_portfolio_state,
     load_watchlist,
@@ -933,6 +939,41 @@ def _normalize_reviewed_action(r):
     return r  # already a ReviewedAction dataclass
 
 
+@contextmanager
+def _atomic_state_writes(portfolio_id: str | None):
+    """
+    Snapshot transactions + positions + snapshots files at entry; restore on
+    exception. Without this guard a partial save (e.g. save_transactions_batch
+    succeeds but save_positions then raises) would leave the books in a
+    half-finished state — the SELL is logged but the position still shows held,
+    or the BUY is logged but the position isn't tracked. Fix 14's test 17
+    codifies this as a required invariant.
+
+    This is not the same as a transactional fs commit — a power loss between
+    the restoration writes still produces the same state divergence — but it
+    handles the dominant failure mode (in-process exception during save).
+    """
+    pos_path = get_positions_file(portfolio_id)
+    txn_path = get_transactions_file(portfolio_id)
+    snap_path = get_daily_snapshots_file(portfolio_id)
+    paths = (pos_path, txn_path, snap_path)
+    backups: dict[Path, bytes | None] = {
+        p: p.read_bytes() if p.exists() else None for p in paths
+    }
+    try:
+        yield
+    except Exception:
+        for p, content in backups.items():
+            try:
+                if content is None:
+                    p.unlink(missing_ok=True)
+                else:
+                    p.write_bytes(content)
+            except OSError as restore_exc:
+                print(f"  [atomic-rollback] Could not restore {p}: {restore_exc}")
+        raise
+
+
 def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) -> dict:
     """
     Execute the approved and modified actions from unified analysis.
@@ -1146,57 +1187,63 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     sell_pairs = [(r, tx) for r, tx in validated if r.original.action_type == "SELL"]
     buy_pairs  = [(r, tx) for r, tx in validated if r.original.action_type == "BUY"]
 
-    if sell_pairs:
-        state = save_transactions_batch(state, [tx for _, tx in sell_pairs])
-    if buy_pairs:
-        state = save_transactions_batch(state, [tx for _, tx in buy_pairs])
+    # All writes from here through save_positions are wrapped in a single
+    # rollback guard (Fix 3). If any write raises mid-flight, we restore the
+    # original CSV files to their pre-execute state. Without this, a failure
+    # between save_transactions_batch and save_positions would leave the books
+    # divergent — transactions logged but positions not updated.
+    with _atomic_state_writes(portfolio_id):
+        if sell_pairs:
+            state = save_transactions_batch(state, [tx for _, tx in sell_pairs])
+        if buy_pairs:
+            state = save_transactions_batch(state, [tx for _, tx in buy_pairs])
 
-    # Now update positions and print results
-    for reviewed, tx in validated:
-        action = reviewed.original
-        shares = tx["shares"]
+        # Now update positions and print results
+        for reviewed, tx in validated:
+            action = reviewed.original
+            shares = tx["shares"]
 
-        if action.action_type == "BUY":
-            ticker_sector = analysis_result.get("portfolio_context", {}).get(
-                "sector_map", {}
-            ).get(action.ticker, "")
-            state = update_position(state, action.ticker, shares, action.price,
-                                    tx["stop_loss"], tx["take_profit"],
-                                    sector=ticker_sector)
-        elif action.action_type == "SELL":
-            pos_row = state.positions[state.positions["ticker"] == action.ticker]
-            if pos_row.empty:
-                print(f"  ⚠️  Skipping sell {action.ticker}: not in positions")
-                dropped_actions.append({"ticker": action.ticker, "reason": "not in positions"})
-                continue
-            held_shares = int(pos_row["shares"].iloc[0])
-            if shares > held_shares:
-                print(f"  ⚠️  {action.ticker}: capping sell {shares} → {held_shares} (held)")
-                shares = held_shares
-            if shares < held_shares:
-                # Partial sell: reduce shares, keep avg_cost_basis unchanged
-                df = state.positions.copy()
-                idx = df[df["ticker"] == action.ticker].index[0]
-                remaining = held_shares - shares
-                cost = df.at[idx, "avg_cost_basis"]
-                df.at[idx, "shares"] = remaining
-                df.at[idx, "market_value"] = round(remaining * action.price, 2)
-                df.at[idx, "current_price"] = action.price
-                df.at[idx, "unrealized_pnl"] = round(remaining * (action.price - cost), 2)
-                df.at[idx, "unrealized_pnl_pct"] = round((action.price - cost) / cost * 100 if cost > 0 else 0, 2)
-                positions_value = float(df["market_value"].sum())
-                from dataclasses import replace as _replace
-                state = _replace(state, positions=df, positions_value=positions_value,
-                                 total_equity=positions_value + state.cash,
-                                 num_positions=len(df))
-            else:
-                state = remove_position(state, action.ticker)
+            if action.action_type == "BUY":
+                ticker_sector = analysis_result.get("portfolio_context", {}).get(
+                    "sector_map", {}
+                ).get(action.ticker, "")
+                state = update_position(state, action.ticker, shares, action.price,
+                                        tx["stop_loss"], tx["take_profit"],
+                                        sector=ticker_sector)
+            elif action.action_type == "SELL":
+                pos_row = state.positions[state.positions["ticker"] == action.ticker]
+                if pos_row.empty:
+                    print(f"  ⚠️  Skipping sell {action.ticker}: not in positions")
+                    dropped_actions.append({"ticker": action.ticker, "reason": "not in positions"})
+                    continue
+                held_shares = int(pos_row["shares"].iloc[0])
+                if shares > held_shares:
+                    print(f"  ⚠️  {action.ticker}: capping sell {shares} → {held_shares} (held)")
+                    shares = held_shares
+                if shares < held_shares:
+                    # Partial sell: reduce shares, keep avg_cost_basis unchanged
+                    df = state.positions.copy()
+                    idx = df[df["ticker"] == action.ticker].index[0]
+                    remaining = held_shares - shares
+                    cost = df.at[idx, "avg_cost_basis"]
+                    df.at[idx, "shares"] = remaining
+                    df.at[idx, "market_value"] = round(remaining * action.price, 2)
+                    df.at[idx, "current_price"] = action.price
+                    df.at[idx, "unrealized_pnl"] = round(remaining * (action.price - cost), 2)
+                    df.at[idx, "unrealized_pnl_pct"] = round((action.price - cost) / cost * 100 if cost > 0 else 0, 2)
+                    positions_value = float(df["market_value"].sum())
+                    from dataclasses import replace as _replace
+                    state = _replace(state, positions=df, positions_value=positions_value,
+                                     total_equity=positions_value + state.cash,
+                                     num_positions=len(df))
+                else:
+                    state = remove_position(state, action.ticker)
 
-        mod_note = " (MODIFIED)" if reviewed.decision == ReviewDecision.MODIFY else ""
-        print(f"  ✅ {action.action_type} {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
-        print(f"     AI: {reviewed.ai_reasoning}")
+            mod_note = " (MODIFIED)" if reviewed.decision == ReviewDecision.MODIFY else ""
+            print(f"  ✅ {action.action_type} {action.ticker}: {shares} shares @ ${action.price:.2f}{mod_note}")
+            print(f"     AI: {reviewed.ai_reasoning}")
 
-    save_positions(state)
+        save_positions(state)
 
     # Generate post-mortems for sells
     sell_data = sell_pairs
