@@ -291,6 +291,106 @@ def _run_ai_driven_analysis(
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
 
+def _build_portfolio_context(
+    state,
+    proposed_actions: list,
+    regime,
+    warning_severity: str,
+) -> tuple[dict, dict]:
+    """
+    Build the portfolio_context dict that goes to AI review, plus the
+    stale_positions dict surfaced separately on the result.
+
+    Pure data transform: takes already-loaded state + proposed_actions and
+    returns the structured context Claude needs (positions, projected sector
+    allocation, win rate, warnings, system warning level). Extracted from the
+    middle of `run_unified_analysis` (was ~90 lines inline) so the parent
+    function reads as orchestration rather than data plumbing (Fix 16).
+    """
+    sector_map = _build_sector_map(state)
+
+    # Compute projected sector breakdown after proposed buys
+    projected_sectors: dict = {}
+    projected_equity = state.total_equity
+    if not state.positions.empty:
+        for _, pos in state.positions.iterrows():
+            ticker = pos["ticker"]
+            pos_sector = str(pos.get("sector", "")).strip() if "sector" in pos.index else ""
+            sec = pos_sector if pos_sector and pos_sector not in ("nan", "Unknown", "") \
+                else sector_map.get(ticker, "Unknown")
+            projected_sectors[sec] = projected_sectors.get(sec, 0.0) + pos["market_value"]
+    buy_proposals = [a for a in proposed_actions if a.action_type == "BUY"]
+    for action in buy_proposals:
+        sec = sector_map.get(action.ticker, "Unknown")
+        projected_sectors[sec] = projected_sectors.get(sec, 0.0) + (action.shares * action.price)
+        projected_equity += action.shares * action.price
+    projected_sector_pct = {
+        sec: round(val / projected_equity * 100, 1)
+        for sec, val in projected_sectors.items()
+    } if projected_equity > 0 else {}
+
+    stale_positions = state.stale_alerts
+    if stale_positions:
+        print(f"\n  ⚠️  {len(stale_positions)} position(s) have stale prices (no update for 2+ days):")
+        for ticker, days in stale_positions.items():
+            print(f"     {ticker}: {days} consecutive day(s) without a price update")
+
+    stale_note = (
+        f"Note: the following positions have stale prices and may not reflect current market "
+        f"values (days without update): "
+        + ", ".join(f"{t} ({d}d)" for t, d in stale_positions.items())
+    ) if stale_positions else ""
+
+    try:
+        _trade_analyzer = TradeAnalyzer()
+        _trade_stats = _trade_analyzer.calculate_trade_stats()
+        _min_trades_for_win_rate = 5
+        if _trade_stats is not None and _trade_stats.total_trades >= _min_trades_for_win_rate:
+            win_rate = _trade_stats.win_rate_pct / 100.0
+        else:
+            win_rate = 0.5
+    except Exception as e:
+        _diag.warning("Win rate calculation failed: %s", e)
+        win_rate = 0.5
+
+    warning_note = ""
+    if warning_severity == "DANGER":
+        warning_note = (
+            "SYSTEM WARNING: Early warning system has flagged DANGER level conditions "
+            "(critical warnings active). Position sizes have been reduced 50%. "
+            "Apply extra scrutiny to all buy proposals."
+        )
+    elif warning_severity == "CAUTION":
+        warning_note = (
+            "SYSTEM WARNING: Early warning system has flagged CAUTION level conditions "
+            "(high-severity warnings active). Position sizes have been reduced 25%."
+        )
+
+    portfolio_context = {
+        "total_equity": state.total_equity,
+        "cash": state.cash,
+        "num_positions": state.num_positions,
+        "regime": regime.value,
+        "win_rate": win_rate,
+        "positions": [
+            {
+                "ticker": pos["ticker"],
+                "sector": sector_map.get(pos["ticker"], "Unknown"),
+                "shares": pos["shares"],
+                "pnl_pct": pos.get("unrealized_pnl_pct", 0),
+                "weight": (pos["market_value"] / state.total_equity * 100) if state.total_equity > 0 else 0,
+            }
+            for _, pos in state.positions.iterrows()
+        ] if not state.positions.empty else [],
+        "projected_sector_allocation": projected_sector_pct,
+        "sector_map": sector_map,
+        "stale_positions_note": stale_note,
+        "system_warning_level": warning_severity,
+        "system_warning_note": warning_note,
+    }
+    return portfolio_context, stale_positions
+
+
 def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict:
     """
     Run the complete unified analysis pipeline.
@@ -768,95 +868,9 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     # ─── Step 3: AI Review ────────────────────────────────────────────────────
     print("AI reviewing proposed actions...")
 
-    # Build sector map: positions.csv sector column (most reliable) + watchlist
-    sector_map = _build_sector_map(state)
-
-    # Compute projected sector breakdown after proposed buys
-    projected_sectors: dict = {}
-    projected_equity = state.total_equity
-    # Seed with current held positions (prefer positions.csv sector column)
-    if not state.positions.empty:
-        for _, pos in state.positions.iterrows():
-            ticker = pos["ticker"]
-            pos_sector = str(pos.get("sector", "")).strip() if "sector" in pos.index else ""
-            sec = pos_sector if pos_sector and pos_sector not in ("nan", "Unknown", "") \
-                else sector_map.get(ticker, "Unknown")
-            projected_sectors[sec] = projected_sectors.get(sec, 0.0) + pos["market_value"]
-    # Add proposed buys
-    buy_proposals = [a for a in proposed_actions if a.action_type == "BUY"]
-    for action in buy_proposals:
-        sec = sector_map.get(action.ticker, "Unknown")
-        projected_sectors[sec] = projected_sectors.get(sec, 0.0) + (action.shares * action.price)
-        projected_equity += action.shares * action.price
-    # Convert to percentages
-    projected_sector_pct = {
-        sec: round(val / projected_equity * 100, 1)
-        for sec, val in projected_sectors.items()
-    } if projected_equity > 0 else {}
-
-    # Surface stale position alerts before AI review
-    stale_positions = state.stale_alerts  # dict: ticker -> consecutive_days_without_price_update
-    if stale_positions:
-        print(f"\n  ⚠️  {len(stale_positions)} position(s) have stale prices (no update for 2+ days):")
-        for ticker, days in stale_positions.items():
-            print(f"     {ticker}: {days} consecutive day(s) without a price update")
-
-    # Build portfolio context for AI
-    stale_note = (
-        f"Note: the following positions have stale prices and may not reflect current market "
-        f"values (days without update): "
-        + ", ".join(f"{t} ({d}d)" for t, d in stale_positions.items())
-    ) if stale_positions else ""
-
-    # Calculate real win rate from completed trades using the same path as strategy_health.py
-    try:
-        _trade_analyzer = TradeAnalyzer()
-        _trade_stats = _trade_analyzer.calculate_trade_stats()
-        _min_trades_for_win_rate = 5
-        if _trade_stats is not None and _trade_stats.total_trades >= _min_trades_for_win_rate:
-            win_rate = _trade_stats.win_rate_pct / 100.0
-        else:
-            win_rate = 0.5  # Fallback: insufficient completed trades
-    except Exception as e:
-        print(f"  [WARN] Win rate calculation failed: {e}")
-        win_rate = 0.5
-
-    # Build warning note for AI context (Bug #9)
-    warning_note = ""
-    if warning_severity == "DANGER":
-        warning_note = (
-            "SYSTEM WARNING: Early warning system has flagged DANGER level conditions "
-            "(critical warnings active). Position sizes have been reduced 50%. "
-            "Apply extra scrutiny to all buy proposals."
-        )
-    elif warning_severity == "CAUTION":
-        warning_note = (
-            "SYSTEM WARNING: Early warning system has flagged CAUTION level conditions "
-            "(high-severity warnings active). Position sizes have been reduced 25%."
-        )
-
-    portfolio_context = {
-        "total_equity": state.total_equity,
-        "cash": state.cash,
-        "num_positions": state.num_positions,
-        "regime": regime.value,
-        "win_rate": win_rate,
-        "positions": [
-            {
-                "ticker": pos["ticker"],
-                "sector": sector_map.get(pos["ticker"], "Unknown"),
-                "shares": pos["shares"],
-                "pnl_pct": pos.get("unrealized_pnl_pct", 0),
-                "weight": (pos["market_value"] / state.total_equity * 100) if state.total_equity > 0 else 0
-            }
-            for _, pos in state.positions.iterrows()
-        ] if not state.positions.empty else [],
-        "projected_sector_allocation": projected_sector_pct,
-        "sector_map": sector_map,
-        "stale_positions_note": stale_note,
-        "system_warning_level": warning_severity,
-        "system_warning_note": warning_note,
-    }
+    portfolio_context, stale_positions = _build_portfolio_context(
+        state, proposed_actions, regime, warning_severity,
+    )
 
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context, info_cache=info_cache)
     print(format_review_summary(reviewed_actions))
