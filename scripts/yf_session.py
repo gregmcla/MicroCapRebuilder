@@ -63,6 +63,10 @@ def cached_download(
     cache_key = hashlib.md5(key_parts.encode()).hexdigest()
     cache_file = _CACHE_DIR / f"{cache_key}.pkl"
 
+    expected_tickers = (
+        {tickers.upper()} if isinstance(tickers, str) else {t.upper() for t in tickers}
+    )
+
     lock = _get_lock(cache_key)
     with lock:
         # Cache hit?
@@ -71,7 +75,14 @@ def cached_download(
             if age < _TTL:
                 try:
                     with open(cache_file, "rb") as f:
-                        return pickle.load(f)
+                        cached_df = pickle.load(f)
+                    if _content_matches_tickers(cached_df, expected_tickers):
+                        return cached_df
+                    print(
+                        f"Warning: cache content mismatch for {tickers} ({cache_key[:8]}); "
+                        "deleting and refetching"
+                    )
+                    cache_file.unlink(missing_ok=True)
                 except Exception as e:
                     print(f"Warning: corrupt cache file, removing: {e}")
                     cache_file.unlink(missing_ok=True)
@@ -94,8 +105,16 @@ def cached_download(
             print(f"Warning: yf.download timed out after {_DOWNLOAD_TIMEOUT}s for {ticker_label}")
         df = result[0]
 
-        # Persist non-empty results
+        # Persist non-empty results — but only if the response actually matches the request.
+        # yfinance has historically returned wrong-ticker data on rare race/rate-limit paths;
+        # writing that to disk poisons future scoring with hallucinated prices (HUT@$74 incident).
         if not df.empty:
+            if not _content_matches_tickers(df, expected_tickers):
+                print(
+                    f"Warning: yf.download returned mismatched ticker data for {tickers}; "
+                    "discarding response, not caching"
+                )
+                return pd.DataFrame()
             try:
                 with open(cache_file, "wb") as f:
                     pickle.dump(df, f)
@@ -103,6 +122,36 @@ def cached_download(
                 print(f"Warning: failed to write cache file: {e}")
 
         return df
+
+
+def _content_matches_tickers(df: pd.DataFrame, expected: set[str]) -> bool:
+    """
+    Verify a cached/downloaded DataFrame actually contains data for the requested tickers.
+
+    yfinance returns MultiIndex columns when group_by='ticker' or when multiple tickers
+    are requested; the second level of that index carries the ticker symbol. If that
+    label set diverges from what we asked for, the file was poisoned (e.g. HUT cache
+    file ended up holding MNDY data) and must be rejected.
+
+    For single-ticker, non-MultiIndex DataFrames there's no ticker label embedded, so
+    we can't verify; return True (no signal either way).
+    """
+    if df is None or df.empty:
+        return True
+    if not isinstance(df.columns, pd.MultiIndex):
+        return True
+    # Try every level except the first ('Close','High',...) — ticker can sit at level 0 or 1
+    expected_upper = {t.upper() for t in expected}
+    for level in range(df.columns.nlevels):
+        labels = {str(v).upper() for v in df.columns.get_level_values(level)}
+        # skip OHLCV-style levels
+        if labels & {"CLOSE", "HIGH", "LOW", "OPEN", "VOLUME", "ADJ CLOSE"}:
+            continue
+        if labels and labels.issubset(expected_upper):
+            return True
+        if labels and not (labels & expected_upper):
+            return False
+    return True
 
 
 def clear_cache() -> int:
