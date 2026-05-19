@@ -323,6 +323,7 @@ import pandas as pd
 
 # Helper to call _build_allocation_prompt with minimum viable args
 def _minimal_prompt(mode: str = "full") -> str:
+    from unittest.mock import patch
     from ai_allocator import _build_allocation_prompt
     from market_regime import MarketRegime
 
@@ -340,22 +341,23 @@ def _minimal_prompt(mode: str = "full") -> str:
         portfolio_id="_test_prompt",
         regime_analysis=None,
     )
-    return _build_allocation_prompt(
-        state=state,
-        layer1_sells=[],
-        scored_candidates=[],
-        sector_map={},
-        regime=MarketRegime.SIDEWAYS,
-        warning_severity="NORMAL",
-        strategy_dna="Test strategy",
-        available_cash=100_000.0,
-        info_cache={},
-        full_watchlist=False,
-        regime_analysis=None,
-        prompt_extras=None,
-        portfolio_id="_test_prompt",
-        mode=mode,
-    )
+    with patch("ai_allocator.get_macro_context", return_value=""):
+        return _build_allocation_prompt(
+            state=state,
+            layer1_sells=[],
+            scored_candidates=[],
+            sector_map={},
+            regime=MarketRegime.SIDEWAYS,
+            warning_severity="NORMAL",
+            strategy_dna="Test strategy",
+            available_cash=100_000.0,
+            info_cache={},
+            full_watchlist=False,
+            regime_analysis=None,
+            prompt_extras=None,
+            portfolio_id="_test_prompt",
+            mode=mode,
+        )
 
 
 def test_build_prompt_full_mode_omits_directive():
