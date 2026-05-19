@@ -186,8 +186,26 @@ def _build_allocation_prompt(
     regime_analysis: Optional[RegimeAnalysis] = None,
     prompt_extras: Optional[dict] = None,
     portfolio_id: str = None,
+    mode: str = "full",
 ) -> str:
     """Build the full allocation prompt for Claude."""
+
+    if mode == "buys_only":
+        mode_directive = (
+            "\n⚠️ CASH DEPLOYMENT MODE: This run focuses only on new buys. "
+            "Treat current positions as fixed — do not propose any sells. "
+            "Available cash is current cash only (no sell proceeds to assume). "
+            "Return empty `sells: []`.\n"
+        )
+    elif mode == "sells_only":
+        mode_directive = (
+            "\n⚠️ RISK REVIEW MODE: This run focuses only on existing positions. "
+            "Do not propose any new buys. Return empty `allocation_plan: []`. "
+            "Focus on broken theses, oversized positions, deteriorating factors, "
+            "and Layer 1 flagged positions.\n"
+        )
+    else:
+        mode_directive = ""
 
     # Current positions block
     if not state.positions.empty:
@@ -554,7 +572,7 @@ PORTFOLIO STATE:
 {l1_block}
 {recently_sold_block}
 {candidates_block}
-{_sizing_block}
+{_sizing_block}{mode_directive}
 HARD CONSTRAINTS (non-negotiable):
 1. Total cost of ALL buys MUST NOT exceed available cash: ${available_cash:,.2f}
 2. Every BUY entry in allocation_plan MUST include stop_loss and take_profit
