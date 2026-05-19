@@ -597,6 +597,7 @@ def _assemble_analysis_result(
     portfolio_context: dict,
     stale_positions: dict,
     regime,
+    mode: str = "full",
 ) -> dict:
     """
     Build the final result dict for run_unified_analysis (mechanical paths
@@ -606,6 +607,15 @@ def _assemble_analysis_result(
     accidentally cap a buy down to 1 share @ $12 and have execute later quietly
     drop it. We surface the drop here at review time.
     """
+    # Mode enforcement — final guard. Drop the off-side from every list
+    # before computing approved/modified/vetoed splits.
+    if mode == "buys_only":
+        proposed_actions = [a for a in proposed_actions if a.action_type == "BUY"]
+        reviewed_actions = [r for r in reviewed_actions if r.original.action_type == "BUY"]
+    elif mode == "sells_only":
+        proposed_actions = [a for a in proposed_actions if a.action_type == "SELL"]
+        reviewed_actions = [r for r in reviewed_actions if r.original.action_type == "SELL"]
+
     approved = [r for r in reviewed_actions if r.decision == ReviewDecision.APPROVE]
     modified = [r for r in reviewed_actions if r.decision == ReviewDecision.MODIFY]
     vetoed = [r for r in reviewed_actions if r.decision == ReviewDecision.VETO]
@@ -638,6 +648,7 @@ def _assemble_analysis_result(
         "timestamp": datetime.now().isoformat(),
         "stale_positions": stale_positions,
         "ai_mode": "mechanical",
+        "mode": mode,
     }
 
 

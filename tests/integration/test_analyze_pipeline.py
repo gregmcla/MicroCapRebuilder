@@ -560,3 +560,121 @@ def test_sizing_block_absent_when_flag_not_set(
         "sizing block leaked into prompt for a non-opted-in portfolio — "
         "would change behavior for the 35 existing AI-driven portfolios"
     )
+
+
+def test_assemble_buys_only_drops_sells_from_all_lists():
+    """Defense-in-depth: _assemble_analysis_result drops SELL actions in buys_only mode."""
+    from unified_analysis import _assemble_analysis_result
+    from ai_review import ReviewedAction, ReviewDecision
+    from enhanced_structures import ProposedAction
+    from market_regime import MarketRegime
+
+    buy = ProposedAction(
+        action_type="BUY", ticker="AAPL", shares=10, price=150.0,
+        stop_loss=138.0, take_profit=180.0, quant_score=70,
+        factor_scores={}, regime="SIDEWAYS", reason="test",
+    )
+    sell = ProposedAction(
+        action_type="SELL", ticker="MSFT", shares=5, price=200.0,
+        stop_loss=0, take_profit=0, quant_score=0,
+        factor_scores={}, regime="SIDEWAYS", reason="leaked sell",
+    )
+    reviewed_buy = ReviewedAction(
+        original=buy, decision=ReviewDecision.APPROVE,
+        ai_reasoning="", confidence=1.0,
+    )
+    reviewed_sell = ReviewedAction(
+        original=sell, decision=ReviewDecision.APPROVE,
+        ai_reasoning="", confidence=1.0,
+    )
+
+    result = _assemble_analysis_result(
+        proposed_actions=[buy, sell],
+        reviewed_actions=[reviewed_buy, reviewed_sell],
+        portfolio_context={},
+        stale_positions={},
+        regime=MarketRegime.SIDEWAYS,
+        mode="buys_only",
+    )
+    assert all(r.original.action_type == "BUY" for r in result["approved"])
+    assert len(result["approved"]) == 1
+    assert all(a.action_type == "BUY" for a in result["proposed_actions"])
+    assert all(r.original.action_type == "BUY" for r in result["reviewed_actions"])
+    assert result["mode"] == "buys_only"
+
+
+def test_assemble_sells_only_drops_buys_from_all_lists():
+    from unified_analysis import _assemble_analysis_result
+    from ai_review import ReviewedAction, ReviewDecision
+    from enhanced_structures import ProposedAction
+    from market_regime import MarketRegime
+
+    buy = ProposedAction(
+        action_type="BUY", ticker="AAPL", shares=10, price=150.0,
+        stop_loss=138.0, take_profit=180.0, quant_score=70,
+        factor_scores={}, regime="SIDEWAYS", reason="leaked buy",
+    )
+    sell = ProposedAction(
+        action_type="SELL", ticker="MSFT", shares=5, price=200.0,
+        stop_loss=0, take_profit=0, quant_score=0,
+        factor_scores={}, regime="SIDEWAYS", reason="legit sell",
+    )
+    reviewed_buy = ReviewedAction(
+        original=buy, decision=ReviewDecision.APPROVE,
+        ai_reasoning="", confidence=1.0,
+    )
+    reviewed_sell = ReviewedAction(
+        original=sell, decision=ReviewDecision.APPROVE,
+        ai_reasoning="", confidence=1.0,
+    )
+
+    result = _assemble_analysis_result(
+        proposed_actions=[buy, sell],
+        reviewed_actions=[reviewed_buy, reviewed_sell],
+        portfolio_context={},
+        stale_positions={},
+        regime=MarketRegime.SIDEWAYS,
+        mode="sells_only",
+    )
+    assert all(r.original.action_type == "SELL" for r in result["approved"])
+    assert len(result["approved"]) == 1
+    assert all(a.action_type == "SELL" for a in result["proposed_actions"])
+    assert all(r.original.action_type == "SELL" for r in result["reviewed_actions"])
+    assert result["mode"] == "sells_only"
+
+
+def test_assemble_full_mode_keeps_both_sides():
+    from unified_analysis import _assemble_analysis_result
+    from ai_review import ReviewedAction, ReviewDecision
+    from enhanced_structures import ProposedAction
+    from market_regime import MarketRegime
+
+    buy = ProposedAction(
+        action_type="BUY", ticker="AAPL", shares=10, price=150.0,
+        stop_loss=138.0, take_profit=180.0, quant_score=70,
+        factor_scores={}, regime="SIDEWAYS", reason="test",
+    )
+    sell = ProposedAction(
+        action_type="SELL", ticker="MSFT", shares=5, price=200.0,
+        stop_loss=0, take_profit=0, quant_score=0,
+        factor_scores={}, regime="SIDEWAYS", reason="test",
+    )
+    result = _assemble_analysis_result(
+        proposed_actions=[buy, sell],
+        reviewed_actions=[
+            ReviewedAction(
+                original=buy, decision=ReviewDecision.APPROVE,
+                ai_reasoning="", confidence=1.0,
+            ),
+            ReviewedAction(
+                original=sell, decision=ReviewDecision.APPROVE,
+                ai_reasoning="", confidence=1.0,
+            ),
+        ],
+        portfolio_context={},
+        stale_positions={},
+        regime=MarketRegime.SIDEWAYS,
+        mode="full",
+    )
+    assert len(result["approved"]) == 2
+    assert result["mode"] == "full"
