@@ -305,3 +305,30 @@ def _no_real_anthropic_key(monkeypatch):
     """
     if not os.environ.get("INTEGRATION_TEST_ALLOW_REAL_API"):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+
+
+@pytest.fixture(autouse=True)
+def _bypass_validate_portfolio_id_for_test_portfolios():
+    """
+    Allow tests that hit the FastAPI app via TestClient to use the
+    `_test_pipeline_<hex>` portfolios created by seed_portfolio — those
+    aren't in the global registry, so validate_portfolio_id would 404.
+
+    For test-prefixed IDs, return the id unchanged. For everything else,
+    fall through to the real registry check.
+    """
+    from api.main import app
+    from api import deps as api_deps
+
+    real = api_deps.validate_portfolio_id
+
+    def _bypass(portfolio_id: str = "") -> str:
+        if portfolio_id.startswith("_test_pipeline_"):
+            return portfolio_id
+        return real(portfolio_id)
+
+    app.dependency_overrides[api_deps.validate_portfolio_id] = _bypass
+    try:
+        yield
+    finally:
+        app.dependency_overrides.pop(api_deps.validate_portfolio_id, None)

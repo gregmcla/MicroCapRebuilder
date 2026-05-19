@@ -1008,3 +1008,90 @@ def test_run_unified_analysis_default_mode_is_full(seed_portfolio, mock_anthropi
 
     result = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
     assert result.get("mode") == "full"
+
+
+def test_analyze_endpoint_writes_to_mode_specific_slot(seed_portfolio, mock_anthropic, mock_yfinance):
+    """Each mode writes to its own .last_analysis.{slot}.json."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from unittest.mock import MagicMock
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    client = TestClient(app)
+    r_full = client.post(f"/api/{sp.portfolio_id}/analyze")
+    assert r_full.status_code == 200, r_full.text
+    mock_anthropic.next_response = resp
+    r_buys = client.post(f"/api/{sp.portfolio_id}/analyze?mode=buys_only")
+    assert r_buys.status_code == 200, r_buys.text
+    mock_anthropic.next_response = resp
+    r_sells = client.post(f"/api/{sp.portfolio_id}/analyze?mode=sells_only")
+    assert r_sells.status_code == 200, r_sells.text
+
+    pdir = sp.portfolio_dir
+    assert (pdir / ".last_analysis.json").exists()
+    assert (pdir / ".last_analysis.buys.json").exists()
+    assert (pdir / ".last_analysis.sells.json").exists()
+
+
+def test_analyze_endpoint_rejects_invalid_mode(seed_portfolio):
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[], watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    client = TestClient(app)
+    r = client.post(f"/api/{sp.portfolio_id}/analyze?mode=bogus")
+    assert r.status_code == 400
+
+
+def test_execute_endpoint_reads_from_mode_specific_slot(seed_portfolio, mock_anthropic, mock_yfinance):
+    """/execute?mode=buys_only must read from .last_analysis.buys.json and consume it."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from unittest.mock import MagicMock
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    client = TestClient(app)
+    r1 = client.post(f"/api/{sp.portfolio_id}/analyze?mode=buys_only")
+    assert r1.status_code == 200
+    assert (sp.portfolio_dir / ".last_analysis.buys.json").exists()
+
+    r2 = client.post(f"/api/{sp.portfolio_id}/execute?mode=buys_only")
+    assert r2.status_code == 200, r2.text
+    # After execute, slot file should be consumed
+    assert not (sp.portfolio_dir / ".last_analysis.buys.json").exists()
+
+
+def test_execute_returns_400_when_slot_missing(seed_portfolio):
+    """/execute?mode=sells_only with no prior analyze for that slot → 400."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    client = TestClient(app)
+    r = client.post(f"/api/{sp.portfolio_id}/execute?mode=sells_only")
+    assert r.status_code == 400, r.text
