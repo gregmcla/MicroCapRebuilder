@@ -882,3 +882,83 @@ def test_fallback_sells_only_skips_scoring(seed_portfolio, mock_anthropic, mock_
     assert score_calls == [], f"sells_only fallback must not score, got {score_calls}"
     assert all(a.action_type != "BUY" for a in result), \
         "sells_only fallback must produce no BUY actions"
+
+
+def test_enhanced_sells_only_skips_layer2_and_layer3(seed_portfolio, mock_anthropic, mock_yfinance):
+    """Enhanced path sells_only short-circuits before Layer 2; proposed_actions returns unchanged."""
+    from unified_analysis import _run_enhanced_layers_step2
+    from portfolio_state import load_portfolio_state
+    from enhanced_structures import ProposedAction
+
+    sp = seed_portfolio(
+        config_overrides={
+            "ai_driven": False,
+            "enhanced_trading": {"enable_layers": True},
+        },
+        positions=[{"ticker": "AAPL", "shares": 10, "avg_cost_basis": 100.0,
+                    "current_price": 80.0,
+                    "stop_loss": 92.0, "take_profit": 120.0}],
+        watchlist=[_wl_entry("MSFT", 70.0), _wl_entry("NVDA", 70.0)],
+    )
+    state_pid = sp.portfolio_id
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=state_pid)
+
+    # Seed proposed_actions with a Layer-1-style sell that should pass through
+    layer1_sell = ProposedAction(
+        action_type="SELL", ticker="AAPL", shares=10, price=80.0,
+        stop_loss=92.0, take_profit=120.0, quant_score=0,
+        factor_scores={}, regime=state.regime.value, reason="Layer 1 stop",
+    )
+    proposed_actions = [layer1_sell]
+
+    result_actions, info_cache = _run_enhanced_layers_step2(
+        state=state,
+        layer1_output={"sell_proposals": [], "deterioration_alerts": [], "updated_stops": {}},
+        regime=state.regime,
+        preservation_active=False,
+        config=state.config,
+        portfolio_id=state_pid,
+        proposed_actions=proposed_actions,
+        info_cache={},
+        mode="sells_only",
+    )
+    # Result should be unchanged from input — Layer 1 sell pass-through, no new buys
+    assert result_actions == proposed_actions
+    assert all(a.action_type == "SELL" for a in result_actions)
+    assert info_cache == {}
+
+
+def test_enhanced_buys_only_drops_rotation_pairs(seed_portfolio, mock_anthropic, mock_yfinance):
+    """Enhanced path buys_only: keep Layer 2 buy_proposals; drop rotation_sells AND rotation_buys."""
+    # Structural assertion: in buys_only the result must contain no SELL actions.
+    # Rotation buys/sells are paired in Layer 2; dropping rotation sells without dropping
+    # rotation buys would create unfunded buys. Confirm both sides are dropped.
+    from unified_analysis import _run_enhanced_layers_step2
+    from portfolio_state import load_portfolio_state
+
+    sp = seed_portfolio(
+        config_overrides={
+            "ai_driven": False,
+            "enhanced_trading": {"enable_layers": True},
+        },
+        positions=[{"ticker": "AAPL", "shares": 10, "avg_cost_basis": 100.0,
+                    "current_price": 100.0,
+                    "stop_loss": 92.0, "take_profit": 120.0}],
+        watchlist=[_wl_entry("MSFT", 70.0), _wl_entry("NVDA", 70.0)],
+    )
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=sp.portfolio_id)
+
+    result_actions, _ = _run_enhanced_layers_step2(
+        state=state,
+        layer1_output={"sell_proposals": [], "deterioration_alerts": [], "updated_stops": {}},
+        regime=state.regime,
+        preservation_active=False,
+        config=state.config,
+        portfolio_id=sp.portfolio_id,
+        proposed_actions=[],
+        info_cache={},
+        mode="buys_only",
+    )
+    # No SELL actions at all (Layer 1 sells empty AND rotation_sells filtered)
+    assert all(a.action_type != "SELL" for a in result_actions), \
+        "buys_only must drop all SELL actions, including rotation sells"

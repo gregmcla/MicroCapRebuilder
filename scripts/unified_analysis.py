@@ -318,6 +318,7 @@ def _run_enhanced_layers_step2(
     portfolio_id: str | None,
     proposed_actions: list,
     info_cache: dict,
+    mode: str = "full",
 ) -> tuple[list, dict]:
     """
     Step 2 (enhanced path): Layer 2 Opportunity Management + Layer 3 Composition.
@@ -332,6 +333,11 @@ def _run_enhanced_layers_step2(
     preservation_active is True so we don't open new high-risk legs while in
     drawdown protection — but the rotation SELL side still executes.
     """
+    # sells_only: skip Layers 2/3 entirely; Layer 1 sells in proposed_actions are
+    # sufficient and the assemble step will filter anything else.
+    if mode == "sells_only":
+        return proposed_actions, info_cache
+
     print("\nRunning Layer 2: Opportunity Management...")
     layer2 = OpportunityLayer(config)
 
@@ -378,6 +384,12 @@ def _run_enhanced_layers_step2(
         ))
         patterns_str = ", ".join([p.pattern_type.value for p in conviction.patterns_detected]) if conviction.patterns_detected else "none"
         print(f"  💡 {buy_proposal.ticker}: Conviction {conviction.final_conviction:.1f} ({conviction.conviction_level.value}), {buy_proposal.shares} shares @ ${buy_proposal.price:.2f} = ${buy_proposal.total_value:.2f} ({buy_proposal.position_size_pct:.1f}% of portfolio) - patterns: {patterns_str}")
+
+    if mode == "buys_only":
+        # Drop rotation pairs — rotation buys assume cash from rotation sells,
+        # which we're not executing. Pure buy_proposals only.
+        layer2_output["rotation_sells"] = []
+        layer2_output["rotation_buys"] = []
 
     if layer2_output.get("rotation_sells"):
         print(f"\n  🔄 Portfolio Rotation: {len(layer2_output['rotation_sells'])} swap(s) proposed")
