@@ -24,27 +24,51 @@ export type PortfolioAnalysisStatus =
   | "executing"
   | "executed";
 
-export interface PortfolioAnalysisState {
+export type AnalysisMode = "full" | "buys_only" | "sells_only";
+
+export interface AnalysisSlot {
   status: PortfolioAnalysisStatus;
   result: AnalysisResult | null;
   error: string | null;
   analyzedAt: string | null;
 }
 
+// Backward-compat alias — older code referred to per-portfolio state by this name.
+export type PortfolioAnalysisState = AnalysisSlot;
+
+const emptySlot = (): AnalysisSlot => ({
+  status: "idle",
+  result: null,
+  error: null,
+  analyzedAt: null,
+});
+
+export type AnalysisSlots = Record<AnalysisMode, AnalysisSlot>;
+
+const emptySlots = (): AnalysisSlots => ({
+  full: emptySlot(),
+  buys_only: emptySlot(),
+  sells_only: emptySlot(),
+});
+
 interface AnalysisStore {
-  // Current-portfolio view (auto-synced from portfolioAnalyses[activePortfolioId])
+  // Current-portfolio view (auto-synced from portfolioAnalyses[activePortfolioId][activeMode])
   result: AnalysisResult | null;
   isAnalyzing: boolean;
   isExecuting: boolean;
   error: string | null;
   lastAnalyzedAt: string | null;
 
-  // Per-portfolio analysis state (persists across navigation)
-  portfolioAnalyses: Record<string, PortfolioAnalysisState>;
+  // Per-portfolio per-mode analysis state (persists across navigation)
+  portfolioAnalyses: Record<string, AnalysisSlots>;
 
-  runAnalysis: () => Promise<void>;
-  runExecute: () => Promise<void>;
-  setPortfolioAnalysis: (pid: string, patch: Partial<PortfolioAnalysisState>) => void;
+  // The mode currently being viewed in the dashboard (UI state)
+  activeMode: AnalysisMode;
+  setActiveMode: (m: AnalysisMode) => void;
+
+  runAnalysis: (mode?: AnalysisMode) => Promise<void>;
+  runExecute: (mode?: AnalysisMode) => Promise<void>;
+  setPortfolioAnalysis: (pid: string, mode: AnalysisMode, patch: Partial<AnalysisSlot>) => void;
   clearPortfolioAnalysis: (pid: string) => void;
   clearAllAnalyses: () => void;
   clear: () => void;
@@ -100,11 +124,12 @@ export const useUIStore = create<UIStore>((set) => ({
 
 export const useAnalysisStore = create<AnalysisStore>((set, get) => {
   // Sync top-level `result`/`isAnalyzing`/`error`/`lastAnalyzedAt` to whatever
-  // portfolio is currently active, so consumers don't need to know about the
-  // per-portfolio map.
+  // portfolio + mode is currently active, so consumers don't need to know about
+  // the per-portfolio/per-mode map.
   const syncActive = () => {
     const pid = usePortfolioStore.getState().activePortfolioId;
-    const slot = get().portfolioAnalyses[pid];
+    const mode = get().activeMode;
+    const slot = get().portfolioAnalyses[pid]?.[mode];
     set({
       result: slot?.result ?? null,
       isAnalyzing: slot?.status === "running",
@@ -119,18 +144,14 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => {
     if (state.activePortfolioId !== prev.activePortfolioId) syncActive();
   });
 
-  const writeSlot = (pid: string, patch: Partial<PortfolioAnalysisState>) => {
+  const writeSlot = (pid: string, mode: AnalysisMode, patch: Partial<AnalysisSlot>) => {
     set((s) => {
-      const prev = s.portfolioAnalyses[pid] ?? {
-        status: "idle",
-        result: null,
-        error: null,
-        analyzedAt: null,
-      };
+      const portfolioSlots = s.portfolioAnalyses[pid] ?? emptySlots();
+      const prev = portfolioSlots[mode];
       return {
         portfolioAnalyses: {
           ...s.portfolioAnalyses,
-          [pid]: { ...prev, ...patch },
+          [pid]: { ...portfolioSlots, [mode]: { ...prev, ...patch } },
         },
       };
     });
@@ -144,42 +165,48 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => {
     error: null,
     lastAnalyzedAt: null,
     portfolioAnalyses: {},
+    activeMode: "full",
 
-    runAnalysis: async () => {
+    setActiveMode: (m: AnalysisMode) => {
+      set({ activeMode: m });
+      syncActive();
+    },
+
+    runAnalysis: async (mode: AnalysisMode = "full") => {
       const portfolioId = usePortfolioStore.getState().activePortfolioId;
       if (portfolioId === "overview") return;
-      writeSlot(portfolioId, { status: "running", error: null });
+      writeSlot(portfolioId, mode, { status: "running", error: null });
       try {
-        const result = await api.analyze(portfolioId);
-        writeSlot(portfolioId, {
+        const result = await api.analyze(portfolioId, mode);
+        writeSlot(portfolioId, mode, {
           status: "complete",
           result,
           error: null,
           analyzedAt: new Date().toLocaleTimeString(),
         });
       } catch (e) {
-        writeSlot(portfolioId, {
+        writeSlot(portfolioId, mode, {
           status: "error",
           error: e instanceof Error ? e.message : "Analysis failed",
         });
       }
     },
 
-    runExecute: async () => {
+    runExecute: async (mode: AnalysisMode = "full") => {
       const portfolioId = usePortfolioStore.getState().activePortfolioId;
       if (portfolioId === "overview") return;
-      const slot = get().portfolioAnalyses[portfolioId];
+      const slot = get().portfolioAnalyses[portfolioId]?.[mode];
       if (!slot?.result?.summary.can_execute) return;
-      writeSlot(portfolioId, { status: "executing", error: null });
+      writeSlot(portfolioId, mode, { status: "executing", error: null });
       try {
-        await api.execute(portfolioId);
-        writeSlot(portfolioId, {
+        await api.execute(portfolioId, mode);
+        writeSlot(portfolioId, mode, {
           status: "executed",
           result: null,
           analyzedAt: null,
         });
       } catch (e) {
-        writeSlot(portfolioId, {
+        writeSlot(portfolioId, mode, {
           status: "error",
           error: e instanceof Error ? e.message : "Execution failed",
         });
