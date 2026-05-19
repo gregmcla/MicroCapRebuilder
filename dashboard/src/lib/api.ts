@@ -87,8 +87,10 @@ export const api = {
   getWarnings: (pid: string) => get<Warning[]>(`/${pid}/warnings`),
   getPerformance: (pid: string) => get<PerformanceData>(`/${pid}/performance`),
   getLearning: (pid: string) => get<LearningData>(`/${pid}/learning`),
-  analyze: (pid: string) => post<AnalysisResult>(`/${pid}/analyze`),
-  execute: (pid: string) => post<Record<string, unknown>>(`/${pid}/execute`),
+  analyze: (pid: string, mode: "full" | "buys_only" | "sells_only" = "full") =>
+    post<AnalysisResult>(`/${pid}/analyze${mode !== "full" ? `?mode=${mode}` : ""}`),
+  execute: (pid: string, mode: "full" | "buys_only" | "sells_only" = "full") =>
+    post<Record<string, unknown>>(`/${pid}/execute${mode !== "full" ? `?mode=${mode}` : ""}`),
   updatePrices: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
   scan: (pid: string) => post<ScanJobStatus>(`/${pid}/scan`),
   scanStatus: (pid: string) => get<ScanJobStatus>(`/${pid}/scan/status`),
