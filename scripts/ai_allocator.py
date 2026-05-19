@@ -42,6 +42,7 @@ def run_ai_allocation(
     info_cache: Optional[dict] = None,
     regime_analysis: Optional[RegimeAnalysis] = None,
     prompt_extras: Optional[dict] = None,
+    mode: str = "full",
 ) -> list:
     """
     Run full AI allocation for an AI-driven portfolio.
@@ -104,6 +105,7 @@ def run_ai_allocation(
         regime_analysis=regime_analysis,
         prompt_extras=prompt_extras,
         portfolio_id=state.portfolio_id,
+        mode=mode,
     )
 
     model = state.config.get("ai_model", CLAUDE_MODEL)
@@ -142,6 +144,7 @@ def run_ai_allocation(
             held_tickers=held_tickers,
             held_shares_map=held_shares_map,
             max_positions=state.config.get("max_positions") if enforce_cap else None,
+            mode=mode,
         )
 
         response_model = getattr(response, "model", model)

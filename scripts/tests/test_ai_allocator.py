@@ -456,3 +456,62 @@ def test_validate_allocation_full_mode_keeps_both_sides_unchanged():
     )
     assert len(valid_buys) == 1
     assert len(ai_sells) == 1
+
+
+def test_run_ai_allocation_threads_mode_to_prompt_and_validate(monkeypatch):
+    """Verify mode arg is passed through to both _build_allocation_prompt and _validate_allocation."""
+    from ai_allocator import run_ai_allocation
+    from market_regime import MarketRegime
+
+    state = SimpleNamespace(
+        positions=pd.DataFrame(),
+        transactions=pd.DataFrame(),
+        cash=100_000.0,
+        total_equity=100_000.0,
+        num_positions=0,
+        regime=MarketRegime.SIDEWAYS,
+        config={"max_positions": 10, "ai_model": "claude-opus-4-7"},
+        portfolio_id="_test_thread",
+        regime_analysis=None,
+    )
+
+    captured = {"prompt_mode": None, "validate_mode": None}
+
+    def _fake_build(*args, **kwargs):
+        captured["prompt_mode"] = kwargs.get("mode")
+        return "PROMPT_BODY"
+
+    def _fake_validate(*args, **kwargs):
+        captured["validate_mode"] = kwargs.get("mode")
+        return [], []
+
+    monkeypatch.setattr("ai_allocator._build_allocation_prompt", _fake_build)
+    monkeypatch.setattr("ai_allocator._validate_allocation", _fake_validate)
+    monkeypatch.setattr("ai_allocator._parse_json", lambda _t: {"allocation_plan": [], "sells": []})
+
+    class _FakeClient:
+        class messages:
+            @staticmethod
+            def create(**_kw):
+                resp = SimpleNamespace()
+                resp.content = [SimpleNamespace(text='{"allocation_plan":[],"sells":[]}')]
+                resp.model = "claude-opus-4-7"
+                return resp
+    monkeypatch.setattr("ai_allocator.get_ai_client", lambda: _FakeClient())
+
+    run_ai_allocation(
+        state=state,
+        layer1_sells=[],
+        scored_candidates=[],
+        sector_map={},
+        regime=MarketRegime.SIDEWAYS,
+        warning_severity="NORMAL",
+        strategy_dna="test",
+        info_cache={},
+        regime_analysis=None,
+        prompt_extras=None,
+        mode="buys_only",
+    )
+
+    assert captured["prompt_mode"] == "buys_only"
+    assert captured["validate_mode"] == "buys_only"
