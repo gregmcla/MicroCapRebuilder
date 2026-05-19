@@ -393,6 +393,13 @@ export default function TopBar({
 
   const theme = useUIStore((s) => s.theme);
   const toggleTheme = useUIStore((s) => s.toggleTheme);
+  // These must be at the top level — not inside JSX conditionals — to satisfy React's rules of hooks.
+  const isBuysOnlyRunning = useAnalysisStore(
+    (s) => s.portfolioAnalyses[activePortfolioId]?.buys_only?.status === "running"
+  );
+  const isSellsOnlyRunning = useAnalysisStore(
+    (s) => s.portfolioAnalyses[activePortfolioId]?.sells_only?.status === "running"
+  );
 
   const actionButtons = (
     <>
@@ -424,16 +431,12 @@ export default function TopBar({
               useAnalysisStore.getState().setActiveMode("buys_only");
               useAnalysisStore.getState().runAnalysis("buys_only");
             }}
-            disabled={useAnalysisStore(
-              (s) => s.portfolioAnalyses[activePortfolioId]?.buys_only?.status === "running"
-            )}
+            disabled={isBuysOnlyRunning}
             className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)] hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]"
             style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
             title="Analyze only — propose buys with current cash, ignore sell decisions"
           >
-            {useAnalysisStore(
-              (s) => s.portfolioAnalyses[activePortfolioId]?.buys_only?.status === "running"
-            ) ? "ANALYZING BUYS…" : "ANALYZE BUYS"}
+            {isBuysOnlyRunning ? "ANALYZING BUYS…" : "ANALYZE BUYS"}
           </button>
 
           {/* ANALYZE SELLS — fires a sells-only analyze for the active portfolio */}
@@ -442,16 +445,12 @@ export default function TopBar({
               useAnalysisStore.getState().setActiveMode("sells_only");
               useAnalysisStore.getState().runAnalysis("sells_only");
             }}
-            disabled={useAnalysisStore(
-              (s) => s.portfolioAnalyses[activePortfolioId]?.sells_only?.status === "running"
-            )}
+            disabled={isSellsOnlyRunning}
             className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)] hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]"
             style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
             title="Analyze only — evaluate existing positions for sells, no new buys"
           >
-            {useAnalysisStore(
-              (s) => s.portfolioAnalyses[activePortfolioId]?.sells_only?.status === "running"
-            ) ? "ANALYZING SELLS…" : "ANALYZE SELLS"}
+            {isSellsOnlyRunning ? "ANALYZING SELLS…" : "ANALYZE SELLS"}
           </button>
           <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
         </>

@@ -8,7 +8,7 @@ import { api } from "../lib/api";
 import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover, ReviewedAction } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
-import type { PortfolioAnalysisState } from "../lib/store";
+import type { AnalysisSlots } from "../lib/store";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 import {
   EquitySparkline,
@@ -299,7 +299,7 @@ function ReviewQueuePanel({
   onDismiss,
   onNavigate,
 }: {
-  results: Record<string, PortfolioAnalysisState>;
+  results: Record<string, AnalysisSlots>;
   running: boolean;
   currentId: string | null;
   names: Map<string, string>;
@@ -310,8 +310,8 @@ function ReviewQueuePanel({
   const entries = Object.entries(results);
   if (entries.length === 0 && !running) return null;
 
-  const totalApproved = entries.reduce((sum, [, r]) => sum + (r.result?.approved.length ?? 0), 0);
-  const totalProposed = entries.reduce((sum, [, r]) => sum + (r.result?.summary.total_proposed ?? 0), 0);
+  const totalApproved = entries.reduce((sum, [, slots]) => sum + (slots.full.result?.approved.length ?? 0), 0);
+  const totalProposed = entries.reduce((sum, [, slots]) => sum + (slots.full.result?.summary.total_proposed ?? 0), 0);
 
   return (
     <div style={{
@@ -369,7 +369,8 @@ function ReviewQueuePanel({
       </div>
 
       {/* Per-portfolio sections */}
-      {entries.map(([pid, r]) => {
+      {entries.map(([pid, slots]) => {
+        const r = slots.full;
         const name = names.get(pid) ?? pid;
         const approved = r.result?.approved ?? [];
         const modified = r.result?.modified ?? [];
@@ -1158,18 +1159,18 @@ export default function OverviewPage() {
       if (analyzeCancelledRef.current) break;
 
       setAnalyzeAll((prev) => ({ ...prev, currentId: id }));
-      setPortfolioAnalysis(id, { status: "running", result: null, error: null });
+      setPortfolioAnalysis(id, "full", { status: "running", result: null, error: null });
 
       try {
         const result = await api.analyze(id);
-        setPortfolioAnalysis(id, {
+        setPortfolioAnalysis(id, "full", {
           status: "complete",
           result,
           error: null,
           analyzedAt: new Date().toLocaleTimeString(),
         });
       } catch (err) {
-        setPortfolioAnalysis(id, {
+        setPortfolioAnalysis(id, "full", {
           status: "error",
           result: null,
           error: err instanceof Error ? err.message : "Unknown error",
@@ -1181,13 +1182,13 @@ export default function OverviewPage() {
   };
 
   const handleExecutePortfolio = async (pid: string) => {
-    setPortfolioAnalysis(pid, { status: "executing" });
+    setPortfolioAnalysis(pid, "full", { status: "executing" });
     try {
       await api.execute(pid);
-      setPortfolioAnalysis(pid, { status: "executed", result: null });
+      setPortfolioAnalysis(pid, "full", { status: "executed", result: null });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
     } catch (err) {
-      setPortfolioAnalysis(pid, {
+      setPortfolioAnalysis(pid, "full", {
         status: "error",
         error: err instanceof Error ? err.message : "Execute failed",
       });
