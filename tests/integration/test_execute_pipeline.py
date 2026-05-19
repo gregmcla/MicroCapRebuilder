@@ -74,6 +74,26 @@ def _analysis_result(approved: list[dict], ai_mode: str = "claude") -> dict:
     return {"approved": approved, "modified": [], "ai_mode": ai_mode}
 
 
+def _wl_entry(ticker: str, score: float, sector: str = "Technology") -> dict:
+    """Helper: build a watchlist.jsonl entry."""
+    return {
+        "ticker": ticker,
+        "added_date": "2026-05-01",
+        "source": "SCORE_ALL",
+        "discovery_score": score,
+        "score_delta": 0.0,
+        "sector": sector,
+        "market_cap_m": 5_000.0,
+        "avg_volume": 1_000_000,
+        "last_checked": "2026-05-06",
+        "status": "ACTIVE",
+        "notes": "",
+        "social_heat": "",
+        "social_rank": None,
+        "social_bullish_pct": None,
+    }
+
+
 # ── Test 6: happy path BUY+SELL writes all expected files ────────────────────
 
 
@@ -434,3 +454,42 @@ def test_execute_double_call_race(api_client, seed_portfolio, mock_yfinance, moc
     txns = pd.read_csv(sp.transactions_path())
     aapl = txns[txns["ticker"] == "AAPL"]
     assert len(aapl) == 1, f"expected one AAPL transaction, got {len(aapl)}"
+
+
+# ── Test 16: per-mode execute lock files are independent ─────────────────────
+
+
+def test_executing_one_mode_does_not_block_others(seed_portfolio, mock_anthropic, mock_yfinance):
+    """While .executing.buys.json exists, /execute?mode=sells_only is not blocked by it."""
+    from fastapi.testclient import TestClient
+    from api.main import app
+    from unittest.mock import MagicMock
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[{"ticker": "AAPL", "shares": 10, "avg_cost_basis": 100.0,
+                    "current_price": 80.0,
+                    "stop_loss": 92.0, "take_profit": 120.0}],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+
+    # Populate the sells_only slot via /analyze?mode=sells_only with a sell response
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[{"ticker":"AAPL","shares":10,"price":80.0,"reasoning":"stop loss"}],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    client = TestClient(app)
+    r = client.post(f"/api/{sp.portfolio_id}/analyze?mode=sells_only")
+    assert r.status_code == 200, r.text
+
+    # Simulate a buys_only execute already in flight by manually creating .executing.buys.json.
+    # The real per-mode lock should mean sells_only execute is NOT blocked by this file.
+    (sp.portfolio_dir / ".executing.buys.json").write_text('{"approved":[]}')
+
+    try:
+        r2 = client.post(f"/api/{sp.portfolio_id}/execute?mode=sells_only")
+        # sells_only execute should still succeed (it has its own lock file)
+        assert r2.status_code == 200, f"sells_only execute was blocked: {r2.status_code} {r2.text}"
+    finally:
+        (sp.portfolio_dir / ".executing.buys.json").unlink(missing_ok=True)
