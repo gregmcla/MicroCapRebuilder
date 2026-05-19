@@ -7,9 +7,35 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios. Cron RE-ENABLED 2026-04-27. Telegram bot live (APPROVE/REJECT + /status). Just completed Phases 1-3 of audit remediation (12 fixes + 1 regression bug fix). Running 4.6 vs 4.7 model experiment through 2026-05-21.**
+**Operational — 5 active portfolios. Cron RE-ENABLED 2026-04-27. Telegram bot live (APPROVE/REJECT + /status). Running 4.6 vs 4.7 model experiment through 2026-05-21. Just shipped buys-only / sells-only analyze modes (2026-05-19).**
 
 **Tomorrow's first cron-driven test**: scan 6:30 AM, analyze 9:35 AM (Telegram proposals fire), update 12pm + 4:15pm. Watch for any unexpected behavior — the audit fixes touched the hot path.
+
+---
+
+## Recently Completed (2026-05-19) — Buys-Only / Sells-Only Analyze Modes
+
+Two new dashboard buttons (`ANALYZE BUYS`, `ANALYZE SELLS`) reachable from TopBar. Each runs the same `/analyze` pipeline with a `mode` flag that:
+- Adds a stance directive to the AI allocator prompt (`CASH DEPLOYMENT MODE` / `RISK REVIEW MODE`) before HARD CONSTRAINTS
+- Skips watchlist scoring entirely in `sells_only` (30-60s perf win)
+- Passes empty `layer1_sells` to the allocator in `buys_only` so Claude only emits buys
+- Filters output by allowed action_type at multiple defense-in-depth layers (`_validate_allocation`, `_assemble_analysis_result`, and the AI-driven path's own return block)
+- Drops same-run reentry veto in non-full modes (it requires both sides)
+- For enhanced-layers path: `sells_only` short-circuits before Layer 2/3; `buys_only` drops rotation pairs (cash math)
+
+**Endpoints:** `POST /api/{pid}/analyze?mode=full|buys_only|sells_only` and `POST /api/{pid}/execute?mode=...`. Default `full` mode is bit-for-bit identical to today — cron (`cron/analyze.sh` calls without mode) and Telegram untouched.
+
+**Persistence:** three slot files per portfolio — `.last_analysis.json` (full), `.last_analysis.buys.json`, `.last_analysis.sells.json`. Each has its own `.executing.{mode}.json` atomic-rename concurrency guard so the three modes can be executed independently without blocking each other.
+
+**Dashboard:** `dashboard/src/lib/store.ts` was refactored — `portfolioAnalyses[pid]` is now a nested record with three slots (`full`, `buys_only`, `sells_only`), and a new `activeMode` UI state determines which slot the top-level `result`/`isAnalyzing`/etc. mirror. `ActionsTab.tsx` has a `FULL | BUYS ONLY | SELLS ONLY` segmented switcher; EXECUTE button is mode-aware (calls `runExecute(activeMode)` with the matching label).
+
+**Testing:** Full backend suite green at 79 tests (43 ai_allocator unit + 36 integration). Each task shipped with TDD red-green-commit; existing 17 integration regression tests stayed green throughout. TypeScript `--noEmit` clean (no new errors).
+
+**Spec:** `docs/superpowers/specs/2026-05-19-buys-only-sells-only-analyze-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-19-buys-only-sells-only-analyze.md`
+**Commits:** `9630b00a` (T1) → `d6b9759a` (T1 fix) → `76e27dc5` (T2) → `e20470e1` (T3) → `f1a54417` (T4) → `7ba880c7` (T5) → `7fe25668` (T6) → `0545fcc5` (T7) → `4403f58b` (T8) → `d0ac5657` (T9) → `5beb9e94` (T10) → `107368a9` (T11) → `740686d1` (T12) → `76557ecd` (T13) → `280b10e1` (T14)
+
+**Bonus work absorbed in T1:** new `scripts/tests/test_ai_allocator.py` with 36 tests for `_parse_json` and `_validate_allocation` (closes the gap documented in this file's "Open Bugs / Known Issues" section).
 
 ---
 
@@ -485,7 +511,7 @@ All three: `extended scan_frequency: daily`, `min_score_threshold: {BULL:35, SID
 
 - `ALE`, `JBT` delisted — fail price fetch consistently (ignore)
 - Stocktwits 403s broadly — social heat won't populate (DISABLE_SOCIAL workaround)
-- No tests for `_validate_allocation()` / `_parse_json()` in `ai_allocator.py`
+- ~~No tests for `_validate_allocation()` / `_parse_json()` in `ai_allocator.py`~~ ✅ closed 2026-05-19 (T1 added 36 tests)
 - `tariff-moat-industrials` finding few candidates — tariff selloff killed momentum signals. Will populate when tape turns.
 - `ai-pickaxe-infrastructure` — semis/AI infra crushed in selloff. Same situation.
 - `pre-earnings-momentum` — no actual earnings-date awareness in scanner; relies on momentum building pre-earnings. Q1 earnings season starts mid-April.
