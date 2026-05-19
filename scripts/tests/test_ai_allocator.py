@@ -379,3 +379,80 @@ def test_build_prompt_sells_only_includes_risk_review_directive():
     assert "RISK REVIEW MODE" in p
     assert "do not propose any new buys" in p.lower()
     assert p.index("RISK REVIEW MODE") < p.index("HARD CONSTRAINTS")
+
+
+def test_validate_allocation_buys_only_drops_sells_even_if_claude_returns_them():
+    from ai_allocator import _validate_allocation
+    allocation_data = {
+        "allocation_plan": [
+            {"ticker": "AAPL", "shares": 10, "price": 150.0,
+             "stop_loss": 138.0, "take_profit": 180.0, "reasoning": "buy"},
+        ],
+        "sells": [
+            {"ticker": "MSFT", "shares": 5, "price": 200.0, "reasoning": "claude misbehaving"},
+        ],
+    }
+    valid_buys, ai_sells = _validate_allocation(
+        allocation_data,
+        available_cash=100_000.0,
+        total_equity=100_000.0,
+        scored_candidates=[{"ticker": "AAPL", "composite_score": 70, "current_price": 150.0,
+                            "factor_scores": {}, "data_completeness": 6}],
+        held_tickers={"MSFT"},
+        held_shares_map={"MSFT": 5},
+        max_positions=None,
+        mode="buys_only",
+    )
+    assert len(valid_buys) == 1
+    assert ai_sells == [], "buys_only mode must drop all sells"
+
+
+def test_validate_allocation_sells_only_drops_buys_even_if_claude_returns_them():
+    from ai_allocator import _validate_allocation
+    allocation_data = {
+        "allocation_plan": [
+            {"ticker": "AAPL", "shares": 10, "price": 150.0,
+             "stop_loss": 138.0, "take_profit": 180.0, "reasoning": "claude misbehaving"},
+        ],
+        "sells": [
+            {"ticker": "MSFT", "shares": 5, "price": 200.0, "reasoning": "trim winner"},
+        ],
+    }
+    valid_buys, ai_sells = _validate_allocation(
+        allocation_data,
+        available_cash=100_000.0,
+        total_equity=100_000.0,
+        scored_candidates=[],
+        held_tickers={"MSFT"},
+        held_shares_map={"MSFT": 5},
+        max_positions=None,
+        mode="sells_only",
+    )
+    assert valid_buys == [], "sells_only mode must drop all buys"
+    assert len(ai_sells) == 1
+
+
+def test_validate_allocation_full_mode_keeps_both_sides_unchanged():
+    from ai_allocator import _validate_allocation
+    allocation_data = {
+        "allocation_plan": [
+            {"ticker": "AAPL", "shares": 10, "price": 150.0,
+             "stop_loss": 138.0, "take_profit": 180.0, "reasoning": "buy"},
+        ],
+        "sells": [
+            {"ticker": "MSFT", "shares": 5, "price": 200.0, "reasoning": "sell"},
+        ],
+    }
+    valid_buys, ai_sells = _validate_allocation(
+        allocation_data,
+        available_cash=100_000.0,
+        total_equity=100_000.0,
+        scored_candidates=[{"ticker": "AAPL", "composite_score": 70, "current_price": 150.0,
+                            "factor_scores": {}, "data_completeness": 6}],
+        held_tickers={"MSFT"},
+        held_shares_map={"MSFT": 5},
+        max_positions=None,
+        mode="full",
+    )
+    assert len(valid_buys) == 1
+    assert len(ai_sells) == 1

@@ -637,9 +637,10 @@ def _validate_allocation(
     available_cash: float,
     total_equity: float,
     scored_candidates: list,
-    held_tickers: set = None,
-    held_shares_map: dict = None,
+    held_tickers: set | None = None,
+    held_shares_map: dict | None = None,
     max_positions: int | None = None,
+    mode: str = "full",
 ) -> tuple[list, list]:
     """
     Enforce hard constraints on AI allocation output.
@@ -664,6 +665,21 @@ def _validate_allocation(
     Returns:
         (valid_buys, ai_sells) — filtered and capped lists
     """
+    # Mode enforcement — defense in depth. Even if Claude returned an off-side
+    # list, drop it here so the wrong side never reaches the pipeline.
+    if mode == "buys_only" and allocation_data.get("sells"):
+        logging.warning(
+            "buys_only mode: dropping %d sells Claude returned despite directive",
+            len(allocation_data["sells"]),
+        )
+        allocation_data = {**allocation_data, "sells": []}
+    elif mode == "sells_only" and allocation_data.get("allocation_plan"):
+        logging.warning(
+            "sells_only mode: dropping %d buys Claude returned despite directive",
+            len(allocation_data["allocation_plan"]),
+        )
+        allocation_data = {**allocation_data, "allocation_plan": []}
+
     price_map = {c["ticker"]: c.get("current_price", 0) for c in scored_candidates}
     factor_scores_map = {c["ticker"]: c.get("factor_scores", {}) for c in scored_candidates}
     max_position = total_equity * 0.25
