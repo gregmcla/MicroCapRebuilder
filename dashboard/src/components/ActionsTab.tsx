@@ -1,6 +1,6 @@
 /** Actions tab — ANALYZE results, EXECUTE flow, and pre-flight dashboard. */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAnalysisStore, usePortfolioStore, type AnalysisMode } from "../lib/store";
 import { play } from "../lib/sounds";
@@ -72,16 +72,13 @@ function modeEmptyCopy(mode: AnalysisMode): string {
   }
 }
 
-function executeLabel(mode: AnalysisMode, count: number, isExecuting: boolean): string {
+function executeLabel(mode: AnalysisMode, count: number, totalCount: number, isExecuting: boolean): string {
   if (isExecuting) return "Executing...";
+  const suffix = mode !== "full" && count !== totalCount ? `${count} / ${totalCount}` : String(count);
   switch (mode) {
-    case "buys_only":
-      return `EXECUTE BUYS ${count}`;
-    case "sells_only":
-      return `EXECUTE SELLS ${count}`;
-    case "full":
-    default:
-      return `EXECUTE ${count}`;
+    case "buys_only":  return `EXECUTE BUYS (${suffix})`;
+    case "sells_only": return `EXECUTE SELLS (${suffix})`;
+    default:           return `EXECUTE (${suffix})`;
   }
 }
 
@@ -523,8 +520,39 @@ export default function ActionsTab() {
     wasAnalyzing.current = isAnalyzing;
   }, [isAnalyzing, result]);
 
+  const isSelectable = activeMode !== "full";
+
+  // Per-trade selection state — only active in buys/sells-only modes.
+  // Key format: "TICKER:ACTION_TYPE" — mirrors the dedup key used in actionable list.
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+
+  // Reset to all-selected whenever the result or mode changes.
+  useEffect(() => {
+    if (!result || !isSelectable) { setSelectedKeys(new Set()); return; }
+    const keys = new Set<string>();
+    for (const a of [...result.approved, ...result.modified]) {
+      keys.add(`${a.original.ticker}:${a.original.action_type}`);
+    }
+    setSelectedKeys(keys);
+  }, [result, activeMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleKey = (key: string) => {
+    setSelectedKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   const handleAnalyze = () => { play("analyze"); runAnalysis(activeMode); };
-  const handleExecute = () => { play("execute"); runExecute(activeMode); };
+  const handleExecute = () => {
+    play("execute");
+    if (isSelectable && selectedKeys.size > 0) {
+      runExecute(activeMode, [...selectedKeys].map(k => k.split(":")[0]));
+    } else {
+      runExecute(activeMode);
+    }
+  };
 
   // No analysis yet for the active mode → show pre-flight dashboard with mode switcher + per-mode empty copy
   if (!result && !isAnalyzing) {
@@ -581,6 +609,12 @@ export default function ActionsTab() {
     }
   }
   const actionable = [...seen.values()];
+
+  // Selection helpers (only used in selectable modes)
+  const actionableKeys = new Set(actionable.map(a => `${a.original.ticker}:${a.original.action_type}`));
+  const allSelected = actionableKeys.size > 0 && [...actionableKeys].every(k => selectedKeys.has(k));
+  const selectedCount = isSelectable ? [...actionableKeys].filter(k => selectedKeys.has(k)).length : actionable.length;
+  const toggleAll = () => setSelectedKeys(allSelected ? new Set() : new Set(actionableKeys));
 
   // Analysis ran but found nothing
   if (summary.total_proposed === 0) {
@@ -671,17 +705,31 @@ export default function ActionsTab() {
           </span>
         )}
         <div className="flex-1" />
+        {isSelectable && actionable.length > 0 && (
+          <button
+            onClick={toggleAll}
+            className="px-2 py-1 text-xs rounded transition-colors"
+            style={{
+              background: "transparent",
+              border: "1px solid var(--border-0)",
+              color: "var(--text-1)",
+              cursor: "pointer",
+            }}
+          >
+            {allSelected ? "None" : "All"}
+          </button>
+        )}
         {summary.can_execute && (
           <button
             onClick={handleExecute}
-            disabled={isExecuting}
+            disabled={isExecuting || (isSelectable && selectedCount === 0)}
             className="px-3 py-1 text-xs font-semibold rounded transition-all disabled:opacity-50"
             style={{
               background: "rgba(52,211,153,0.15)",
               color: "var(--green)",
             }}
           >
-            {executeLabel(activeMode, actionable.length, isExecuting)}
+            {executeLabel(activeMode, selectedCount, actionable.length, isExecuting)}
           </button>
         )}
         <button
@@ -727,9 +775,31 @@ export default function ActionsTab() {
             <h3 style={sectionHeaderStyle} className="mb-2">
               Ready to execute
             </h3>
-            {actionable.map((a, i) => (
-              <ActionCard key={`${a.original.ticker}-${i}`} action={a} />
-            ))}
+            {actionable.map((a, i) => {
+              const key = `${a.original.ticker}:${a.original.action_type}`;
+              return (
+                <div key={`${a.original.ticker}-${i}`} className="flex items-start gap-2">
+                  {isSelectable && (
+                    <input
+                      type="checkbox"
+                      checked={selectedKeys.has(key)}
+                      onChange={() => toggleKey(key)}
+                      style={{
+                        marginTop: "11px",
+                        cursor: "pointer",
+                        accentColor: "var(--accent)",
+                        width: "14px",
+                        height: "14px",
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <div className="flex-1">
+                    <ActionCard action={a} />
+                  </div>
+                </div>
+              );
+            })}
           </>
         )}
         {vetoed.length > 0 && (

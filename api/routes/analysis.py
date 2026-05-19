@@ -2,11 +2,17 @@
 
 import json
 from pathlib import Path
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from pydantic import BaseModel
 from api.deps import serialize, validate_portfolio_id
 
 from unified_analysis import run_unified_analysis, execute_approved_actions
+
+
+class ExecuteRequest(BaseModel):
+    selected_tickers: Optional[list[str]] = None
 
 router = APIRouter(prefix="/api/{portfolio_id}")
 
@@ -80,6 +86,7 @@ def analyze(
 def execute(
     portfolio_id: str = Depends(validate_portfolio_id),
     mode: str = Query(default="full"),
+    body: Optional[ExecuteRequest] = Body(None),
 ):
     """Execute approved actions from the last analysis run for the given mode."""
     mode = _validate_mode(mode)
@@ -102,6 +109,20 @@ def execute(
     try:
         with open(executing_file) as f:
             last_analysis = json.load(f)
+
+        # Cherry-pick filter: only execute the tickers the user selected.
+        # Only applies when the caller sends selected_tickers (buys/sells-only modes).
+        if body and body.selected_tickers is not None:
+            selected = set(body.selected_tickers)
+            last_analysis["approved"] = [
+                a for a in last_analysis.get("approved", [])
+                if a.get("original", {}).get("ticker") in selected
+            ]
+            last_analysis["modified"] = [
+                a for a in last_analysis.get("modified", [])
+                if a.get("original", {}).get("ticker") in selected
+            ]
+
         result = execute_approved_actions(last_analysis, portfolio_id=portfolio_id)
         executing_file.unlink(missing_ok=True)
         return serialize(result)

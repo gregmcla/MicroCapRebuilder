@@ -89,8 +89,11 @@ export const api = {
   getLearning: (pid: string) => get<LearningData>(`/${pid}/learning`),
   analyze: (pid: string, mode: "full" | "buys_only" | "sells_only" = "full") =>
     post<AnalysisResult>(`/${pid}/analyze${mode !== "full" ? `?mode=${mode}` : ""}`),
-  execute: (pid: string, mode: "full" | "buys_only" | "sells_only" = "full") =>
-    post<Record<string, unknown>>(`/${pid}/execute${mode !== "full" ? `?mode=${mode}` : ""}`),
+  execute: (pid: string, mode: "full" | "buys_only" | "sells_only" = "full", selectedTickers?: string[]) =>
+    post<Record<string, unknown>>(
+      `/${pid}/execute${mode !== "full" ? `?mode=${mode}` : ""}`,
+      selectedTickers != null ? { selected_tickers: selectedTickers } : undefined,
+    ),
   updatePrices: (pid: string) => get<PortfolioState>(`/${pid}/state/refresh`),
   scan: (pid: string) => post<ScanJobStatus>(`/${pid}/scan`),
   scanStatus: (pid: string) => get<ScanJobStatus>(`/${pid}/scan/status`),

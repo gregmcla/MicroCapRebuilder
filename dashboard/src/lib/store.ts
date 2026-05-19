@@ -67,7 +67,7 @@ interface AnalysisStore {
   setActiveMode: (m: AnalysisMode) => void;
 
   runAnalysis: (mode?: AnalysisMode) => Promise<void>;
-  runExecute: (mode?: AnalysisMode) => Promise<void>;
+  runExecute: (mode?: AnalysisMode, selectedTickers?: string[]) => Promise<void>;
   setPortfolioAnalysis: (pid: string, mode: AnalysisMode, patch: Partial<AnalysisSlot>) => void;
   clearPortfolioAnalysis: (pid: string) => void;
   clearAllAnalyses: () => void;
@@ -192,14 +192,14 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => {
       }
     },
 
-    runExecute: async (mode: AnalysisMode = "full") => {
+    runExecute: async (mode: AnalysisMode = "full", selectedTickers?: string[]) => {
       const portfolioId = usePortfolioStore.getState().activePortfolioId;
       if (portfolioId === "overview") return;
       const slot = get().portfolioAnalyses[portfolioId]?.[mode];
       if (!slot?.result?.summary.can_execute) return;
       writeSlot(portfolioId, mode, { status: "executing", error: null });
       try {
-        await api.execute(portfolioId, mode);
+        await api.execute(portfolioId, mode, selectedTickers);
         writeSlot(portfolioId, mode, {
           status: "executed",
           result: null,
