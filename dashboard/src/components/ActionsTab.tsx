@@ -2,12 +2,88 @@
 
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAnalysisStore, usePortfolioStore } from "../lib/store";
+import { useAnalysisStore, usePortfolioStore, type AnalysisMode } from "../lib/store";
 import { play } from "../lib/sounds";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import { api } from "../lib/api";
 import type { ReviewedAction, WatchlistCandidate } from "../lib/types";
+
+const MODE_BUTTONS: { mode: AnalysisMode; label: string }[] = [
+  { mode: "full", label: "FULL" },
+  { mode: "buys_only", label: "BUYS ONLY" },
+  { mode: "sells_only", label: "SELLS ONLY" },
+];
+
+function ModeSwitcher({
+  activeMode,
+  setActiveMode,
+  countFor,
+}: {
+  activeMode: AnalysisMode;
+  setActiveMode: (m: AnalysisMode) => void;
+  countFor: (mode: AnalysisMode) => number;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 2,
+        padding: "8px 12px 4px 12px",
+        fontSize: 10,
+      }}
+    >
+      {MODE_BUTTONS.map(({ mode, label }) => {
+        const isActive = activeMode === mode;
+        const count = countFor(mode);
+        return (
+          <button
+            key={mode}
+            onClick={() => setActiveMode(mode)}
+            style={{
+              padding: "4px 10px",
+              border: `1px solid ${isActive ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.1)"}`,
+              background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+              color: isActive ? "#fff" : "rgba(255,255,255,0.5)",
+              cursor: "pointer",
+              letterSpacing: "0.05em",
+              fontWeight: 600,
+            }}
+          >
+            {label}
+            {count > 0 ? ` (${count})` : ""}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function modeEmptyCopy(mode: AnalysisMode): string {
+  switch (mode) {
+    case "buys_only":
+      return "No buys-only analysis run yet. Click ANALYZE BUYS above.";
+    case "sells_only":
+      return "No sells-only analysis run yet. Click ANALYZE SELLS above.";
+    case "full":
+    default:
+      return "No analysis run yet. Click ANALYZE above.";
+  }
+}
+
+function executeLabel(mode: AnalysisMode, count: number, isExecuting: boolean): string {
+  if (isExecuting) return "Executing...";
+  switch (mode) {
+    case "buys_only":
+      return `EXECUTE BUYS ${count}`;
+    case "sells_only":
+      return `EXECUTE SELLS ${count}`;
+    case "full":
+    default:
+      return `EXECUTE ${count}`;
+  }
+}
 
 function ConfidenceDot({ confidence }: { confidence: number }) {
   const color =
@@ -434,6 +510,11 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
 export default function ActionsTab() {
   const { result, isAnalyzing, isExecuting, error, lastAnalyzedAt, runAnalysis, runExecute } =
     useAnalysisStore();
+  const activeMode = useAnalysisStore((s) => s.activeMode);
+  const setActiveMode = useAnalysisStore((s) => s.setActiveMode);
+  const portfolioId = usePortfolioStore((s) => s.activePortfolioId);
+  const slots = useAnalysisStore((s) => s.portfolioAnalyses[portfolioId]);
+  const countFor = (mode: AnalysisMode) => slots?.[mode]?.result?.approved?.length ?? 0;
 
   // Detect analyze complete → play sound
   const wasAnalyzing = useRef(false);
@@ -442,27 +523,46 @@ export default function ActionsTab() {
     wasAnalyzing.current = isAnalyzing;
   }, [isAnalyzing, result]);
 
-  const handleAnalyze = () => { play("analyze"); runAnalysis(); };
-  const handleExecute = () => { play("execute"); runExecute(); };
+  const handleAnalyze = () => { play("analyze"); runAnalysis(activeMode); };
+  const handleExecute = () => { play("execute"); runExecute(activeMode); };
 
-  // No analysis yet → show pre-flight dashboard
+  // No analysis yet for the active mode → show pre-flight dashboard with mode switcher + per-mode empty copy
   if (!result && !isAnalyzing) {
-    return <PreFlightDashboard onAnalyze={handleAnalyze} lastAnalyzedAt={lastAnalyzedAt} error={error} />;
+    return (
+      <div className="flex flex-col h-full">
+        <ModeSwitcher activeMode={activeMode} setActiveMode={setActiveMode} countFor={countFor} />
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--text-0)",
+            padding: "0 14px 8px 14px",
+          }}
+        >
+          {modeEmptyCopy(activeMode)}
+        </p>
+        <div className="flex-1 min-h-0">
+          <PreFlightDashboard onAnalyze={handleAnalyze} lastAnalyzedAt={lastAnalyzedAt} error={error} />
+        </div>
+      </div>
+    );
   }
 
   // Analyzing spinner
   if (isAnalyzing) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3">
-        <div
-          className="w-8 h-8 border-2 rounded-full animate-spin"
-          style={{
-            borderColor: "rgba(124,92,252,0.3)",
-            borderTopColor: "var(--accent)",
-          }}
-        />
-        <p className="text-sm" style={{ color: "var(--text-4)" }}>GScott's analyzing the market...</p>
-        <p className="text-xs" style={{ color: "var(--text-2)" }}>Scoring candidates, running AI review</p>
+      <div className="flex flex-col h-full">
+        <ModeSwitcher activeMode={activeMode} setActiveMode={setActiveMode} countFor={countFor} />
+        <div className="flex flex-col items-center justify-center flex-1 gap-3">
+          <div
+            className="w-8 h-8 border-2 rounded-full animate-spin"
+            style={{
+              borderColor: "rgba(124,92,252,0.3)",
+              borderTopColor: "var(--accent)",
+            }}
+          />
+          <p className="text-sm" style={{ color: "var(--text-4)" }}>GScott's analyzing the market...</p>
+          <p className="text-xs" style={{ color: "var(--text-2)" }}>Scoring candidates, running AI review</p>
+        </div>
       </div>
     );
   }
@@ -485,7 +585,9 @@ export default function ActionsTab() {
   // Analysis ran but found nothing
   if (summary.total_proposed === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: "var(--text-1)" }}>
+      <div className="flex flex-col h-full">
+        <ModeSwitcher activeMode={activeMode} setActiveMode={setActiveMode} countFor={countFor} />
+        <div className="flex flex-col items-center justify-center flex-1 gap-4" style={{ color: "var(--text-1)" }}>
         <div className="text-4xl">&#x1F937;</div>
         <p className="text-sm font-medium" style={{ color: "var(--text-2)" }}>No opportunities found</p>
         <p className="text-xs text-center max-w-xs">
@@ -518,12 +620,14 @@ export default function ActionsTab() {
         >
           Re-analyze
         </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
+      <ModeSwitcher activeMode={activeMode} setActiveMode={setActiveMode} countFor={countFor} />
       {/* Summary bar */}
       <div
         className="flex items-center gap-3 px-4 py-2"
@@ -577,7 +681,7 @@ export default function ActionsTab() {
               color: "var(--green)",
             }}
           >
-            {isExecuting ? "Executing..." : `EXECUTE ${actionable.length}`}
+            {executeLabel(activeMode, actionable.length, isExecuting)}
           </button>
         )}
         <button
