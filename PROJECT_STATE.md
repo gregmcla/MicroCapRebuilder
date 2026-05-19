@@ -35,6 +35,8 @@ Two new dashboard buttons (`ANALYZE BUYS`, `ANALYZE SELLS`) reachable from TopBa
 **Plan:** `docs/superpowers/plans/2026-05-19-buys-only-sells-only-analyze.md`
 **Commits:** `9630b00a` (T1) → `d6b9759a` (T1 fix) → `76e27dc5` (T2) → `e20470e1` (T3) → `f1a54417` (T4) → `7ba880c7` (T5) → `7fe25668` (T6) → `0545fcc5` (T7) → `4403f58b` (T8) → `d0ac5657` (T9) → `5beb9e94` (T10) → `107368a9` (T11) → `740686d1` (T12) → `76557ecd` (T13) → `280b10e1` (T14)
 
+**Hotfix `75c6563e`** — dashboard went black on portfolio click after T12. Root cause: `useAnalysisStore(...)` was called inside `{!isOverviewOrLogs && (...)}` in `TopBar.tsx`, violating React's rules of hooks. When switching overview→portfolio, the hook count changed → React threw → TopBar crashed outside the ErrorBoundary → entire page blank. Fix: hoisted `isBuysOnlyRunning` / `isSellsOnlyRunning` to unconditional top-level variables. Also fixed `OverviewPage` `setPortfolioAnalysis` calls (missing `"full"` mode arg) and `ReviewQueuePanel` prop type (now correctly accesses `.full` slot from `AnalysisSlots`).
+
 **Bonus work absorbed in T1:** new `scripts/tests/test_ai_allocator.py` with 36 tests for `_parse_json` and `_validate_allocation` (closes the gap documented in this file's "Open Bugs / Known Issues" section).
 
 ---
