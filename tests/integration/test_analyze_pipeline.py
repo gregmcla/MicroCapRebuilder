@@ -840,3 +840,45 @@ def test_assemble_full_mode_keeps_both_sides():
     )
     assert len(result["approved"]) == 2
     assert result["mode"] == "full"
+
+
+def test_fallback_sells_only_skips_scoring(seed_portfolio, mock_anthropic, mock_yfinance, monkeypatch):
+    """Non-AI-driven (fallback) path: sells_only must not score watchlist."""
+    from unified_analysis import _run_fallback_scoring_step2
+    from portfolio_state import load_portfolio_state
+    from stock_scorer import StockScorer
+
+    sp = seed_portfolio(
+        config_overrides={
+            "ai_driven": False,
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[{"ticker": "AAPL", "shares": 10, "avg_cost_basis": 100.0,
+                    "current_price": 80.0,
+                    "stop_loss": 92.0, "take_profit": 120.0}],
+        watchlist=[_wl_entry("MSFT", 60.0), _wl_entry("NVDA", 60.0)],
+    )
+
+    state = load_portfolio_state(fetch_prices=False, portfolio_id=sp.portfolio_id)
+    score_calls = []
+    original = StockScorer.score_watchlist
+    def _track(self, tickers, *args, **kwargs):
+        score_calls.append(list(tickers))
+        return original(self, tickers, *args, **kwargs)
+    monkeypatch.setattr(StockScorer, "score_watchlist", _track)
+
+    # Call _run_fallback_scoring_step2 directly with sells_only — no buys must be added,
+    # and score_watchlist must NOT be called.
+    result = _run_fallback_scoring_step2(
+        state=state,
+        regime=state.regime,
+        preservation_active=False,
+        config=state.config,
+        position_multiplier=1.0,
+        proposed_actions=[],
+        mode="sells_only",
+    )
+
+    assert score_calls == [], f"sells_only fallback must not score, got {score_calls}"
+    assert all(a.action_type != "BUY" for a in result), \
+        "sells_only fallback must produce no BUY actions"

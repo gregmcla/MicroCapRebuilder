@@ -464,6 +464,7 @@ def _run_fallback_scoring_step2(
     config: dict,
     position_multiplier: float,
     proposed_actions: list,
+    mode: str = "full",
 ) -> list:
     """
     Step 2 (fallback path): basic StockScorer scoring when enhanced layers are
@@ -472,6 +473,11 @@ def _run_fallback_scoring_step2(
     takes top candidates with composite >= 60, sizes by risk_per_trade_pct *
     position_multiplier, caps to remaining cash.
     """
+    # sells_only: don't score the watchlist at all. Layer 1 sells already
+    # in proposed_actions stay; assemble step will filter buys (none added here).
+    if mode == "sells_only":
+        return proposed_actions
+
     print("Scoring watchlist candidates...")
 
     if regime == MarketRegime.BEAR:
