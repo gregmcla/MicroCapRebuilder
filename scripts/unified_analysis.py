@@ -102,6 +102,7 @@ def _run_ai_driven_analysis(
     warning_severity: str,
     stale_positions: dict,
     layer1_sell_actions: list,
+    mode: str = "full",
 ) -> dict:
     """
     AI-driven path: Layer 1 mechanicals + Claude as full portfolio manager.
@@ -118,65 +119,70 @@ def _run_ai_driven_analysis(
     rg_threshold = float(rg_config.get("meaningful_change_threshold_pts", 10))
     tx_file = get_transactions_file(state.portfolio_id)
 
-    # Load watchlist and filter already-held tickers
-    try:
-        from watchlist_manager import WatchlistManager
-        wm = WatchlistManager(portfolio_id=state.portfolio_id)
-        wl_entries = wm._load_watchlist()
-        wl_tickers = [e.ticker for e in wl_entries if e.status == "ACTIVE"]
-    except Exception as e:
-        print(f"  [AI-Driven] Watchlist load failed: {e}")
-        wl_tickers = []
-
-    current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
-    candidates = [t for t in wl_tickers if t not in current_tickers]
-
-    # Pre-warm info cache for fundamentals
-    info_cache = {}
-    if candidates:
+    if mode == "sells_only":
+        # Skip the watchlist scoring entirely — no buys will be emitted.
+        scored_candidates = []
+        info_cache = {}
+    else:
+        # Load watchlist and filter already-held tickers
         try:
-            info_cache = prewarm_info_for_tickers(candidates)
+            from watchlist_manager import WatchlistManager
+            wm = WatchlistManager(portfolio_id=state.portfolio_id)
+            wl_entries = wm._load_watchlist()
+            wl_tickers = [e.ticker for e in wl_entries if e.status == "ACTIVE"]
         except Exception as e:
-            print(f"  [AI-Driven] Info pre-warm failed (non-fatal): {e}")
+            print(f"  [AI-Driven] Watchlist load failed: {e}")
+            wl_tickers = []
 
-    # Score candidates (quant data as advisory input for Claude)
-    scored_candidates = []
-    if candidates:
-        print(f"  Scoring {len(candidates)} watchlist candidate(s) for AI input...")
-        scorer = StockScorer(config=state.config)
-        scored_results = scorer.score_watchlist(candidates)
-        for s in scored_results:
-            if s:
-                current_scores = {
-                    "price_momentum": s.price_momentum_score,
-                    "earnings_growth": s.earnings_growth_score,
-                    "quality": s.quality_score,
-                    "value_timing": s.value_timing_score,
-                    "volume": s.volume_score,
-                    "volatility": s.volatility_score,
-                }
-                candidate = {
-                    "ticker": s.ticker,
-                    "composite_score": s.composite_score,
-                    "current_price": s.current_price,
-                    "factor_scores": current_scores,
-                    "data_completeness": s.data_completeness,
-                    "reentry_context": None,
-                }
-                if rg_enabled:
-                    try:
-                        candidate["reentry_context"] = get_reentry_context(
-                            ticker=s.ticker,
-                            transactions_path=tx_file,
-                            current_scores=current_scores,
-                            lookback_days=rg_lookback,
-                            meaningful_change_threshold_pts=rg_threshold,
-                        )
-                    except Exception as e:
-                        logging.warning("reentry_guard: AI path failed for %s: %s", s.ticker, e)
-                scored_candidates.append(candidate)
-        scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
-        print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
+        current_tickers = set(state.positions["ticker"].tolist()) if not state.positions.empty else set()
+        candidates = [t for t in wl_tickers if t not in current_tickers]
+
+        # Pre-warm info cache for fundamentals
+        info_cache = {}
+        if candidates:
+            try:
+                info_cache = prewarm_info_for_tickers(candidates)
+            except Exception as e:
+                print(f"  [AI-Driven] Info pre-warm failed (non-fatal): {e}")
+
+        # Score candidates (quant data as advisory input for Claude)
+        scored_candidates = []
+        if candidates:
+            print(f"  Scoring {len(candidates)} watchlist candidate(s) for AI input...")
+            scorer = StockScorer(config=state.config)
+            scored_results = scorer.score_watchlist(candidates)
+            for s in scored_results:
+                if s:
+                    current_scores = {
+                        "price_momentum": s.price_momentum_score,
+                        "earnings_growth": s.earnings_growth_score,
+                        "quality": s.quality_score,
+                        "value_timing": s.value_timing_score,
+                        "volume": s.volume_score,
+                        "volatility": s.volatility_score,
+                    }
+                    candidate = {
+                        "ticker": s.ticker,
+                        "composite_score": s.composite_score,
+                        "current_price": s.current_price,
+                        "factor_scores": current_scores,
+                        "data_completeness": s.data_completeness,
+                        "reentry_context": None,
+                    }
+                    if rg_enabled:
+                        try:
+                            candidate["reentry_context"] = get_reentry_context(
+                                ticker=s.ticker,
+                                transactions_path=tx_file,
+                                current_scores=current_scores,
+                                lookback_days=rg_lookback,
+                                meaningful_change_threshold_pts=rg_threshold,
+                            )
+                        except Exception as e:
+                            logging.warning("reentry_guard: AI path failed for %s: %s", s.ticker, e)
+                    scored_candidates.append(candidate)
+            scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
+            print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
 
     # ─── Gather rich context for AI prompt ─────────────────────────────────────
     prompt_extras: dict = {
@@ -226,9 +232,10 @@ def _run_ai_driven_analysis(
 
     # Run AI allocation
     print("\n  🤖 AI-DRIVEN MODE — Claude is the portfolio manager")
+    effective_layer1_sells = [] if mode == "buys_only" else layer1_sell_actions
     reviewed_actions = run_ai_allocation(
         state=state,
-        layer1_sells=layer1_sell_actions,
+        layer1_sells=effective_layer1_sells,
         scored_candidates=scored_candidates,
         sector_map=sector_map,
         regime=regime,
@@ -237,6 +244,7 @@ def _run_ai_driven_analysis(
         info_cache=info_cache,
         regime_analysis=state.regime_analysis,
         prompt_extras=prompt_extras,
+        mode=mode,
     )
     import ai_allocator as _ai_alloc_mod
     ai_mode = _ai_alloc_mod._last_ai_mode
@@ -268,6 +276,15 @@ def _run_ai_driven_analysis(
         "system_warning_note": "",
     }
 
+    if mode == "buys_only":
+        reviewed_actions = [r for r in reviewed_actions if r.original.action_type == "BUY"]
+        approved = [r for r in approved if r.original.action_type == "BUY"]
+        proposed_actions = [a for a in proposed_actions if a.action_type == "BUY"]
+    elif mode == "sells_only":
+        reviewed_actions = [r for r in reviewed_actions if r.original.action_type == "SELL"]
+        approved = [r for r in approved if r.original.action_type == "SELL"]
+        proposed_actions = [a for a in proposed_actions if a.action_type == "SELL"]
+
     return {
         "proposed_actions": proposed_actions,
         "reviewed_actions": reviewed_actions,
@@ -286,6 +303,7 @@ def _run_ai_driven_analysis(
         "timestamp": datetime.now().isoformat(),
         "stale_positions": stale_positions,
         "ai_mode": ai_mode,
+        "mode": mode,
     }
 
 

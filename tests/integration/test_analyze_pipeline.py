@@ -643,6 +643,168 @@ def test_assemble_sells_only_drops_buys_from_all_lists():
     assert result["mode"] == "sells_only"
 
 
+def test_ai_driven_sells_only_skips_watchlist_scoring(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+    monkeypatch,
+):
+    """sells_only must NOT score watchlist candidates (skips scoring + info pre-warm)."""
+    from unittest.mock import MagicMock
+    from unified_analysis import _run_ai_driven_analysis
+    from portfolio_state import load_portfolio_state
+    from stock_scorer import StockScorer
+
+    mock_yfinance.prices = {"AAPL": 100.0}
+    mock_public_com.prices = {"AAPL": 100.0}
+
+    sp = seed_portfolio(
+        starting_capital=100_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "strategy_dna": "test",
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[
+            {
+                "ticker": "AAPL",
+                "shares": 10,
+                "avg_cost_basis": 100.0,
+                "current_price": 100.0,
+                "market_value": 1_000.0,
+                "unrealized_pnl": 0.0,
+                "unrealized_pnl_pct": 0.0,
+                "stop_loss": 92.0,
+                "take_profit": 120.0,
+                "entry_date": "2026-04-01",
+                "day_change": 0.0,
+                "day_change_pct": 0.0,
+                "price_high": 100.0,
+            }
+        ],
+        transactions=[],
+        watchlist=[
+            _wl_entry("MSFT", 70.0),
+            _wl_entry("NVDA", 72.0),
+            _wl_entry("GOOGL", 68.0),
+        ],
+    )
+
+    score_calls = []
+
+    def _track(self, tickers):
+        score_calls.append(list(tickers))
+        return []  # return empty so even if called, downstream survives
+
+    monkeypatch.setattr(StockScorer, "score_watchlist", _track)
+
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=sp.portfolio_id)
+
+    result = _run_ai_driven_analysis(
+        state=state,
+        regime=state.regime,
+        warning_severity="NORMAL",
+        stale_positions={},
+        layer1_sell_actions=[],
+        mode="sells_only",
+    )
+
+    assert score_calls == [], f"sells_only must not score watchlist, got: {score_calls}"
+    assert not any(
+        r.original.action_type == "BUY" for r in result["reviewed_actions"]
+    ), "sells_only must produce no BUY reviewed_actions"
+    assert result.get("mode") == "sells_only"
+
+
+def test_ai_driven_buys_only_drops_layer1_sells_from_output(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_news_off,
+    monkeypatch,
+):
+    """buys_only must not surface Layer 1 sells in the result (passes empty layer1_sells to allocator)."""
+    from unittest.mock import MagicMock
+    from unified_analysis import _run_ai_driven_analysis
+    from portfolio_state import load_portfolio_state
+    from stock_scorer import StockScorer
+    from enhanced_structures import ProposedAction
+
+    mock_yfinance.prices = {"AAPL": 80.0}
+    mock_public_com.prices = {"AAPL": 80.0}
+
+    # Position with stop loss already breached → Layer 1 would flag it.
+    sp = seed_portfolio(
+        starting_capital=100_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "strategy_dna": "test",
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[
+            {
+                "ticker": "AAPL",
+                "shares": 10,
+                "avg_cost_basis": 100.0,
+                "current_price": 80.0,
+                "market_value": 800.0,
+                "unrealized_pnl": -200.0,
+                "unrealized_pnl_pct": -20.0,
+                "stop_loss": 92.0,
+                "take_profit": 120.0,
+                "entry_date": "2026-04-01",
+                "day_change": 0.0,
+                "day_change_pct": 0.0,
+                "price_high": 100.0,
+            }
+        ],
+        transactions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+
+    # Avoid real scoring (no bars mocked) — return empty so allocator gets no buys either.
+    monkeypatch.setattr(StockScorer, "score_watchlist", lambda self, tickers: [])
+
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    state = load_portfolio_state(fetch_prices=True, portfolio_id=sp.portfolio_id)
+
+    # Simulate Layer 1 having flagged AAPL for stop-loss sell — this is what
+    # the caller would normally pass in from layer1_output.
+    layer1_sell = ProposedAction(
+        action_type="SELL", ticker="AAPL", shares=10, price=80.0,
+        stop_loss=0, take_profit=0, quant_score=0,
+        factor_scores={}, regime="SIDEWAYS", reason="stop_loss",
+    )
+
+    result = _run_ai_driven_analysis(
+        state=state,
+        regime=state.regime,
+        warning_severity="NORMAL",
+        stale_positions={},
+        layer1_sell_actions=[layer1_sell],
+        mode="buys_only",
+    )
+
+    assert not any(
+        r.original.action_type == "SELL" for r in result["reviewed_actions"]
+    ), "buys_only must drop Layer 1 sells from reviewed_actions"
+    assert result.get("mode") == "buys_only"
+
+
 def test_assemble_full_mode_keeps_both_sides():
     from unified_analysis import _assemble_analysis_result
     from ai_review import ReviewedAction, ReviewDecision
