@@ -962,3 +962,49 @@ def test_enhanced_buys_only_drops_rotation_pairs(seed_portfolio, mock_anthropic,
     # No SELL actions at all (Layer 1 sells empty AND rotation_sells filtered)
     assert all(a.action_type != "SELL" for a in result_actions), \
         "buys_only must drop all SELL actions, including rotation sells"
+
+
+def test_run_unified_analysis_accepts_mode_param(seed_portfolio, mock_anthropic, mock_yfinance):
+    """Smoke test: run_unified_analysis accepts mode kwarg and result includes it."""
+    from unified_analysis import run_unified_analysis
+    from unittest.mock import MagicMock
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    # Each call to run_unified_analysis triggers one allocator call → set responses sequentially
+    mock_anthropic.next_response = resp
+
+    result_full = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id, mode="full")
+    mock_anthropic.next_response = resp
+    result_buys = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id, mode="buys_only")
+    mock_anthropic.next_response = resp
+    result_sells = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id, mode="sells_only")
+
+    assert result_full.get("mode") == "full"
+    assert result_buys.get("mode") == "buys_only"
+    assert result_sells.get("mode") == "sells_only"
+
+
+def test_run_unified_analysis_default_mode_is_full(seed_portfolio, mock_anthropic, mock_yfinance):
+    """Backward compat: calling without mode kwarg behaves exactly like mode='full'."""
+    from unified_analysis import run_unified_analysis
+    from unittest.mock import MagicMock
+
+    sp = seed_portfolio(
+        config_overrides={"ai_driven": True, "strategy_dna": "test"},
+        positions=[],
+        watchlist=[_wl_entry("MSFT", 70.0)],
+    )
+    resp = MagicMock()
+    resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
+    resp.model = "claude-opus-4-7"
+    mock_anthropic.next_response = resp
+
+    result = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+    assert result.get("mode") == "full"

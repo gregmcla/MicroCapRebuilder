@@ -788,7 +788,7 @@ def _build_portfolio_context(
     return portfolio_context, stale_positions
 
 
-def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict:
+def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: str = "full") -> dict:
     """
     Run the complete unified analysis pipeline.
 
@@ -863,6 +863,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             warning_severity=warning_severity,
             stale_positions=state.stale_alerts,
             layer1_sell_actions=proposed_actions,  # contains Layer 1 sells only at this point
+            mode=mode,
         )
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
@@ -878,6 +879,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             portfolio_id=portfolio_id,
             proposed_actions=proposed_actions,
             info_cache=info_cache,
+            mode=mode,
         )
     else:
         proposed_actions = _run_fallback_scoring_step2(
@@ -887,6 +889,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
             config=config,
             position_multiplier=position_multiplier,
             proposed_actions=proposed_actions,
+            mode=mode,
         )
         num_buys = len([a for a in proposed_actions if a.action_type == "BUY"])
         print(f"  Found {num_buys} buy candidate(s)")
@@ -978,7 +981,8 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
     # when buy_price >= avg_cost_basis of the position being sold. Buying at or
     # above cost basis in the same run is a no-op trade cycle. Buying below cost
     # basis (lowering avg cost on a dip) is legitimate and allowed.
-    if not state.positions.empty:
+    # Only applies in full mode — single-sided modes have only one side present.
+    if mode == "full" and not state.positions.empty:
         sell_cost_basis = {}
         for action in proposed_actions:
             if action.action_type == "SELL":
@@ -1018,6 +1022,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None) -> dict
         portfolio_context=portfolio_context,
         stale_positions=stale_positions,
         regime=regime,
+        mode=mode,
     )
 
 
