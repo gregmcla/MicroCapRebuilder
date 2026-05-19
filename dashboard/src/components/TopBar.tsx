@@ -7,7 +7,7 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
-import { usePortfolioStore, useUIStore, useBriefStore } from "../lib/store";
+import { usePortfolioStore, useUIStore, useBriefStore, useAnalysisStore } from "../lib/store";
 import { api } from "../lib/api";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
@@ -418,6 +418,41 @@ export default function TopBar({
           <BuyButton />
           <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
           <AnalyzeExecute />
+          {/* ANALYZE BUYS — fires a buys-only analyze for the active portfolio */}
+          <button
+            onClick={() => {
+              useAnalysisStore.getState().setActiveMode("buys_only");
+              useAnalysisStore.getState().runAnalysis("buys_only");
+            }}
+            disabled={useAnalysisStore(
+              (s) => s.portfolioAnalyses[activePortfolioId]?.buys_only?.status === "running"
+            )}
+            className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)] hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]"
+            style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
+            title="Analyze only — propose buys with current cash, ignore sell decisions"
+          >
+            {useAnalysisStore(
+              (s) => s.portfolioAnalyses[activePortfolioId]?.buys_only?.status === "running"
+            ) ? "ANALYZING BUYS…" : "ANALYZE BUYS"}
+          </button>
+
+          {/* ANALYZE SELLS — fires a sells-only analyze for the active portfolio */}
+          <button
+            onClick={() => {
+              useAnalysisStore.getState().setActiveMode("sells_only");
+              useAnalysisStore.getState().runAnalysis("sells_only");
+            }}
+            disabled={useAnalysisStore(
+              (s) => s.portfolioAnalyses[activePortfolioId]?.sells_only?.status === "running"
+            )}
+            className="inline-flex items-center gap-1.5 font-semibold tracking-widest uppercase transition-all duration-150 rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed border border-[var(--accent)]/40 bg-[var(--accent)]/[0.08] text-[var(--accent)] hover:border-[var(--accent)]/70 hover:bg-[var(--accent)]/[0.14]"
+            style={{ fontSize: "10px", height: "28px", padding: "0 14px" }}
+            title="Analyze only — evaluate existing positions for sells, no new buys"
+          >
+            {useAnalysisStore(
+              (s) => s.portfolioAnalyses[activePortfolioId]?.sells_only?.status === "running"
+            ) ? "ANALYZING SELLS…" : "ANALYZE SELLS"}
+          </button>
           <div style={{ width: "1px", height: "18px", background: "var(--border-1)", flexShrink: 0 }} />
         </>
       )}
