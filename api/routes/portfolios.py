@@ -281,10 +281,9 @@ def get_overview():
             if state.total_equity > 0:
                 deployed_pct = round(state.positions_value / state.total_equity * 100, 1)
 
-            # Collect positions for cross-portfolio movers — skip if portfolio
-            # is flagged as excluded from aggregate surfaces (e.g., experiment
-            # replicas that shouldn't pollute top-level stats).
-            if len(positions) > 0 and not p.exclude_from_aggregates:
+            # Collect positions for cross-portfolio movers — skip paper-mode and
+            # excluded portfolios so aggregate surfaces only reflect live trading.
+            if len(positions) > 0 and not p.exclude_from_aggregates and not state.paper_mode:
                 for _, pos in positions.iterrows():
                     try:
                         def _f(v, default=0.0):
@@ -330,8 +329,10 @@ def get_overview():
                 "equity_curve": equity_curve,
                 "exclude_from_aggregates": p.exclude_from_aggregates,
             }
-            # Only accumulate top-level totals for non-excluded portfolios
-            if not p.exclude_from_aggregates:
+            # Only accumulate top-level totals for live, non-excluded portfolios.
+            # Paper-mode portfolios still appear as individual cards but don't
+            # contribute to the aggregate equity, P&L, or position counts.
+            if not p.exclude_from_aggregates and not state.paper_mode:
                 total_equity += state.total_equity
                 total_cash += state.cash
                 total_day_pnl += day_pnl
