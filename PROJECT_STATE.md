@@ -7,9 +7,25 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios. Cron RE-ENABLED 2026-04-27. Telegram bot live (APPROVE/REJECT + /status). Running 4.6 vs 4.7 model experiment through 2026-05-21. Just shipped buys-only / sells-only analyze modes (2026-05-19).**
+**Operational — 5 active portfolios. Cron RE-ENABLED. Adaptive learning overhaul shipped 2026-05-27.**
 
-**Tomorrow's first cron-driven test**: scan 6:30 AM, analyze 9:35 AM (Telegram proposals fire), update 12pm + 4:15pm. Watch for any unexpected behavior — the audit fixes touched the hot path.
+---
+
+## Recently Completed (2026-05-27) — GScott Adaptive Learning Overhaul
+
+Three-task overhaul replacing GScott's weak factor-learning loop. Commit: `7ad79f33`.
+
+**Task 1 (prior session):** Per-trade detail in Claude's analyze prompt. `scripts/recent_trades.py` joins `transactions.csv` + `post_mortems.csv` via `buy_transaction_id` (not ticker-only), surfaces last 15 closed trades with entry reasoning, factor scores at entry, exit summary, and pattern tags. Replaces aggregate-stats block.
+
+**Task 2 (this session):** Regime-conditional Bayesian weight learner (`scripts/bayesian_weights.py`) replaces the broken ±5% adjuster. Beta(10,10) prior, top-30%/bottom-30% bucket predictive power, iterative clamp+renormalize that actually enforces the cap. Fixes the normalization leak that was letting MAX's price_momentum drift to 0.4955. Per-portfolio `weight_cap` / `weight_floor` in `learning.*` config; MAX + MAX2 get cap=0.55. Initial recalibration run on 4 active portfolios. 11 unit tests.
+
+**Task 3 (this session):** Self-curating Opus observation memory (`scripts/reflection.py`). After every execute with trades, Opus reviews per-trade + clustered history and emits retire/update/add/add_shared curation operations to `data/portfolios/{id}/observations.json` and `data/shared_observations.json`. Observations are tagged by regime; analyze prompt only injects regime-matching + ALL observations. Cross-portfolio factor-level signal pool in `shared_observations.json`. Pattern-clustered trade history (group by dominant entry factor, W/L/avg P&L) also injected into analyze prompt. 13 unit tests.
+
+**Test count:** 185 total (was 36 integration + 149 scripts), all green.
+
+**Key files:** `scripts/bayesian_weights.py`, `scripts/reflection.py`, `scripts/recent_trades.py` (cluster fns added), `scripts/unified_analysis.py` (swapped weight learner + wired reflection), `scripts/ai_allocator.py` (clustered + observations blocks), `tests/integration/conftest.py` (reflection mock).
+
+**asymmetric-catalyst-hunters** — returned False on recalibration (fewer than 10 closed trades). Will recalibrate automatically once it accumulates enough trades.
 
 ---
 
