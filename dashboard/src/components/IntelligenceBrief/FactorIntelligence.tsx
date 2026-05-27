@@ -14,6 +14,18 @@ const FACTOR_COLORS: Record<string, string> = {
   value_timing: "#a78bfa",
 };
 
+const FACTORS_ORDER = [
+  "price_momentum", "earnings_growth", "quality",
+  "volume", "volatility", "value_timing",
+];
+
+const REGIME_BADGE: Record<string, { bg: string; color: string; border: string }> = {
+  BULL:     { bg: "rgba(52,211,153,0.12)",  color: "#34d399", border: "1px solid rgba(52,211,153,0.2)" },
+  BEAR:     { bg: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" },
+  SIDEWAYS: { bg: "rgba(251,191,36,0.12)",  color: "#fbbf24", border: "1px solid rgba(251,191,36,0.2)" },
+  ALL:      { bg: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.2)" },
+};
+
 function SectionHeader({ label }: { label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
@@ -104,6 +116,14 @@ export default function FactorIntelligence({ brief }: Props) {
   const factors = brief?.factor_summary?.factors ?? [];
   const suggestions = brief?.weight_suggestions ?? [];
   const defaultWeights = (brief?.config as any)?.scoring?.default_weights ?? {};
+  const regimeWeights = (brief?.config as any)?.scoring?.regime_weights ?? {};
+  const observations = brief?.observations ?? [];
+  const currentRegime = (brief?.regime ?? "").toUpperCase();
+
+  const bullMax = Math.max(0, ...Object.values(regimeWeights.BULL ?? {}).map(Number));
+  const bearMax = Math.max(0, ...Object.values(regimeWeights.BEAR ?? {}).map(Number));
+  const sidewaysMax = Math.max(0, ...Object.values(regimeWeights.SIDEWAYS ?? {}).map(Number));
+  const hasRegimeWeights = !!(regimeWeights.BULL || regimeWeights.BEAR || regimeWeights.SIDEWAYS);
 
   const TABLE_COLS = "2fr 80px 70px 70px 70px";
   const HEADER_LABELS = ["FACTOR", "WIN RATE", "TRADES", "TREND", "WEIGHT"];
@@ -379,6 +399,152 @@ export default function FactorIntelligence({ brief }: Props) {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Section 3: Bayesian Weights by Regime */}
+      {hasRegimeWeights && (
+        <div style={{
+          background: "rgba(255,255,255,0.028)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderTop: "1px solid rgba(255,255,255,0.11)",
+          borderRadius: "8px",
+          padding: "16px 20px",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+        }}>
+          <SectionHeader label="Bayesian Weights by Regime" />
+
+          {/* Column headers */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr 1fr 1fr",
+            gap: "8px",
+            background: "rgba(255,255,255,0.03)",
+            padding: "10px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "4px 4px 0 0",
+          }}>
+            <span style={{ fontSize: "9px", letterSpacing: "0.12em", color: "rgba(255,255,255,0.3)", fontFamily: PROSE_FONT, fontWeight: 600, textTransform: "uppercase" as const }}>
+              FACTOR
+            </span>
+            {(["BULL", "BEAR", "SIDEWAYS"] as const).map(r => {
+              const isActive = currentRegime === r;
+              const badge = REGIME_BADGE[r];
+              return (
+                <span key={r} style={{
+                  fontSize: "9px", letterSpacing: "0.12em",
+                  color: isActive ? badge.color : "rgba(255,255,255,0.3)",
+                  fontFamily: PROSE_FONT, fontWeight: 600, textTransform: "uppercase" as const,
+                }}>
+                  {isActive ? "▸ " : ""}{r}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Factor rows */}
+          {FACTORS_ORDER.map(f => {
+            const fColor = FACTOR_COLORS[f] ?? "#888";
+            const bullW = (regimeWeights.BULL ?? {})[f] as number | undefined;
+            const bearW = (regimeWeights.BEAR ?? {})[f] as number | undefined;
+            const sidewaysW = (regimeWeights.SIDEWAYS ?? {})[f] as number | undefined;
+            const weights = [
+              { val: bullW, max: bullMax, regime: "BULL" as const },
+              { val: bearW, max: bearMax, regime: "BEAR" as const },
+              { val: sidewaysW, max: sidewaysMax, regime: "SIDEWAYS" as const },
+            ];
+            return (
+              <div key={f} style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                gap: "8px",
+                padding: "9px 16px",
+                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                alignItems: "center",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "3px", height: "14px", borderRadius: "2px", background: fColor, flexShrink: 0 }} />
+                  <span style={{ fontSize: "11px", fontFamily: DATA_FONT, color: "rgba(226,226,240,0.8)" }}>
+                    {f.replace(/_/g, " ")}
+                  </span>
+                </div>
+                {weights.map(({ val, max, regime }) => {
+                  const isDominant = val !== undefined && val >= max - 0.0005;
+                  const isActive = currentRegime === regime;
+                  const badge = REGIME_BADGE[regime];
+                  return (
+                    <span key={regime} style={{
+                      fontSize: "12px",
+                      fontFamily: DATA_FONT,
+                      fontWeight: isDominant ? 700 : 400,
+                      color: isDominant ? badge.color : isActive ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
+                    }}>
+                      {val != null ? `${(val * 100).toFixed(0)}%` : "—"}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Section 4: Opus Observations */}
+      <div style={{
+        background: "rgba(255,255,255,0.028)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderTop: "1px solid rgba(255,255,255,0.11)",
+        borderRadius: "8px",
+        padding: "16px 20px",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35)",
+      }}>
+        <SectionHeader label="Opus Observations" />
+
+        {observations.length === 0 ? (
+          <span style={{ fontSize: "12px", fontFamily: PROSE_FONT, color: "rgba(255,255,255,0.25)", fontStyle: "italic" as const }}>
+            No observations yet — builds after execute cycles with trades.
+          </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[...observations]
+              .sort((a, b) => (b.sample_size ?? 0) - (a.sample_size ?? 0))
+              .map(obs => {
+                const regimeKey = (obs.regime ?? "ALL").toUpperCase();
+                const badge = REGIME_BADGE[regimeKey] ?? REGIME_BADGE.ALL;
+                const winColor = (obs.win_rate ?? 0) >= 0.6 ? "#34d399" : (obs.win_rate ?? 0) >= 0.45 ? "#fbbf24" : "#f87171";
+                return (
+                  <div key={obs.id} style={{
+                    padding: "10px 12px",
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    borderRadius: "6px",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", flexWrap: "wrap" as const }}>
+                      <span style={{
+                        fontSize: "9px", padding: "2px 8px", borderRadius: "4px",
+                        background: badge.bg, color: badge.color, border: badge.border,
+                        fontFamily: PROSE_FONT, fontWeight: 600, letterSpacing: "0.06em",
+                        textTransform: "uppercase" as const,
+                      }}>
+                        {obs.regime}
+                      </span>
+                      <span style={{ fontSize: "11px", fontFamily: DATA_FONT, color: "rgba(255,255,255,0.4)" }}>
+                        n={obs.sample_size}
+                      </span>
+                      <span style={{ fontSize: "11px", fontFamily: DATA_FONT, color: winColor, fontWeight: 600 }}>
+                        win={(((obs.win_rate ?? 0) * 100).toFixed(0))}%
+                      </span>
+                    </div>
+                    <p style={{
+                      fontSize: "11px", fontFamily: PROSE_FONT,
+                      color: "rgba(255,255,255,0.6)", lineHeight: 1.6, margin: 0,
+                    }}>
+                      {obs.claim}
+                    </p>
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

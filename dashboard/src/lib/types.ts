@@ -599,6 +599,17 @@ export interface SectorBreakdownEntry {
   pct: number;
 }
 
+export interface PortfolioObservation {
+  id: string;
+  regime: string;
+  claim: string;
+  sample_size: number;
+  win_rate: number;
+  last_updated: string;
+  first_seen?: string;
+  evidence_tickers?: string[];
+}
+
 export interface IntelligenceBriefData {
   health: StrategyHealth;
   metrics: RiskMetrics | null;
@@ -621,6 +632,7 @@ export interface IntelligenceBriefData {
   deployed_pct: number;
   num_positions: number;
   snapshots: Array<{ date: string; total_equity: number; day_pnl_pct: number }>;
+  observations?: PortfolioObservation[];
   error?: string;
 }
 

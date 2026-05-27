@@ -322,6 +322,13 @@ def get_intelligence_brief(portfolio_id: str = Depends(validate_portfolio_id)):
         factor_summary = {"status": "no_data", "factors": [], "total_analyzed_trades": 0, "last_updated": ""}
         weight_suggestions = []
 
+    # Opus observation memory
+    try:
+        from reflection import read_observations
+        observations_data = read_observations(portfolio_id)
+    except Exception:
+        observations_data = []
+
     # Factor deltas vs defaults
     default_weights = config.get("scoring", {}).get("default_weights", {})
     factor_deltas = {k: 0.0 for k in default_weights}
@@ -362,6 +369,7 @@ def get_intelligence_brief(portfolio_id: str = Depends(validate_portfolio_id)):
         "avg_hold_days": _compute_avg_hold_days(state.transactions),
         "most_traded_tickers": _most_traded_tickers(state.transactions),
         "config": config,
+        "observations": observations_data,
         # quick-access fields
         "total_return_pct": _safe_float(metrics_data.get("total_return_pct") if metrics_data else 0.0),
         "regime": state.regime.value if state.regime else None,

@@ -27,6 +27,13 @@ Three-task overhaul replacing GScott's weak factor-learning loop. Commit: `7ad79
 
 **asymmetric-catalyst-hunters** — returned False on recalibration (fewer than 10 closed trades). Will recalibrate automatically once it accumulates enough trades.
 
+**UI: Learning tab in FACTORS panel (also 2026-05-27):**
+- `api/routes/intelligence.py` — `intelligence-brief` now returns `observations` field (from `reflection.read_observations`)
+- `dashboard/src/lib/types.ts` — added `PortfolioObservation` type + `observations?` to `IntelligenceBriefData`
+- `dashboard/src/components/IntelligenceBrief/FactorIntelligence.tsx` — two new sections:
+  - **Bayesian Weights by Regime**: compact 3-column table (BULL/BEAR/SIDEWAYS) × 6 factors; dominant factor per regime highlighted; active regime column lit in regime color
+  - **Opus Observations**: cards with regime badge, n=sample_size, win%, claim text; sorted by sample_size
+
 ---
 
 ## Recently Completed (2026-05-19) — Buys-Only / Sells-Only Analyze Modes
