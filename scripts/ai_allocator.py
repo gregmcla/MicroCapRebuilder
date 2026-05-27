@@ -532,18 +532,10 @@ def _build_allocation_prompt(
     _trade_history_block = ""
     if portfolio_id:
         try:
-            from post_mortem import get_portfolio_trade_summary
-            trade_summary = get_portfolio_trade_summary(portfolio_id)
-            if trade_summary and trade_summary["total_trades"] >= 5:
-                ts = trade_summary
-                pattern_str = ", ".join(ts["top_patterns"]) if ts["top_patterns"] else "none identified"
-                _trade_history_block = (
-                    f"YOUR TRADE HISTORY IN THIS PORTFOLIO ({ts['total_trades']} completed trades, last {ts['recent_count']} shown):\n"
-                    f"  Win rate: {ts['win_rate_pct']:.0f}% | Avg win: {ts['avg_win_pct']:+.1f}% | Avg loss: {ts['avg_loss_pct']:+.1f}%\n"
-                    f"  Avg hold: {ts['avg_hold_days']:.1f} days | Recent streak: {ts['recent_streak']}\n"
-                    f"  Top failure patterns: {pattern_str}\n"
-                    f"  Use this history to calibrate your position sizing and conviction levels.\n"
-                )
+            from recent_trades import get_recent_trade_details, format_trade_history_block
+            trades = get_recent_trade_details(portfolio_id, limit=15)
+            if len(trades) >= 3:
+                _trade_history_block = format_trade_history_block(trades)
         except Exception as e:
             print(f"  [AI Allocator] Trade history load failed (non-fatal): {e}")
 
