@@ -356,7 +356,11 @@ def _build_allocation_prompt(
             sector = sector_map.get(ticker, c.get("sector", "Unknown"))
             factors = c.get("factor_scores", {})
             data_comp = c.get("data_completeness", 6)
-            factor_str = ", ".join(f"{k}={v:.0f}" for k, v in factors.items())
+            _FUNDAMENTAL_DEFAULTS = {"earnings_growth", "quality"}
+            factor_str = ", ".join(
+                f"{k}={'N/A' if k in _FUNDAMENTAL_DEFAULTS and v == 50.0 else f'{v:.0f}'}"
+                for k, v in factors.items()
+            )
             cand_lines.append(f"\n  {ticker}: score={score:.0f}/100, ${price:.2f}, sector={sector}")
             cand_lines.append(f"    factors: [{factor_str}] data_quality={data_comp}/6")
             cand_lines.append(f"   {_overlap_str(sector).lstrip(' |')}")

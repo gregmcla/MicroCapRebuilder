@@ -79,13 +79,21 @@ def get_recent_trade_details(portfolio_id: str, limit: int = 15) -> List[Dict[st
         buy = buys.loc[buy_id] if buy_id in buys.index else None
 
         factor_scores = _parse_json(buy["factor_scores"]) if buy is not None else {}
+        # Exclude fundamental factors that defaulted to 50 (no real data) from top-factors display
+        _FUNDAMENTAL_DEFAULTS = {"earnings_growth", "quality"}
         top_factors = sorted(
-            ((k, int(float(v))) for k, v in factor_scores.items() if v not in (None, "")),
+            (
+                (k, int(float(v))) for k, v in factor_scores.items()
+                if v not in (None, "")
+                and not (k in _FUNDAMENTAL_DEFAULTS and int(float(v)) == 50)
+            ),
             key=lambda kv: -kv[1],
         )[:3]
 
         rationale = _parse_json(buy["trade_rationale"]) if buy is not None else {}
         entry_reasoning = rationale.get("ai_reasoning") or rationale.get("quant_reason") or ""
+        if len(entry_reasoning) > 240:
+            entry_reasoning = entry_reasoning[:237] + "..."
 
         out.append({
             "ticker": row["ticker"],
@@ -95,7 +103,7 @@ def get_recent_trade_details(portfolio_id: str, limit: int = 15) -> List[Dict[st
             "holding_days": int(float(row.get("holding_days") or 0)),
             "regime": row.get("regime_at_entry") or "UNKNOWN",
             "exit_reason": row.get("exit_reason") or "",
-            "entry_reasoning": entry_reasoning[:240],
+            "entry_reasoning": entry_reasoning,
             "top_factors": top_factors,
             "exit_summary": (row.get("summary") or "")[:200],
             "pattern_tags": _parse_list(row.get("pattern_tags")),
