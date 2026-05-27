@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.4955,
-      "earnings_growth": 0.062,
-      "quality": 0.062,
-      "volume": 0.062,
-      "volatility": 0.062,
-      "value_timing": 0.2565
+      "price_momentum": 0.1975,
+      "earnings_growth": 0.1605,
+      "quality": 0.1605,
+      "volume": 0.1605,
+      "volatility": 0.1605,
+      "value_timing": 0.1605
     },
     "min_score_threshold": 35.0,
     "momentum": {
@@ -55,6 +55,32 @@
         "extreme_overbought": 80
       },
       "hard_filter_above": 85
+    },
+    "regime_weights": {
+      "BULL": {
+        "price_momentum": 0.1975,
+        "earnings_growth": 0.1605,
+        "quality": 0.1605,
+        "volume": 0.1605,
+        "volatility": 0.1605,
+        "value_timing": 0.1605
+      },
+      "BEAR": {
+        "price_momentum": 0.1975,
+        "earnings_growth": 0.1605,
+        "quality": 0.1605,
+        "volume": 0.1605,
+        "volatility": 0.1605,
+        "value_timing": 0.1605
+      },
+      "SIDEWAYS": {
+        "price_momentum": 0.1975,
+        "earnings_growth": 0.1605,
+        "quality": 0.1605,
+        "volume": 0.1605,
+        "volatility": 0.1605,
+        "value_timing": 0.1605
+      }
     }
   },
   "risk_management": {
@@ -100,7 +126,9 @@
       "poor_performance_threshold": 0.5,
       "high_volatility_threshold": 3.0,
       "adjustment_magnitude": 5.0
-    }
+    },
+    "weight_cap": 0.55,
+    "weight_floor": 0.05
   },
   "enhanced_trading": {
     "enable_layers": true,

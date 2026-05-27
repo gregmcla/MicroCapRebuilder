@@ -543,6 +543,29 @@ def _build_allocation_prompt(
         except Exception as e:
             print(f"  [AI Allocator] Trade history load failed (non-fatal): {e}")
 
+    _clustered_history_block = ""
+    if portfolio_id:
+        try:
+            from recent_trades import get_recent_trade_details as _get_trades, format_clustered_history_block
+            _clus_trades = _get_trades(portfolio_id, limit=15)
+            if len(_clus_trades) >= 3:
+                _clustered_history_block = format_clustered_history_block(_clus_trades)
+        except Exception as e:
+            print(f"  [AI Allocator] Clustered history load failed (non-fatal): {e}")
+
+    _observations_block = ""
+    if portfolio_id:
+        try:
+            from reflection import read_observations, read_shared_observations, format_observations_block
+            _portfolio_obs = read_observations(portfolio_id)
+            _shared_obs = read_shared_observations()
+            _observations_block = format_observations_block(
+                _portfolio_obs, regime=(state.regime.value if state.regime else "UNKNOWN"),
+                shared=_shared_obs,
+            )
+        except Exception as e:
+            print(f"  [AI Allocator] Observations load failed (non-fatal): {e}")
+
     # ─── Macro context block (data only — no policy) ────────────────────────────
     held_for_news: list[str] = []
     if not state.positions.empty:
@@ -566,7 +589,7 @@ PORTFOLIO STATE:
 {positions_block}
 
 {sector_block}
-{_perf_block}{_alerts_block}{_factor_block}{_trade_history_block}{regime_block}
+{_perf_block}{_alerts_block}{_factor_block}{_trade_history_block}{_clustered_history_block}{_observations_block}{regime_block}
 {macro_block}
 {l1_block}
 {recently_sold_block}

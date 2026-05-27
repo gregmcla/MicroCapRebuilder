@@ -40,7 +40,8 @@ from ai_review import (
     review_proposed_actions, format_review_summary
 )
 from post_mortem import PostMortemAnalyzer, save_post_mortem
-from factor_learning import apply_weight_adjustments as _apply_weight_adjustments, FactorLearner
+from factor_learning import FactorLearner  # kept for Intelligence Panel read-only use
+from bayesian_weights import update_weights_for_portfolio as _apply_weight_adjustments
 from contextlib import contextmanager
 from data_files import (
     get_daily_snapshots_file,
@@ -1403,6 +1404,22 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             _apply_weight_adjustments(portfolio_id=portfolio_id)
     except Exception as e:
         print(f"  [factor_learning] Weight adjustment skipped: {e}")
+
+    # ─── Post-Execute Opus Reflection (self-curating observation memory) ──────
+    try:
+        if portfolio_id and transactions:
+            from reflection import run_reflection
+            from recent_trades import get_recent_trade_details
+            _refl_regime = ""
+            for _t in transactions:
+                _refl_regime = _t.get("regime_at_entry") or ""
+                if _refl_regime:
+                    break
+            _recent = get_recent_trade_details(portfolio_id, limit=15)
+            if _recent:
+                run_reflection(portfolio_id, _refl_regime or "UNKNOWN", _recent)
+    except Exception as e:
+        print(f"  [reflection] Skipped (non-fatal): {e}")
 
     executed_buys = len([t for t in transactions if t["action"] == "BUY"])
     executed_sells = len([t for t in transactions if t["action"] == "SELL"])

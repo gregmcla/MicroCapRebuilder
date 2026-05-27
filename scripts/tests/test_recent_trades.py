@@ -106,3 +106,39 @@ def test_format_trade_history_block_renders_text():
     assert "STOP_LOSS" in text
     assert "Strong AI demand thesis" in text
     assert "price_momentum=82" in text
+
+
+def test_cluster_by_dominant_factor_groups_correctly():
+    from recent_trades import cluster_by_dominant_factor
+    trades = [
+        {"ticker": "A", "top_factors": [("price_momentum", 85), ("volume", 70)], "pnl_pct": 5.0, "holding_days": 10, "regime": "BULL"},
+        {"ticker": "B", "top_factors": [("price_momentum", 82), ("volatility", 60)], "pnl_pct": -3.0, "holding_days": 8, "regime": "BULL"},
+        {"ticker": "C", "top_factors": [("value_timing", 80), ("quality", 70)], "pnl_pct": 12.0, "holding_days": 20, "regime": "BULL"},
+        {"ticker": "D", "top_factors": [], "pnl_pct": 1.0, "holding_days": 5, "regime": "BULL"},
+    ]
+    clusters = cluster_by_dominant_factor(trades)
+    assert "price_momentum" in clusters
+    assert len(clusters["price_momentum"]) == 2
+    assert "value_timing" in clusters
+    assert "unknown" in clusters  # D has no top_factors
+
+
+def test_format_clustered_history_block_renders_stats():
+    from recent_trades import format_clustered_history_block
+    trades = [
+        {"ticker": "WIN1", "top_factors": [("price_momentum", 85)], "pnl_pct": 5.0,  "holding_days": 10, "regime": "BULL"},
+        {"ticker": "WIN2", "top_factors": [("price_momentum", 82)], "pnl_pct": 12.0, "holding_days": 8,  "regime": "BULL"},
+        {"ticker": "LOSE", "top_factors": [("price_momentum", 80)], "pnl_pct": -8.0, "holding_days": 6,  "regime": "BULL"},
+    ]
+    text = format_clustered_history_block(trades)
+    assert "TRADES CLUSTERED BY DOMINANT ENTRY FACTOR" in text
+    assert "price_momentum" in text
+    assert "3 trades" in text
+    assert "2W/1L" in text
+    assert "+3.0%" in text  # avg pnl = (5 + 12 - 8) / 3
+    assert "WIN1" in text or "WIN2" in text  # at least one ticker shown
+
+
+def test_format_clustered_history_block_empty():
+    from recent_trades import format_clustered_history_block
+    assert format_clustered_history_block([]) == ""

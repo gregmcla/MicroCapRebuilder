@@ -133,3 +133,42 @@ def format_trade_history_block(trades: List[Dict[str, Any]]) -> str:
             f"    Outcome: {t['exit_summary']}{tags_str}\n"
         )
     return header + "\n".join(lines) + "\n"
+
+
+def cluster_by_dominant_factor(trades: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+    """Group trades by their #1 entry factor. Trades with no top_factors → 'unknown' bucket."""
+    clusters: Dict[str, List[Dict[str, Any]]] = {}
+    for t in trades:
+        tf = t.get("top_factors") or []
+        key = tf[0][0] if tf else "unknown"
+        clusters.setdefault(key, []).append(t)
+    return clusters
+
+
+def format_clustered_history_block(trades: List[Dict[str, Any]]) -> str:
+    """Cluster trades by dominant entry factor and render win/loss/avg-P&L per cluster."""
+    if not trades:
+        return ""
+    clusters = cluster_by_dominant_factor(trades)
+    ordered = sorted(clusters.items(), key=lambda kv: -len(kv[1]))
+    lines = []
+    for factor, group in ordered:
+        wins = sum(1 for t in group if t["pnl_pct"] > 0)
+        losses = len(group) - wins
+        win_rate = (wins / len(group) * 100) if group else 0.0
+        avg_pnl = sum(t["pnl_pct"] for t in group) / len(group)
+        avg_hold = sum(t.get("holding_days") or 0 for t in group) / len(group)
+        sample = ", ".join(
+            f"{t['ticker']}({t['pnl_pct']:+.0f}%)"
+            for t in sorted(group, key=lambda x: -x["pnl_pct"])[:5]
+        )
+        lines.append(
+            f"  {factor:18} {len(group)} trades, {wins}W/{losses}L "
+            f"({win_rate:.0f}% win), {avg_pnl:+.1f}% avg, {avg_hold:.0f}d avg hold\n"
+            f"    Top by P&L: {sample}\n"
+        )
+    header = (
+        f"\nTRADES CLUSTERED BY DOMINANT ENTRY FACTOR ({len(trades)} closes):\n"
+        "What kinds of entries have actually paid off — and which haven't.\n\n"
+    )
+    return header + "".join(lines)

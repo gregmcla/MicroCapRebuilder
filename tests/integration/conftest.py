@@ -86,6 +86,16 @@ class MockAnthropicClient:
                 raise AssertionError("MockAnthropicClient ran out of canned responses")
             return self.next_response.pop(0)
         if self.next_response is None:
+            # Reflection prompts (contain "EMIT CURATION OPERATIONS") get a no-op default
+            # so execute tests don't have to queue a reflection response.
+            messages = kwargs.get("messages") or []
+            prompt_text = " ".join(
+                str(m.get("content", "")) for m in messages if isinstance(m, dict)
+            )
+            if "EMIT CURATION OPERATIONS" in prompt_text:
+                noop = MagicMock()
+                noop.content = [MagicMock(text='{"retire": [], "update": [], "add": [], "add_shared": []}')]
+                return noop
             raise AssertionError(
                 "MockAnthropicClient.messages.create called but no response queued"
             )
@@ -94,7 +104,7 @@ class MockAnthropicClient:
 
 @pytest.fixture
 def mock_anthropic():
-    """Patch get_ai_client across ai_review + ai_allocator. Returns the mock client."""
+    """Patch get_ai_client across ai_review + ai_allocator + reflection. Returns the mock client."""
     client = MockAnthropicClient()
 
     # Both modules import get_ai_client from ai_review; patching at the source
@@ -103,6 +113,7 @@ def mock_anthropic():
     patches = [
         patch("ai_review.get_ai_client", return_value=client),
         patch("ai_allocator.get_ai_client", return_value=client),
+        patch("reflection.get_ai_client", return_value=client),
     ]
     for p in patches:
         p.start()
