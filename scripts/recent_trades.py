@@ -92,8 +92,6 @@ def get_recent_trade_details(portfolio_id: str, limit: int = 15) -> List[Dict[st
 
         rationale = _parse_json(buy["trade_rationale"]) if buy is not None else {}
         entry_reasoning = rationale.get("ai_reasoning") or rationale.get("quant_reason") or ""
-        if len(entry_reasoning) > 240:
-            entry_reasoning = entry_reasoning[:237] + "..."
 
         out.append({
             "ticker": row["ticker"],
