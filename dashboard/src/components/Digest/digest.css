@@ -736,3 +736,33 @@
 .digest .tlnode .d .mono {
   color: var(--text-2);
 }
+
+/* ── Timeline node dot-fill spans ── */
+.digest .tlnode .dot .d-grn {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  display: block;
+}
+
+.digest .tlnode .dot .d-red {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  display: block;
+}
+
+.digest .tlnode .dot .d-acc {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent-bright);
+  display: block;
+}
+
+.digest .tlnode .dot .d-out {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-1);
+  background: transparent;
+  display: block;
+}
