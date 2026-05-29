@@ -7,6 +7,7 @@ respects exclude_from_aggregates for book totals.
 """
 import math
 from pathlib import Path
+import pandas as pd
 
 
 def _f(v, default=0.0):
@@ -53,3 +54,52 @@ def derive_trend(sparkline: list[float], vs_bench_pct: float) -> str:
     if score <= -4.0:
         return "fading"
     return "flat"
+
+
+_RANGE_DAYS = {"1W": 7, "1M": 30, "3M": 90, "YTD": None, "ALL": None}
+
+
+def _fetch_spy_series(start: str, end: str) -> "pd.Series":
+    """SPY daily closes between start/end (inclusive). Isolated for test mocking."""
+    from yf_session import cached_download
+    df = cached_download("SPY", start=start, end=end)
+    if df is None or df.empty:
+        return pd.Series(dtype=float)
+    close = df["Close"] if "Close" in df.columns else df.iloc[:, 0]
+    close.index = pd.to_datetime(close.index)
+    return close
+
+
+def build_book_curve(snapshots_by_pid: dict, range_key: str = "3M") -> dict:
+    """Sum per-portfolio total_equity by date, normalize to 100, overlay SPY."""
+    frames = []
+    for pid, df in snapshots_by_pid.items():
+        if df is None or df.empty or "total_equity" not in df.columns:
+            continue
+        s = df.set_index(pd.to_datetime(df["date"]))["total_equity"].astype(float)
+        frames.append(s.rename(pid))
+    if not frames:
+        return {"range": range_key, "book": [], "spy": []}
+    book = pd.concat(frames, axis=1).sort_index().ffill().dropna(how="all").sum(axis=1)
+
+    days = _RANGE_DAYS.get(range_key)
+    if days:
+        book = book.tail(days)
+
+    if book.empty:
+        return {"range": range_key, "book": [], "spy": []}
+
+    base = book.iloc[0] or 1.0
+    book_norm = (book / base * 100).round(3)
+
+    start = book.index[0].strftime("%Y-%m-%d")
+    end = book.index[-1].strftime("%Y-%m-%d")
+    spy_raw = _fetch_spy_series(start, end)
+    if spy_raw.empty:
+        spy_norm = []
+    else:
+        spy_aligned = spy_raw.reindex(book.index, method="ffill").bfill()
+        spy_base = spy_aligned.iloc[0] or 1.0
+        spy_norm = (spy_aligned / spy_base * 100).round(3).tolist()
+
+    return {"range": range_key, "book": book_norm.tolist(), "spy": spy_norm}

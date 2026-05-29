@@ -44,3 +44,22 @@ def test_derive_trend_from_sparkline_and_alpha():
 def test_derive_trend_handles_short_series():
     assert digest_service.derive_trend([], vs_bench_pct=0.0) == "flat"
     assert digest_service.derive_trend([100.0], vs_bench_pct=0.0) == "flat"
+
+
+import pandas as pd
+
+
+def test_build_book_curve_aligns_and_normalizes(monkeypatch):
+    snaps = {
+        "max":      pd.DataFrame({"date": ["2026-05-01", "2026-05-02"], "total_equity": [100.0, 110.0]}),
+        "gov-infra":pd.DataFrame({"date": ["2026-05-01", "2026-05-02"], "total_equity": [50.0, 55.0]}),
+    }
+    spy = pd.Series([400.0, 408.0], index=pd.to_datetime(["2026-05-01", "2026-05-02"]))
+    monkeypatch.setattr(digest_service, "_fetch_spy_series", lambda start, end: spy)
+
+    curve = digest_service.build_book_curve(snaps, range_key="ALL")
+    assert curve["book"][0] == 100.0
+    assert round(curve["book"][-1], 1) == 110.0
+    assert curve["spy"][0] == 100.0
+    assert round(curve["spy"][-1], 1) == 102.0
+    assert curve["range"] == "ALL"
