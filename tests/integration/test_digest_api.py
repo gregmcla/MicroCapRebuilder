@@ -60,3 +60,26 @@ def test_digest_excludes_paper_mode_portfolios(monkeypatch):
     out = ds.build_digest(range_key="ALL")
     ids = [p["id"] for p in out["portfolios"]]
     assert "live1" in ids and "paper1" not in ids
+
+
+def test_digest_narrative_parses_json(monkeypatch):
+    import digest_service as ds
+    fake = ('{"thesis":"Momentum is working.","body":"defense-tech leads.",'
+            '"callout":"Watch microcap.","working":["defense-tech"],"watching":["microcap"]}')
+    monkeypatch.setattr(ds, "_call_claude_json", lambda prompt: fake)
+    out = ds.build_digest_narrative(digest={"book": {"health": {"green": 4, "red": 2}},
+                                            "portfolios": [], "recap": {}},
+                                    posture={"value": 0.74, "label": "Risk-on · leaning momentum"})
+    assert out["thesis"].startswith("Momentum")
+    assert out["posture"] == 0.74
+    assert out["working"] == ["defense-tech"]
+
+
+def test_digest_narrative_falls_back_on_bad_json(monkeypatch):
+    import digest_service as ds
+    monkeypatch.setattr(ds, "_call_claude_json", lambda prompt: "not json at all")
+    out = ds.build_digest_narrative(digest={"book": {"health": {"green": 4, "red": 2}},
+                                            "portfolios": [], "recap": {}},
+                                    posture={"value": 0.5, "label": "Balanced · selective"})
+    assert "thesis" in out and out["thesis"]   # deterministic fallback, never blank
+    assert out["posture"] == 0.5

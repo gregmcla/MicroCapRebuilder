@@ -5,6 +5,8 @@ Composes existing PortfolioState data into a single payload for GET /api/digest.
 Scopes to ACTIVE + LIVE-mode portfolios (filtering happens in build_digest);
 respects exclude_from_aggregates for book totals.
 """
+import json
+import logging
 import math
 from pathlib import Path
 import pandas as pd
@@ -288,3 +290,76 @@ def build_recap(txns_by_pid: dict, since: str, movers: list, regime: dict) -> di
         "swings": sorted(movers, key=lambda m: abs(_f(m.get("pct"))), reverse=True)[:4],
         "regime": regime,
     }
+
+
+def _call_claude_json(prompt: str) -> str:
+    """Single Claude call returning raw text. Isolated for test mocking."""
+    import anthropic
+    from schema import CLAUDE_MODEL
+    client = anthropic.Anthropic(timeout=180.0)
+    msg = client.messages.create(model=CLAUDE_MODEL, max_tokens=900,
+                                 messages=[{"role": "user", "content": prompt}])
+    return msg.content[0].text
+
+
+def _clean_json(text: str) -> dict:
+    """Strip markdown fences / prose, parse the first JSON object. Raises on failure."""
+    t = text.strip()
+    if t.startswith("```"):
+        t = t.split("```", 2)[1] if t.count("```") >= 2 else t
+        t = t.replace("json", "", 1).strip() if t.lower().startswith("json") else t
+    start, end = t.find("{"), t.rfind("}")
+    if start == -1 or end == -1:
+        raise ValueError("no JSON object")
+    return json.loads(t[start:end + 1])
+
+
+def _narrative_fallback(digest: dict, posture: dict) -> dict:
+    h = digest.get("book", {}).get("health", {})
+    ports = [p for p in digest.get("portfolios", []) if "vs_bench_pct" in p]
+    best = max(ports, key=lambda p: p["vs_bench_pct"], default=None)
+    worst = min(ports, key=lambda p: p["vs_bench_pct"], default=None)
+    thesis = f"{h.get('green', 0)} of {h.get('green', 0) + h.get('red', 0)} strategies are ahead."
+    body = (f"{best['name']} leads the book." if best else "Book holding steady.")
+    return {"thesis": thesis, "body": body,
+            "callout": (f"{worst['name']} is the laggard — worth watching." if worst else ""),
+            "working": [best["name"]] if best else [],
+            "watching": [worst["name"]] if worst else []}
+
+
+def build_digest_narrative(digest: dict, posture: dict) -> dict:
+    """Structured book-level narrative. Never raises; falls back deterministically."""
+    prompt = _build_digest_narrative_prompt(digest, posture)
+    try:
+        parsed = _clean_json(_call_claude_json(prompt))
+    except Exception as e:
+        logging.warning("digest narrative failed, using fallback: %s", e)
+        parsed = _narrative_fallback(digest, posture)
+    parsed.setdefault("working", [])
+    parsed.setdefault("watching", [])
+    parsed["posture"] = posture.get("value", 0.5)
+    parsed["posture_label"] = posture.get("label", "")
+    return parsed
+
+
+def _build_digest_narrative_prompt(digest: dict, posture: dict) -> str:
+    book = digest.get("book", {})
+    lines = "\n".join(
+        f"  {p.get('name')}: total {p.get('total_pct')}%, vs {p.get('bench_symbol')} {p.get('vs_bench_pct')}%, trend {p.get('trend')}"
+        for p in digest.get("portfolios", []) if "total_pct" in p)
+    recap = digest.get("recap", {})
+    return f"""You are GScott, the trading system's daily analyst. Read the whole book and explain it in plain English.
+
+BOOK: equity ${book.get('equity')}, day P&L ${book.get('day_pnl')} ({book.get('day_pnl_pct')}%), {book.get('health', {}).get('green')} green / {book.get('health', {}).get('red')} red, vs SPY all-time {book.get('vs_spy_alltime_pct')}%.
+POSTURE: {posture.get('label')} ({posture.get('value')}).
+PORTFOLIOS:
+{lines}
+SINCE YESTERDAY: {recap.get('buys', {}).get('count', 0)} buys, {recap.get('exits', {}).get('count', 0)} exits; regime {recap.get('regime', {}).get('label')}.
+
+Return ONLY a JSON object, no markdown, with keys:
+  "thesis": one punchy sentence — the headline take on the whole book.
+  "body": 2-3 sentences synthesizing what's carrying the book and why.
+  "callout": one sentence naming the single strategy worth questioning.
+  "working": array of portfolio names that are carrying the book.
+  "watching": array of portfolio name(s) to question.
+Write in second person ("your book"). Be specific with names and numbers.""".strip()
