@@ -170,6 +170,28 @@ def _compute_all_time_pnl(state) -> float:
     return round(realized_pnl + unrealized_pnl, 2)
 
 
+def _book_vs_spy(curve: dict) -> float:
+    b, s = curve.get("book", []), curve.get("spy", [])
+    if not b or not s:
+        return 0.0
+    return round((b[-1] - 100) - (s[-1] - 100), 2)
+
+
+def _book_regime() -> dict:
+    """Best-effort regime detection. Never raises."""
+    try:
+        from market_regime import get_regime_analysis
+        analysis = get_regime_analysis()
+        label = getattr(analysis.regime, "value", str(analysis.regime))
+        return {
+            "label": label,
+            "risk": 0,       # risk/risk_prev are placeholders (0 = not wired); frontend hides the clause when risk == 0
+            "risk_prev": 0,  # risk/risk_prev are placeholders (0 = not wired); frontend hides the clause when risk == 0
+        }
+    except Exception:
+        return {"label": "UNKNOWN", "risk": 0, "risk_prev": 0}
+
+
 def build_digest(range_key: str = "3M") -> dict:
     """Top-level: load active+live portfolios, assemble book + portfolios + recap.
 
@@ -181,6 +203,7 @@ def build_digest(range_key: str = "3M") -> dict:
 
     portfolios = list_portfolios(active_only=True)
     rows, comp, snaps_by_pid, txns_by_pid = [], [], {}, {}
+    movers = []
     prev_close = (date.today() - timedelta(days=1)).isoformat()
 
     for p in portfolios:
@@ -212,57 +235,22 @@ def build_digest(range_key: str = "3M") -> dict:
                          "sparkline": spark, "trend": derive_trend(spark, alpha)})
             snaps_by_pid[p.id] = snaps
             txns_by_pid[p.id] = state.transactions
+            # Collect movers inline — avoids a second full portfolio load in _book_movers
+            pos = state.positions
+            if pos is not None and len(pos) > 0 and "day_change_pct" in pos.columns:
+                for _, r in pos.iterrows():
+                    movers.append({"ticker": str(r["ticker"]), "pct": _f(r.get("day_change_pct"))})
         except Exception as e:
             comp.append({"id": p.id, "name": p.name, "error": str(e)})
 
     book = _roll_up_book(rows)
     book["curve"] = build_book_curve(snaps_by_pid, range_key)
     book["vs_spy_alltime_pct"] = _book_vs_spy(book["curve"])
-    book["vs_spy_today_pct"] = 0.0
+    book["vs_spy_today_pct"] = 0.0  # TODO: intraday SPY comparison not yet computed
     regime = _book_regime()
-    recap = build_recap(txns_by_pid, since=prev_close, movers=_book_movers(), regime=regime)
+    recap = build_recap(txns_by_pid, since=prev_close, movers=movers, regime=regime)
     comp.sort(key=lambda c: c.get("vs_bench_pct", -999), reverse=True)
     return {"book": book, "portfolios": comp, "recap": recap}
-
-
-def _book_vs_spy(curve: dict) -> float:
-    b, s = curve.get("book", []), curve.get("spy", [])
-    if not b or not s:
-        return 0.0
-    return round((b[-1] - 100) - (s[-1] - 100), 2)
-
-
-def _book_regime() -> dict:
-    """Best-effort regime detection. Never raises."""
-    try:
-        from market_regime import get_regime_analysis
-        analysis = get_regime_analysis()
-        label = getattr(analysis.regime, "value", str(analysis.regime))
-        return {"label": label, "risk": 0, "risk_prev": 0}
-    except Exception:
-        return {"label": "UNKNOWN", "risk": 0, "risk_prev": 0}
-
-
-def _book_movers() -> list:
-    """Top/bottom day movers across active live portfolios (best-effort, never raises)."""
-    try:
-        from portfolio_registry import list_portfolios
-        from portfolio_state import load_portfolio_state
-        out = []
-        for p in list_portfolios(active_only=True):
-            try:
-                st = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
-                if st.paper_mode:
-                    continue
-                pos = st.positions
-                if pos is not None and len(pos) and "day_change_pct" in pos.columns:
-                    for _, r in pos.iterrows():
-                        out.append({"ticker": str(r["ticker"]), "pct": _f(r.get("day_change_pct"))})
-            except Exception:
-                continue
-        return out
-    except Exception:
-        return []
 
 
 def build_recap(txns_by_pid: dict, since: str, movers: list, regime: dict) -> dict:
