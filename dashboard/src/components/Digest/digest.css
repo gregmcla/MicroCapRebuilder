@@ -265,6 +265,23 @@
   }
 }
 
+/* ── Skeleton placeholder ── */
+.digest .skeleton {
+  background: var(--surface-1);
+  border-radius: 14px;
+  border: 1px solid var(--border-0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes skeletonPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .45; }
+  }
+  .digest .skeleton {
+    animation: skeletonPulse 1.8s ease-in-out infinite;
+  }
+}
+
 /* ═══════════════════════════════════════
    R2 — Narrative region (.nar)
    ═══════════════════════════════════════ */
