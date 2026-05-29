@@ -63,3 +63,17 @@ def test_build_book_curve_aligns_and_normalizes(monkeypatch):
     assert curve["spy"][0] == 100.0
     assert round(curve["spy"][-1], 1) == 102.0
     assert curve["range"] == "ALL"
+
+
+def test_vs_bench_uses_configured_symbol():
+    cfg_micro = {"benchmark_symbol": "^RUT"}
+    cfg_max = {}
+    assert digest_service.bench_symbol(cfg_micro) == "^RUT"
+    assert digest_service.bench_symbol(cfg_max) == "SPY"
+
+
+def test_vs_bench_pct_is_total_return_minus_bench_return(monkeypatch):
+    monkeypatch.setattr(digest_service, "_bench_return_pct", lambda sym, snaps: 7.0)
+    snaps = pd.DataFrame({"date": ["2026-01-01", "2026-05-01"], "total_equity": [100, 131]})
+    alpha = digest_service.vs_bench_pct(total_return_pct=31.0, bench="^RUT", snapshots=snaps)
+    assert round(alpha, 1) == 24.0

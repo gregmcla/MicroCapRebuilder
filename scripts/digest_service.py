@@ -103,3 +103,35 @@ def build_book_curve(snapshots_by_pid: dict, range_key: str = "3M") -> dict:
         spy_norm = (spy_aligned / spy_base * 100).round(3).tolist()
 
     return {"range": range_key, "book": book_norm.tolist(), "spy": spy_norm}
+
+
+def bench_symbol(config: dict) -> str:
+    """Each portfolio's configured benchmark; default SPY."""
+    return config.get("benchmark_symbol") or "SPY"
+
+
+def _fetch_spy_series_for(symbol: str, start: str, end: str) -> "pd.Series":
+    """Daily closes for an arbitrary benchmark symbol. Isolated for mocking."""
+    from yf_session import cached_download
+    df = cached_download(symbol, start=start, end=end)
+    if df is None or df.empty:
+        return pd.Series(dtype=float)
+    return (df["Close"] if "Close" in df.columns else df.iloc[:, 0]).astype(float)
+
+
+def _bench_return_pct(symbol: str, snapshots: "pd.DataFrame") -> float:
+    """Benchmark total return % over the snapshot window. Isolated for mocking."""
+    if snapshots is None or snapshots.empty:
+        return 0.0
+    start = pd.to_datetime(snapshots["date"]).min().strftime("%Y-%m-%d")
+    end = pd.to_datetime(snapshots["date"]).max().strftime("%Y-%m-%d")
+    s = _fetch_spy_series_for(symbol, start, end)
+    if s is None or len(s) < 2:
+        return 0.0
+    first, last = float(s.iloc[0]), float(s.iloc[-1])
+    return round((last - first) / first * 100, 2) if first > 0 else 0.0
+
+
+def vs_bench_pct(total_return_pct: float, bench: str, snapshots: "pd.DataFrame") -> float:
+    """Alpha = portfolio total return - benchmark return over the same window."""
+    return round(_f(total_return_pct) - _bench_return_pct(bench, snapshots), 2)
