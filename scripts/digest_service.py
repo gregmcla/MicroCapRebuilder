@@ -253,6 +253,21 @@ def build_digest(range_key: str = "3M") -> dict:
     return {"book": book, "portfolios": comp, "recap": recap}
 
 
+def compute_posture(regime: str, deployed_pct: float, book_alpha: float) -> dict:
+    """Deterministic 0..1 posture (0=defensive, 1=aggressive) + label."""
+    regime_base = {"BULL": 0.72, "SIDEWAYS": 0.5, "BEAR": 0.28}.get((regime or "").upper(), 0.5)
+    exposure = max(0.0, min(1.0, _f(deployed_pct) / 100.0))
+    alpha_tilt = max(-0.1, min(0.1, _f(book_alpha) / 100.0))
+    value = max(0.0, min(1.0, regime_base * 0.6 + exposure * 0.4 + alpha_tilt))
+    if value >= 0.6:
+        label = "Risk-on · leaning momentum"
+    elif value <= 0.4:
+        label = "Defensive · capital-preserving"
+    else:
+        label = "Balanced · selective"
+    return {"value": round(value, 2), "label": label}
+
+
 def build_recap(txns_by_pid: dict, since: str, movers: list, regime: dict) -> dict:
     """Classify trades since `since` (prior session close, YYYY-MM-DD) into buys/exits."""
     buys, exits = [], []

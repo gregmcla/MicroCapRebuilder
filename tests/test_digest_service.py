@@ -96,3 +96,10 @@ def test_build_recap_classifies_buys_and_sells():
     assert recap["exits"]["count"] == 1
     assert recap["swings"][0]["ticker"] == "CRDO"
     assert recap["regime"]["label"] == "SIDEWAYS"
+
+
+def test_compute_posture_maps_regime_and_exposure():
+    p = digest_service.compute_posture(regime="BULL", deployed_pct=85.0, book_alpha=4.2)
+    assert p["value"] > 0.6 and "risk-on" in p["label"].lower()
+    d = digest_service.compute_posture(regime="BEAR", deployed_pct=20.0, book_alpha=-1.0)
+    assert d["value"] < 0.4
