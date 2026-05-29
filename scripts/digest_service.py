@@ -135,3 +135,25 @@ def _bench_return_pct(symbol: str, snapshots: "pd.DataFrame") -> float:
 def vs_bench_pct(total_return_pct: float, bench: str, snapshots: "pd.DataFrame") -> float:
     """Alpha = portfolio total return - benchmark return over the same window."""
     return round(_f(total_return_pct) - _bench_return_pct(bench, snapshots), 2)
+
+
+def build_recap(txns_by_pid: dict, since: str, movers: list[dict], regime: dict) -> dict:
+    """Classify trades since `since` (prior session close, YYYY-MM-DD) into buys/exits."""
+    buys, exits = [], []
+    for pid, df in txns_by_pid.items():
+        if df is None or df.empty or "action" not in df.columns:
+            continue
+        recent = df[df["date"].astype(str) >= since]
+        for _, tx in recent.iterrows():
+            entry = {"pid": pid, "ticker": str(tx.get("ticker", "")),
+                     "value": _f(tx.get("total_value")), "reason": str(tx.get("reason", ""))}
+            if str(tx.get("action")) == "BUY":
+                buys.append(entry)
+            elif str(tx.get("action")) == "SELL":
+                exits.append(entry)
+    return {
+        "buys":  {"count": len(buys),  "items": buys,  "deployed": round(sum(b["value"] for b in buys), 2)},
+        "exits": {"count": len(exits), "items": exits},
+        "swings": sorted(movers, key=lambda m: abs(_f(m.get("pct"))), reverse=True)[:4],
+        "regime": regime,
+    }

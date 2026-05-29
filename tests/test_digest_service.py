@@ -77,3 +77,22 @@ def test_vs_bench_pct_is_total_return_minus_bench_return(monkeypatch):
     snaps = pd.DataFrame({"date": ["2026-01-01", "2026-05-01"], "total_equity": [100, 131]})
     alpha = digest_service.vs_bench_pct(total_return_pct=31.0, bench="^RUT", snapshots=snaps)
     assert round(alpha, 1) == 24.0
+
+
+def test_build_recap_classifies_buys_and_sells():
+    txns = pd.DataFrame({
+        "date": ["2026-05-29", "2026-05-29", "2026-05-28"],
+        "ticker": ["NVDA", "INTC", "OLD"],
+        "action": ["BUY", "SELL", "BUY"],
+        "total_value": [50000.0, 30000.0, 9999.0],
+        "reason": ["SIGNAL", "STOP_LOSS", "SIGNAL"],
+    })
+    recap = digest_service.build_recap(
+        txns_by_pid={"max": txns}, since="2026-05-29",
+        movers=[{"ticker": "CRDO", "pct": 9.1}, {"ticker": "HUT", "pct": -7.2}],
+        regime={"label": "SIDEWAYS", "risk": 41, "risk_prev": 47},
+    )
+    assert recap["buys"]["count"] == 1     # only 2026-05-29 BUY counts
+    assert recap["exits"]["count"] == 1
+    assert recap["swings"][0]["ticker"] == "CRDO"
+    assert recap["regime"]["label"] == "SIDEWAYS"
