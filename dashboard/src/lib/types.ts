@@ -697,3 +697,48 @@ export interface TradeReviewsResponse {
 export interface TradeAnalyzeResponse {
   narrative: string;
 }
+
+// ── Daily Digest types ────────────────────────────────────────────────────────
+
+export interface DigestPortfolio {
+  id: string;
+  name: string;
+  strategy?: string;
+  equity: number;
+  day_pct: number;
+  total_pct: number;
+  vs_bench_pct: number;
+  bench_symbol: string;
+  sparkline: number[];
+  trend: "ahead" | "flat" | "fading";
+  error?: string;
+}
+
+export interface DigestData {
+  book: {
+    equity: number;
+    day_pnl: number;
+    day_pnl_pct: number;
+    health: { green: number; red: number };
+    vs_spy_alltime_pct: number;
+    vs_spy_today_pct: number;
+    curve: { range: string; book: number[]; spy: number[] };
+  };
+  portfolios: DigestPortfolio[];
+  recap: {
+    buys: { count: number; deployed: number; items: any[] };
+    exits: { count: number; items: any[] };
+    swings: { ticker: string; pct: number }[];
+    regime: { label: string; risk: number; risk_prev: number };
+  };
+}
+
+export interface DigestNarrative {
+  thesis: string;
+  body: string;
+  callout: string;
+  posture: number;
+  posture_label: string;
+  working: string[];
+  watching: string[];
+}
