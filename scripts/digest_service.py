@@ -33,3 +33,23 @@ def _roll_up_book(rows: list[dict]) -> dict:
         "day_pnl_pct": day_pnl_pct,
         "health": {"green": green, "red": red},
     }
+
+
+def derive_trend(sparkline: list[float], vs_bench_pct: float) -> str:
+    """ahead / flat / fading from 30d slope + benchmark alpha.
+
+    Slope = last vs first over the series. Combined with alpha sign:
+      - clearly positive slope OR strong positive alpha -> "ahead"
+      - clearly negative slope OR strong negative alpha -> "fading"
+      - otherwise -> "flat"
+    """
+    if not sparkline or len(sparkline) < 2:
+        return "flat"
+    first, last = _f(sparkline[0]), _f(sparkline[-1])
+    slope_pct = ((last - first) / first * 100) if first > 0 else 0.0
+    score = slope_pct + _f(vs_bench_pct)
+    if score >= 4.0:
+        return "ahead"
+    if score <= -4.0:
+        return "fading"
+    return "flat"

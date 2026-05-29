@@ -30,3 +30,17 @@ def test_book_rollup_respects_exclude_from_aggregates():
     assert book["day_pnl"] == 10.0          # max2's 5.0 excluded
     assert book["health"]["green"] == 1     # only max counted
     assert book["health"]["red"] == 0
+
+
+def test_derive_trend_from_sparkline_and_alpha():
+    rising = [100, 101, 103, 106, 110]
+    falling = [110, 106, 103, 101, 98]
+    flat = [100, 100.2, 99.9, 100.1, 100.0]
+    assert digest_service.derive_trend(rising, vs_bench_pct=12.0) == "ahead"
+    assert digest_service.derive_trend(falling, vs_bench_pct=-21.0) == "fading"
+    assert digest_service.derive_trend(flat, vs_bench_pct=-0.5) == "flat"
+
+
+def test_derive_trend_handles_short_series():
+    assert digest_service.derive_trend([], vs_bench_pct=0.0) == "flat"
+    assert digest_service.derive_trend([100.0], vs_bench_pct=0.0) == "flat"
