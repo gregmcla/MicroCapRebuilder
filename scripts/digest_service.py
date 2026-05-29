@@ -137,7 +137,135 @@ def vs_bench_pct(total_return_pct: float, bench: str, snapshots: "pd.DataFrame")
     return round(_f(total_return_pct) - _bench_return_pct(bench, snapshots), 2)
 
 
-def build_recap(txns_by_pid: dict, since: str, movers: list[dict], regime: dict) -> dict:
+def _compute_all_time_pnl(state) -> float:
+    """Transaction-replay all-time P&L (mirrors api/routes/portfolios.py lines 257-277).
+
+    PortfolioState has no .all_time_pnl attribute, so we replay the ledger.
+    """
+    positions = state.positions
+    unrealized_pnl = 0.0
+    if positions is not None and len(positions) > 0 and "unrealized_pnl" in positions.columns:
+        unrealized_pnl = float(positions["unrealized_pnl"].sum())
+
+    realized_pnl = 0.0
+    txns = state.transactions
+    if txns is not None and not txns.empty and "action" in txns.columns:
+        _holdings: dict = {}
+        for _, tx in txns.sort_values("date").iterrows():
+            _ticker = str(tx.get("ticker", ""))
+            _action = str(tx.get("action", ""))
+            _shares = float(tx.get("shares", 0) or 0)
+            _total = float(tx.get("total_value", 0) or 0)
+            if _action == "BUY" and _shares > 0:
+                _ps, _pc = _holdings.get(_ticker, (0.0, 0.0))
+                _holdings[_ticker] = (_ps + _shares, _pc + _total)
+            elif _action == "SELL" and _shares > 0:
+                if _ticker in _holdings and _holdings[_ticker][0] > 0:
+                    _hs, _hc = _holdings[_ticker]
+                    _avg = _hc / _hs
+                    _cost = _avg * _shares
+                    realized_pnl += _total - _cost
+                    _holdings[_ticker] = (max(0.0, _hs - _shares), max(0.0, _hc - _cost))
+
+    return round(realized_pnl + unrealized_pnl, 2)
+
+
+def build_digest(range_key: str = "3M") -> dict:
+    """Top-level: load active+live portfolios, assemble book + portfolios + recap.
+
+    Lazy-imports portfolio_state/registry so unit tests of helpers don't require yfinance.
+    """
+    from datetime import date, timedelta
+    from portfolio_registry import list_portfolios
+    from portfolio_state import load_portfolio_state
+
+    portfolios = list_portfolios(active_only=True)
+    rows, comp, snaps_by_pid, txns_by_pid = [], [], {}, {}
+    prev_close = (date.today() - timedelta(days=1)).isoformat()
+
+    for p in portfolios:
+        try:
+            state = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
+            # Live-mode only: paper-mode portfolios excluded entirely (not shown, not summed).
+            if state.paper_mode:
+                continue
+            snaps = state.snapshots
+            spark = [float(v) for v in snaps["total_equity"].tail(30).tolist()] if (snaps is not None and len(snaps) >= 2) else []
+            day_pnl = 0.0
+            if snaps is not None and len(snaps) >= 1:
+                row = snaps.iloc[-1]
+                if str(row.get("date", "")).startswith(date.today().isoformat()):
+                    day_pnl = _f(row.get("day_pnl"))
+            starting = _f(state.config.get("starting_capital", 50000), 50000)
+            # PortfolioState has no .all_time_pnl — compute via transaction replay
+            all_time_pnl = _compute_all_time_pnl(state)
+            total_ret = round((all_time_pnl / starting * 100), 2) if starting else 0.0
+            bench = bench_symbol(state.config)
+            alpha = vs_bench_pct(total_ret, bench, snaps)
+            rows.append({"id": p.id, "equity": state.total_equity, "day_pnl": day_pnl,
+                         "total_return_pct": total_ret, "exclude": p.exclude_from_aggregates})
+            comp.append({"id": p.id, "name": p.name,
+                         "strategy": state.config.get("strategy", {}).get("trading_style", ""),
+                         "equity": round(_f(state.total_equity), 2),
+                         "day_pct": round(day_pnl / state.total_equity * 100, 2) if state.total_equity else 0.0,
+                         "total_pct": total_ret, "vs_bench_pct": alpha, "bench_symbol": bench,
+                         "sparkline": spark, "trend": derive_trend(spark, alpha)})
+            snaps_by_pid[p.id] = snaps
+            txns_by_pid[p.id] = state.transactions
+        except Exception as e:
+            comp.append({"id": p.id, "name": p.name, "error": str(e)})
+
+    book = _roll_up_book(rows)
+    book["curve"] = build_book_curve(snaps_by_pid, range_key)
+    book["vs_spy_alltime_pct"] = _book_vs_spy(book["curve"])
+    book["vs_spy_today_pct"] = 0.0
+    regime = _book_regime()
+    recap = build_recap(txns_by_pid, since=prev_close, movers=_book_movers(), regime=regime)
+    comp.sort(key=lambda c: c.get("vs_bench_pct", -999), reverse=True)
+    return {"book": book, "portfolios": comp, "recap": recap}
+
+
+def _book_vs_spy(curve: dict) -> float:
+    b, s = curve.get("book", []), curve.get("spy", [])
+    if not b or not s:
+        return 0.0
+    return round((b[-1] - 100) - (s[-1] - 100), 2)
+
+
+def _book_regime() -> dict:
+    """Best-effort regime detection. Never raises."""
+    try:
+        from market_regime import get_regime_analysis
+        analysis = get_regime_analysis()
+        label = getattr(analysis.regime, "value", str(analysis.regime))
+        return {"label": label, "risk": 0, "risk_prev": 0}
+    except Exception:
+        return {"label": "UNKNOWN", "risk": 0, "risk_prev": 0}
+
+
+def _book_movers() -> list:
+    """Top/bottom day movers across active live portfolios (best-effort, never raises)."""
+    try:
+        from portfolio_registry import list_portfolios
+        from portfolio_state import load_portfolio_state
+        out = []
+        for p in list_portfolios(active_only=True):
+            try:
+                st = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
+                if st.paper_mode:
+                    continue
+                pos = st.positions
+                if pos is not None and len(pos) and "day_change_pct" in pos.columns:
+                    for _, r in pos.iterrows():
+                        out.append({"ticker": str(r["ticker"]), "pct": _f(r.get("day_change_pct"))})
+            except Exception:
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def build_recap(txns_by_pid: dict, since: str, movers: list, regime: dict) -> dict:
     """Classify trades since `since` (prior session close, YYYY-MM-DD) into buys/exits."""
     buys, exits = [], []
     for pid, df in txns_by_pid.items():
