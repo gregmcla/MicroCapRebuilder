@@ -61,15 +61,57 @@ def derive_trend(sparkline: list[float], vs_bench_pct: float) -> str:
 _RANGE_DAYS = {"1W": 7, "1M": 30, "3M": 90, "YTD": None, "ALL": None}
 
 
+def _period_for(start: str) -> str:
+    """Compute a yfinance period string covering start→today."""
+    from datetime import date
+    try:
+        days = (date.today() - date.fromisoformat(str(start)[:10])).days
+    except Exception:
+        return "1y"
+    for limit, p in [(31, "1mo"), (93, "3mo"), (186, "6mo"), (370, "1y"), (740, "2y"), (1850, "5y")]:
+        if days <= limit:
+            return p
+    return "max"
+
+
+def _fetch_bench_series(symbol: str, start: str, end: str) -> "pd.Series":
+    """Daily closes for symbol between start/end (inclusive).
+
+    Fetches via period string only — never passes start/end to cached_download
+    (mixing period+start/end raises ValueError in yfinance).
+    Handles flat and MultiIndex columns from cached_download.
+    Returns an empty Series on any failure; never raises.
+    """
+    try:
+        from yf_session import cached_download
+        df = cached_download(symbol, period=_period_for(start))
+        if df is None or df.empty:
+            return pd.Series(dtype=float)
+        # Flatten MultiIndex columns if present (mirrors stock_scorer._fetch_price_data)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+            df = df.loc[:, ~df.columns.duplicated()]
+        if "Close" not in df.columns:
+            return pd.Series(dtype=float)
+        close = df["Close"]
+        # Squeeze to Series if still 2-D (multi-ticker download edge case)
+        if hasattr(close, "ndim") and close.ndim > 1:
+            close = close.iloc[:, 0]
+        close = close.astype(float)
+        close.index = pd.to_datetime(close.index)
+        # Slice to the requested [start, end] window
+        try:
+            close = close.loc[str(start)[:10]:str(end)[:10]]
+        except Exception:
+            pass
+        return close
+    except Exception:
+        return pd.Series(dtype=float)
+
+
 def _fetch_spy_series(start: str, end: str) -> "pd.Series":
     """SPY daily closes between start/end (inclusive). Isolated for test mocking."""
-    from yf_session import cached_download
-    df = cached_download("SPY", start=start, end=end)
-    if df is None or df.empty:
-        return pd.Series(dtype=float)
-    close = df["Close"] if "Close" in df.columns else df.iloc[:, 0]
-    close.index = pd.to_datetime(close.index)
-    return close
+    return _fetch_bench_series("SPY", start, end)
 
 
 def build_book_curve(snapshots_by_pid: dict, range_key: str = "3M") -> dict:
@@ -112,22 +154,13 @@ def bench_symbol(config: dict) -> str:
     return config.get("benchmark_symbol") or "SPY"
 
 
-def _fetch_spy_series_for(symbol: str, start: str, end: str) -> "pd.Series":
-    """Daily closes for an arbitrary benchmark symbol. Isolated for mocking."""
-    from yf_session import cached_download
-    df = cached_download(symbol, start=start, end=end)
-    if df is None or df.empty:
-        return pd.Series(dtype=float)
-    return (df["Close"] if "Close" in df.columns else df.iloc[:, 0]).astype(float)
-
-
 def _bench_return_pct(symbol: str, snapshots: "pd.DataFrame") -> float:
     """Benchmark total return % over the snapshot window. Isolated for mocking."""
     if snapshots is None or snapshots.empty:
         return 0.0
     start = pd.to_datetime(snapshots["date"]).min().strftime("%Y-%m-%d")
     end = pd.to_datetime(snapshots["date"]).max().strftime("%Y-%m-%d")
-    s = _fetch_spy_series_for(symbol, start, end)
+    s = _fetch_bench_series(symbol, start, end)
     if s is None or len(s) < 2:
         return 0.0
     first, last = float(s.iloc[0]), float(s.iloc[-1])

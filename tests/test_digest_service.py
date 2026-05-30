@@ -103,3 +103,20 @@ def test_compute_posture_maps_regime_and_exposure():
     assert p["value"] > 0.6 and "risk-on" in p["label"].lower()
     d = digest_service.compute_posture(regime="BEAR", deployed_pct=20.0, book_alpha=-1.0)
     assert d["value"] < 0.4
+
+
+def test_fetch_bench_series_uses_period_not_start_end(monkeypatch):
+    import pandas as pd
+    calls = {}
+    def fake_cached_download(symbol, period="1y", **kwargs):
+        calls["period"] = period
+        calls["kwargs"] = kwargs
+        idx = pd.to_datetime(["2026-05-01", "2026-05-02", "2026-05-29"])
+        return pd.DataFrame({"Close": [400.0, 405.0, 410.0]}, index=idx)
+    import yf_session
+    monkeypatch.setattr(yf_session, "cached_download", fake_cached_download)
+    s = digest_service._fetch_bench_series("SPY", "2026-05-01", "2026-05-29")
+    # cached_download must be called with a period and WITHOUT start/end (the bug)
+    assert "start" not in calls["kwargs"] and "end" not in calls["kwargs"]
+    assert calls["period"] in {"1mo", "3mo", "6mo", "1y", "2y", "5y", "max"}
+    assert len(s) >= 1 and float(s.iloc[-1]) == 410.0
