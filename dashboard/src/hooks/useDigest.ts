@@ -16,6 +16,6 @@ export function useDigestNarrative(range = "3M") {
   return useQuery<DigestNarrative>({
     queryKey: ["digest-narrative", range],
     queryFn: () => api.getDigestNarrative(range),
-    staleTime: 600_000,
+    staleTime: Infinity,
   });
 }

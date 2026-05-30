@@ -8,6 +8,7 @@ respects exclude_from_aggregates for book totals.
 import json
 import logging
 import math
+from datetime import datetime
 from pathlib import Path
 import pandas as pd
 
@@ -384,6 +385,44 @@ def build_digest_narrative(digest: dict, posture: dict) -> dict:
     parsed["posture"] = posture.get("value", 0.5)
     parsed["posture_label"] = posture.get("label", "")
     return parsed
+
+
+_NARRATIVE_CACHE_FILE = Path(__file__).resolve().parent.parent / "data" / "digest_narrative.json"
+
+
+def read_cached_narrative() -> dict | None:
+    try:
+        if _NARRATIVE_CACHE_FILE.exists():
+            return json.loads(_NARRATIVE_CACHE_FILE.read_text())
+    except Exception as e:
+        logging.warning("failed to read digest narrative cache: %s", e)
+    return None
+
+
+def write_cached_narrative(narrative: dict) -> None:
+    try:
+        _NARRATIVE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _NARRATIVE_CACHE_FILE.write_text(json.dumps(narrative))
+    except Exception as e:
+        logging.warning("failed to write digest narrative cache: %s", e)
+
+
+def get_or_build_narrative(range_key: str = "3M", regenerate: bool = False) -> dict:
+    """Return the cached narrative unless regenerate=True (or no cache exists).
+    Only a fresh build calls Claude. Stamps `generated_at`."""
+    if not regenerate:
+        cached = read_cached_narrative()
+        if cached:
+            return cached
+    d = build_digest(range_key)
+    book = d["book"]
+    posture = compute_posture(
+        regime=d["recap"].get("regime", {}).get("label", "SIDEWAYS"),
+        deployed_pct=0.0, book_alpha=book.get("vs_spy_alltime_pct", 0.0))
+    narrative = build_digest_narrative(d, posture)
+    narrative["generated_at"] = datetime.now().isoformat()
+    write_cached_narrative(narrative)
+    return narrative
 
 
 def _build_digest_narrative_prompt(digest: dict, posture: dict) -> str:

@@ -380,6 +380,12 @@
   }
 }
 
+.digest .narrefresh { background: none; border: none; color: var(--text-1); cursor: pointer; padding: 3px; border-radius: 6px; display: inline-flex; }
+.digest .narrefresh:hover { color: var(--accent-bright); background: var(--surface-2); }
+.digest .narrefresh:disabled { opacity: .5; cursor: default; }
+.digest .narrefresh:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) { .digest .narrefresh .spin { animation: narspin 0.8s linear infinite; } @keyframes narspin { to { transform: rotate(360deg); } } }
+
 .digest .nar .body {
   display: grid;
   grid-template-columns: 1.55fr 1px 1fr;

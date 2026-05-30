@@ -207,6 +207,6 @@ export const api = {
   // Daily Digest
   getDigest: (range = "3M"): Promise<DigestData> =>
     get<DigestData>(`/digest?range=${range}`),
-  getDigestNarrative: (range = "3M"): Promise<DigestNarrative> =>
-    get<DigestNarrative>(`/digest/narrative?range=${range}`),
+  getDigestNarrative: (range = "3M", regenerate = false): Promise<DigestNarrative> =>
+    get<DigestNarrative>(`/digest/narrative?range=${range}&regenerate=${regenerate}`),
 };

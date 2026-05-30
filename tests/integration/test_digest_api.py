@@ -83,3 +83,25 @@ def test_digest_narrative_falls_back_on_bad_json(monkeypatch):
                                     posture={"value": 0.5, "label": "Balanced · selective"})
     assert "thesis" in out and out["thesis"]   # deterministic fallback, never blank
     assert out["posture"] == 0.5
+
+
+def test_narrative_cache_avoids_rebuild(monkeypatch, tmp_path):
+    import digest_service as ds
+    monkeypatch.setattr(ds, "_NARRATIVE_CACHE_FILE", tmp_path / "digest_narrative.json")
+    calls = {"n": 0}
+    def fake_build(rk="3M"):
+        return {"book": {"vs_spy_alltime_pct": 1.0, "health": {"green": 1, "red": 0}}, "portfolios": [], "recap": {"regime": {"label": "BULL"}}}
+    def fake_narr(d, posture):
+        calls["n"] += 1
+        return {"thesis": "t", "body": "b", "callout": "", "working": [], "watching": [], "posture": posture["value"], "posture_label": posture["label"]}
+    monkeypatch.setattr(ds, "build_digest", fake_build)
+    monkeypatch.setattr(ds, "build_digest_narrative", fake_narr)
+    # cold → builds (1 call), stamps generated_at, writes cache
+    n1 = ds.get_or_build_narrative()
+    assert calls["n"] == 1 and "generated_at" in n1
+    # warm → served from cache, NO new build
+    n2 = ds.get_or_build_narrative()
+    assert calls["n"] == 1
+    # regenerate → rebuilds
+    n3 = ds.get_or_build_narrative(regenerate=True)
+    assert calls["n"] == 2

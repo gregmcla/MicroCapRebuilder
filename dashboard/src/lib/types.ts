@@ -741,4 +741,5 @@ export interface DigestNarrative {
   posture_label: string;
   working: string[];
   watching: string[];
+  generated_at?: string;
 }
