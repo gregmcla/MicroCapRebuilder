@@ -50,9 +50,14 @@ import pandas as pd
 
 
 def test_build_book_curve_aligns_and_normalizes(monkeypatch):
+    # max:      equity [100→110], day_pnl [0→10]
+    # gov-infra: equity [50→55],  day_pnl [0→5]
+    # Day-2: prior = (110+55)-(10+5) = 150; pnl = 15; r = 0.10 → book[-1] = 110.0
     snaps = {
-        "max":      pd.DataFrame({"date": ["2026-05-01", "2026-05-02"], "total_equity": [100.0, 110.0]}),
-        "gov-infra":pd.DataFrame({"date": ["2026-05-01", "2026-05-02"], "total_equity": [50.0, 55.0]}),
+        "max":      pd.DataFrame({"date": ["2026-05-01", "2026-05-02"],
+                                  "total_equity": [100.0, 110.0], "day_pnl": [0.0, 10.0]}),
+        "gov-infra":pd.DataFrame({"date": ["2026-05-01", "2026-05-02"],
+                                  "total_equity": [50.0, 55.0],   "day_pnl": [0.0, 5.0]}),
     }
     spy = pd.Series([400.0, 408.0], index=pd.to_datetime(["2026-05-01", "2026-05-02"]))
     monkeypatch.setattr(digest_service, "_fetch_spy_series", lambda start, end: spy)
@@ -63,6 +68,25 @@ def test_build_book_curve_aligns_and_normalizes(monkeypatch):
     assert curve["spy"][0] == 100.0
     assert round(curve["spy"][-1], 1) == 102.0
     assert curve["range"] == "ALL"
+
+
+def test_build_book_curve_is_deposit_neutral(monkeypatch):
+    # equity jumps 100 -> 200 but day_pnl is 0 (pure deposit) -> book stays flat at 100
+    snaps = {"p": pd.DataFrame({"date": ["2026-05-01", "2026-05-02"],
+                                "total_equity": [100.0, 200.0], "day_pnl": [0.0, 0.0]})}
+    monkeypatch.setattr(digest_service, "_fetch_spy_series", lambda s, e: pd.Series(dtype=float))
+    curve = digest_service.build_book_curve(snaps, range_key="ALL")
+    assert curve["book"][0] == 100.0
+    assert round(curve["book"][-1], 1) == 100.0
+
+
+def test_build_book_curve_reflects_real_pnl(monkeypatch):
+    # real +10 gain on a 100 base -> +10%
+    snaps = {"p": pd.DataFrame({"date": ["2026-05-01", "2026-05-02"],
+                                "total_equity": [100.0, 110.0], "day_pnl": [0.0, 10.0]})}
+    monkeypatch.setattr(digest_service, "_fetch_spy_series", lambda s, e: pd.Series(dtype=float))
+    curve = digest_service.build_book_curve(snaps, range_key="ALL")
+    assert round(curve["book"][-1], 1) == 110.0
 
 
 def test_vs_bench_uses_configured_symbol():

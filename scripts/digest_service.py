@@ -116,34 +116,45 @@ def _fetch_spy_series(start: str, end: str) -> "pd.Series":
 
 
 def build_book_curve(snapshots_by_pid: dict, range_key: str = "3M") -> dict:
-    """Sum per-portfolio total_equity by date, normalize to 100, overlay SPY."""
-    frames = []
+    """Capital-flow-neutral book performance index (base 100) + SPY overlay.
+
+    Compounds a deposit-neutral daily return (sum day_pnl / summed prior equity)
+    so capital injections / new portfolios entering don't register as returns.
+    """
+    eq_frames, pnl_frames = [], []
     for pid, df in snapshots_by_pid.items():
         if df is None or df.empty or "total_equity" not in df.columns:
             continue
-        s = df.set_index(pd.to_datetime(df["date"]))["total_equity"].astype(float)
-        frames.append(s.rename(pid))
-    if not frames:
+        idx = pd.to_datetime(df["date"])
+        eq_frames.append(pd.Series(df["total_equity"].astype(float).values, index=idx).rename(pid))
+        pnl_vals = df["day_pnl"].astype(float).values if "day_pnl" in df.columns else [0.0] * len(df)
+        pnl_frames.append(pd.Series(pnl_vals, index=idx).rename(pid))
+    if not eq_frames:
         return {"range": range_key, "book": [], "spy": []}
-    book = pd.concat(frames, axis=1).sort_index().ffill().dropna(how="all").sum(axis=1)
+
+    eq_total = pd.concat(eq_frames, axis=1).sort_index().ffill().sum(axis=1)
+    pnl_total = pd.concat(pnl_frames, axis=1).sort_index().fillna(0.0).sum(axis=1)
+    book_df = pd.DataFrame({"eq": eq_total, "pnl": pnl_total}).dropna(subset=["eq"]).sort_index()
 
     days = _RANGE_DAYS.get(range_key)
     if days:
-        book = book.tail(days)
-
-    if book.empty:
+        book_df = book_df.tail(days)
+    if book_df.empty:
         return {"range": range_key, "book": [], "spy": []}
 
-    base = book.iloc[0] or 1.0
-    book_norm = (book / base * 100).round(3)
+    prior = book_df["eq"] - book_df["pnl"]
+    daily_ret = (book_df["pnl"] / prior.where(prior > 0)).fillna(0.0)
+    index = (1.0 + daily_ret).cumprod()
+    base = index.iloc[0] or 1.0
+    book_norm = (index / base * 100).round(3)
 
-    start = book.index[0].strftime("%Y-%m-%d")
-    end = book.index[-1].strftime("%Y-%m-%d")
+    start = book_df.index[0].strftime("%Y-%m-%d")
+    end = book_df.index[-1].strftime("%Y-%m-%d")
     spy_raw = _fetch_spy_series(start, end)
     if spy_raw.empty:
         spy_norm = []
     else:
-        spy_aligned = spy_raw.reindex(book.index, method="ffill").bfill()
+        spy_aligned = spy_raw.reindex(book_df.index, method="ffill").bfill()
         spy_base = spy_aligned.iloc[0] or 1.0
         spy_norm = (spy_aligned / spy_base * 100).round(3).tolist()
 
