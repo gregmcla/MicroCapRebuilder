@@ -215,6 +215,9 @@
   flex-shrink: 0;
 }
 
+.digest .r1 .legend b { font-weight: 600; }
+.digest .r1 .legend .alpha { color: var(--text-1); }
+
 /* SPY dashed swatch — striped repeating-gradient bar */
 .digest .legend i.dashed {
   background: repeating-linear-gradient(
@@ -262,9 +265,9 @@
 .digest .r1 .delta {
   position: absolute;
   right: 6px; top: 6px;
-  background: rgba(52,211,153,.14);
-  border: 1px solid rgba(52,211,153,.3);
-  color: var(--green);
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
