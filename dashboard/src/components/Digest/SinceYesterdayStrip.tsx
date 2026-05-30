@@ -14,7 +14,7 @@ export default function SinceYesterdayStrip({ recap }: { recap: DigestData["reca
           <div className="d">Stops & take-profits triggered.</div></div>
         <div className="tlnode"><div className="dot"><span className="d-acc" /></div>
           <div className="h">Biggest swings <span className="tm">live</span></div>
-          <div className="d mono">{swing}</div></div>
+          <div className="d"><span className="mono">{swing}</span></div></div>
         <div className="tlnode"><div className="dot"><span className="d-out" /></div>
           <div className="h">Regime steady</div>
           <div className="d"><span className="acc">{recap.regime.label}</span>

@@ -1,7 +1,11 @@
+import type React from "react";
 import type { DigestData } from "../../lib/types";
 
 const fmt$ = (n: number) => "$" + Math.round(n).toLocaleString();
 const RANGES = ["1W", "1M", "3M", "YTD", "ALL"] as const;
+const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+};
 
 export default function BookHero({ data, range, onRange }:
   { data: DigestData["book"]; range: string; onRange: (r: string) => void }) {
@@ -36,7 +40,8 @@ export default function BookHero({ data, range, onRange }:
         <div className="charttop">
           <div className="legend"><span><i style={{ background: "var(--green)" }} />You</span><span><i className="dashed" />SPY</span></div>
           <div className="ranges">{RANGES.map(r =>
-            <span key={r} className={r === range ? "on" : ""} onClick={() => onRange(r)}>{r}</span>)}</div>
+            <span key={r} className={r === range ? "on" : ""} onClick={() => onRange(r)}
+              role="button" tabIndex={0} onKeyDown={keyAct(() => onRange(r))}>{r}</span>)}</div>
         </div>
         <div className="chartbox">
           <div className="delta">▲ {up ? "+" : ""}{fmt$(data.day_pnl)}</div>

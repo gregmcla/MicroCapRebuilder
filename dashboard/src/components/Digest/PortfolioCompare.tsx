@@ -1,5 +1,10 @@
 import { useState } from "react";
+import type React from "react";
 import type { DigestPortfolio } from "../../lib/types";
+
+const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+};
 
 const SORTS = ["Working", "Today", "Equity", "vs SPY", "Name"] as const;
 const fmtM = (n: number) => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${Math.round(n / 1e3)}k`;
@@ -27,8 +32,10 @@ export default function PortfolioCompare({ rows, onGrid }: { rows: DigestPortfol
     <div className="reg">
       <div className="r3head">
         <div className="sorts">{SORTS.map(s =>
-          <span key={s} className={s === sort ? "on" : ""} onClick={() => setSort(s)}>{s}</span>)}</div>
-        <div className="gridtoggle" onClick={onGrid}>▦ Grid view</div>
+          <span key={s} className={s === sort ? "on" : ""} onClick={() => setSort(s)}
+            role="button" tabIndex={0} onKeyDown={keyAct(() => setSort(s))}>{s}</span>)}</div>
+        <div className="gridtoggle" onClick={onGrid}
+          role="button" tabIndex={0} onKeyDown={keyAct(onGrid)}>▦ Grid view</div>
       </div>
       <div className="colhdr"><div>#</div><div>Portfolio</div><div>Equity</div><div>Today</div><div>Total</div><div>vs Bench</div><div style={{ textAlign: "right" }}>30d</div><div>Trend</div></div>
       {sorted.map((p, i) => {

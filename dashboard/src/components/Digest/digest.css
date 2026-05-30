@@ -7,6 +7,17 @@
    Animations gated under @media (prefers-reduced-motion: no-preference).
    ───────────────────────────────────────────────────────────── */
 
+/* ── Keyboard focus rings (a11y) ── */
+.digest .ranges span:focus-visible,
+.digest .sorts span:focus-visible,
+.digest .gridtoggle:focus-visible,
+.digest .prow:focus-visible,
+.digest .tlnode:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 /* ── Keyframes (inside reduced-motion guard) ── */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes pulseDot {
@@ -766,3 +777,6 @@
   background: transparent;
   display: block;
 }
+
+/* ── Overflow protection: prevent narrative main column blowing layout ── */
+.digest .nar .body .main { min-width: 0; }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import "./digest.css";
 import { useDigest, useDigestNarrative } from "../../hooks/useDigest";
 import BookHero from "./BookHero";
@@ -6,6 +7,10 @@ import GScottRead from "./GScottRead";
 import PortfolioCompare from "./PortfolioCompare";
 import SinceYesterdayStrip from "./SinceYesterdayStrip";
 import OverviewPage from "../OverviewPage";
+
+const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+};
 
 export default function DailyDigest() {
   const [range, setRange] = useState("3M");
@@ -18,7 +23,8 @@ export default function DailyDigest() {
     return (
       <div className="digest">
         <div className="reg" style={{ borderBottom: "none" }}>
-          <div className="gridtoggle" onClick={() => setGridView(false)}>&#9666; Back to Digest</div>
+          <div className="gridtoggle" onClick={() => setGridView(false)}
+            role="button" tabIndex={0} onKeyDown={keyAct(() => setGridView(false))}>&#9666; Back to Digest</div>
         </div>
         <OverviewPage />
       </div>
