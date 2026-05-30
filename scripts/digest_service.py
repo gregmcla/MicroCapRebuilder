@@ -337,12 +337,16 @@ def build_recap(txns_by_pid: dict, since: str, movers: list, regime: dict) -> di
     }
 
 
+# GScott's Read is a synthesis/summarization task — Sonnet is the right tier
+# (Opus is overkill, Haiku weaker on voice). Override here, not the global default.
+DIGEST_NARRATIVE_MODEL = "claude-sonnet-4-6"
+
+
 def _call_claude_json(prompt: str) -> str:
     """Single Claude call returning raw text. Isolated for test mocking."""
     import anthropic
-    from schema import CLAUDE_MODEL
     client = anthropic.Anthropic(timeout=180.0)
-    msg = client.messages.create(model=CLAUDE_MODEL, max_tokens=900,
+    msg = client.messages.create(model=DIGEST_NARRATIVE_MODEL, max_tokens=900,
                                  messages=[{"role": "user", "content": prompt}])
     return msg.content[0].text
 
