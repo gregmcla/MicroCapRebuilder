@@ -212,6 +212,16 @@ def _book_vs_spy(curve: dict) -> float:
     return round((b[-1] - 100) - (s[-1] - 100), 2)
 
 
+def _spy_today_move(spy_series: list) -> float:
+    """Last-day % move of SPY from the normalized curve series.
+
+    Returns (last / prev - 1) * 100, or 0.0 if series is too short.
+    """
+    if len(spy_series) >= 2 and spy_series[-2]:
+        return round((spy_series[-1] / spy_series[-2] - 1) * 100, 2)
+    return 0.0
+
+
 def _book_regime() -> dict:
     """Best-effort regime detection. Never raises."""
     try:
@@ -281,7 +291,8 @@ def build_digest(range_key: str = "3M") -> dict:
     book = _roll_up_book(rows)
     book["curve"] = build_book_curve(snaps_by_pid, range_key)
     book["vs_spy_alltime_pct"] = _book_vs_spy(book["curve"])
-    book["vs_spy_today_pct"] = 0.0  # TODO: intraday SPY comparison not yet computed
+    spy_today = _spy_today_move(book["curve"].get("spy", []))
+    book["vs_spy_today_pct"] = round(book.get("day_pnl_pct", 0.0) - spy_today, 2)
     regime = _book_regime()
     recap = build_recap(txns_by_pid, since=prev_close, movers=movers, regime=regime)
     comp.sort(key=lambda c: c.get("vs_bench_pct", -999), reverse=True)

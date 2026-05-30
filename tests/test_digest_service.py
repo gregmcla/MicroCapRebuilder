@@ -105,6 +105,12 @@ def test_compute_posture_maps_regime_and_exposure():
     assert d["value"] < 0.4
 
 
+def test_spy_today_move():
+    assert digest_service._spy_today_move([100.0, 102.0]) == 2.0
+    assert digest_service._spy_today_move([100.0]) == 0.0
+    assert digest_service._spy_today_move([]) == 0.0
+
+
 def test_fetch_bench_series_uses_period_not_start_end(monkeypatch):
     import pandas as pd
     calls = {}

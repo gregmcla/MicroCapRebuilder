@@ -16,7 +16,7 @@ function sparkPts(arr: number[]) {
   return arr.map((v, i) => `${(i / (arr.length - 1)) * 84},${26 - ((v - min) / span) * 23 - 1}`).join(" ");
 }
 
-export default function PortfolioCompare({ rows, onGrid }: { rows: DigestPortfolio[]; onGrid: () => void }) {
+export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: DigestPortfolio[]; onGrid: () => void; onSelect: (id: string) => void }) {
   const [sort, setSort] = useState<string>("Working");
   const sorted = [...rows].sort((a, b) => {
     switch (sort) {
@@ -42,7 +42,11 @@ export default function PortfolioCompare({ rows, onGrid }: { rows: DigestPortfol
         const pill = p.trend === "ahead" ? "up" : p.trend === "fading" ? "dn" : "fl";
         const w = Math.min(44, Math.abs(p.vs_bench_pct));
         return (
-          <div className={`prow ${i === 0 ? "leader" : ""}`} key={p.id}>
+          <div className={`prow ${i === 0 ? "leader" : ""}`} key={p.id}
+            onClick={() => onSelect(p.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={keyAct(() => onSelect(p.id))}>
             <div className="rank">{String(i + 1).padStart(2, "0")}</div>
             <div><div className="pname">{p.name}</div><div className="pstrat">{p.strategy}</div></div>
             <div className="num mono">{fmtM(p.equity)}</div>
