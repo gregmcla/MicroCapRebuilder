@@ -837,3 +837,35 @@
   .digest .dspin { animation: dspin 0.7s linear infinite; }
   @keyframes dspin { to { transform: rotate(360deg); } }
 }
+
+/* ── Aggregate book totals band (BookStats) — under BookHero ───────────────── */
+.digest .bookstats .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.digest .bookstats .chip {
+  background: linear-gradient(180deg, var(--surface-1), var(--surface-0));
+  border: 1px solid var(--border-0);
+  border-radius: 9px;
+  padding: 10px 14px;
+  min-width: 132px;
+  flex: 1 1 132px;
+  max-width: 220px;
+}
+.digest .bookstats .chip .k {
+  font-size: 9px;
+  color: var(--text-0);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.digest .bookstats .chip .v {
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 6px;
+  color: var(--text-3);
+  letter-spacing: -0.01em;
+}
+.digest .bookstats .chip .v.grn { color: var(--green); }
+.digest .bookstats .chip .v.red { color: var(--red); }

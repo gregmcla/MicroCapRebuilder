@@ -3,9 +3,11 @@ import type React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import "./digest.css";
 import { useDigest, useDigestNarrative } from "../../hooks/useDigest";
+import { useOverview } from "../../hooks/usePortfolios";
 import { usePortfolioStore } from "../../lib/store";
 import { api } from "../../lib/api";
 import BookHero from "./BookHero";
+import BookStats from "./BookStats";
 import GScottRead from "./GScottRead";
 import PortfolioCompare from "./PortfolioCompare";
 import SinceYesterdayStrip from "./SinceYesterdayStrip";
@@ -24,6 +26,7 @@ export default function DailyDigest() {
   const qc = useQueryClient();
   const { data, isLoading } = useDigest(range);
   const { data: narrative } = useDigestNarrative(range);
+  const { data: overview } = useOverview();
 
   const refreshRead = async () => {
     setRefreshing(true);
@@ -52,6 +55,7 @@ export default function DailyDigest() {
       <DigestActions />
       <div className="aurora" />
       <BookHero data={data.book} range={range} onRange={setRange} />
+      <BookStats ov={overview} />
       <GScottRead n={narrative} onRefresh={refreshRead} refreshing={refreshing} />
       <PortfolioCompare rows={data.portfolios.filter(p => !p.error)} onGrid={() => setGridView(true)} onSelect={setPortfolio} />
       <SinceYesterdayStrip recap={data.recap} />
