@@ -357,6 +357,10 @@ def get_overview():
         "total_all_time_pnl": round(total_all_time_pnl, 2),
         "total_starting_capital": round(total_starting_capital, 2),
         "total_return_pct": round((total_all_time_pnl / total_starting_capital * 100) if total_starting_capital > 0 else 0.0, 2),
+        # Return on Invested Capital — P&L over capital currently deployed
+        # (equity - cash = positions value), vs total_return_pct which is over
+        # total capital. Higher than total return by the cash-drag amount.
+        "total_roic_pct": round((total_all_time_pnl / (total_equity - total_cash) * 100) if (total_equity - total_cash) > 0 else 0.0, 2),
         "total_positions": total_positions,
         "top_movers": top_movers,
         "bottom_movers": bottom_movers,

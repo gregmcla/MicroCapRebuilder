@@ -76,6 +76,7 @@ export interface OverviewData {
   total_all_time_pnl: number;
   total_starting_capital: number;
   total_return_pct: number;
+  total_roic_pct: number;
   total_positions: number;
   top_movers: CrossPortfolioMover[];
   bottom_movers: CrossPortfolioMover[];

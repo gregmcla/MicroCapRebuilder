@@ -98,10 +98,10 @@ function cardGlow(returnPct: number): string {
  * compact Day P&L "today" focus; this gives the all-time totals real estate).
  */
 function AggregateStatsBand({
-  totalEquity, totalCash, totalStartingCapital, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+  totalEquity, totalCash, totalStartingCapital, totalAllTimePnl, totalReturnPct, totalRoicPct, totalPositions, portfolioCount,
 }: {
   totalEquity: number; totalCash: number; totalStartingCapital: number; totalAllTimePnl: number;
-  totalReturnPct: number; totalPositions: number; portfolioCount: number;
+  totalReturnPct: number; totalRoicPct: number; totalPositions: number; portfolioCount: number;
 }) {
   const deployed = Math.max(0, totalEquity - totalCash);
   const usd = (v: number) => `$${Math.round(v).toLocaleString()}`;
@@ -130,9 +130,10 @@ function AggregateStatsBand({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "12px 24px", maxWidth: "700px" }}>
         <Stat label="Total Equity"     value={usd(totalEquity)} />
         <Stat label="Starting Capital" value={usd(totalStartingCapital)} />
-        <Stat label="All-Time P&L"     value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
-        <Stat label="Return"           value={fmtPct(totalReturnPct)} color={pnlColor(totalReturnPct)} />
-        <Stat label="Deployed"         value={usd(deployed)} />
+        <Stat label="All-Time P&L"      value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
+        <Stat label="Return"            value={fmtPct(totalReturnPct)} color={pnlColor(totalReturnPct)} />
+        <Stat label="Return on Invested" value={fmtPct(totalRoicPct)} color={pnlColor(totalRoicPct)} />
+        <Stat label="Deployed"          value={usd(deployed)} />
         <Stat label="Cash"             value={usd(totalCash)} />
         <Stat label="Positions"        value={String(totalPositions)} />
       </div>
@@ -1389,6 +1390,7 @@ export default function OverviewPage() {
         totalStartingCapital={overview?.total_starting_capital ?? 0}
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
+        totalRoicPct={overview?.total_roic_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
         portfolioCount={aggregable.length}
       />

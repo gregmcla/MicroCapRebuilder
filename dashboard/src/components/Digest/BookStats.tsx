@@ -19,6 +19,7 @@ export default function BookStats({ ov }: { ov?: OverviewData }) {
   const startingCapital = ov.total_starting_capital ?? 0;
   const allTime = ov.total_all_time_pnl ?? 0;
   const ret = ov.total_return_pct ?? 0;
+  const roic = ov.total_roic_pct ?? 0;
   const positions = ov.total_positions ?? 0;
 
   const stats: { k: string; v: string; c?: string }[] = [
@@ -26,6 +27,7 @@ export default function BookStats({ ov }: { ov?: OverviewData }) {
     { k: "Starting Capital", v: usd(startingCapital) },
     { k: "All-Time P&L", v: signedUsd(allTime), c: sc(allTime) },
     { k: "Return", v: pct(ret), c: sc(ret) },
+    { k: "Return on Invested", v: pct(roic), c: sc(roic) },
     { k: "Deployed", v: usd(deployed) },
     { k: "Cash", v: usd(cash) },
     { k: "Positions", v: String(positions) },
