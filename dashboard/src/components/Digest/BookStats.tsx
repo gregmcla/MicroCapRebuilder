@@ -15,16 +15,18 @@ export default function BookStats({ ov }: { ov?: OverviewData }) {
   if (!ov) return null;
   const equity = ov.total_equity ?? 0;
   const cash = ov.total_cash ?? 0;
-  const invested = Math.max(0, equity - cash);
+  const deployed = Math.max(0, equity - cash);
+  const startingCapital = ov.total_starting_capital ?? 0;
   const allTime = ov.total_all_time_pnl ?? 0;
   const ret = ov.total_return_pct ?? 0;
   const positions = ov.total_positions ?? 0;
 
   const stats: { k: string; v: string; c?: string }[] = [
     { k: "Total Equity", v: usd(equity) },
+    { k: "Starting Capital", v: usd(startingCapital) },
     { k: "All-Time P&L", v: signedUsd(allTime), c: sc(allTime) },
     { k: "Return", v: pct(ret), c: sc(ret) },
-    { k: "Invested", v: usd(invested) },
+    { k: "Deployed", v: usd(deployed) },
     { k: "Cash", v: usd(cash) },
     { k: "Positions", v: String(positions) },
   ];

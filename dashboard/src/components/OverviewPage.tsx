@@ -98,12 +98,12 @@ function cardGlow(returnPct: number): string {
  * compact Day P&L "today" focus; this gives the all-time totals real estate).
  */
 function AggregateStatsBand({
-  totalEquity, totalCash, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+  totalEquity, totalCash, totalStartingCapital, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
 }: {
-  totalEquity: number; totalCash: number; totalAllTimePnl: number;
+  totalEquity: number; totalCash: number; totalStartingCapital: number; totalAllTimePnl: number;
   totalReturnPct: number; totalPositions: number; portfolioCount: number;
 }) {
-  const invested = Math.max(0, totalEquity - totalCash);
+  const deployed = Math.max(0, totalEquity - totalCash);
   const usd = (v: number) => `$${Math.round(v).toLocaleString()}`;
 
   function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -127,13 +127,14 @@ function AggregateStatsBand({
       <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", marginBottom: "8px", fontWeight: 600 }}>
         All Portfolios <span style={{ color: "var(--text-1)" }}>({portfolioCount} active)</span>
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "12px 24px", maxWidth: "520px" }}>
-        <Stat label="Total Equity" value={usd(totalEquity)} />
-        <Stat label="All-Time P&L" value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
-        <Stat label="Return"       value={fmtPct(totalReturnPct)} color={pnlColor(totalReturnPct)} />
-        <Stat label="Invested"     value={usd(invested)} />
-        <Stat label="Cash"         value={usd(totalCash)} />
-        <Stat label="Positions"    value={String(totalPositions)} />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "12px 24px", maxWidth: "700px" }}>
+        <Stat label="Total Equity"     value={usd(totalEquity)} />
+        <Stat label="Starting Capital" value={usd(totalStartingCapital)} />
+        <Stat label="All-Time P&L"     value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
+        <Stat label="Return"           value={fmtPct(totalReturnPct)} color={pnlColor(totalReturnPct)} />
+        <Stat label="Deployed"         value={usd(deployed)} />
+        <Stat label="Cash"             value={usd(totalCash)} />
+        <Stat label="Positions"        value={String(totalPositions)} />
       </div>
     </div>
   );
@@ -1385,6 +1386,7 @@ export default function OverviewPage() {
       <AggregateStatsBand
         totalEquity={totalEquity}
         totalCash={totalCash}
+        totalStartingCapital={overview?.total_starting_capital ?? 0}
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}
