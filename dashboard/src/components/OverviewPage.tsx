@@ -92,6 +92,53 @@ function cardGlow(returnPct: number): string {
 // Aggregate header bar
 // ---------------------------------------------------------------------------
 
+/**
+ * Dedicated aggregate-stats band shown directly beneath the top bar.
+ * Summarizes all active portfolios at readable size (the top bar keeps the
+ * compact Day P&L "today" focus; this gives the all-time totals real estate).
+ */
+function AggregateStatsBand({
+  totalEquity, totalCash, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+}: {
+  totalEquity: number; totalCash: number; totalAllTimePnl: number;
+  totalReturnPct: number; totalPositions: number; portfolioCount: number;
+}) {
+  const invested = Math.max(0, totalEquity - totalCash);
+  const usd = (v: number) => `$${Math.round(v).toLocaleString()}`;
+
+  function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
+          {label}
+        </p>
+        <p className="font-mono font-bold tabular-nums" style={{ fontSize: "16px", color: color ?? "var(--text-4)", letterSpacing: "-0.01em", lineHeight: 1.1 }}>
+          {value}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="shrink-0"
+      style={{ background: "var(--surface-1)", borderBottom: "1px solid var(--border-0)", padding: "10px 16px" }}
+    >
+      <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-0)", marginBottom: "8px", fontWeight: 600 }}>
+        All Portfolios <span style={{ color: "var(--text-1)" }}>({portfolioCount} active)</span>
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "12px 24px", maxWidth: "520px" }}>
+        <Stat label="Total Equity" value={usd(totalEquity)} />
+        <Stat label="All-Time P&L" value={fmt$(totalAllTimePnl)} color={pnlColor(totalAllTimePnl)} />
+        <Stat label="Return"       value={fmtPct(totalReturnPct)} color={pnlColor(totalReturnPct)} />
+        <Stat label="Invested"     value={usd(invested)} />
+        <Stat label="Cash"         value={usd(totalCash)} />
+        <Stat label="Positions"    value={String(totalPositions)} />
+      </div>
+    </div>
+  );
+}
+
 function AggregateBar({
   totalEquity, totalCash, totalDayPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
   portfoliosUp, portfoliosDown, deployedPct,
@@ -1332,6 +1379,16 @@ export default function OverviewPage() {
         onAnalyzeAll={handleAnalyzeAll}
         analyzeAllRunning={analyzeAll.running}
         analyzeAllLabel={analyzeAllLabel}
+      />
+
+      {/* Aggregate stats across all active portfolios — under the day stats */}
+      <AggregateStatsBand
+        totalEquity={totalEquity}
+        totalCash={totalCash}
+        totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
+        totalReturnPct={overview?.total_return_pct ?? 0}
+        totalPositions={overview?.total_positions ?? 0}
+        portfolioCount={aggregable.length}
       />
 
       {/* Analyze-All review queue — only shown when active */}
