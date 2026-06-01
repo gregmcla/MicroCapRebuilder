@@ -427,7 +427,17 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
     failures = []
 
     def _extract_prices(close_col, ticker, is_series=False):
-        """Extract current price and previous close from close column."""
+        """Extract current price and previous close from close column.
+
+        Rejects physically-implausible day-over-day moves as bad data. A single
+        source (yfinance) occasionally returns an unadjusted-split price or a bad
+        tick; feeding that into the dashboard or stop/target trigger detection can
+        record a phantom sell. A >2x or <0.5x move from the prior close is the
+        classic bad-data signature — far wider than any legitimate intraday move —
+        so we drop it (treated as a fetch failure → caller keeps last-known price)
+        rather than poison the price cache. The execute path has its own tighter
+        cross-source check (Public.com vs yfinance) for buys.
+        """
         if is_series:
             vals = close_col.dropna()
         else:
@@ -438,6 +448,14 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
             return None, None
         current = float(vals.iloc[-1])
         prev = float(vals.iloc[-2]) if len(vals) >= 2 else None
+        if prev and prev > 0 and current > 0:
+            ratio = current / prev
+            if ratio > 2.0 or ratio < 0.5:
+                _diag.warning(
+                    "rejected implausible price for %s: $%.2f is %.2fx prev_close $%.2f — bad data, dropped",
+                    ticker, current, ratio, prev,
+                )
+                return None, None
         return current, prev
 
     # Use 5d to ensure we get at least 2 trading days for prev close
