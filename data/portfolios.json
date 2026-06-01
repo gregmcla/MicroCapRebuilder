@@ -272,7 +272,34 @@
       "created": "2026-04-23T20:55:09",
       "starting_capital": 5000000.0,
       "active": true,
-      "exclude_from_aggregates": true
+      "exclude_from_aggregates": false
+    },
+    "cluster-ignition": {
+      "id": "cluster-ignition",
+      "name": "Cluster Ignition",
+      "universe": "allcap",
+      "created": "2026-05-06T12:07:01",
+      "starting_capital": 1000000.0,
+      "active": false,
+      "exclude_from_aggregates": false
+    },
+    "momentum-multi-factor-swing": {
+      "id": "momentum-multi-factor-swing",
+      "name": "Momentum Multi-Factor Swing",
+      "universe": "smallcap",
+      "created": "2026-05-27T16:02:04",
+      "starting_capital": 3000000.0,
+      "active": false,
+      "exclude_from_aggregates": false
+    },
+    "infra-comp": {
+      "id": "infra-comp",
+      "name": "Infra Comp",
+      "universe": "allcap",
+      "created": "2026-05-27T20:08:59",
+      "starting_capital": 3000000.0,
+      "active": true,
+      "exclude_from_aggregates": false
     }
   }
 }
