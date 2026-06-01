@@ -8,7 +8,7 @@ import { usePortfolioStore, useUIStore } from "./lib/store";
 import { api } from "./lib/api";
 import TopBar from "./components/TopBar";
 import ActivityFeed from "./components/ActivityFeed";
-import OverviewPage from "./components/OverviewPage";
+import DailyDigest from "./components/Digest/DailyDigest";
 import LogsPage from "./components/LogsPage";
 import PortfolioSummary from "./components/PortfolioSummary";
 import MatrixGrid from "./components/MatrixGrid";
@@ -120,7 +120,7 @@ export default function App() {
           </main>
         ) : isOverview ? (
           <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-            <OverviewPage />
+            <DailyDigest />
           </main>
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden min-w-0">

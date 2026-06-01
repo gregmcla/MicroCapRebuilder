@@ -28,6 +28,8 @@ import type {
   ChatResponse,
   TradeReviewsResponse,
   TradeAnalyzeResponse,
+  DigestData,
+  DigestNarrative,
 } from "./types";
 
 const BASE = "/api";
@@ -201,4 +203,10 @@ export const api = {
 
   analyzeTradeReview: (pid: string, tradeId: string): Promise<TradeAnalyzeResponse> =>
     post<TradeAnalyzeResponse>(`/${pid}/trade-reviews/${tradeId}/analyze`, {}),
+
+  // Daily Digest
+  getDigest: (range = "3M"): Promise<DigestData> =>
+    get<DigestData>(`/digest?range=${range}`),
+  getDigestNarrative: (range = "3M", regenerate = false): Promise<DigestNarrative> =>
+    get<DigestNarrative>(`/digest/narrative?range=${range}&regenerate=${regenerate}`),
 };
