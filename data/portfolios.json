@@ -298,6 +298,15 @@
       "universe": "allcap",
       "created": "2026-05-27T20:08:59",
       "starting_capital": 3000000.0,
+      "active": false,
+      "exclude_from_aggregates": false
+    },
+    "max-b": {
+      "id": "max-b",
+      "name": "MAX B",
+      "universe": "allcap",
+      "created": "2026-06-01T18:37:29",
+      "starting_capital": 1000000.0,
       "active": true,
       "exclude_from_aggregates": false
     }
