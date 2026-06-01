@@ -171,12 +171,11 @@ Action {i}:
             sig = social_signals.get(ticker)
             if sig:
                 rank_str = f"WSB rank #{sig.ape_rank}" if sig.ape_rank is not None else "trending"
-                pct_str = f"{sig.st_bullish_pct:.0f}% bullish" if sig.st_bullish_pct is not None else "high bullish"
                 heat_messages = {
                     "COLD":    "  Social Heat: COLD — factor signal appears independent of retail sentiment.",
                     "WARM":    "  Social Heat: WARM — some retail interest present, watch entry timing.",
                     "HOT":     "  Social Heat: HOT — high retail attention, verify this is not a crowded trade.",
-                    "SPIKING": f"  Social Heat: SPIKING ({rank_str}, {pct_str} on Stocktwits) — elevated pump risk, apply extra scrutiny before approving.",
+                    "SPIKING": f"  Social Heat: SPIKING ({rank_str} on ApeWisdom/WSB) — extreme retail attention, elevated pump risk; apply extra scrutiny before approving.",
                 }
                 heat_line = heat_messages.get(sig.heat, "")
                 if heat_line:

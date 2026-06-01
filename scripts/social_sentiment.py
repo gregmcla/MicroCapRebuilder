@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Social Sentiment Provider — ApeWisdom + Stocktwits risk overlay.
+Social Sentiment Provider — ApeWisdom retail-attention risk overlay.
 
 Fetches retail sentiment signals to detect pump-and-dump risk.
+(Stocktwits was removed 2026-06-01 — it served HTTP 403 on every request and
+never produced a usable signal; heat is now driven purely by ApeWisdom rank.)
 Never modifies quant scores — metadata only.
 
 Heat levels:
@@ -32,11 +34,8 @@ CACHE_TTL = TTL.SOCIAL_SHORT  # 1 hour
 _log = get_logger("social")
 
 APE_URL = "https://apewisdom.io/api/v1.0/filter/all-stocks/page/1"
-ST_URL = "https://api.stocktwits.com/api/2/streams/symbol/{ticker}.json"
 
 APE_TIMEOUT = 8
-ST_TIMEOUT = 5
-ST_DELAY = 0.4  # seconds between Stocktwits calls (~150/hr max)
 
 
 @dataclass
@@ -52,37 +51,27 @@ class SocialSignal:
     error: Optional[str] = None
 
 
-def classify_heat(ape_rank: Optional[int], st_bullish_pct: Optional[float]) -> str:
+def classify_heat(ape_rank: Optional[int], _st_bullish_pct: Optional[float] = None) -> str:
     """
-    Classify social heat level from ApeWisdom rank and Stocktwits bullish %.
+    Classify social heat from ApeWisdom (WSB) trending rank.
 
-    SPIKING requires BOTH rank <=20 AND st_bullish_pct > 75.
-    HOT requires rank 21-50 OR st_bullish_pct 65-80 (or rank <=20 without ST data).
-    WARM requires rank 51-100 OR st_bullish_pct 55-65.
-    COLD otherwise.
+    Stocktwits was removed, so heat is now driven purely by ApeWisdom rank — a
+    proxy for retail attention / pump risk. The second parameter is retained for
+    backward-compatible call sites and is ignored.
+
+      SPIKING — rank <= 10   (extreme retail frenzy; AI gets a pump warning)
+      HOT     — rank <= 50
+      WARM    — rank <= 100
+      COLD    — unranked / outside the top 100
     """
-    rank_spiking = ape_rank is not None and ape_rank <= 20
-    st_spiking = st_bullish_pct is not None and st_bullish_pct > 75
-
-    if rank_spiking and st_spiking:
-        return "SPIKING"
-
-    rank_hot = ape_rank is not None and ape_rank <= 50
-    st_hot = st_bullish_pct is not None and st_bullish_pct > 65
-
-    if rank_hot or st_hot:
-        return "HOT"
-
-    rank_warm = ape_rank is not None and ape_rank <= 100
-    st_warm = st_bullish_pct is not None and st_bullish_pct > 55
-
-    # When both signals are present, ST cold (<= 55%) overrides rank-based WARM
-    if rank_warm and st_bullish_pct is not None and not st_warm:
+    if ape_rank is None:
         return "COLD"
-
-    if rank_warm or st_warm:
+    if ape_rank <= 10:
+        return "SPIKING"
+    if ape_rank <= 50:
+        return "HOT"
+    if ape_rank <= 100:
         return "WARM"
-
     return "COLD"
 
 
@@ -99,7 +88,8 @@ class SocialSentimentProvider:
     def get_signals(self, tickers: list[str]) -> dict[str, SocialSignal]:
         """
         Return SocialSignal for each ticker. Uses cache where fresh.
-        Fetches ApeWisdom once then Stocktwits per-ticker for uncached.
+        Fetches ApeWisdom once (a single call returns the whole top-100 rank
+        map); heat is derived from rank — no per-ticker network calls.
         """
         tickers = [t.upper() for t in tickers]
         now = time.time()
@@ -115,28 +105,19 @@ class SocialSentimentProvider:
                 print(f"[social] ApeWisdom fetch failed: {e}")
 
             for ticker in stale:
-                ticker_error = None
-                try:
-                    st_bullish, st_count = self._fetch_stocktwits(ticker)
-                    time.sleep(ST_DELAY)
-                except Exception as e:
-                    st_bullish, st_count = None, 0
-                    ticker_error = str(e)
-                    print(f"[social] Stocktwits fetch failed for {ticker}: {e}")
-
                 ape_data = ape_map.get(ticker, {})
-                heat = classify_heat(ape_data.get("rank"), st_bullish)
+                heat = classify_heat(ape_data.get("rank"))
 
                 self._cache[ticker] = {
                     "ticker": ticker,
                     "ape_rank": ape_data.get("rank"),
                     "ape_mentions": ape_data.get("mentions", 0),
                     "ape_upvotes": ape_data.get("upvotes", 0),
-                    "st_bullish_pct": st_bullish,
-                    "st_message_count": st_count,
+                    "st_bullish_pct": None,    # Stocktwits removed
+                    "st_message_count": 0,
                     "heat": heat,
                     "fetched_at": now,
-                    "error": ticker_error,
+                    "error": None,
                 }
 
             self._save_cache()
@@ -159,24 +140,6 @@ class SocialSentimentProvider:
             for r in results
             if r.get("ticker")
         }
-
-    def _fetch_stocktwits(self, ticker: str) -> tuple[Optional[float], int]:
-        """Returns (bullish_pct, message_count) from last 30 Stocktwits messages."""
-        url = ST_URL.format(ticker=ticker)
-        resp = requests.get(url, timeout=ST_TIMEOUT)
-        if resp.status_code == 404:
-            return None, 0
-        resp.raise_for_status()
-        messages = resp.json().get("messages", [])
-        sentiments = [
-            m["entities"]["sentiment"]["basic"]
-            for m in messages
-            if m.get("entities", {}).get("sentiment")
-        ]
-        if not sentiments:
-            return None, 0
-        bullish = sum(1 for s in sentiments if s == "Bullish")
-        return round(bullish / len(sentiments) * 100, 1), len(sentiments)
 
     # ── Cache helpers ─────────────────────────────────────────────────────────
 
