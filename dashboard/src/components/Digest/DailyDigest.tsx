@@ -10,6 +10,7 @@ import GScottRead from "./GScottRead";
 import PortfolioCompare from "./PortfolioCompare";
 import SinceYesterdayStrip from "./SinceYesterdayStrip";
 import OverviewPage from "../OverviewPage";
+import DigestActions from "./DigestActions";
 
 const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
@@ -48,6 +49,7 @@ export default function DailyDigest() {
 
   return (
     <div className="digest">
+      <DigestActions />
       <div className="aurora" />
       <BookHero data={data.book} range={range} onRange={setRange} />
       <GScottRead n={narrative} onRefresh={refreshRead} refreshing={refreshing} />
