@@ -41,6 +41,7 @@ POSITION_COLUMNS = [
     "day_change",       # Total dollar change today (position-level, not per-share)
     "day_change_pct",   # Percent change today
     "price_high",       # Highest price since entry — used for trailing stops
+    "sector",           # GICS sector (backfilled at scan time); on-disk since before this constant
 ]
 
 # ─── Daily Snapshots Schema ───────────────────────────────────────────────────
