@@ -158,6 +158,7 @@ def get_position_headlines(
                     title = content.get("title") or ""
                     provider = content.get("provider") or {}
                     publisher = provider.get("displayName") or "unknown"
+                    summary = content.get("summary") or content.get("description") or ""
                     pub_date = content.get("pubDate") or content.get("displayTime")
                     if pub_date:
                         try:
@@ -171,6 +172,7 @@ def get_position_headlines(
                 else:
                     title = n.get("title") or ""
                     publisher = n.get("publisher") or "unknown"
+                    summary = n.get("summary") or n.get("description") or ""
                     pub_ts = n.get("providerPublishTime")
                     if pub_ts:
                         age_minutes = max(0, int((now - pub_ts) / 60))
@@ -181,6 +183,7 @@ def get_position_headlines(
                         "title": title,
                         "publisher": publisher,
                         "age_minutes": age_minutes,
+                        "summary": _clean_summary(summary),
                     })
 
             _save_cached_headlines(ticker_uc, parsed)
@@ -190,6 +193,23 @@ def get_position_headlines(
             result[ticker.strip().upper()] = []
 
     return result
+
+
+_SUMMARY_MAX_CHARS = 300
+
+
+def _clean_summary(summary: str) -> str:
+    """Collapse whitespace and truncate a news summary for the prompt block.
+
+    yfinance summaries are 1-3 sentences; cap length so the macro block stays
+    lean even with many held positions. Returns "" for empty/missing input.
+    """
+    if not summary:
+        return ""
+    collapsed = " ".join(str(summary).split())
+    if len(collapsed) <= _SUMMARY_MAX_CHARS:
+        return collapsed
+    return collapsed[:_SUMMARY_MAX_CHARS].rsplit(" ", 1)[0] + "…"
 
 
 def _fmt_age(minutes: int) -> str:
@@ -241,6 +261,9 @@ def format_macro_block(
                 title = h["title"]
                 pub = h.get("publisher", "?")
                 lines.append(f"    {ticker}: {title} — {pub}, {age}")
+                summary = h.get("summary") or ""
+                if summary:
+                    lines.append(f"        ↳ {summary}")
 
     return "\n".join(lines) + "\n"
 
