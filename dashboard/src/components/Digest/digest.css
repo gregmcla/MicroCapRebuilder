@@ -795,7 +795,7 @@
 /* ── Top action bar (Update All / Scan All / Analyze All / + New) ── */
 .digest .digest-actions {
   position: sticky; top: 0; z-index: 5;
-  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
   padding: 10px 28px;
   background: var(--surface-0);
   border-bottom: 1px solid var(--border-0);
@@ -813,3 +813,27 @@
 .digest .dbtn.primary { background: var(--accent-dim); color: var(--accent-bright); border-color: var(--accent-border); }
 .digest .dbtn.primary:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .digest .dbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Status strip (inside .digest-actions) ── */
+.digest .digest-actions-btns { display: flex; align-items: center; gap: 8px; }
+.digest .digest-status-wrap { min-height: 20px; display: flex; align-items: center; }
+.digest .digest-status {
+  font-size: 12px;
+  display: flex; align-items: center; gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.digest .digest-status.running { color: var(--accent-bright); }
+.digest .digest-status.done    { color: var(--green); }
+.digest .digest-status.err     { color: var(--red); }
+.digest .dspin {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-border);
+  border-top-color: var(--accent-bright);
+  display: inline-block;
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .digest .dspin { animation: dspin 0.7s linear infinite; }
+  @keyframes dspin { to { transform: rotate(360deg); } }
+}
