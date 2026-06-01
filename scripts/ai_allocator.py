@@ -66,9 +66,14 @@ def run_ai_allocation(
     # Build held position data for sell validation
     held_tickers: set = set()
     held_shares_map: dict = {}
+    held_price_map: dict = {}
     if not state.positions.empty:
         held_tickers = set(state.positions["ticker"].tolist())
         held_shares_map = dict(zip(state.positions["ticker"], state.positions["shares"].astype(int)))
+        # Real current price per held position — used to override Claude's
+        # (hallucinated) prices on buys that press existing winners and on sells,
+        # neither of which appear in the scored-candidate price map.
+        held_price_map = dict(zip(state.positions["ticker"], state.positions["current_price"].astype(float)))
 
     # layer1_sells are FLAGS only — Claude makes all final decisions.
     # If the AI client is unavailable, fall back to executing Layer 1 sells mechanically.
@@ -143,6 +148,7 @@ def run_ai_allocation(
             allocation_data, effective_cash, state.total_equity, scored_candidates,
             held_tickers=held_tickers,
             held_shares_map=held_shares_map,
+            held_price_map=held_price_map,
             max_positions=state.config.get("max_positions") if enforce_cap else None,
             mode=mode,
         )
@@ -661,6 +667,7 @@ def _validate_allocation(
     scored_candidates: list,
     held_tickers: set | None = None,
     held_shares_map: dict | None = None,
+    held_price_map: dict | None = None,
     max_positions: int | None = None,
     mode: str = "full",
 ) -> tuple[list, list]:
@@ -709,6 +716,8 @@ def _validate_allocation(
         held_tickers = set()
     if held_shares_map is None:
         held_shares_map = {}
+    if held_price_map is None:
+        held_price_map = {}
 
     valid_buys = []
     running_cost = 0.0
@@ -759,15 +768,28 @@ def _validate_allocation(
             print(f"  [Validate] Skipping {ticker}: take_profit ${take_profit:.2f} <= price ${price:.2f}")
             continue
 
-        # Cross-check price against scored price (5% tolerance)
-        scored_price = price_map.get(ticker, 0)
-        if scored_price > 0:
-            drift = abs(price - scored_price) / scored_price
+        # Pin the buy price to a trusted market source — never trust Claude's
+        # stated price. It hallucinates round numbers, especially for held
+        # positions being pressed (which aren't in the scored-candidate map and
+        # so previously slipped through at Claude's invented price). Prefer the
+        # scored-candidate price, then the held-position current price. On >5%
+        # drift, re-anchor to it and rescale stop/target to preserve Claude's
+        # intended %-distances + resize shares to preserve the dollar allocation
+        # — the same correction the execute path applies at fill time.
+        trusted_price = price_map.get(ticker, 0) or held_price_map.get(ticker, 0)
+        if trusted_price and trusted_price > 0:
+            drift = abs(price - trusted_price) / trusted_price
             if drift > 0.05:
-                original_cost = shares * price
-                price = scored_price
+                claude_price = price
+                stop_pct = (claude_price - stop_loss) / claude_price if claude_price > 0 else 0.08
+                target_pct = (take_profit - claude_price) / claude_price if claude_price > 0 else 0.20
+                original_cost = shares * claude_price
+                price = trusted_price
+                stop_loss = round(price * (1 - stop_pct), 2)
+                take_profit = round(price * (1 + target_pct), 2)
                 shares = max(1, int(original_cost / price))
-                print(f"  [Validate] {ticker}: price adjusted ${buy.get('price', 0):.2f} → ${price:.2f} (>5% drift from quant cache)")
+                print(f"  [Validate] {ticker}: price corrected ${claude_price:.2f} → ${price:.2f} "
+                      f"(stop ${stop_loss:.2f}, target ${take_profit:.2f}, {shares} sh)")
 
         # Cap to 25% equity limit
         cost = shares * price
@@ -813,6 +835,12 @@ def _validate_allocation(
         if ticker not in held_tickers:
             print(f"  [Validate] Skipping sell {ticker}: not held")
             continue
+        # Pin sell price to the real held-position price — Claude's stated sell
+        # price is an unreliable guess (held names aren't in the scored map).
+        trusted_price = held_price_map.get(ticker, 0)
+        if trusted_price and trusted_price > 0 and abs(price - trusted_price) / trusted_price > 0.05:
+            print(f"  [Validate] {ticker}: sell price corrected ${price:.2f} → ${trusted_price:.2f}")
+            price = trusted_price
         actual_shares = held_shares_map.get(ticker, 0)
         if shares > actual_shares:
             print(f"  [Validate] {ticker}: capping sell {shares} → {actual_shares} (held)")

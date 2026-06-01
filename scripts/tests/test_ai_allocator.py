@@ -515,3 +515,63 @@ def test_run_ai_allocation_threads_mode_to_prompt_and_validate(monkeypatch):
 
     assert captured["prompt_mode"] == "buys_only"
     assert captured["validate_mode"] == "buys_only"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# _validate_allocation — held-position price correction (regression 2026-06-01)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Bug: Claude's allocation only had its price cross-checked against the
+# scored-candidate price map. Held positions being pressed (and ALL sells) are
+# not in that map, so Claude's hallucinated round-number prices (e.g. NBIS @
+# $374 when real was $272) passed through to the Actions tab unaltered. Fix:
+# pin held buys/sells to held_price_map and rescale stop/target + shares.
+
+class TestValidateAllocationHeldPriceCorrection:
+
+    def test_held_press_buy_repriced_to_real_with_stops_rescaled(self):
+        # Claude: NBIS 400 @ $374, stop $320 (~14.4% below), target $450 (~20.3% above).
+        # Held position's real price is $272.15 and NBIS is not a scored candidate.
+        data = {"allocation_plan": [_buy("NBIS", 400, 374.0, stop=320.0, take=450.0)], "sells": []}
+        buys, _ = _validate_allocation(
+            data, 5_000_000, 6_000_000, _candidates(),  # NBIS absent from candidates
+            held_tickers={"NBIS"}, held_shares_map={"NBIS": 1579},
+            held_price_map={"NBIS": 272.15},
+        )
+        assert len(buys) == 1
+        b = buys[0]
+        assert abs(b["price"] - 272.15) < 0.01                       # re-anchored to real price
+        assert b["stop_loss"] < b["price"] < b["take_profit"]        # straddle preserved
+        assert abs(b["stop_loss"] / 272.15 - 320 / 374) < 0.01       # stop % preserved
+        assert abs(b["take_profit"] / 272.15 - 450 / 374) < 0.01     # target % preserved
+        assert abs(b["shares"] * b["price"] - 400 * 374) < b["price"]  # dollar allocation preserved
+
+    def test_scored_candidate_price_unchanged_within_tolerance(self):
+        # Candidate price within 5% of Claude's — must NOT be altered, and the
+        # candidate map takes priority over any held map.
+        data = {"allocation_plan": [_buy("RPRX", 8000, 54.53, stop=49.0, take=62.0)], "sells": []}
+        buys, _ = _validate_allocation(
+            data, 5_000_000, 6_000_000, _candidates(("RPRX", 54.54)),
+            held_tickers=set(), held_shares_map={}, held_price_map={},
+        )
+        assert buys[0]["price"] == 54.53 and buys[0]["shares"] == 8000
+
+    def test_held_sell_price_pinned_to_real_price(self):
+        # Claude: SELL SEDG @ $89; real held price $74.85.
+        data = {"allocation_plan": [], "sells": [_sell("SEDG", 3617, 89.0)]}
+        _, sells = _validate_allocation(
+            data, 0, 6_000_000, [],
+            held_tickers={"SEDG"}, held_shares_map={"SEDG": 3617},
+            held_price_map={"SEDG": 74.85},
+        )
+        assert len(sells) == 1
+        assert abs(sells[0]["price"] - 74.85) < 0.01
+
+    def test_no_held_price_falls_back_to_claude_price(self):
+        # If we have no trusted price at all, behavior is unchanged (Claude's price).
+        data = {"allocation_plan": [], "sells": [_sell("ZZZ", 100, 12.34)]}
+        _, sells = _validate_allocation(
+            data, 0, 6_000_000, [],
+            held_tickers={"ZZZ"}, held_shares_map={"ZZZ": 100}, held_price_map={},
+        )
+        assert sells[0]["price"] == 12.34
