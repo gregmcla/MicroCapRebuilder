@@ -520,9 +520,12 @@ export default function ActionsTab() {
     wasAnalyzing.current = isAnalyzing;
   }, [isAnalyzing, result]);
 
-  const isSelectable = activeMode !== "full";
+  // Per-trade selection is available in every mode (incl. full) so a single
+  // questionable proposal can be unchecked without vetoing the whole batch.
+  // Defaults to all-selected; the backend cherry-picks via selected_tickers.
+  const isSelectable = true;
 
-  // Per-trade selection state — only active in buys/sells-only modes.
+  // Per-trade selection state.
   // Key format: "TICKER:ACTION_TYPE" — mirrors the dedup key used in actionable list.
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
 
