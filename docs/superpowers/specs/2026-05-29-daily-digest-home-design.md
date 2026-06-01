@@ -12,7 +12,7 @@ Replace the current Overview landing screen with a **Daily Digest** — an *obse
 
 The Digest becomes the default view when the dashboard opens (`portfolioId === "overview"`). The existing 35-card **Grid** is preserved as a one-click secondary view. The **Map (ConstellationMap)** and **Chart (multi-portfolio PerformanceChart)** views are **retired from the landing** (code retained but unlinked — see §8).
 
-Scope is the **6 active portfolios** (`active: true` in `data/portfolios.json`), not all 37 registered. Docs claiming 16/35 are stale.
+Scope is portfolios that are **active AND in live mode** — `active: true` in `data/portfolios.json` AND `config.json["mode"] == "live"` (`not state.paper_mode`). Paper-mode portfolios are excluded entirely (not shown, not aggregated), mirroring `/overview`. Currently all 6 active portfolios are live. Docs claiming 16/35 are stale.
 
 ## 2. Goals & non-goals
 
@@ -92,7 +92,7 @@ Returns everything the four regions need for the active portfolios, NaN-sanitize
   }
 }
 ```
-- **Aggregation source:** reuse the overview computation in `api/routes/portfolios.py` (equity, day_pnl, total_return_pct, sparkline) but restrict to `active: true` and respect `exclude_from_aggregates`.
+- **Aggregation source:** reuse the overview computation in `api/routes/portfolios.py` (equity, day_pnl, total_return_pct, sparkline) but restrict to **active AND live** portfolios (`active: true` and `not state.paper_mode`) and respect `exclude_from_aggregates`. Paper-mode portfolios are skipped entirely.
 - **Combined book curve:** sum per-portfolio `daily_snapshots.total_equity` aligned by date (active, non-excluded). Normalize to % for comparability.
 - **SPY line:** fetch SPY closes for the range via `yf_session.cached_download` and index to the same start. (Decision in §9: book-level benchmark is **SPY**, regardless of each portfolio's configured benchmark.)
 - **Recap (since yesterday's close):** read each active portfolio's `transactions.csv`, filter `date >= prior trading session close`; classify BUY vs SELL; pull biggest movers from current day_change; read regime + risk from existing regime/risk scoreboard (book-level or representative). Reuse logic already in `api/routes/system.py:_get_trades_for_date` where possible.
