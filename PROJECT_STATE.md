@@ -7,7 +7,27 @@
 
 ## Current Phase
 
-**Operational — 5 active portfolios. Cron RE-ENABLED. Adaptive learning overhaul shipped 2026-05-27.**
+**Operational — 6 active (live-mode) portfolios. Cron RE-ENABLED. Daily Digest Home shipped 2026-06-01 (branch `feature/daily-digest-home`).**
+
+---
+
+## Recently Completed (2026-06-01) — Daily Digest Home (new default landing)
+
+Replaced the Overview grid as the default landing (`portfolioId === "overview"`) with an observational **Daily Digest**. Branch: `feature/daily-digest-home` (26 commits). Spec: `docs/superpowers/specs/2026-05-29-daily-digest-home-design.md`. Plan: `docs/superpowers/plans/2026-05-29-daily-digest-home.md`. Built subagent-driven (15 tasks, TDD, per-task two-stage review).
+
+**Four stacked regions** (`dashboard/src/components/Digest/`): BookHero (whole-book equity + you-vs-SPY curve, range toggle), GScottRead (full-width narrative), PortfolioCompare (ranked table, per-portfolio configured benchmark), SinceYesterdayStrip (timeline footer). A sticky **action bar** (DigestActions) restores Update All / Scan All / Analyze All / + New with a live status strip (progress + completion summary). Old 35-card **Grid** preserved via a toggle (reuses OverviewPage); **Map/Chart** views retired from the landing (components kept, unlinked).
+
+**Backend:** `scripts/digest_service.py` (`build_digest`, capital-flow-neutral `build_book_curve`, `build_recap`, posture, structured narrative + disk cache) → `GET /api/digest` and `GET /api/digest/narrative` (`api/routes/digest.py`). 18 digest tests; full suite 317 green.
+
+**Key decisions / fixes:**
+- Scope = **active AND live** portfolios (paper-mode excluded entirely; `exclude_from_aggregates` respected). Only 6 are active live (docs saying 16/35 were stale).
+- **Book curve is capital-flow-neutral** — compounds daily market P&L over equity base, so deposits/seeding don't fake returns (killed a bogus +244% vs SPY).
+- **Benchmark fetch bug fixed** — `cached_download` defaults `period`, so passing `start`/`end` raised in yfinance and returned empty SPY; now fetch by period + slice (`_fetch_bench_series`).
+- **GScott's Read** caches server-side (`data/digest_narrative.json`) — NO Claude call per page load; manual ↻ refresh + "Updated" timestamp. Uses **Sonnet 4.6** (synthesis task; Opus was overkill).
+- Range toggle now drives a live **You/SPY/α** readout + window-return delta bubble.
+- a11y: reduced-motion gating, focus rings, keyboard nav, row click-through to portfolio.
+
+**Status:** feature-complete and verified in-browser (scroll, range toggle, actions all confirmed working). Pending: merge/PR decision.
 
 ---
 
