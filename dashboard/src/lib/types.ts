@@ -708,7 +708,9 @@ export interface DigestPortfolio {
   strategy?: string;
   equity: number;
   day_pct: number;
+  day_pnl: number;
   total_pct: number;
+  all_time_pnl: number;
   vs_bench_pct: number;
   bench_symbol: string;
   sparkline: number[];

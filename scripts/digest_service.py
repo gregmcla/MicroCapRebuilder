@@ -288,7 +288,9 @@ def build_digest(range_key: str = "3M") -> dict:
                          "strategy": state.config.get("strategy", {}).get("trading_style", ""),
                          "equity": round(_f(state.total_equity), 2),
                          "day_pct": round(day_pnl / state.total_equity * 100, 2) if state.total_equity else 0.0,
-                         "total_pct": total_ret, "vs_bench_pct": alpha, "bench_symbol": bench,
+                         "day_pnl": round(day_pnl, 2),
+                         "total_pct": total_ret, "all_time_pnl": round(all_time_pnl, 2),
+                         "vs_bench_pct": alpha, "bench_symbol": bench,
                          "sparkline": spark, "trend": derive_trend(spark, alpha)})
             snaps_by_pid[p.id] = snaps
             txns_by_pid[p.id] = state.transactions

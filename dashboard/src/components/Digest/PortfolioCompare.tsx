@@ -9,6 +9,13 @@ const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
 const SORTS = ["Working", "Today", "Equity", "vs SPY", "Name"] as const;
 const fmtM = (n: number) => n >= 1e6 ? `$${(n / 1e6).toFixed(2)}M` : `$${Math.round(n / 1e3)}k`;
 const sgn = (v: number) => (v >= 0 ? "+" : "") + v + "%";
+// Compact signed dollars for the sub-line next to a % column.
+const fmt$ = (n: number) => {
+  const a = Math.abs(n), s = n >= 0 ? "+" : "-";
+  if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `${s}$${(a / 1e3).toFixed(1)}k`;
+  return `${s}$${Math.round(a)}`;
+};
 
 function sparkPts(arr: number[]) {
   if (arr.length < 2) return "";
@@ -50,8 +57,8 @@ export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: Dig
             <div className="rank">{String(i + 1).padStart(2, "0")}</div>
             <div><div className="pname">{p.name}</div><div className="pstrat">{p.strategy}</div></div>
             <div className="num mono">{fmtM(p.equity)}</div>
-            <div className={`num ${cls(p.day_pct)}`}>{sgn(p.day_pct)}</div>
-            <div className={`num ${cls(p.total_pct)}`}>{sgn(p.total_pct)}</div>
+            <div className={`num ${cls(p.day_pct)}`}>{sgn(p.day_pct)}<span className="subusd">{fmt$(p.day_pnl)}</span></div>
+            <div className={`num ${cls(p.total_pct)}`}>{sgn(p.total_pct)}<span className="subusd">{fmt$(p.all_time_pnl)}</span></div>
             <div className="vsbar"><span className={`num ${cls(p.vs_bench_pct)}`}>{sgn(p.vs_bench_pct)}</span>
               <span className="track"><span className="fill" style={p.vs_bench_pct >= 0
                 ? { left: "50%", right: `${50 - w}%`, background: "var(--green)" }
