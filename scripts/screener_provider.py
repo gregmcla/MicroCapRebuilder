@@ -231,7 +231,12 @@ def run_screen(config: dict, portfolio_id: str = None) -> list:
     print(f"[screener] {raw_count} raw → {len(unique)} US-listed unique tickers")
 
     # --- write cache ---
-    if cache_path is not None:
+    # Never cache an empty result. A 0-ticker screen almost always means a
+    # transient screener failure (rate limit / empty response), not "the market
+    # has no matching stocks." Caching it would poison discovery for the full
+    # TTL (24h) and silently leave the portfolio scanning an empty universe.
+    # Returning [] uncached means the next scan simply retries.
+    if cache_path is not None and unique:
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             payload_str = json.dumps(
