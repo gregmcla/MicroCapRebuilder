@@ -1078,7 +1078,7 @@ function LogsPanel({ scanStatus }: { scanStatus?: ScanJobStatus }) {
           <div style={{ fontSize: 9, color: "#555", letterSpacing: "0.09em", marginBottom: 8 }}>LAST SCAN RESULTS</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8, marginBottom: 16 }}>
             {[
-              { l: "DISCOVERED", v: scanStatus.result.discovered },
+              { l: "EVALUATED", v: scanStatus.result.evaluated ?? scanStatus.result.discovered },
               { l: "ADDED", v: scanStatus.result.added },
               { l: "MARKED STALE", v: scanStatus.result.marked_stale },
               { l: "REMOVED", v: scanStatus.result.removed },

@@ -372,6 +372,7 @@ export interface ChartData {
 
 export interface ScanResult {
   discovered: number;
+  evaluated?: number;
   added: number;
   marked_stale: number;
   removed: number;

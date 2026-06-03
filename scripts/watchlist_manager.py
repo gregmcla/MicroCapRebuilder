@@ -394,18 +394,39 @@ class WatchlistManager:
         batch = needs_backfill[:batch_limit]
         print(f"  Backfilling sectors for {len(batch)} watchlist entries (of {len(needs_backfill)} missing)...")
 
+        # Cache-first, and PERSIST any fresh fetch to the global sector map so a
+        # ticker is only ever looked up once — across scans and across
+        # portfolios. The old code re-fetched every scan and never cached, so
+        # cold-yfinance timeouts left names stuck on "Unknown" indefinitely.
+        try:
+            from sector_mapper import load_sector_mapping, save_sector_mapping
+            global_map = load_sector_mapping()
+        except Exception:
+            global_map, save_sector_mapping = {}, None
+
         filled = 0
+        newly_cached = False
         for entry in batch:
-            sector = self._fetch_sector_with_timeout(entry.ticker, timeout=5.0)
+            cached = global_map.get(entry.ticker)
+            if cached and cached != "Unknown":
+                entry.sector = cached
+                filled += 1
+                continue
+            sector = self._fetch_sector_with_timeout(entry.ticker, timeout=8.0)
             if sector and sector != "Unknown":
                 entry.sector = sector
+                global_map[entry.ticker] = sector
+                newly_cached = True
                 filled += 1
-            else:
-                # Explicitly mark as Unknown so we don't retry endlessly
-                # (next backfill cycle will skip entries already == "Unknown"
-                #  that haven't been re-discovered with real data)
-                if not entry.sector:
-                    entry.sector = "Unknown"
+            elif not entry.sector:
+                # Mark as Unknown so we don't churn on it within this run.
+                entry.sector = "Unknown"
+
+        if newly_cached and save_sector_mapping is not None:
+            try:
+                save_sector_mapping(global_map)
+            except Exception as e:
+                print(f"  sector cache save failed (non-fatal): {e}")
 
         print(f"  Sector backfill: {filled}/{len(batch)} resolved")
         return filled
@@ -431,6 +452,7 @@ class WatchlistManager:
         """
         stats = {
             "discovered": 0,
+            "evaluated": 0,
             "added": 0,
             "sectors_backfilled": 0,
             "marked_stale": 0,
@@ -487,6 +509,13 @@ class WatchlistManager:
                     "source": stock.source,
                 }
 
+        # Candidates actually evaluated for the watchlist this run (ScoreStore
+        # pool + any live discovery). This is the meaningful "how many were in
+        # play" number — the live `discovered` count is 0 on warm runs that
+        # build entirely from cached scores, which made "0 discovered / N added"
+        # look contradictory on the dashboard.
+        stats["evaluated"] = len(candidate_tickers_with_meta)
+
         # Step 5: Build sector map from discovered stocks for sector data
         sector_map: Dict[str, str] = {}
         market_cap_map: Dict[str, float] = {}
@@ -495,6 +524,19 @@ class WatchlistManager:
             sector_map[stock.ticker] = stock.sector or "Unknown"
             market_cap_map[stock.ticker] = stock.market_cap_m
             avg_volume_map[stock.ticker] = stock.avg_volume
+
+        # Seed sectors from the global sector cache for candidates the live
+        # discovery scan didn't cover (e.g. when candidates come from ScoreStore,
+        # discovered_stocks is empty). Without this, those entries default to
+        # "Unknown" on creation and only the slower backfill can fix them.
+        try:
+            from sector_mapper import load_sector_mapping
+            _global_sectors = load_sector_mapping()
+            for ticker in candidate_tickers_with_meta:
+                if ticker not in sector_map and _global_sectors.get(ticker):
+                    sector_map[ticker] = _global_sectors[ticker]
+        except Exception as e:
+            print(f"  sector cache seed failed (non-fatal): {e}")
 
         # Step 6: Rebuild watchlist — CORE always + top-N candidates
         existing_entries = self._load_watchlist()
