@@ -22,7 +22,7 @@ from pathlib import Path
 
 import httpx
 import requests  # used only by sync expiry-loop helper _edit_message_sync
-from telegram import Update
+from telegram import BotCommand, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -289,6 +289,143 @@ async def handle_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 # ---------------------------------------------------------------------------
+# /scan and /analyze commands (single portfolio at a time)
+# ---------------------------------------------------------------------------
+
+async def _fetch_portfolio_ids(http: httpx.AsyncClient) -> list[str]:
+    resp = await http.get(f"{_API_BASE}/api/portfolios", timeout=10.0)
+    portfolios = resp.json().get("portfolios", [])
+    return [p["id"] for p in portfolios]
+
+
+def _match_portfolio(requested: str, ids: list[str]) -> str | None:
+    """Case-insensitive match of a user-typed name against known portfolio ids."""
+    req = requested.strip().lower()
+    for pid in ids:
+        if pid.lower() == req:
+            return pid
+    return None
+
+
+async def _resolve_arg(update: Update, http: httpx.AsyncClient, args: list[str], cmd: str) -> str | None:
+    """Resolve the portfolio argument. Replies with usage/error and returns None on failure."""
+    try:
+        ids = await _fetch_portfolio_ids(http)
+    except Exception as exc:
+        await update.message.reply_text(f"❌ Could not fetch portfolios: {exc}")
+        return None
+    listing = ", ".join(sorted(ids)) or "(none)"
+    if not args:
+        await update.message.reply_text(f"Usage: /{cmd} <portfolio>\nPortfolios: {listing}")
+        return None
+    pid = _match_portfolio(args[0], ids)
+    if pid is None:
+        await update.message.reply_text(f"❓ Unknown portfolio '{args[0]}'.\nPortfolios: {listing}")
+        return None
+    return pid
+
+
+async def handle_scan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async with httpx.AsyncClient(timeout=60.0) as http:
+        pid = await _resolve_arg(update, http, context.args, "scan")
+        if pid is None:
+            return
+
+        msg = await update.message.reply_text(f"⏳ Scanning {pid.upper()}…")
+        try:
+            resp = await http.post(f"{_API_BASE}/api/{pid}/scan")
+            data = resp.json()
+        except Exception as exc:
+            await msg.edit_text(f"📊 {pid.upper()} · ❌ Scan failed to start: {exc}")
+            return
+
+        if data.get("message") == "Scan already in progress":
+            await msg.edit_text(
+                f"📊 {pid.upper()} · 🔄 A scan is already running — its summary will arrive when it finishes"
+            )
+            return
+
+        log.info("SCAN started for %s — polling status", pid)
+        # Poll until complete/error. The scan API itself sends the detailed
+        # watchlist summary on completion, so we just track status here.
+        deadline = asyncio.get_event_loop().time() + 780  # > SCAN_TIMEOUT_SECONDS (720)
+        while True:
+            await asyncio.sleep(5)
+            try:
+                sresp = await http.get(f"{_API_BASE}/api/{pid}/scan/status")
+                status = sresp.json()
+            except Exception as exc:
+                log.warning("Scan status poll failed for %s: %s", pid, exc)
+                if asyncio.get_event_loop().time() > deadline:
+                    await msg.edit_text(f"📊 {pid.upper()} · ⏱ Lost track of scan — check back shortly")
+                    return
+                continue
+
+            st = status.get("status")
+            if st == "complete":
+                await msg.edit_text(f"📊 {pid.upper()} · ✅ Scan complete — summary below")
+                log.info("Scan complete for %s", pid)
+                return
+            if st == "error":
+                err = status.get("error", "unknown error")
+                await msg.edit_text(f"📊 {pid.upper()} · ❌ Scan failed — {err}")
+                log.error("Scan error for %s: %s", pid, err)
+                return
+            if asyncio.get_event_loop().time() > deadline:
+                await msg.edit_text(f"📊 {pid.upper()} · ⏱ Scan still running — check back shortly")
+                return
+
+
+async def handle_analyze(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async with httpx.AsyncClient(timeout=300.0) as http:
+        pid = await _resolve_arg(update, http, context.args, "analyze")
+        if pid is None:
+            return
+
+        msg = await update.message.reply_text(
+            f"⏳ Analyzing {pid.upper()}… (this can take a minute or two)"
+        )
+        log.info("ANALYZE started for %s", pid)
+        try:
+            resp = await http.post(f"{_API_BASE}/api/{pid}/analyze")
+        except Exception as exc:
+            await msg.edit_text(f"📊 {pid.upper()} · ❌ Analysis failed: {exc}")
+            log.error("Analyze exception for %s: %s", pid, exc)
+            return
+
+        if resp.status_code != 200:
+            await msg.edit_text(
+                f"📊 {pid.upper()} · ❌ Analysis failed (HTTP {resp.status_code}) — check logs"
+            )
+            log.error("Analyze failed for %s: HTTP %s %s", pid, resp.status_code, resp.text[:200])
+            return
+
+        approved = (resp.json().get("approved") or [])
+
+    if not approved:
+        await msg.edit_text(f"📊 {pid.upper()} · ✅ Analysis complete — no actions proposed")
+        log.info("Analyze complete for %s — no actions", pid)
+        return
+
+    # send_analysis_proposals is synchronous (uses requests) and sends the
+    # proposals message with APPROVE/REJECT buttons + writes the pending file,
+    # which handle_callback already acts on. Run it off the event loop.
+    try:
+        from telegram_notifier import send_analysis_proposals
+        await asyncio.to_thread(send_analysis_proposals, pid)
+        n = len(approved)
+        await msg.edit_text(
+            f"📊 {pid.upper()} · ✅ Analysis complete — {n} proposal{'s' if n != 1 else ''} below"
+        )
+        log.info("Analyze complete for %s — %d proposals sent", pid, n)
+    except Exception as exc:
+        log.error("send_analysis_proposals failed for %s: %s", pid, exc)
+        await msg.edit_text(
+            f"📊 {pid.upper()} · ⚠️ Analysis done but could not send proposals — check logs"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Expiry background task
 # ---------------------------------------------------------------------------
 
@@ -311,6 +448,14 @@ async def _expiry_loop() -> None:
 
 async def _post_init(application: Application) -> None:
     asyncio.create_task(_expiry_loop())
+    try:
+        await application.bot.set_my_commands([
+            BotCommand("status", "Overview of all portfolios"),
+            BotCommand("scan", "Scan a portfolio for new candidates — /scan <portfolio>"),
+            BotCommand("analyze", "Analyze a portfolio for trades — /analyze <portfolio>"),
+        ])
+    except Exception as exc:
+        log.warning("Could not set bot command menu: %s", exc)
     log.info("GScott Telegram Bot started. Expiry loop active.")
 
 
@@ -332,6 +477,8 @@ def main() -> None:
     )
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(CommandHandler("status", handle_status))
+    application.add_handler(CommandHandler("scan", handle_scan))
+    application.add_handler(CommandHandler("analyze", handle_analyze))
 
     log.info("Starting long polling...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
