@@ -485,6 +485,10 @@ class WatchlistManager:
             try:
                 from score_store import ScoreStore
                 store = ScoreStore(self.portfolio_id)
+                store.cleanup(keep_days=30)  # prune stale score history
+                # get_top_by_blended applies a recency filter (STALE_SCORE_DAYS),
+                # so only freshly-scored tickers can rank — a ticker that scored
+                # once then fell out of scoring no longer stays frozen at the top.
                 top_by_blended = store.get_top_by_blended(
                     n=self.max_tickers * 2,  # Fetch 2x to leave room for filtering
                     delta_weight=0.3,

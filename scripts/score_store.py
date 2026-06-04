@@ -21,6 +21,14 @@ from typing import Dict, List, Tuple
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_DATA_DIR = SCRIPT_DIR.parent / "data"
 
+# Scores older than this are considered stale and excluded from ranking. A
+# ticker in the scan universe is re-scored every ~3 days (rotating extended
+# tier), so 7 days tolerates a missed cycle while dropping genuine fossils:
+# tickers that scored once and then fell out of scoring (filtered or delisted)
+# would otherwise stay frozen at their old score and haunt the rankings
+# indefinitely (e.g. MGTX sitting #1 for 6 weeks on a 43-day-old score).
+STALE_SCORE_DAYS = 7
+
 
 class ScoreStore:
     """Manages daily score persistence and delta computation for one portfolio."""
@@ -78,8 +86,14 @@ class ScoreStore:
             with open(self._path, "a") as f:
                 f.write("\n".join(new_lines) + "\n")
 
-    def get_latest_scores(self) -> Dict[str, float]:
-        """Return most recent composite score per ticker (any date)."""
+    def get_latest_scores(self, max_age_days: int = None) -> Dict[str, float]:
+        """Return most recent composite score per ticker.
+
+        Args:
+            max_age_days: If set, exclude tickers whose most-recent score is
+                older than this many days (i.e. tickers no longer being scored).
+                None = no recency filter (returns every ticker ever scored).
+        """
         by_ticker: Dict[str, Tuple[str, float]] = {}  # ticker -> (date, composite)
         if not self._path.exists():
             return {}
@@ -97,6 +111,9 @@ class ScoreStore:
                         by_ticker[ticker] = (d, comp)
                 except Exception:
                     continue
+        if max_age_days is not None:
+            cutoff = (date.today() - timedelta(days=max_age_days)).isoformat()
+            return {t: v[1] for t, v in by_ticker.items() if v[0] >= cutoff}
         return {ticker: v[1] for ticker, v in by_ticker.items()}
 
     def get_all_deltas(self) -> Dict[str, float]:
@@ -129,13 +146,16 @@ class ScoreStore:
         return deltas
 
     def get_top_by_blended(
-        self, n: int, delta_weight: float = 0.3
+        self, n: int, delta_weight: float = 0.3, max_age_days: int = STALE_SCORE_DAYS
     ) -> List[Tuple[str, float, float]]:
         """Return top-N tickers by blended rank: composite + delta_weight * delta.
 
+        Only ranks tickers scored within `max_age_days` (default STALE_SCORE_DAYS)
+        so stale/frozen scores can't dominate the watchlist. Pass None to disable.
+
         Returns list of (ticker, composite, delta) sorted by blended score desc.
         """
-        latest = self.get_latest_scores()
+        latest = self.get_latest_scores(max_age_days=max_age_days)
         deltas = self.get_all_deltas()
 
         blended = []
