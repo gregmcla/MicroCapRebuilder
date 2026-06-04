@@ -56,7 +56,8 @@ export default function DailyDigest() {
       <div className="aurora" />
       <BookHero data={data.book} range={range} onRange={setRange} />
       <BookStats ov={overview} />
-      <GScottRead n={narrative} onRefresh={refreshRead} refreshing={refreshing} />
+      <GScottRead n={narrative} onRefresh={refreshRead} refreshing={refreshing}
+        topMovers={overview?.top_movers ?? []} bottomMovers={overview?.bottom_movers ?? []} />
       <PortfolioCompare rows={data.portfolios.filter(p => !p.error)} onGrid={() => setGridView(true)} onSelect={setPortfolio} />
       <SinceYesterdayStrip recap={data.recap} />
     </div>

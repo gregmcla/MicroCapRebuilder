@@ -1,6 +1,32 @@
-import type { DigestNarrative } from "../../lib/types";
+import type { DigestNarrative, CrossPortfolioMover } from "../../lib/types";
 
-export default function GScottRead({ n, onRefresh, refreshing }: { n?: DigestNarrative; onRefresh: () => void; refreshing: boolean }) {
+function MoversBlock({ top, bottom }: { top: CrossPortfolioMover[]; bottom: CrossPortfolioMover[] }) {
+  if (top.length === 0 && bottom.length === 0) return null;
+  const Row = ({ m, positive }: { m: CrossPortfolioMover; positive: boolean }) => {
+    const pct = m.day_change_pct ?? m.pnl_pct;
+    return (
+      <div className="mrow">
+        <span className="mtk mono">{m.ticker}</span>
+        <span className="mpf">{m.portfolio_name}</span>
+        <span className={`mpct mono ${positive ? "grn" : "red"}`}>{pct >= 0 ? "+" : ""}{pct.toFixed(1)}%</span>
+      </div>
+    );
+  };
+  return (
+    <div className="movers">
+      {top.length > 0 && <>
+        <div className="mhdr grn">Top Movers</div>
+        {top.slice(0, 5).map((m) => <Row key={`t-${m.ticker}:${m.portfolio_id}`} m={m} positive />)}
+      </>}
+      {bottom.length > 0 && <>
+        <div className="mhdr red">Bottom Movers</div>
+        {bottom.slice(0, 5).map((m) => <Row key={`b-${m.ticker}:${m.portfolio_id}`} m={m} positive={false} />)}
+      </>}
+    </div>
+  );
+}
+
+export default function GScottRead({ n, onRefresh, refreshing, topMovers = [], bottomMovers = [] }: { n?: DigestNarrative; onRefresh: () => void; refreshing: boolean; topMovers?: CrossPortfolioMover[]; bottomMovers?: CrossPortfolioMover[] }) {
   if (!n) return <div className="reg"><div className="lbl">GScott's read</div><div className="nar skeleton" style={{ height: 220 }} /></div>;
   return (
     <div className="reg">
@@ -31,6 +57,7 @@ export default function GScottRead({ n, onRefresh, refreshing }: { n?: DigestNar
             </div>
             <div className="tag"><div className="meta"><div className="h">Working</div><div className="v grn">{n.working.join(" · ")}</div></div></div>
             <div className="tag"><div className="meta"><div className="h">Watching</div><div className="v red">{n.watching.join(" · ")}</div></div></div>
+            <MoversBlock top={topMovers} bottom={bottomMovers} />
           </div>
         </div>
       </div>
