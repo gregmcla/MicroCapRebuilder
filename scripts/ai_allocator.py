@@ -115,17 +115,38 @@ def run_ai_allocation(
 
     model = state.config.get("ai_model", CLAUDE_MODEL)
 
-    try:
+    # Optional per-portfolio extended thinking — opt-in via the `ai_effort`
+    # config field (off by default, so other portfolios are unaffected). Opus
+    # 4.x controls thinking via adaptive mode + output_config.effort (a level,
+    # not a token budget). Valid levels: low | medium | high | xhigh | max.
+    effort = str(state.config.get("ai_effort", "") or "").lower()
+    create_kwargs = {
+        "model": model,
+        "max_tokens": 16000,
+        "messages": [{"role": "user", "content": prompt}],
         # Per-call timeout overrides the client default (120s in get_ai_client).
-        # Allocator responses can be 90-110s on complex prompts due to max_tokens=16000;
-        # 180s gives headroom without changing the tighter default for ai_review's smaller calls.
-        response = client.messages.create(
-            model=model,
-            max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}],
-            timeout=180.0,
-        )
-        response_text = response.content[0].text if response.content else ""
+        # Allocator responses run 90-110s on complex prompts; 180s gives headroom.
+        "timeout": 180.0,
+    }
+    if effort in ("low", "medium", "high", "xhigh", "max"):
+        create_kwargs["thinking"] = {"type": "adaptive"}
+        create_kwargs["output_config"] = {"effort": effort}
+        # Thinking tokens share the output budget — raise the ceiling so a hard
+        # reasoning pass can't crowd out the JSON allocation, and give it time.
+        create_kwargs["max_tokens"] = 32000
+        create_kwargs["timeout"] = 600.0
+
+    try:
+        response = client.messages.create(**create_kwargs)
+        # Adaptive thinking may prepend thinking block(s) — grab the text block,
+        # not content[0] (which would be a ThinkingBlock when it reasoned).
+        response_text = ""
+        for _b in (response.content or []):
+            if getattr(_b, "type", None) == "text":
+                response_text = _b.text
+                break
+        if not response_text and response.content:
+            response_text = getattr(response.content[0], "text", "") or ""
 
         if not response_text or not response_text.strip():
             raise ValueError("Empty response from AI allocator")
