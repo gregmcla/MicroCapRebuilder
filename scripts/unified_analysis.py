@@ -151,7 +151,7 @@ def _run_ai_driven_analysis(
         if candidates:
             print(f"  Scoring {len(candidates)} watchlist candidate(s) for AI input...")
             scorer = StockScorer(config=state.config)
-            scored_results = scorer.score_watchlist(candidates)
+            scored_results = scorer.score_watchlist(candidates, info_cache=info_cache)
             for s in scored_results:
                 if s:
                     current_scores = {

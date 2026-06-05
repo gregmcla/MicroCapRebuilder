@@ -695,7 +695,7 @@ def test_ai_driven_sells_only_skips_watchlist_scoring(
 
     score_calls = []
 
-    def _track(self, tickers):
+    def _track(self, tickers, *args, **kwargs):
         score_calls.append(list(tickers))
         return []  # return empty so even if called, downstream survives
 
@@ -773,7 +773,7 @@ def test_ai_driven_buys_only_drops_layer1_sells_from_output(
     )
 
     # Avoid real scoring (no bars mocked) — return empty so allocator gets no buys either.
-    monkeypatch.setattr(StockScorer, "score_watchlist", lambda self, tickers: [])
+    monkeypatch.setattr(StockScorer, "score_watchlist", lambda self, tickers, *a, **kw: [])
 
     resp = MagicMock()
     resp.content = [MagicMock(text='{"allocation_plan":[],"sells":[],"portfolio_thesis":"test","cash_after_plan":100000}')]
@@ -1095,3 +1095,92 @@ def test_execute_returns_400_when_slot_missing(seed_portfolio):
     client = TestClient(app)
     r = client.post(f"/api/{sp.portfolio_id}/execute?mode=sells_only")
     assert r.status_code == 400, r.text
+
+
+# ── Regression: AI-driven path must pass info_cache to the scorer ────────────
+def test_ai_driven_factor_scores_use_fundamentals(
+    seed_portfolio,
+    mock_anthropic,
+    mock_yfinance,
+    mock_public_com,
+    mock_bars,
+    mock_info_prewarm,
+    mock_news_off,
+):
+    """
+    Regression (2026-06-05): run_ai_driven_analysis pre-warmed info_cache but
+    never passed it to scorer.score_watchlist(), so earnings_growth and
+    quality factor scores were hardcoded 50.0 defaults on every AI-driven
+    proposal — degrading the quant ranking Claude sees and freezing both
+    factors out of the learning pipeline.
+
+    Seeds a candidate with strong fundamentals and asserts the BUY proposal's
+    factor_scores reflect them (not the 50.0 "data unavailable" defaults).
+    """
+    closes = [100.0 + i * 0.3 + (1.0 if i % 3 else -1.5) for i in range(70)]
+    aapl_bars = _bars(closes)
+    mock_bars.bars["AAPL"] = aapl_bars
+    mock_bars.bars_by_period[("AAPL", "3mo")] = aapl_bars
+    mock_bars.bars_by_period[("AAPL", "1y")] = aapl_bars
+
+    # Strong fundamentals → earnings_growth avg(85, 80) = 82.5,
+    # quality avg(85, 80, 80) = 81.7. Both far from the 50.0 default.
+    mock_info_prewarm.info["AAPL"] = {
+        "sector": "Technology",
+        "marketCap": 3e12,
+        "earningsQuarterlyGrowth": 0.30,
+        "revenueGrowth": 0.25,
+        "grossMargins": 0.55,
+        "returnOnEquity": 0.22,
+        "debtToEquity": 30.0,
+    }
+
+    mock_yfinance.prices = {"AAPL": 120.0}
+    mock_public_com.prices = {"AAPL": 120.0}
+
+    mock_anthropic.next_response = ai_allocator_buy_basket(
+        ["AAPL"], shares_each=10, price_each=120.0
+    )
+
+    sp = seed_portfolio(
+        starting_capital=100_000.0,
+        config_overrides={
+            "ai_driven": True,
+            "full_watchlist_prompt": False,
+            "enhanced_trading": {"enable_layers": False},
+        },
+        positions=[],
+        transactions=[],
+        watchlist=[_wl_entry("AAPL", 70.0)],
+    )
+
+    from unified_analysis import run_unified_analysis
+
+    result = run_unified_analysis(dry_run=True, portfolio_id=sp.portfolio_id)
+    assert result.get("ai_mode") == "claude"
+
+    # Find the AAPL BUY and inspect its recorded factor_scores
+    buy_factors = None
+    for a in result.get("approved") or []:
+        original = a.get("original") if isinstance(a, dict) else getattr(a, "original", None)
+        if original is None:
+            continue
+        ticker = original.get("ticker") if isinstance(original, dict) else getattr(original, "ticker", None)
+        action = original.get("action_type") if isinstance(original, dict) else getattr(original, "action_type", None)
+        if ticker == "AAPL" and action == "BUY":
+            buy_factors = (
+                original.get("factor_scores")
+                if isinstance(original, dict)
+                else getattr(original, "factor_scores", None)
+            )
+            break
+
+    assert buy_factors, f"No AAPL BUY with factor_scores found in approved actions: {result.get('approved')}"
+    assert buy_factors.get("earnings_growth", 50.0) > 60.0, (
+        f"earnings_growth score is {buy_factors.get('earnings_growth')} — expected >60 from seeded "
+        f"fundamentals. info_cache is not reaching score_watchlist() in the AI-driven path."
+    )
+    assert buy_factors.get("quality", 50.0) > 60.0, (
+        f"quality score is {buy_factors.get('quality')} — expected >60 from seeded fundamentals. "
+        f"info_cache is not reaching score_watchlist() in the AI-driven path."
+    )

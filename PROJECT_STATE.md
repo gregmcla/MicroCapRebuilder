@@ -11,6 +11,16 @@
 
 ---
 
+## Recently Completed (2026-06-05) — AI-Driven Path Fundamental Scoring Fix
+
+**Bug (since AI-driven mode was born, commit `1d23f14e`):** `run_ai_driven_analysis` pre-warmed yfinance `.info` fundamentals into `info_cache` but never passed it to `scorer.score_watchlist()` (`unified_analysis.py:154`). Result: every AI-driven portfolio scored `earnings_growth=50.0` and `quality=50.0` (the "data unavailable" defaults) on every watchlist candidate — 30% of composite weight dead, and `factor_learning` had zero variance on those two factors (learning on 4 of 6 factors). The AI allocator DID receive info_cache for its prompt, which masked the bug (Claude's reasoning cited real fundamentals while quant scores read 50/50).
+
+**Fix:** one kwarg — `score_watchlist(candidates, info_cache=info_cache)`. Plus corrected the symptom-normalizing comment in `ai_allocator.py:331` ("always 50 in AI-driven"). Regression test `test_ai_driven_factor_scores_use_fundamentals` proven to fail on unfixed code. Two test stubs updated to tolerant signatures. Full suite **327 green**. Real-data verified: MAX watchlist tickers now score eg 75–82.5 / quality 70–81.7.
+
+**Deliberately untouched:** `unified_analysis.py:513` (fallback path) never prewarms fundamentals at all — fixing it adds a prewarm latency hit; no active portfolio uses that branch. Backlog.
+
+---
+
 ## Recently Completed (2026-06-01) — Daily Digest Home (new default landing)
 
 Replaced the Overview grid as the default landing (`portfolioId === "overview"`) with an observational **Daily Digest**. Branch: `feature/daily-digest-home` (26 commits). Spec: `docs/superpowers/specs/2026-05-29-daily-digest-home-design.md`. Plan: `docs/superpowers/plans/2026-05-29-daily-digest-home.md`. Built subagent-driven (15 tasks, TDD, per-task two-stage review).

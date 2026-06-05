@@ -328,7 +328,8 @@ def _build_allocation_prompt(
 
     if full_watchlist:
         # Compact mode: 1 line per stock, all candidates visible
-        # Drop earnings_growth/quality factor scores (always 50 in AI-driven — useless noise)
+        # earnings_growth/quality factor scores omitted — raw fundamentals (revG/gm/P/E)
+        # are shown instead, which Claude reads better than derived 0-100 scores
         # Format: TICKER | score | price | sector | pm=X vt=X vol=X vlty=X | revG=X gm=X P/E=X
         candidates_to_show = scored_candidates  # ALL of them
         for c in candidates_to_show:
