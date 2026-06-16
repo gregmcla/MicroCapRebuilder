@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { Modal } from "./ui";
 
 interface SellModalProps {
   pos: Position;
@@ -34,14 +35,6 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
     inputRef.current?.select();
   }, []);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const handleSell = async () => {
     if (!isValid) return;
     setSelling(true);
@@ -66,49 +59,23 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
   const presetPcts = [25, 50, 75, 100] as const;
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="rounded-xl p-5 w-full"
-        style={{
-          maxWidth: "380px",
-          background: "var(--surface-1)",
-          border: "1px solid var(--border-2)",
-          boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span
-              className="font-mono font-bold"
-              style={{ fontSize: "18px", color: "var(--text-4)" }}
-            >
-              Sell {pos.ticker}
-            </span>
-            <span
-              className="font-mono text-xs font-semibold"
-              style={{ color: pnlColor }}
-            >
-              {sellPnlPct >= 0 ? "+" : ""}{sellPnlPct.toFixed(1)}%
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-xs rounded px-2 py-1 transition-colors"
-            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-1)"; }}
-          >
-            ESC
-          </button>
-        </div>
+    <Modal onClose={onClose} maxWidth={380} ariaLabel={`Sell ${pos.ticker}`}>
+      <Modal.Header onClose={onClose}>
+        <span
+          className="font-mono font-bold"
+          style={{ fontSize: "18px", color: "var(--text-4)" }}
+        >
+          Sell {pos.ticker}
+        </span>
+        <span
+          className="font-mono text-xs font-semibold"
+          style={{ color: pnlColor }}
+        >
+          {sellPnlPct >= 0 ? "+" : ""}{sellPnlPct.toFixed(1)}%
+        </span>
+      </Modal.Header>
 
-        {result ? (
+      {result ? (
           <div
             className="rounded-lg p-4 text-center"
             style={{
@@ -272,7 +239,6 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

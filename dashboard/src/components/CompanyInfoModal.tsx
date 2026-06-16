@@ -1,9 +1,9 @@
 /** Glassmorphic company profile modal — triggered by clicking a ticker. */
 
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { usePortfolioStore } from "../lib/store";
+import { Modal } from "./ui";
 
 function fmt_cap(v: number | null): string {
   if (v == null) return "—";
@@ -55,13 +55,6 @@ export default function CompanyInfoModal({
     staleTime: 24 * 60 * 60 * 1000,
   });
 
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
   const ratingColor = (r: string | null) => {
     if (!r) return "var(--text-2)";
     const l = r.toLowerCase();
@@ -71,31 +64,18 @@ export default function CompanyInfoModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-md mx-4 rounded-2xl p-5"
-        style={{
-          background: "rgba(18,18,28,0.92)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)",
-          backdropFilter: "blur(24px)",
-        }}
-        onClick={(e) => e.stopPropagation()}
+    <Modal onClose={onClose} variant="glass" maxWidth="28rem" ariaLabel={`${ticker} company info`}>
+      {/* Close — absolute, glass-style */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 text-xs rounded-full w-6 h-6 flex items-center justify-center transition-colors"
+        style={{ color: "var(--text-1)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+        aria-label="Close"
       >
-        {/* Close */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-xs rounded-full w-6 h-6 flex items-center justify-center transition-colors"
-          style={{ color: "var(--text-1)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-        >
-          ✕
-        </button>
+        ✕
+      </button>
 
         {isLoading ? (
           <div className="space-y-3 animate-pulse">
@@ -213,7 +193,6 @@ export default function CompanyInfoModal({
             )}
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

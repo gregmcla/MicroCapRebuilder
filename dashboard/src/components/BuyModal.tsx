@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { Modal } from "./ui";
 
 interface QuoteData {
   ticker: string;
@@ -39,12 +40,6 @@ export default function BuyModal({ onClose }: BuyModalProps) {
   const [result, setResult] = useState<{ message: string; success: boolean } | null>(null);
 
   useEffect(() => { tickerRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const fetchQuote = async () => {
     const ticker = tickerInput.trim().toUpperCase();
@@ -92,36 +87,12 @@ export default function BuyModal({ onClose }: BuyModalProps) {
   };
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="rounded-xl p-5 w-full"
-        style={{
-          maxWidth: "400px",
-          background: "var(--surface-1)",
-          border: "1px solid var(--border-2)",
-          boxShadow: "0 24px 48px rgba(0,0,0,0.5)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-mono font-bold" style={{ fontSize: "18px", color: "var(--text-4)" }}>
-            {quote ? `Buy ${quote.ticker}` : "Manual Buy"}
-          </span>
-          <button
-            onClick={onClose}
-            className="text-xs rounded px-2 py-1 transition-colors"
-            style={{ color: "var(--text-1)", border: "1px solid var(--border-1)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-1)"; }}
-          >
-            ESC
-          </button>
-        </div>
+    <Modal onClose={onClose} maxWidth={400} ariaLabel={quote ? `Buy ${quote.ticker}` : "Manual Buy"}>
+      <Modal.Header onClose={onClose}>
+        <span className="font-mono font-bold" style={{ fontSize: "18px", color: "var(--text-4)" }}>
+          {quote ? `Buy ${quote.ticker}` : "Manual Buy"}
+        </span>
+      </Modal.Header>
 
         {result ? (
           <div
@@ -366,7 +337,6 @@ export default function BuyModal({ onClose }: BuyModalProps) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

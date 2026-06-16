@@ -49,6 +49,27 @@ DM Sans + JetBrains Mono + Azeret Mono are loaded from Google Fonts in
 the design agent gets the same typography out of the box. No font files
 are bundled.
 
+## Modal primitive — outlier modals NOT migrated (Phase 1)
+
+`dashboard/src/components/ui/Modal.tsx` covers the 3 shared shells —
+**BuyModal**, **SellModal** (default variant), and **CompanyInfoModal**
+(glass variant). Two outliers were left inlined because their shells are
+intentionally different designs, not duplicates:
+
+- **CreatePortfolioModal** — wizard shell: `surface-0` background (darker
+  than `surface-1`), fixed 520px width with `90vh` max + scroll,
+  `×` close (no ESC chip), and notably **no escape-to-close** today.
+  Looks like its own "wizard" variant. Migrating would either dilute the
+  Modal primitive or change visual behavior. Leave alone until there's a
+  second wizard-style modal worth abstracting.
+- **PortfolioSettingsModal** — settings-drawer shell: `bg-elevated`
+  background, fixed 600px, bordered header strip (`padding 14px 18px` +
+  `border-bottom`), `×` close. Distinct enough it deserves its own
+  variant if a second settings modal ever ships.
+
+If Greg later wants escape-to-close added to CreatePortfolioModal, that
+is a separate UX decision, not a refactor.
+
 ## Re-sync risks
 
 - **CSS hash drift.** `dashboard/dist/assets/index-<hash>.css` changes every
