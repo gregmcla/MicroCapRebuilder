@@ -155,3 +155,80 @@ between sections.
 That snippet exercises every concern above: the elevated surface, the
 violet brand via `GScottLogo`, the `VDivider` rhythm, mono+tabular for
 numbers, semantic color in `IndexPill`, and the VIX inversion idiom.
+
+## Interactive primitives — Modal, Button, Badge
+
+These are the extracted-from-inlined-usage primitives. Always compose
+with them instead of re-rolling a styled `<button>` or `<div>`.
+
+### Modal
+
+Default variant for action modals (buy/sell/confirm). Glass variant for
+overlay info panels (company profile, ticker info). The Modal owns
+backdrop, click-outside-to-close, escape-to-close, and the dialog aria.
+
+```jsx
+<Modal onClose={close} maxWidth={400} ariaLabel="Buy AAPL">
+  <Modal.Header onClose={close}>
+    <span className="font-mono font-bold" style={{ fontSize: 18 }}>
+      Buy AAPL
+    </span>
+  </Modal.Header>
+  <Modal.Body>{/* form, copy, etc. */}</Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" size="md" onClick={close}>Cancel</Button>
+    <Button variant="success" size="md" onClick={confirm}>Confirm</Button>
+  </Modal.Footer>
+</Modal>
+```
+
+For glass variant (translucent, larger blur, rounded-2xl), use
+`variant="glass"`. The close button there is conventionally an
+absolutely-positioned ✕ rather than the ESC chip; render it inline in
+the modal body when needed (the default ModalHeader still works but
+the ✕ style is the established idiom).
+
+### Button
+
+Six variants. Pick by *semantic action*, not by color:
+
+| Variant | When |
+|---|---|
+| `primary` | Default CTA. Filled violet accent. |
+| `secondary` | Cancel, dismiss, "stay here." Filled neutral surface. |
+| `ghost` | Tertiary controls in dense toolbars (tabs, command bars). Transparent. |
+| `outline` | Restraint. Bordered, no fill. Good for "Reset", "Skip". |
+| `danger` | Destructive: Sell, Delete, Close-All. Red treatment. |
+| `success` | Affirmative for trading: Buy, Confirm Order. Green treatment. |
+
+Sizes: `sm` (default, 12px text) for compact toolbars, `md` (13px) for
+form-shaped action rows. Pass `block` to make the button fill its
+container (used inside modal footers with `flex gap-2`).
+
+Icon support: `icon={<svg/>}` renders on the left; `iconOnly` makes the
+button square. Hover treatment is centralized — do NOT re-add
+onMouseEnter/onMouseLeave styling at the call site.
+
+### Badge
+
+`tone` × `variant` × `size`. The base `<Badge>` covers any colored label.
+
+Domain helpers wrap it with mapping logic — use these instead of writing
+your own color tables:
+
+- `<HeatBadge heat={c.social_heat} />` — watchlist social heat.
+  `WARM` / `HOT` render in amber/orange; `SPIKING` renders red with a
+  pulse animation. `COLD` and missing render nothing.
+- `<RegimeBadge regime="BULL" />` — market regime. `BULL` → profit
+  green, `BEAR` → loss red, `SIDEWAYS` → neutral.
+- `<SourceBadge source="MOMENTUM_BREAKOUT" labels={SOURCE_LABELS} />`
+  — watchlist discovery source. Pass `labels` to remap full keys to
+  3-letter abbreviations (the dashboard's `SOURCE_LABELS` is a map of
+  this shape).
+- `<AiDrivenBadge />` — the "AI" pill that flags AI-driven portfolios
+  and proposals. Always violet, always soft variant.
+
+Tones available on plain `<Badge>`:
+`profit | loss | warning | accent | neutral | info`. Map any new domain
+enum to a tone in a sibling helper component, not inline at the call
+site.

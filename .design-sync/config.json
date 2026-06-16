@@ -10,17 +10,34 @@
     "GScottLogo":   "src/components/GScottLogo.tsx",
     "GScottAvatar": "src/components/GScottAvatar.tsx",
     "VDivider":     "src/design-system/VDivider.tsx",
-    "IndexPill":    "src/design-system/IndexPill.tsx"
+    "IndexPill":    "src/design-system/IndexPill.tsx",
+    "Modal":        "src/components/ui/Modal.tsx",
+    "Button":       "src/components/ui/Button.tsx",
+    "Badge":        "src/components/ui/Badge.tsx",
+    "HeatBadge":    "src/components/ui/Badge.tsx",
+    "RegimeBadge":  "src/components/ui/Badge.tsx",
+    "SourceBadge":  "src/components/ui/Badge.tsx",
+    "AiDrivenBadge":"src/components/ui/Badge.tsx"
   },
   "dtsPropsFor": {
     "GScottLogo":   "/** Rendered height in px (default 32). */\n  height?: number;\n  /** Increment to replay the typewriter animation. */\n  animKey?: number;",
     "GScottAvatar": "/** Square size in px (default 48). */\n  size?: number;",
     "VDivider":     "// no props",
-    "IndexPill":    "/** Short label, e.g. \"S&P\", \"RUT\", \"VIX\". */\n  label: string;\n  /** Current index value. */\n  value: number;\n  /** Day percent change, e.g. -0.42. */\n  changePct: number;\n  /** When true, sentiment inverts and label/value render in amber (VIX style). */\n  isVix?: boolean;"
+    "IndexPill":    "/** Short label, e.g. \"S&P\", \"RUT\", \"VIX\". */\n  label: string;\n  /** Current index value. */\n  value: number;\n  /** Day percent change, e.g. -0.42. */\n  changePct: number;\n  /** When true, sentiment inverts and label/value render in amber (VIX style). */\n  isVix?: boolean;",
+    "Modal":        "/** Called when user closes via backdrop, escape, or the header close button. */\n  onClose: () => void;\n  /** Max width of the inner card. Default 400. */\n  maxWidth?: number | string;\n  /** `default` = elevated surface; `glass` = blurred translucent. Default `default`. */\n  variant?: 'default' | 'glass';\n  /** Disable backdrop-click-to-close. Default true. */\n  closeOnBackdrop?: boolean;\n  /** Disable escape-to-close. Default true. */\n  closeOnEscape?: boolean;\n  /** aria-label on the dialog root. */\n  ariaLabel?: string;\n  children: React.ReactNode;",
+    "Button":       "/** Visual treatment. */\n  variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'success';\n  /** Size. Default `sm`. */\n  size?: 'sm' | 'md';\n  /** Optional left icon. */\n  icon?: React.ReactNode;\n  /** Render icon-only (square button). */\n  iconOnly?: boolean;\n  /** Stretch to fill container width. */\n  block?: boolean;\n  /** Standard button props (onClick, disabled, type, etc.) pass through. */\n  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;\n  disabled?: boolean;\n  children?: React.ReactNode;",
+    "Badge":        "/** Semantic color tone. */\n  tone?: 'profit' | 'loss' | 'warning' | 'accent' | 'neutral' | 'info';\n  /** Fill style. */\n  variant?: 'filled' | 'soft' | 'outline';\n  /** Size. Default `xs`. */\n  size?: 'xs' | 'sm';\n  /** When true, applies a slow pulse animation (SPIKING heat). */\n  pulse?: boolean;\n  children: React.ReactNode;",
+    "HeatBadge":    "/** Social heat string. `undefined`, `\"\"`, or `\"COLD\"` render nothing. */\n  heat?: string | null;\n  size?: 'xs' | 'sm';",
+    "RegimeBadge":  "/** Market regime. Renders BULL/BEAR/SIDEWAYS as the appropriate tone. */\n  regime?: string | null;\n  size?: 'xs' | 'sm';",
+    "SourceBadge":  "/** Source key, e.g. \"MOMENTUM_BREAKOUT\". */\n  source: string;\n  /** Optional label override map (e.g. SOURCE_LABELS in app code). */\n  labels?: Record<string, string>;\n  size?: 'xs' | 'sm';",
+    "AiDrivenBadge":"size?: 'xs' | 'sm';"
   },
   "runtimeFontPrefixes": ["DM Sans", "JetBrains Mono", "Azeret Mono", "Fira Code"],
   "overrides": {
-    "IndexPill": { "cardMode": "column" }
+    "IndexPill": { "cardMode": "column" },
+    "Modal":     { "cardMode": "single", "primaryStory": "Default" },
+    "Button":    { "cardMode": "column" },
+    "Badge":     { "cardMode": "column" }
   },
   "readmeHeader": ".design-sync/conventions.md"
 }
