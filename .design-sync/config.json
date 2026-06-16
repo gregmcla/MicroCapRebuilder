@@ -1,0 +1,26 @@
+{
+  "shape": "package",
+  "pkg": "dashboard",
+  "globalName": "GScottDS",
+  "projectId": "74c3488a-bb7c-46a2-b49f-3ea6e66fedd8",
+  "srcDir": "src/design-system",
+  "tsconfig": "tsconfig.app.json",
+  "cssEntry": "dist/styles.css",
+  "componentSrcMap": {
+    "GScottLogo":   "src/components/GScottLogo.tsx",
+    "GScottAvatar": "src/components/GScottAvatar.tsx",
+    "VDivider":     "src/design-system/VDivider.tsx",
+    "IndexPill":    "src/design-system/IndexPill.tsx"
+  },
+  "dtsPropsFor": {
+    "GScottLogo":   "/** Rendered height in px (default 32). */\n  height?: number;\n  /** Increment to replay the typewriter animation. */\n  animKey?: number;",
+    "GScottAvatar": "/** Square size in px (default 48). */\n  size?: number;",
+    "VDivider":     "// no props",
+    "IndexPill":    "/** Short label, e.g. \"S&P\", \"RUT\", \"VIX\". */\n  label: string;\n  /** Current index value. */\n  value: number;\n  /** Day percent change, e.g. -0.42. */\n  changePct: number;\n  /** When true, sentiment inverts and label/value render in amber (VIX style). */\n  isVix?: boolean;"
+  },
+  "runtimeFontPrefixes": ["DM Sans", "JetBrains Mono", "Azeret Mono", "Fira Code"],
+  "overrides": {
+    "IndexPill": { "cardMode": "column" }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
