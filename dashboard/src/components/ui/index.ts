@@ -9,3 +9,14 @@ export type {
   ModalBodyProps,
   ModalFooterProps,
 } from "./Modal";
+
+export { Badge, HeatBadge, RegimeBadge, SourceBadge, AiDrivenBadge } from "./Badge";
+export type {
+  BadgeProps,
+  BadgeTone,
+  BadgeVariant,
+  BadgeSize,
+  HeatBadgeProps,
+  RegimeBadgeProps,
+  SourceBadgeProps,
+} from "./Badge";
