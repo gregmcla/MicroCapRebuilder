@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
-import { Modal } from "./ui";
+import { Modal, Button } from "./ui";
 
 interface SellModalProps {
   pos: Position;
@@ -203,39 +203,18 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
 
             {/* Actions */}
             <div className="flex gap-2">
-              <button
-                onClick={onClose}
-                className="flex-1 py-2 rounded text-xs font-semibold transition-colors"
-                style={{
-                  background: "var(--surface-3)",
-                  color: "var(--text-2)",
-                  border: "1px solid var(--border-1)",
-                }}
-              >
+              <Button variant="secondary" size="md" block onClick={onClose}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                block
                 onClick={handleSell}
                 disabled={!isValid || selling}
-                className="flex-1 py-2 rounded text-xs font-semibold transition-colors disabled:opacity-40"
-                style={{
-                  background: "rgba(248,113,113,0.10)",
-                  color: "rgba(248,113,113,0.90)",
-                  border: "1px solid rgba(248,113,113,0.35)",
-                }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.background = "rgba(248,113,113,0.18)";
-                    e.currentTarget.style.borderColor = "rgba(248,113,113,0.55)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "rgba(248,113,113,0.10)";
-                  e.currentTarget.style.borderColor = "rgba(248,113,113,0.35)";
-                }}
               >
                 {selling ? "Selling..." : isAll ? `Sell All ${pos.ticker}` : `Sell ${numShares.toLocaleString()} ${pos.ticker}`}
-              </button>
+              </Button>
             </div>
           </>
         )}

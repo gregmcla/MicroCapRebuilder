@@ -10,6 +10,9 @@ export type {
   ModalFooterProps,
 } from "./Modal";
 
+export { Button } from "./Button";
+export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
+
 export { Badge, HeatBadge, RegimeBadge, SourceBadge, AiDrivenBadge } from "./Badge";
 export type {
   BadgeProps,
