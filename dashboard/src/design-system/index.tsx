@@ -21,6 +21,9 @@ export type {
 export { Button } from "../components/ui/Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "../components/ui/Button";
 
+export { Tabs } from "../components/ui/Tabs";
+export type { TabsProps, TabItem } from "../components/ui/Tabs";
+
 export {
   Badge,
   HeatBadge,

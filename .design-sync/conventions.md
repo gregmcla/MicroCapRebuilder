@@ -190,7 +190,7 @@ the ✕ style is the established idiom).
 
 ### Button
 
-Six variants. Pick by *semantic action*, not by color:
+Eight variants. Pick by *semantic action*, not by color:
 
 | Variant | When |
 |---|---|
@@ -200,6 +200,8 @@ Six variants. Pick by *semantic action*, not by color:
 | `outline` | Restraint. Bordered, no fill. Good for "Reset", "Skip". |
 | `danger` | Destructive: Sell, Delete, Close-All. Red treatment. |
 | `success` | Affirmative for trading: Buy, Confirm Order. Green treatment. |
+| `warning` | Caution: switch to paper mode, dismiss with risk. Amber treatment. |
+| `info` | Informational: View details, neutral confirms. Sky blue treatment. |
 
 Sizes: `sm` (default, 12px text) for compact toolbars, `md` (13px) for
 form-shaped action rows. Pass `block` to make the button fill its
@@ -232,3 +234,25 @@ Tones available on plain `<Badge>`:
 `profit | loss | warning | accent | neutral | info`. Map any new domain
 enum to a tone in a sibling helper component, not inline at the call
 site.
+
+### Tabs
+
+Horizontal tab strip with an active-underline indicator. Controlled —
+the caller owns the active key and passes it via `value`. Generic over
+the key type so domain enums (e.g. `'actions' | 'risk' | …`) carry
+through.
+
+```jsx
+const items = [
+  { key: 'actions', label: 'Actions' },
+  { key: 'risk', label: 'Risk' },
+  { key: 'performance', label: 'Performance' },
+];
+
+<Tabs items={items} value={tab} onChange={setTab} />
+```
+
+Use Tabs for context-switching layouts (right rails, intelligence
+briefs, settings drawers). Disabled tabs render dim and don't fire
+onChange. The accent underline always comes from `var(--color-accent)`
+— don't override it; that color is part of the GScott brand.

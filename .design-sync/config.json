@@ -13,6 +13,7 @@
     "IndexPill":    "src/design-system/IndexPill.tsx",
     "Modal":        "src/components/ui/Modal.tsx",
     "Button":       "src/components/ui/Button.tsx",
+    "Tabs":         "src/components/ui/Tabs.tsx",
     "Badge":        "src/components/ui/Badge.tsx",
     "HeatBadge":    "src/components/ui/Badge.tsx",
     "RegimeBadge":  "src/components/ui/Badge.tsx",
@@ -25,7 +26,8 @@
     "VDivider":     "// no props",
     "IndexPill":    "/** Short label, e.g. \"S&P\", \"RUT\", \"VIX\". */\n  label: string;\n  /** Current index value. */\n  value: number;\n  /** Day percent change, e.g. -0.42. */\n  changePct: number;\n  /** When true, sentiment inverts and label/value render in amber (VIX style). */\n  isVix?: boolean;",
     "Modal":        "/** Called when user closes via backdrop, escape, or the header close button. */\n  onClose: () => void;\n  /** Max width of the inner card. Default 400. */\n  maxWidth?: number | string;\n  /** `default` = elevated surface; `glass` = blurred translucent. Default `default`. */\n  variant?: 'default' | 'glass';\n  /** Disable backdrop-click-to-close. Default true. */\n  closeOnBackdrop?: boolean;\n  /** Disable escape-to-close. Default true. */\n  closeOnEscape?: boolean;\n  /** aria-label on the dialog root. */\n  ariaLabel?: string;\n  children: React.ReactNode;",
-    "Button":       "/** Visual treatment. */\n  variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'success';\n  /** Size. Default `sm`. */\n  size?: 'sm' | 'md';\n  /** Optional left icon. */\n  icon?: React.ReactNode;\n  /** Render icon-only (square button). */\n  iconOnly?: boolean;\n  /** Stretch to fill container width. */\n  block?: boolean;\n  /** Standard button props (onClick, disabled, type, etc.) pass through. */\n  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;\n  disabled?: boolean;\n  children?: React.ReactNode;",
+    "Button":       "/** Visual treatment. */\n  variant?: 'primary' | 'secondary' | 'ghost' | 'outline' | 'danger' | 'success' | 'warning' | 'info';\n  /** Size. Default `sm`. */\n  size?: 'sm' | 'md';\n  /** Optional left icon. */\n  icon?: React.ReactNode;\n  /** Render icon-only (square button). */\n  iconOnly?: boolean;\n  /** Stretch to fill container width. */\n  block?: boolean;\n  /** Standard button props (onClick, disabled, type, etc.) pass through. */\n  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;\n  disabled?: boolean;\n  children?: React.ReactNode;",
+    "Tabs":         "/** Tabs to render. Each item: { key, label, disabled? }. */\n  items: ReadonlyArray<{ key: string; label: React.ReactNode; disabled?: boolean }>;\n  /** Currently active key. */\n  value: string;\n  /** Called when a tab is clicked. */\n  onChange: (key: string) => void;\n  className?: string;\n  style?: React.CSSProperties;",
     "Badge":        "/** Semantic color tone. */\n  tone?: 'profit' | 'loss' | 'warning' | 'accent' | 'neutral' | 'info';\n  /** Fill style. */\n  variant?: 'filled' | 'soft' | 'outline';\n  /** Size. Default `xs`. */\n  size?: 'xs' | 'sm';\n  /** When true, applies a slow pulse animation (SPIKING heat). */\n  pulse?: boolean;\n  children: React.ReactNode;",
     "HeatBadge":    "/** Social heat string. `undefined`, `\"\"`, or `\"COLD\"` render nothing. */\n  heat?: string | null;\n  size?: 'xs' | 'sm';",
     "RegimeBadge":  "/** Market regime. Renders BULL/BEAR/SIDEWAYS as the appropriate tone. */\n  regime?: string | null;\n  size?: 'xs' | 'sm';",
@@ -37,6 +39,7 @@
     "IndexPill": { "cardMode": "column" },
     "Modal":     { "cardMode": "single", "primaryStory": "Default" },
     "Button":    { "cardMode": "column" },
+    "Tabs":      { "cardMode": "column" },
     "Badge":     { "cardMode": "column" }
   },
   "readmeHeader": ".design-sync/conventions.md"
