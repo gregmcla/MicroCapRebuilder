@@ -17,6 +17,7 @@ import IntelligenceBrief from "./IntelligenceBrief";
 import GScottLogo from "./GScottLogo";
 import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
 import BuyModal from "./BuyModal";
+import { Button } from "./ui";
 
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
@@ -210,18 +211,12 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-3 py-1 text-xs font-semibold bg-bg-surface text-text-secondary rounded hover:bg-border transition-colors"
-              >
+              <Button variant="secondary" size="sm" onClick={() => setShowConfirm(false)}>
                 Cancel
-              </button>
-              <button
-                onClick={handleClose}
-                className="px-3 py-1 text-xs font-semibold bg-loss/15 text-loss rounded hover:bg-loss/25 transition-colors"
-              >
+              </Button>
+              <Button variant="danger" size="sm" onClick={handleClose}>
                 Yes, Close All
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -292,18 +287,16 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
                 : "This will switch to paper trading mode (simulated)."}
             </p>
             <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="px-3 py-1 text-xs font-semibold bg-bg-surface text-text-primary rounded hover:bg-border transition-colors"
-              >
+              <Button variant="secondary" size="sm" onClick={() => setShowConfirm(false)}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant={targetMode === "LIVE" ? "danger" : "warning"}
+                size="sm"
                 onClick={handleToggle}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${targetMode === "LIVE" ? "bg-loss/15 text-loss hover:bg-loss/25" : "bg-warning/15 text-warning hover:bg-warning/25"}`}
               >
                 Switch to {targetMode}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

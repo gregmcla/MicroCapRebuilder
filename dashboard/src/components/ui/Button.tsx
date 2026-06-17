@@ -19,7 +19,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "outline" | "danger" | "success";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "outline" | "danger" | "success" | "warning" | "info";
 export type ButtonSize = "sm" | "md";
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "ref"> {
@@ -117,6 +117,30 @@ function variantStyles(variant: ButtonVariant): { base: CSSProperties; hover: CS
         hover: {
           background: "rgba(74,222,128,0.18)",
           borderColor: "rgba(74,222,128,0.55)",
+        },
+      };
+    case "warning":
+      return {
+        base: {
+          background: "rgba(251,191,36,0.10)",
+          color: "rgba(251,191,36,0.90)",
+          border: "1px solid rgba(251,191,36,0.35)",
+        },
+        hover: {
+          background: "rgba(251,191,36,0.18)",
+          borderColor: "rgba(251,191,36,0.55)",
+        },
+      };
+    case "info":
+      return {
+        base: {
+          background: "rgba(56,189,248,0.10)",
+          color: "rgba(56,189,248,0.90)",
+          border: "1px solid rgba(56,189,248,0.35)",
+        },
+        hover: {
+          background: "rgba(56,189,248,0.18)",
+          borderColor: "rgba(56,189,248,0.55)",
         },
       };
   }

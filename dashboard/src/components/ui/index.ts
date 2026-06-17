@@ -13,6 +13,9 @@ export type {
 export { Button } from "./Button";
 export type { ButtonProps, ButtonVariant, ButtonSize } from "./Button";
 
+export { Tabs } from "./Tabs";
+export type { TabsProps, TabItem } from "./Tabs";
+
 export { Badge, HeatBadge, RegimeBadge, SourceBadge, AiDrivenBadge } from "./Badge";
 export type {
   BadgeProps,
