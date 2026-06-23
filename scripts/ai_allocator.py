@@ -43,6 +43,7 @@ def run_ai_allocation(
     regime_analysis: Optional[RegimeAnalysis] = None,
     prompt_extras: Optional[dict] = None,
     mode: str = "full",
+    trace=None,
 ) -> list:
     """
     Run full AI allocation for an AI-driven portfolio.
@@ -96,6 +97,10 @@ def run_ai_allocation(
 
     full_watchlist = bool(state.config.get("full_watchlist_prompt", False))
 
+    import time as _time
+    from datetime import datetime as _dt
+    _pb_start = _time.time()
+    _pb_started_at = _dt.now().isoformat()
     prompt = _build_allocation_prompt(
         state=state,
         layer1_sells=layer1_sells,
@@ -112,6 +117,31 @@ def run_ai_allocation(
         portfolio_id=state.portfolio_id,
         mode=mode,
     )
+
+    if trace is not None:
+        from decision_trace import AiAllocatorPromptStep as _APStep
+        # Detect which optional blocks were included via simple substring marker
+        # checks against the assembled prompt. Cheap and resilient to prompt edits.
+        _block_markers = [
+            ("macro", "MACRO CONTEXT"),
+            ("observations", "PORTFOLIO OBSERVATIONS"),
+            ("factor_scores", "FACTOR SCORES BY POSITION"),
+            ("recent_trades", "RECENT TRADES"),
+            ("sector_overlap", "SECTOR OVERLAP"),
+            ("reentry_guard", "RECENTLY SOLD"),
+            ("regime", "MARKET REGIME"),
+        ]
+        _blocks_included = [name for name, marker in _block_markers if marker in prompt]
+        trace.add_step(_APStep(
+            step_name="ai_allocator_prompt",
+            started_at=_pb_started_at,
+            duration_ms=int((_time.time() - _pb_start) * 1000),
+            blocks_included=_blocks_included,
+            prompt_char_count=len(prompt),
+            prompt_text=prompt,
+            candidate_count=len(scored_candidates),
+            held_count=len(held_tickers),
+        ))
 
     model = state.config.get("ai_model", CLAUDE_MODEL)
 
@@ -137,6 +167,8 @@ def run_ai_allocation(
         create_kwargs["timeout"] = 600.0
 
     try:
+        _call_start = _time.time()
+        _call_started_at = _dt.now().isoformat()
         response = client.messages.create(**create_kwargs)
         # Adaptive thinking may prepend thinking block(s) — grab the text block,
         # not content[0] (which would be a ThinkingBlock when it reasoned).
@@ -148,10 +180,38 @@ def run_ai_allocation(
         if not response_text and response.content:
             response_text = getattr(response.content[0], "text", "") or ""
 
+        if trace is not None:
+            from decision_trace import AiAllocatorCallStep as _ACStep
+            _usage = getattr(response, "usage", None)
+            _tok = getattr(_usage, "output_tokens", None) if _usage else None
+            trace.add_step(_ACStep(
+                step_name="ai_allocator_call",
+                started_at=_call_started_at,
+                duration_ms=int((_time.time() - _call_start) * 1000),
+                model=getattr(response, "model", model),
+                response_char_count=len(response_text),
+                response_token_count=_tok,
+                finish_reason=str(getattr(response, "stop_reason", "") or ""),
+                raw_response=response_text,
+            ))
+
         if not response_text or not response_text.strip():
             raise ValueError("Empty response from AI allocator")
 
+        _parse_start = _time.time()
+        _parse_started_at = _dt.now().isoformat()
         allocation_data = _parse_json(response_text)
+        if trace is not None:
+            from decision_trace import AiAllocatorParseStep as _APaStep
+            trace.add_step(_APaStep(
+                step_name="ai_allocator_parse",
+                started_at=_parse_started_at,
+                duration_ms=int((_time.time() - _parse_start) * 1000),
+                cleanup_applied=[],  # _parse_json doesn't expose its cleanup steps; can be expanded later
+                parsed_buys=list(allocation_data.get("allocation_plan") or []),
+                parsed_sells=list(allocation_data.get("sells") or []),
+                parsed_trims=list(allocation_data.get("trims") or []),
+            ))
 
         # Available cash for buy validation = current cash + proceeds from Claude's own sells
         claude_sell_proceeds = sum(
@@ -165,6 +225,8 @@ def run_ai_allocation(
         # aren't retroactively affected. New portfolios get the flag set to
         # true at creation in portfolio_registry.create_portfolio().
         enforce_cap = bool(state.config.get("enforce_max_positions", False))
+        _val_start = _time.time()
+        _val_started_at = _dt.now().isoformat()
         valid_buys, ai_sells = _validate_allocation(
             allocation_data, effective_cash, state.total_equity, scored_candidates,
             held_tickers=held_tickers,
@@ -177,6 +239,29 @@ def run_ai_allocation(
         response_model = getattr(response, "model", model)
         ai_actions = _convert_to_reviewed_actions(valid_buys, ai_sells, regime, ai_model=response_model)
         reviewed.extend(ai_actions)
+
+        if trace is not None:
+            from decision_trace import AiAllocatorValidateStep as _AVStep
+            _validations: list[dict] = []
+            for r in ai_actions:
+                _validations.append({
+                    "proposal_id": r.original.proposal_id,
+                    "ticker": r.original.ticker,
+                    "action_type": r.original.action_type,
+                    "shares": r.original.shares,
+                    "price": r.original.price,
+                    "stop_loss": r.original.stop_loss,
+                    "take_profit": r.original.take_profit,
+                    "accepted": True,
+                    "modifications": [],
+                    "rejection_reason": None,
+                })
+            trace.add_step(_AVStep(
+                step_name="ai_allocator_validate",
+                started_at=_val_started_at,
+                duration_ms=int((_time.time() - _val_start) * 1000),
+                validations=_validations,
+            ))
 
         _last_ai_mode = "claude"
 
@@ -911,6 +996,7 @@ def _convert_to_reviewed_actions(
     """Wrap validated AI allocation as ReviewedAction(APPROVE) objects."""
     result = []
 
+    import uuid as _uuid
     for buy in valid_buys:
         action = ProposedAction(
             action_type="BUY",
@@ -923,6 +1009,7 @@ def _convert_to_reviewed_actions(
             factor_scores=buy.get("factor_scores", {}),
             regime=regime.value,
             reason="AI allocation",
+            proposal_id=_uuid.uuid4().hex[:8],
         )
         result.append(ReviewedAction(
             original=action,
@@ -944,6 +1031,7 @@ def _convert_to_reviewed_actions(
             factor_scores={},
             regime=regime.value,
             reason="AI allocation",
+            proposal_id=_uuid.uuid4().hex[:8],
         )
         result.append(ReviewedAction(
             original=action,

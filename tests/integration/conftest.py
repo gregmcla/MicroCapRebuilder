@@ -128,17 +128,20 @@ def mock_yfinance():
     Replace portfolio_state.fetch_prices_batch with a controllable mock.
 
     Tests assign `.prices` (dict[ticker, price]) and optionally `.prev_closes`.
-    Returns the canonical 3-tuple shape: (prices, failures, prev_closes).
+    Returns the canonical 4-tuple shape: (prices, failures, prev_closes, today_closes).
+    today_closes default to the current price (= regular-session close ≈ current during session).
     """
     holder = MagicMock()
     holder.prices = {}
     holder.prev_closes = {}
+    holder.today_closes = {}
     holder.failures = []
 
     def _fetch(tickers):
         prices = {t: holder.prices.get(t, 50.0) for t in tickers}
         prev = {t: holder.prev_closes.get(t, holder.prices.get(t, 50.0)) for t in tickers}
-        return prices, list(holder.failures), prev
+        today = {t: holder.today_closes.get(t, prices[t]) for t in tickers}
+        return prices, list(holder.failures), prev, today
 
     # Patch every consumer reference. `from portfolio_state import fetch_prices_batch`
     # rebinds the name at import time, so patching only the source module misses

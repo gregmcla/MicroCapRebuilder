@@ -121,7 +121,7 @@ export default function PortfolioStrip({
           const pct = totalEquity > 0 ? (s.equity / totalEquity) * 100 : 100 / valid.length;
           const active = activeFilter === s.id;
           const ret = s.total_return_pct ?? 0;
-          const dayUp = (s.day_pnl ?? 0) >= 0;
+          const dayUp = (s.regular_session_pnl ?? s.day_pnl ?? 0) >= 0;
           const scanResult = scanResults[s.id];
 
           return (

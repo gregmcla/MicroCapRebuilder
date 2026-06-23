@@ -114,9 +114,15 @@ function MarketIndices() {
 function PortfolioStats({ state }: { state: PortfolioState | undefined }) {
   if (!state) return null;
   const equity = state.total_equity ?? 0;
-  const dayPnl = state.day_pnl ?? 0;
-  const dayColor = dayPnl >= 0 ? "var(--color-profit)" : "var(--color-loss)";
-  const sign = dayPnl >= 0 ? "+" : "";
+  const regularPnl = state.regular_session_pnl ?? state.day_pnl ?? 0;
+  const ahPnl = state.extended_hours_pnl ?? 0;
+  const session = state.session_status ?? "regular_hours";
+  const dayColor = regularPnl >= 0 ? "var(--color-profit)" : "var(--color-loss)";
+  const sign = regularPnl >= 0 ? "+" : "";
+  const showAh = (session === "after_hours" || session === "pre_market") && ahPnl !== 0;
+  const ahColor = ahPnl >= 0 ? "var(--color-profit)" : "var(--color-loss)";
+  const ahSign = ahPnl >= 0 ? "+" : "";
+  const ahLabel = session === "pre_market" ? "PRE" : "AH";
 
   return (
     <div className="flex items-baseline gap-2 px-3 shrink-0">
@@ -129,9 +135,19 @@ function PortfolioStats({ state }: { state: PortfolioState | undefined }) {
       <span
         className="font-mono tabular-nums font-semibold"
         style={{ fontSize: "11px", color: dayColor }}
+        title="Regular-session P&L (9:30–4:00 ET)"
       >
-        {sign}${Math.abs(dayPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+        {sign}${Math.abs(regularPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
+      {showAh && (
+        <span
+          className="font-mono tabular-nums"
+          style={{ fontSize: "10px", color: ahColor, opacity: 0.7 }}
+          title={`Extended-hours P&L (${ahLabel === "PRE" ? "pre-market" : "after-hours"})`}
+        >
+          ({ahSign}${Math.abs(ahPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} {ahLabel})
+        </span>
+      )}
     </div>
   );
 }
@@ -379,6 +395,8 @@ export default function TopBar({
   const briefOpen = useBriefStore(s => s.briefOpen);
   const briefInitialTab = useBriefStore(s => s.briefInitialTab);
   const briefInitialTradeId = useBriefStore(s => s.briefInitialTradeId);
+  const briefInitialProposalId = useBriefStore(s => s.briefInitialProposalId);
+  const briefInitialTraceId = useBriefStore(s => s.briefInitialTraceId);
   const openBrief = useBriefStore(s => s.openBrief);
   const closeBrief = useBriefStore(s => s.closeBrief);
   const isOverviewOrLogs = !state;
@@ -600,6 +618,8 @@ export default function TopBar({
           portfolioName={state?.config?.name as string ?? activePortfolioId}
           initialTab={briefInitialTab}
           initialTradeId={briefInitialTradeId}
+          initialProposalId={briefInitialProposalId}
+          initialTraceId={briefInitialTraceId}
           onClose={closeBrief}
         />
       )}

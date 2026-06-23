@@ -221,11 +221,37 @@ def get_universes():
 @router.get("/overview")
 def get_overview():
     """Aggregate view across all portfolios."""
+    # Determine session status once — gates whether we fetch live prices for the
+    # extended-hours split. During regular hours, AH is definitionally 0 so we
+    # skip the price fetch entirely. After 4pm/pre-market we fetch (60s cache
+    # per portfolio keeps repeat hits cheap).
+    session_status = "closed"
+    try:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime as _dt, time as _time
+        _now_et = _dt.now(ZoneInfo("America/New_York"))
+        _is_weekday = _now_et.weekday() < 5
+        _t = _now_et.time()
+        if _is_weekday and _time(9, 30) <= _t <= _time(16, 0):
+            session_status = "regular_hours"
+        elif _is_weekday and _time(16, 0) < _t <= _time(20, 0):
+            session_status = "after_hours"
+        elif _is_weekday and _time(4, 0) <= _t < _time(9, 30):
+            session_status = "pre_market"
+        else:
+            session_status = "closed"
+    except Exception:
+        session_status = "regular_hours" if date.today().weekday() < 5 else "closed"
+
+    needs_live_prices = session_status in ("after_hours", "pre_market")
+
     portfolios = list_portfolios(active_only=True)
     summaries = []
     total_equity = 0.0
     total_cash = 0.0
     total_day_pnl = 0.0
+    total_regular_session_pnl = 0.0
+    total_extended_hours_pnl = 0.0
     total_unrealized_pnl = 0.0
     total_positions = 0
     total_all_time_pnl = 0.0
@@ -234,7 +260,7 @@ def get_overview():
 
     for p in portfolios:
         try:
-            state = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
+            state = load_portfolio_state(fetch_prices=needs_live_prices, portfolio_id=p.id)
 
             # Compute day P&L from snapshots — only if markets were open today.
             snapshots = state.snapshots
@@ -245,6 +271,18 @@ def get_overview():
                 snapshot_date = str(today_row.get("date", ""))
                 if snapshot_date.startswith(date.today().isoformat()):
                     day_pnl = float(today_row.get("day_pnl", 0) or 0)
+
+            # Regular-session P&L = snapshot.day_pnl (frozen at 4:15pm cron).
+            # Extended-hours P&L = sum of per-position EH moves (only meaningful
+            # after 4pm / before 9:30am).
+            regular_session_pnl = day_pnl
+            extended_hours_pnl = 0.0
+            if (
+                needs_live_prices
+                and not state.positions.empty
+                and "extended_hours_change" in state.positions.columns
+            ):
+                extended_hours_pnl = float(state.positions["extended_hours_change"].fillna(0).sum())
 
             # Total return — same transaction-replay method as state.py
             # to avoid equity-minus-starting-capital accounting artifacts.
@@ -322,6 +360,9 @@ def get_overview():
                 "paper_mode": state.paper_mode,
                 "unrealized_pnl": round(unrealized_pnl, 2),
                 "day_pnl": round(day_pnl, 2),
+                "session_status": session_status,
+                "regular_session_pnl": round(regular_session_pnl, 2),
+                "extended_hours_pnl": round(extended_hours_pnl, 2),
                 "all_time_pnl": round(all_time_pnl, 2),
                 "total_return_pct": round(total_return_pct, 2),
                 "deployed_pct": deployed_pct,
@@ -336,6 +377,8 @@ def get_overview():
                 total_equity += state.total_equity
                 total_cash += state.cash
                 total_day_pnl += day_pnl
+                total_regular_session_pnl += regular_session_pnl
+                total_extended_hours_pnl += extended_hours_pnl
                 total_unrealized_pnl += unrealized_pnl
                 total_all_time_pnl += all_time_pnl
                 total_starting_capital += starting_capital
@@ -353,6 +396,9 @@ def get_overview():
         "total_equity": round(total_equity, 2),
         "total_cash": round(total_cash, 2),
         "total_day_pnl": round(total_day_pnl, 2),
+        "session_status": session_status,
+        "total_regular_session_pnl": round(total_regular_session_pnl, 2),
+        "total_extended_hours_pnl": round(total_extended_hours_pnl, 2),
         "total_unrealized_pnl": round(total_unrealized_pnl, 2),
         "total_all_time_pnl": round(total_all_time_pnl, 2),
         "total_starting_capital": round(total_starting_capital, 2),

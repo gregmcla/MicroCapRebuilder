@@ -22,6 +22,7 @@ Usage:
 import json
 import logging
 import os
+import time
 import uuid
 from datetime import date, datetime
 from pathlib import Path
@@ -104,13 +105,18 @@ def _run_ai_driven_analysis(
     stale_positions: dict,
     layer1_sell_actions: list,
     mode: str = "full",
+    trace=None,
 ) -> dict:
     """
     AI-driven path: Layer 1 mechanicals + Claude as full portfolio manager.
 
     Replaces Layers 2-4 and AI review. Returns result dict in the same shape
     as the mechanical path so execute_approved_actions() works unchanged.
+
+    Adds steps to the decision trace if one is provided (no-op if None).
     """
+    import time as _time
+    from datetime import datetime as _dt
     config = state.config
     strategy_dna = config.get("strategy_dna") or config.get("strategy", {}).get("strategy_dna", "")
 
@@ -120,6 +126,8 @@ def _run_ai_driven_analysis(
     rg_threshold = float(rg_config.get("meaningful_change_threshold_pts", 10))
     tx_file = get_transactions_file(state.portfolio_id)
 
+    _ws_start = _time.time()
+    _ws_started_at = _dt.now().isoformat()
     if mode == "sells_only":
         # Skip the watchlist scoring entirely — no buys will be emitted.
         scored_candidates = []
@@ -185,6 +193,26 @@ def _run_ai_driven_analysis(
             scored_candidates.sort(key=lambda x: x["composite_score"], reverse=True)
             print(f"  Scored {len(scored_candidates)} candidate(s) for AI review")
 
+    if trace is not None:
+        from decision_trace import WatchlistScoringStep as _WSStep
+        # Light per-candidate payload; full factor scores already captured
+        # downstream in the prompt + Claude's response.
+        threshold = float(config.get("scoring", {}).get("min_score_threshold", 35.0))
+        cand_summary = [
+            {"ticker": c["ticker"], "score": c.get("composite_score", 0.0),
+             "data_completeness": c.get("data_completeness")}
+            for c in scored_candidates
+        ]
+        trace.add_step(_WSStep(
+            step_name="watchlist_scoring",
+            started_at=_ws_started_at,
+            duration_ms=int((_time.time() - _ws_start) * 1000),
+            total_scored=len(scored_candidates),
+            threshold_applied=threshold,
+            top_n_selected=len(scored_candidates),
+            candidates=cand_summary,
+        ))
+
     # ─── Gather rich context for AI prompt ─────────────────────────────────────
     prompt_extras: dict = {
         "trade_stats": None,
@@ -246,6 +274,7 @@ def _run_ai_driven_analysis(
         regime_analysis=state.regime_analysis,
         prompt_extras=prompt_extras,
         mode=mode,
+        trace=trace,
     )
     import ai_allocator as _ai_alloc_mod
     ai_mode = _ai_alloc_mod._last_ai_mode
@@ -286,7 +315,7 @@ def _run_ai_driven_analysis(
         approved = [r for r in approved if r.original.action_type == "SELL"]
         proposed_actions = [a for a in proposed_actions if a.action_type == "SELL"]
 
-    return {
+    result = {
         "proposed_actions": proposed_actions,
         "reviewed_actions": reviewed_actions,
         "approved": approved,
@@ -306,6 +335,27 @@ def _run_ai_driven_analysis(
         "ai_mode": ai_mode,
         "mode": mode,
     }
+
+    if trace is not None:
+        from decision_trace import ResultAssembleStep as _RAStep, save_trace as _save_trace
+        trace.add_step(_RAStep(
+            step_name="result_assemble",
+            started_at=_dt.now().isoformat(),
+            duration_ms=0,
+            mode_filter=mode,
+            approved_count=len(approved),
+            modified_count=0,
+            vetoed_count=0,
+            micro_position_dropped=[],
+        ))
+        trace.final_summary = result["summary"]
+        try:
+            _save_trace(trace)
+            result["trace_id"] = trace.trace_id
+        except Exception as _trace_err:
+            print(f"  [Trace] Failed to save decision trace (non-fatal): {_trace_err}")
+
+    return result
 
 
 # ─── Unified Analysis ─────────────────────────────────────────────────────────
@@ -578,7 +628,7 @@ def _run_fallback_scoring_step2(
     return proposed_actions
 
 
-def _run_layer1_risk(config: dict, state, regime) -> tuple[list, dict]:
+def _run_layer1_risk(config: dict, state, regime, trace=None) -> tuple[list, dict]:
     """
     Step 1 of the analysis pipeline: run RiskLayer to surface stop/target
     triggers, deterioration alerts, and dynamic stops. Returns
@@ -587,13 +637,23 @@ def _run_layer1_risk(config: dict, state, regime) -> tuple[list, dict]:
 
     Pure side-effect-free except for the ergonomic console prints (urgency
     emojis, deterioration warnings, updated stops). No state mutations.
+
+    Records a Layer1RiskStep on the decision trace if one is provided (no-op
+    when trace is None — preserves callers that don't yet thread a trace).
     """
+    import time as _time
+    from datetime import datetime as _dt
+    _t_start = _time.time()
+    _t_started_at = _dt.now().isoformat()
+
     print("Running Layer 1: Risk Management...")
     layer1 = RiskLayer(config)
     layer1_output = layer1.process(state)
 
     proposed: list = []
+    flagged_for_trace: list = []
     for sell_proposal in layer1_output["sell_proposals"]:
+        proposal_id = uuid.uuid4().hex[:8]
         proposed.append(ProposedAction(
             action_type="SELL",
             ticker=sell_proposal.ticker,
@@ -605,7 +665,14 @@ def _run_layer1_risk(config: dict, state, regime) -> tuple[list, dict]:
             factor_scores={},
             regime=regime.value,
             reason=sell_proposal.reason,
+            proposal_id=proposal_id,
         ))
+        flagged_for_trace.append({
+            "proposal_id": proposal_id,
+            "ticker": sell_proposal.ticker,
+            "reason": sell_proposal.reason,
+            "urgency": sell_proposal.urgency_score,
+        })
         emoji = "🚨" if sell_proposal.urgency_score >= 90 else \
                 "🔴" if sell_proposal.urgency_score >= 70 else \
                 "🟡" if sell_proposal.urgency_score >= 50 else "🟢"
@@ -625,6 +692,25 @@ def _run_layer1_risk(config: dict, state, regime) -> tuple[list, dict]:
     num_sells = len([a for a in proposed if a.action_type == "SELL"])
     print(f"\n  Found {num_sells} sell trigger(s)")
     print()
+
+    if trace is not None:
+        from decision_trace import Layer1RiskStep as _L1Step
+        not_flagged: list[str] = []
+        if not state.positions.empty:
+            flagged_tickers = {f["ticker"] for f in flagged_for_trace}
+            not_flagged = [
+                str(t) for t in state.positions["ticker"].tolist()
+                if str(t) not in flagged_tickers
+            ]
+        trace.add_step(_L1Step(
+            step_name="layer1_risk",
+            started_at=_t_started_at,
+            duration_ms=int((_time.time() - _t_start) * 1000),
+            positions_reviewed=len(state.positions) if not state.positions.empty else 0,
+            flagged=flagged_for_trace,
+            not_flagged=not_flagged,
+        ))
+
     return proposed, layer1_output
 
 
@@ -824,6 +910,30 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
     print(f"Market Regime: {regime.value} | Position Multiplier: {position_multiplier:.0%}")
     print()
 
+    # Initialise decision trace. All AI-driven portfolios get full instrumentation;
+    # the (currently dead) mechanical branch still creates a trace but populates
+    # only regime + layer1 + assemble steps.
+    from decision_trace import new_trace as _new_trace, RegimeDetectionStep as _RDStep
+    trace = _new_trace(
+        portfolio_id=state.portfolio_id,
+        portfolio_name=str(config.get("strategy", {}).get("name", state.portfolio_id)),
+        mode=mode,
+        branch="ai_driven" if config.get("ai_driven") else "mechanical",
+        config=config,
+    )
+    _ra = state.regime_analysis
+    trace.add_step(_RDStep(
+        step_name="regime_detection",
+        started_at=trace.started_at,
+        duration_ms=0,
+        benchmark_symbol=str(getattr(_ra, "benchmark_symbol", config.get("benchmark_symbol", ""))),
+        regime=regime.value,
+        sma_50=float(getattr(_ra, "sma_50", 0.0) or 0.0),
+        sma_200=float(getattr(_ra, "sma_200", 0.0) or 0.0),
+        position_size_factor=float(position_multiplier),
+        cache_hit=True,  # _get_cached_regime_analysis path; cold-fetch is rare
+    ))
+
     # Check preservation mode
     try:
         preservation = get_preservation_status()
@@ -849,7 +959,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
     info_cache: dict = {}  # Pre-warmed fundamental data for scoring and AI review
 
     # Step 1: Layer 1 risk management (mechanical sell triggers).
-    proposed_actions, layer1_output = _run_layer1_risk(config, state, regime)
+    proposed_actions, layer1_output = _run_layer1_risk(config, state, regime, trace=trace)
 
     # ─── AI-Driven Mode Branch ────────────────────────────────────────────────
     # For AI-driven portfolios, Layers 2-4 and AI review are replaced by a
@@ -865,6 +975,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
             stale_positions=state.stale_alerts,
             layer1_sell_actions=proposed_actions,  # contains Layer 1 sells only at this point
             mode=mode,
+            trace=trace,
         )
 
     # ─── Step 2: Score Watchlist Candidates ───────────────────────────────────
@@ -956,7 +1067,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
     buy_tickers = [a.ticker for a in proposed_actions if a.action_type == "BUY"]
     if buy_tickers:
         try:
-            live_prices, _, _ = fetch_prices_batch(buy_tickers)
+            live_prices, _, _, _ = fetch_prices_batch(buy_tickers)
             for action in proposed_actions:
                 if action.action_type != "BUY":
                     continue
@@ -1017,7 +1128,7 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
     reviewed_actions = review_proposed_actions(proposed_actions, portfolio_context, info_cache=info_cache)
     print(format_review_summary(reviewed_actions))
 
-    return _assemble_analysis_result(
+    result = _assemble_analysis_result(
         proposed_actions=proposed_actions,
         reviewed_actions=reviewed_actions,
         portfolio_context=portfolio_context,
@@ -1025,6 +1136,19 @@ def run_unified_analysis(dry_run: bool = True, portfolio_id: str = None, mode: s
         regime=regime,
         mode=mode,
     )
+
+    # Save trace (mechanical branch — minimal instrumentation: just regime + layer1).
+    # All 7 active portfolios are AI-driven so this branch is dead in production,
+    # but if it ever runs we still record the basic shape.
+    try:
+        from decision_trace import save_trace as _save_trace
+        trace.final_summary = result.get("summary", {})
+        _save_trace(trace)
+        result["trace_id"] = trace.trace_id
+    except Exception as _trace_err:
+        print(f"  [Trace] Failed to save decision trace (non-fatal): {_trace_err}")
+
+    return result
 
 
 def _normalize_reviewed_action(r):
@@ -1050,6 +1174,7 @@ def _normalize_reviewed_action(r):
                 factor_scores=orig_dict.get("factor_scores", {}),
                 regime=orig_dict.get("regime", ""),
                 reason=orig_dict.get("reason", ""),
+                proposal_id=orig_dict.get("proposal_id"),
             )
         else:
             original = orig_dict  # already an object
@@ -1117,7 +1242,15 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
 
     proposed_buys = len([r for r in actions_to_execute if r.original.action_type == "BUY"])
     proposed_sells = len([r for r in actions_to_execute if r.original.action_type == "SELL"])
-    dropped_actions = []
+    # dropped_actions: each entry MAY include proposal_id + dropped_at when
+    # available — keeps the execute trace step decisive about where in the
+    # pipeline each drop happened. Legacy ticker+reason still supported.
+    dropped_actions: list[dict] = []
+
+    # Decision trace continuity: link execute drops/writes back to the analyze trace.
+    _trace_id = str(analysis_result.get("trace_id") or "")
+    _exec_start = time.time()
+    _exec_started_at = datetime.now().isoformat()
 
     # Load fresh state for execution with live prices so stop/target checks use today's prices
     state = load_portfolio_state(fetch_prices=True, portfolio_id=portfolio_id)
@@ -1138,7 +1271,7 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
         pub_prices: dict = {}
         if public_api_configured():
             pub_prices, _ = fetch_live_quotes(all_tickers)
-        yf_prices, _, prev_closes = fetch_prices_batch(all_tickers)
+        yf_prices, _, prev_closes, _ = fetch_prices_batch(all_tickers)
 
         # Build live_prices: prefer Public.com when it agrees with yfinance,
         # otherwise trust yfinance (more verifiable via prev_close).
@@ -1180,6 +1313,9 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 if ratio > 1.30 or ratio < 0.70:
                     print(f"  ⛔ {action.ticker}: live price ${fresh:.2f} is {ratio:.2f}× prev_close ${prev:.2f} — bad data, buy skipped")
                     bad_data_tickers.add(action.ticker)
+                    # Also tracked below in the "no confirmed live price" sweep,
+                    # but mark the proposal_id explicitly so the trace shows the
+                    # real reason (price sanity) not a generic "no live price".
                     continue
             confirmed_live.add(action.ticker)
             old_price = action.price
@@ -1206,7 +1342,12 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     for r in actions_to_execute:
         if r.original.action_type == "BUY" and r.original.ticker not in confirmed_live:
             reason = "bad price data" if r.original.ticker in bad_data_tickers else "no live price"
-            dropped_actions.append({"ticker": r.original.ticker, "reason": reason})
+            dropped_actions.append({
+                "ticker": r.original.ticker,
+                "reason": reason,
+                "proposal_id": r.original.proposal_id,
+                "dropped_at": "price_validation",
+            })
     actions_to_execute = [
         r for r in actions_to_execute
         if r.original.action_type != "BUY" or r.original.ticker in confirmed_live
@@ -1239,7 +1380,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             min_notional = max(action.price * 5, 250.0)  # at least 5 shares or $250
             if shares * action.price < min_notional:
                 print(f"  ⏭️  Skipping BUY {action.ticker}: position too small ({shares} shares = ${shares * action.price:.0f} < ${min_notional:.0f} minimum)")
-                dropped_actions.append({"ticker": action.ticker, "reason": "position too small"})
+                dropped_actions.append({"ticker": action.ticker, "reason": "position too small",
+                                         "proposal_id": action.proposal_id, "dropped_at": "size_floor"})
                 continue
             # BUY: cap to what cash can afford
             if action.price > 0:
@@ -1248,7 +1390,8 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 max_affordable = 0
             if max_affordable < 1:
                 print(f"  ⏭️  Skipping BUY {action.ticker}: insufficient cash (need ${shares * action.price:,.0f}, have ${available_cash:,.0f})")
-                dropped_actions.append({"ticker": action.ticker, "reason": "insufficient cash"})
+                dropped_actions.append({"ticker": action.ticker, "reason": "insufficient cash",
+                                         "proposal_id": action.proposal_id, "dropped_at": "cash"})
                 continue
             if shares > max_affordable:
                 print(f"  ⚠️  {action.ticker}: Capping shares {shares} → {max_affordable} (cash constraint)")
@@ -1293,6 +1436,10 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
             "factor_scores": json.dumps(action.factor_scores) if action.action_type == "BUY" else "",
             "signal_rank": "",
             "trade_rationale": _trade_rationale,
+            # Decision Trace linkage — preserved on every transaction so the UI
+            # can deep-link from a transaction back to its decision tree.
+            "source_proposal_id": action.proposal_id or "",
+            "source_trace_id": _trace_id,
         }
         validated.append((reviewed, tx))
 
@@ -1302,8 +1449,12 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                      if r.original.action_type == "SELL" and tx["ticker"] not in held_tickers]
     if phantom_sells:
         print(f"  ⚠️  [Guard] Blocked phantom sells for unheld tickers: {phantom_sells}")
+        # Lookup proposal_ids for phantom-sold tickers from the validated list
+        _phantom_proposal_lookup = {tx["ticker"]: r.original.proposal_id for r, tx in validated}
         for ticker in phantom_sells:
-            dropped_actions.append({"ticker": ticker, "reason": "not held (phantom sell blocked)"})
+            dropped_actions.append({"ticker": ticker, "reason": "not held (phantom sell blocked)",
+                                     "proposal_id": _phantom_proposal_lookup.get(ticker),
+                                     "dropped_at": "phantom_sell_guard"})
     validated = [
         (r, tx) for r, tx in validated
         if r.original.action_type != "SELL" or tx["ticker"] in held_tickers
@@ -1341,7 +1492,9 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
                 pos_row = state.positions[state.positions["ticker"] == action.ticker]
                 if pos_row.empty:
                     print(f"  ⚠️  Skipping sell {action.ticker}: not in positions")
-                    dropped_actions.append({"ticker": action.ticker, "reason": "not in positions"})
+                    dropped_actions.append({"ticker": action.ticker, "reason": "not in positions",
+                                             "proposal_id": action.proposal_id,
+                                             "dropped_at": "position_lookup"})
                     continue
                 held_shares = int(pos_row["shares"].iloc[0])
                 if shares > held_shares:
@@ -1442,9 +1595,46 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     except Exception as e:
         print(f"  [pipeline_status] Write failed (non-fatal): {e}")
 
+    # Decision Trace continuity: attach the ExecuteStep to the originating
+    # analyze trace. Non-fatal if the trace file is missing (e.g. legacy
+    # .last_analysis.json predates tracing) — execute proceeds normally.
+    if _trace_id and portfolio_id:
+        try:
+            from decision_trace import (
+                attach_execute_step as _attach_exec,
+                ExecuteStep as _ExecStep,
+            )
+            _txns_written = [
+                {
+                    "proposal_id": tx.get("source_proposal_id") or "",
+                    "transaction_id": tx.get("transaction_id"),
+                    "ticker": tx.get("ticker"),
+                    "action": tx.get("action"),
+                    "shares": tx.get("shares"),
+                    "price": tx.get("price"),
+                }
+                for tx in transactions
+            ]
+            _proposal_ids = [r.original.proposal_id for r in actions_to_execute if r.original.proposal_id]
+            _attach_exec(
+                portfolio_id=portfolio_id,
+                trace_id=_trace_id,
+                step=_ExecStep(
+                    step_name="execute",
+                    started_at=_exec_started_at,
+                    duration_ms=int((time.time() - _exec_start) * 1000),
+                    proposal_ids_processed=_proposal_ids,
+                    transactions_written=_txns_written,
+                    drops=dropped_actions,
+                ),
+            )
+        except Exception as _trace_err:
+            print(f"  [Trace] Failed to attach execute step (non-fatal): {_trace_err}")
+
     return {
         "executed": len(transactions),
         "transactions": transactions,
+        "trace_id": _trace_id or None,
         "execution_summary": {
             "proposed": {"buys": proposed_buys, "sells": proposed_sells},
             "executed": {"buys": executed_buys, "sells": executed_sells},

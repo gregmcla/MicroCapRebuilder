@@ -57,7 +57,17 @@ export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: Dig
             <div className="rank">{String(i + 1).padStart(2, "0")}</div>
             <div><div className="pname">{p.name}</div><div className="pstrat">{p.strategy}</div></div>
             <div className="num mono">{fmtM(p.equity)}</div>
-            <div className={`num ${cls(p.day_pct)}`}>{sgn(p.day_pct)}<span className="subusd">{fmt$(p.day_pnl)}</span></div>
+            <div className={`num ${cls(p.day_pct)}`}>{sgn(p.day_pct)}<span className="subusd">{fmt$(p.day_pnl)}</span>{(() => {
+              const ah = p.extended_hours_pnl ?? 0;
+              const showAh = (p.session_status === "after_hours" || p.session_status === "pre_market") && Math.abs(ah) >= 0.5;
+              if (!showAh) return null;
+              const lbl = p.session_status === "pre_market" ? "PRE" : "AH";
+              return (
+                <span className={`subusd ${cls(ah)}`} style={{ marginLeft: 4, opacity: 0.7 }} title={`Extended-hours (${lbl})`}>
+                  ({ah >= 0 ? "+" : ""}{fmt$(ah)} {lbl})
+                </span>
+              );
+            })()}</div>
             <div className={`num ${cls(p.total_pct)}`}>{sgn(p.total_pct)}<span className="subusd">{fmt$(p.all_time_pnl)}</span></div>
             <div className="vsbar"><span className={`num ${cls(p.vs_bench_pct)}`}>{sgn(p.vs_bench_pct)}</span>
               <span className="track"><span className="fill" style={p.vs_bench_pct >= 0

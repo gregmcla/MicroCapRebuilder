@@ -49,6 +49,9 @@ export interface PortfolioSummary {
   paper_mode: boolean;
   unrealized_pnl: number;
   day_pnl: number;
+  session_status?: SessionStatus;
+  regular_session_pnl?: number;
+  extended_hours_pnl?: number;
   all_time_pnl: number;
   total_return_pct: number;
   deployed_pct: number;
@@ -72,6 +75,9 @@ export interface OverviewData {
   total_equity: number;
   total_cash: number;
   total_day_pnl: number;
+  session_status?: SessionStatus;
+  total_regular_session_pnl?: number;
+  total_extended_hours_pnl?: number;
   total_unrealized_pnl: number;
   total_all_time_pnl: number;
   total_starting_capital: number;
@@ -112,8 +118,14 @@ export interface Position {
   entry_date: string;
   day_change?: number;
   day_change_pct?: number;
+  regular_session_change?: number;
+  regular_session_change_pct?: number;
+  extended_hours_change?: number;
+  extended_hours_change_pct?: number;
   alpha?: number;
 }
+
+export type SessionStatus = "regular_hours" | "after_hours" | "pre_market" | "closed";
 
 export interface TradeRationale {
   ai_decision: "APPROVE" | "MODIFY" | "VETO" | string;
@@ -143,6 +155,57 @@ export interface Transaction {
   realized_pnl_pct?: number | null;
   entry_price?: number | null;
   trade_rationale?: string | null;
+  source_proposal_id?: string | null;
+  source_trace_id?: string | null;
+}
+
+// ── Decision Trace (Feature #9) ──────────────────────────────────────────────
+
+export interface DecisionTraceSummary {
+  trace_id: string;
+  timestamp: string;
+  mode: string;
+  branch: string;
+  approved: number;
+  modified: number;
+  vetoed: number;
+  tickers: string[];
+  proposal_ids: string[];
+}
+
+export interface DecisionStep {
+  step_name: string;
+  step_type: string;
+  started_at: string;
+  duration_ms: number;
+  error?: string | null;
+  // Type-specific fields are accessed by step_type — kept as a permissive map.
+  [key: string]: unknown;
+}
+
+export interface DecisionTrace {
+  trace_id: string;
+  portfolio_id: string;
+  portfolio_name: string;
+  analyze_mode: string;
+  branch: string;
+  started_at: string;
+  completed_at: string;
+  duration_ms: number;
+  steps: DecisionStep[];
+  final_summary: Record<string, unknown>;
+  config_snapshot: Record<string, unknown>;
+  execute_step?: DecisionStep | null;
+}
+
+export interface DecisionDiff {
+  trace_a: { trace_id: string; timestamp: string };
+  trace_b: { trace_id: string; timestamp: string };
+  deltas: Array<{
+    step_type: string;
+    kind: string;
+    [key: string]: unknown;
+  }>;
 }
 
 export interface Snapshot {
@@ -179,6 +242,11 @@ export interface PortfolioState {
   price_failures: string[];
   day_pnl: number;
   day_pnl_pct: number;
+  session_status?: SessionStatus;
+  regular_session_pnl?: number;
+  regular_session_pnl_pct?: number;
+  extended_hours_pnl?: number;
+  extended_hours_pnl_pct?: number;
   total_return_pct: number;
   all_time_pnl: number;
   realized_pnl: number;
@@ -430,6 +498,7 @@ export interface ProposedAction {
   factor_scores: FactorScores;
   regime: string;
   reason: string;
+  proposal_id?: string | null;
 }
 
 export interface ReviewedAction {
@@ -461,6 +530,7 @@ export interface AnalysisResult {
   regime: string;
   timestamp: string;
   ai_mode?: "claude" | "mechanical" | "mechanical_fallback";
+  trace_id?: string | null;
 }
 
 export interface ExecutionSummary {
@@ -710,6 +780,9 @@ export interface DigestPortfolio {
   equity: number;
   day_pct: number;
   day_pnl: number;
+  regular_session_pnl?: number;
+  extended_hours_pnl?: number;
+  session_status?: SessionStatus;
   total_pct: number;
   all_time_pnl: number;
   vs_bench_pct: number;
@@ -724,6 +797,11 @@ export interface DigestData {
     equity: number;
     day_pnl: number;
     day_pnl_pct: number;
+    regular_session_pnl?: number;
+    regular_session_pnl_pct?: number;
+    extended_hours_pnl?: number;
+    extended_hours_pnl_pct?: number;
+    session_status?: SessionStatus;
     health: { green: number; red: number };
     vs_spy_alltime_pct: number;
     vs_spy_today_pct: number;

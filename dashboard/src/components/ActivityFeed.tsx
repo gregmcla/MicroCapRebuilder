@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Transaction } from "../lib/types";
 import { tradeExplanation, parseTradeRationale } from "../lib/tradeUtils";
+import { useBriefStore } from "../lib/store";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -39,6 +40,11 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
   const quantText = rationale?.quant_reason;
   const isBuy = tx.action === "BUY";
   const label = isBuy ? "BUY REASONING" : "SELL REASONING";
+  const openBrief = useBriefStore(s => s.openBrief);
+  // Prefer direct trace_id when available (faster — no by_proposal lookup).
+  const traceId = tx.source_trace_id ?? null;
+  const proposalId = tx.source_proposal_id ?? null;
+  const hasTrace = !!(traceId || proposalId);
   return (
     <div
       className="px-3 py-2 text-xs"
@@ -62,6 +68,30 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
         <p style={{ color: "var(--text-3)", lineHeight: "1.5", marginTop: "4px", fontSize: "10px", opacity: 0.7 }}>
           {quantText.split(" | ")[0]}
         </p>
+      )}
+      {hasTrace && (
+        <div style={{ marginTop: "6px" }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openBrief("decisions", null, { traceId, proposalId });
+            }}
+            title="Open the decision trace that produced this trade"
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.06em",
+              padding: "2px 6px",
+              background: "rgba(124,92,252,0.08)",
+              border: "1px solid rgba(124,92,252,0.25)",
+              color: "var(--accent-bright)",
+              borderRadius: 3,
+              cursor: "pointer",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            TRACE
+          </button>
+        </div>
       )}
     </div>
   );

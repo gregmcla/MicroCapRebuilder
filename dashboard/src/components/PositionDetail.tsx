@@ -146,10 +146,15 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
     (Date.now() - new Date(pos.entry_date).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const dayColor = (pos.day_change ?? 0) >= 0 ? "var(--green)" : "var(--red)";
-  const dayStr = pos.day_change != null
-    ? `${pos.day_change >= 0 ? "+" : "-"}$${Math.abs(pos.day_change).toFixed(2)}`
+  const regChange = pos.regular_session_change ?? pos.day_change ?? null;
+  const ahChange = pos.extended_hours_change ?? 0;
+  const dayColor = (regChange ?? 0) >= 0 ? "var(--green)" : "var(--red)";
+  const dayStr = regChange != null
+    ? `${regChange >= 0 ? "+" : "-"}$${Math.abs(regChange).toFixed(2)}`
     : null;
+  const showAh = Math.abs(ahChange) >= 0.01;
+  const ahColor = ahChange >= 0 ? "var(--green)" : "var(--red)";
+  const ahStr = `${ahChange >= 0 ? "+" : "-"}$${Math.abs(ahChange).toFixed(2)}`;
 
   return (
     <div className="flex flex-col h-full">
@@ -186,6 +191,11 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
             <>
               <span style={{ color: "var(--border-2)" }}>·</span>
               <span className="font-mono text-sm" style={{ color: dayColor }}>{dayStr} today</span>
+              {showAh && (
+                <span className="font-mono text-xs" style={{ color: ahColor, opacity: 0.7 }} title="After-hours move">
+                  ({ahStr} AH)
+                </span>
+              )}
             </>
           )}
           <span style={{ color: "var(--border-2)" }}>·</span>

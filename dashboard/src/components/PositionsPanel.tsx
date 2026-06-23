@@ -32,18 +32,24 @@ const labelStyle: React.CSSProperties = {
 
 function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () => void; isSelected: boolean }) {
   const pnlColor = pos.unrealized_pnl_pct > 0 ? "text-profit" : pos.unrealized_pnl_pct < 0 ? "text-loss" : "text-text-secondary";
-  const dayColor = (pos.day_change ?? 0) > 0 ? "text-profit" : (pos.day_change ?? 0) < 0 ? "text-loss" : "text-text-muted";
+
+  // Prefer the regular-session split when emitted; fall back to legacy day_change.
+  const regChange = pos.regular_session_change ?? pos.day_change ?? 0;
+  const regChangePct = pos.regular_session_change_pct ?? pos.day_change_pct ?? 0;
+  const ahChange = pos.extended_hours_change ?? 0;
+  const dayColor = regChange > 0 ? "text-profit" : regChange < 0 ? "text-loss" : "text-text-muted";
 
   const range = pos.take_profit - pos.stop_loss;
   const progress = range > 0 ? ((pos.current_price - pos.stop_loss) / range) * 100 : 50;
   const dotColor = progress > 60 ? "#4ADE80" : progress > 30 ? "#FBBF24" : "#F87171";
 
-  const dayTotalStr = pos.day_change != null
-    ? pos.day_change >= 0 ? `+$${pos.day_change.toFixed(2)}` : `-$${Math.abs(pos.day_change).toFixed(2)}`
+  const dayTotalStr = pos.regular_session_change != null || pos.day_change != null
+    ? regChange >= 0 ? `+$${regChange.toFixed(2)}` : `-$${Math.abs(regChange).toFixed(2)}`
     : "--";
-  const dayPctStr = pos.day_change_pct != null
-    ? `${pos.day_change_pct >= 0 ? "+" : ""}${pos.day_change_pct.toFixed(2)}%`
-    : "";
+  const dayPctStr = `${regChangePct >= 0 ? "+" : ""}${regChangePct.toFixed(2)}%`;
+  const showAh = Math.abs(ahChange) >= 0.01;
+  const ahColor = ahChange > 0 ? "text-profit" : ahChange < 0 ? "text-loss" : "text-text-muted";
+  const ahStr = `${ahChange >= 0 ? "+" : ""}$${Math.abs(ahChange).toFixed(2)}`;
 
   const overallPnlStr = pos.unrealized_pnl >= 0
     ? `+$${Math.round(pos.unrealized_pnl).toLocaleString("en-US")}`
@@ -80,10 +86,16 @@ function PositionRow({ pos, onClick, isSelected }: { pos: Position; onClick: () 
         ${pos.current_price.toFixed(2)}
       </span>
 
-      {/* Day P&L — w-[68px] two lines */}
-      <div className={`w-[68px] flex flex-col items-end justify-center shrink-0 ${dayColor}`}>
-        <span className="font-mono text-[12px] font-semibold tabular-nums leading-tight">{dayTotalStr}</span>
-        {dayPctStr && <span className="font-mono text-[10px] tabular-nums leading-tight opacity-80">{dayPctStr}</span>}
+      {/* Day P&L — w-[88px]; regular session primary, AH appended below when present */}
+      <div className="w-[88px] flex flex-col items-end justify-center shrink-0">
+        <span className={`font-mono text-[12px] font-semibold tabular-nums leading-tight ${dayColor}`}>{dayTotalStr}</span>
+        {showAh ? (
+          <span className={`font-mono text-[9.5px] tabular-nums leading-tight ${ahColor}`} style={{ opacity: 0.7 }} title="After-hours move">
+            ({ahStr} AH)
+          </span>
+        ) : (
+          dayPctStr && <span className={`font-mono text-[10px] tabular-nums leading-tight ${dayColor}`} style={{ opacity: 0.8 }}>{dayPctStr}</span>
+        )}
       </div>
 
       {/* Overall P&L — w-[68px] two lines */}

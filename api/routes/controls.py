@@ -217,7 +217,7 @@ def get_quote(ticker: str, portfolio_id: str = Depends(validate_portfolio_id)):
     import yfinance as yf
     from threading import Thread
 
-    prices, failures, prev_closes = fetch_prices_batch([ticker])
+    prices, failures, prev_closes, _ = fetch_prices_batch([ticker])
     if ticker in failures or ticker not in prices:
         raise HTTPException(status_code=404, detail=f"Could not fetch price for {ticker}")
 
@@ -268,7 +268,7 @@ def buy_position(body: BuyRequest, portfolio_id: str = Depends(validate_portfoli
     if body.shares <= 0:
         raise HTTPException(status_code=400, detail="Shares must be positive")
 
-    prices, failures, _ = fetch_prices_batch([body.ticker])
+    prices, failures, _, _ = fetch_prices_batch([body.ticker])
     if body.ticker in failures or body.ticker not in prices:
         raise HTTPException(status_code=404, detail=f"Could not fetch price for {body.ticker}")
 

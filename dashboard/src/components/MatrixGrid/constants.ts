@@ -115,6 +115,10 @@ export function positionToMatrix(pos: Position, port: MatrixPortfolio): MatrixPo
     takeProfit: pos.take_profit,
     entryDate: pos.entry_date,
     dayChangeDollar: pos.day_change,
+    regularSessionChangeDollar: pos.regular_session_change,
+    regularSessionChangePct: pos.regular_session_change_pct,
+    extendedHoursChangeDollar: pos.extended_hours_change,
+    extendedHoursChangePct: pos.extended_hours_change_pct,
     alpha: pos.alpha,
   };
 }

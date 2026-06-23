@@ -161,6 +161,10 @@ class ProposedAction:
     # Optional: Link back to original typed proposal (SellProposal or BuyProposal)
     source_proposal: Optional[object] = None
     reentry_context: Optional[dict] = None  # reentry context through mechanical trading path
+    # Stable per-analyze-cycle ID. Set by the analyze pipeline at proposal time.
+    # Persisted into .last_analysis.json and transactions.csv (source_proposal_id)
+    # so a trade can be linked back to the decision trace that created it.
+    proposal_id: Optional[str] = None
 
 
 @dataclass

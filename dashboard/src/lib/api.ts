@@ -30,6 +30,9 @@ import type {
   TradeAnalyzeResponse,
   DigestData,
   DigestNarrative,
+  DecisionTrace,
+  DecisionTraceSummary,
+  DecisionDiff,
 } from "./types";
 
 const BASE = "/api";
@@ -209,4 +212,16 @@ export const api = {
     get<DigestData>(`/digest?range=${range}`),
   getDigestNarrative: (range = "3M", regenerate = false): Promise<DigestNarrative> =>
     get<DigestNarrative>(`/digest/narrative?range=${range}&regenerate=${regenerate}`),
+
+  // Decision Trace (Feature #9)
+  getRecentDecisions: (pid: string, limit = 20): Promise<{ traces: DecisionTraceSummary[] }> =>
+    get<{ traces: DecisionTraceSummary[] }>(`/${pid}/decisions/recent?limit=${limit}`),
+  getDecisionTrace: (pid: string, traceId: string): Promise<DecisionTrace> =>
+    get<DecisionTrace>(`/${pid}/decisions/${traceId}`),
+  resolveDecisionByProposal: (pid: string, proposalId: string): Promise<{ proposal_id: string; trace_id: string }> =>
+    get<{ proposal_id: string; trace_id: string }>(`/${pid}/decisions/by_proposal/${proposalId}`),
+  getDecisionsByTicker: (pid: string, ticker: string, limit = 50): Promise<{ traces: DecisionTraceSummary[] }> =>
+    get<{ traces: DecisionTraceSummary[] }>(`/${pid}/decisions/by_ticker/${ticker}?limit=${limit}`),
+  diffDecisions: (pid: string, a: string, b: string): Promise<DecisionDiff> =>
+    get<DecisionDiff>(`/${pid}/decisions/diff?a=${a}&b=${b}`),
 };

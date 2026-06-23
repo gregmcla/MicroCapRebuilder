@@ -23,6 +23,9 @@ TRANSACTION_COLUMNS = [
     "factor_scores",    # JSON: {momentum: 65, volatility: 72, ...}
     "signal_rank",      # Rank among candidates (1=top pick)
     "trade_rationale",  # JSON: {ai_decision, ai_confidence, ai_reasoning, quant_reason, regime, top_factors}
+    # Decision Trace linkage (Feature #9)
+    "source_proposal_id",  # 8-char hex; matches ProposedAction.proposal_id from the analyze cycle that produced this trade
+    "source_trace_id",     # full trace_id (portfolio_yyyymmdd_HHMMSS_xxxx); permits direct trace lookup from a transaction row
 ]
 
 # ─── Current Positions Schema ─────────────────────────────────────────────────

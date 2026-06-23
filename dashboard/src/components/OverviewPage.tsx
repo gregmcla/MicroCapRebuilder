@@ -142,12 +142,14 @@ function AggregateStatsBand({
 }
 
 function AggregateBar({
-  totalEquity, totalCash, totalDayPnl, totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+  totalEquity, totalCash, totalDayPnl, totalExtendedHoursPnl, sessionStatus,
+  totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
   portfoliosUp, portfoliosDown, deployedPct,
   onNewPortfolio, onUpdateAll, updatingAll, updateResult, onScanAll, scanAllRunning, scanAllLabel,
   onAnalyzeAll, analyzeAllRunning, analyzeAllLabel,
 }: {
   totalEquity: number; totalCash: number; totalDayPnl: number;
+  totalExtendedHoursPnl?: number; sessionStatus?: string;
   totalAllTimePnl: number; totalReturnPct: number; totalPositions: number; portfolioCount: number;
   portfoliosUp: number; portfoliosDown: number; deployedPct: number;
   onNewPortfolio: () => void;
@@ -214,9 +216,22 @@ function AggregateBar({
         }}
       >
         <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Day P&L</p>
-        <p className="font-mono tabular-nums" style={{ fontSize: "16px", fontWeight: 800, color: dayColor, letterSpacing: "-0.01em", lineHeight: 1.15 }}>
-          {fmt$(totalDayPnl)}
-        </p>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "5px" }}>
+          <p className="font-mono tabular-nums" style={{ fontSize: "16px", fontWeight: 800, color: dayColor, letterSpacing: "-0.01em", lineHeight: 1.15 }}>
+            {fmt$(totalDayPnl)}
+          </p>
+          {(() => {
+            const ah = totalExtendedHoursPnl ?? 0;
+            const showAh = (sessionStatus === "after_hours" || sessionStatus === "pre_market") && Math.abs(ah) >= 0.5;
+            if (!showAh) return null;
+            const ahLabel = sessionStatus === "pre_market" ? "PRE" : "AH";
+            return (
+              <span className="font-mono tabular-nums" style={{ fontSize: "10px", color: pnlColor(ah), opacity: 0.7 }} title={`Extended-hours (${ahLabel})`}>
+                ({fmt$(ah)} {ahLabel})
+              </span>
+            );
+          })()}
+        </div>
       </div>
 
       <div className="w-px shrink-0" style={{ height: "28px", background: "var(--border-1)" }} />
@@ -741,34 +756,47 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
               </span>
             </div>
 
-            {/* Day P&L — dominant element */}
+            {/* Day P&L — dominant element. Shows regular-session, with after-hours bubble */}
+            {(() => {
+              const regPnl = summary.regular_session_pnl ?? summary.day_pnl;
+              const ahPnl = summary.extended_hours_pnl ?? 0;
+              const showAh = (summary.session_status === "after_hours" || summary.session_status === "pre_market") && Math.abs(ahPnl) >= 0.5;
+              const ahLabel = summary.session_status === "pre_market" ? "PRE" : "AH";
+              return (
             <div style={{
               display: "flex", alignItems: "center", gap: "7px", marginBottom: "7px",
               padding: "4px 7px",
               borderRadius: "5px",
-              background: summary.day_pnl > 0
+              background: regPnl > 0
                 ? "rgba(52,211,153,0.06)"
-                : summary.day_pnl < 0
+                : regPnl < 0
                   ? "rgba(248,113,113,0.06)"
                   : "transparent",
             }}>
               <span className="font-mono tabular-nums" style={{
                 fontSize: "15px", fontWeight: 800, letterSpacing: "-0.01em",
-                color: pnlColor(summary.day_pnl),
+                color: pnlColor(regPnl),
               }}>
-                {fmt$(summary.day_pnl)}
+                {fmt$(regPnl)}
               </span>
-              <span className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 600, color: pnlColor(summary.day_pnl), opacity: 0.80 }}>
-                {summary.day_pnl !== 0 && summary.equity > 0
-                  ? fmtPct((summary.day_pnl / summary.equity) * 100)
+              <span className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 600, color: pnlColor(regPnl), opacity: 0.80 }}>
+                {regPnl !== 0 && summary.equity > 0
+                  ? fmtPct((regPnl / summary.equity) * 100)
                   : ""}
               </span>
+              {showAh && (
+                <span className="font-mono tabular-nums" style={{ fontSize: "10px", color: pnlColor(ahPnl), opacity: 0.7 }} title={`Extended-hours (${ahLabel})`}>
+                  ({fmt$(ahPnl)} {ahLabel})
+                </span>
+              )}
               <span style={{ flex: 1 }} />
               <span className="font-mono tabular-nums" style={{ fontSize: "9.5px", color: pnlColor(summary.unrealized_pnl), opacity: 0.60 }}>
                 <span style={{ color: "var(--text-0)", fontFamily: "var(--font-sans)", marginRight: "2px" }}>unrl.</span>
                 {fmt$(summary.unrealized_pnl)}
               </span>
             </div>
+              );
+            })()}
           </>
         )}
       </div>
@@ -1364,6 +1392,8 @@ export default function OverviewPage() {
         totalEquity={totalEquity}
         totalCash={totalCash}
         totalDayPnl={overview?.total_day_pnl ?? 0}
+        totalExtendedHoursPnl={overview?.total_extended_hours_pnl}
+        sessionStatus={overview?.session_status}
         totalAllTimePnl={overview?.total_all_time_pnl ?? 0}
         totalReturnPct={overview?.total_return_pct ?? 0}
         totalPositions={overview?.total_positions ?? 0}

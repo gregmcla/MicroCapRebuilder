@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAnalysisStore, usePortfolioStore, type AnalysisMode } from "../lib/store";
+import { useAnalysisStore, usePortfolioStore, useBriefStore, type AnalysisMode } from "../lib/store";
 import { play } from "../lib/sounds";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useMarketIndices } from "../hooks/useMarketIndices";
@@ -129,6 +129,8 @@ function ActionCard({ action }: { action: ReviewedAction }) {
   const { original, decision, ai_reasoning, confidence } = action;
   const isBuy = original.action_type === "BUY";
   const { data: state } = usePortfolioState();
+  const openBrief = useBriefStore(s => s.openBrief);
+  const proposalId = original.proposal_id;
 
   // For sell proposals: look up position to compute P/L and days held
   const position = !isBuy ? (state?.positions.find(p => p.ticker === original.ticker) ?? null) : null;
@@ -190,6 +192,28 @@ function ActionCard({ action }: { action: ReviewedAction }) {
           </span>
         </span>
         <div className="flex-1" />
+        {proposalId && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openBrief("decisions", null, { proposalId });
+            }}
+            title="Open the decision trace that produced this proposal"
+            style={{
+              fontSize: "9px",
+              letterSpacing: "0.06em",
+              padding: "2px 6px",
+              background: "rgba(124,92,252,0.08)",
+              border: "1px solid rgba(124,92,252,0.25)",
+              color: "var(--accent-bright)",
+              borderRadius: 3,
+              cursor: "pointer",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            TRACE
+          </button>
+        )}
         <ConfidenceDot confidence={confidence} />
         <DecisionBadge decision={decision} />
       </div>

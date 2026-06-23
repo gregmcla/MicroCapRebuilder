@@ -23,18 +23,24 @@ def _f(v, default=0.0):
 
 
 def _roll_up_book(rows: list[dict]) -> dict:
-    """rows: per-portfolio dicts with equity/day_pnl/total_return_pct/exclude."""
+    """rows: per-portfolio dicts with equity/day_pnl/extended_hours_pnl/total_return_pct/exclude."""
     included = [r for r in rows if not r.get("exclude")]
     equity = round(sum(_f(r["equity"]) for r in included), 2)
     day_pnl = round(sum(_f(r["day_pnl"]) for r in included), 2)
+    ah_pnl = round(sum(_f(r.get("extended_hours_pnl")) for r in included), 2)
     green = sum(1 for r in included if _f(r["total_return_pct"]) >= 0)  # breakeven (0%) counts as green
     red = sum(1 for r in included if _f(r["total_return_pct"]) < 0)
-    prev_equity = equity - day_pnl
+    prev_equity = equity - day_pnl - ah_pnl
     day_pnl_pct = round((day_pnl / prev_equity * 100), 2) if prev_equity > 0 else 0.0  # 0.0 when prev_equity <= 0 (e.g. equity wiped by a large loss)
+    ah_pnl_pct = round((ah_pnl / (prev_equity + day_pnl) * 100), 2) if (prev_equity + day_pnl) > 0 and ah_pnl != 0 else 0.0
     return {
         "equity": equity,
         "day_pnl": day_pnl,
         "day_pnl_pct": day_pnl_pct,
+        "regular_session_pnl": day_pnl,        # alias — day_pnl IS the regular-session figure
+        "regular_session_pnl_pct": day_pnl_pct,
+        "extended_hours_pnl": ah_pnl,
+        "extended_hours_pnl_pct": ah_pnl_pct,
         "health": {"green": green, "red": red},
     }
 
@@ -258,6 +264,24 @@ def build_digest(range_key: str = "3M") -> dict:
     from portfolio_registry import list_portfolios
     from portfolio_state import load_portfolio_state
 
+    # Session status drives whether we fetch live prices (needed for AH split).
+    session_status = "closed"
+    try:
+        from zoneinfo import ZoneInfo
+        from datetime import datetime as _dt, time as _time
+        _now_et = _dt.now(ZoneInfo("America/New_York"))
+        _is_weekday = _now_et.weekday() < 5
+        _t = _now_et.time()
+        if _is_weekday and _time(9, 30) <= _t <= _time(16, 0):
+            session_status = "regular_hours"
+        elif _is_weekday and _time(16, 0) < _t <= _time(20, 0):
+            session_status = "after_hours"
+        elif _is_weekday and _time(4, 0) <= _t < _time(9, 30):
+            session_status = "pre_market"
+    except Exception:
+        session_status = "regular_hours" if date.today().weekday() < 5 else "closed"
+    needs_live_prices = session_status in ("after_hours", "pre_market")
+
     portfolios = list_portfolios(active_only=True)
     rows, comp, snaps_by_pid, txns_by_pid = [], [], {}, {}
     movers = []
@@ -265,7 +289,7 @@ def build_digest(range_key: str = "3M") -> dict:
 
     for p in portfolios:
         try:
-            state = load_portfolio_state(fetch_prices=False, portfolio_id=p.id)
+            state = load_portfolio_state(fetch_prices=needs_live_prices, portfolio_id=p.id)
             # Live-mode only: paper-mode portfolios excluded entirely (not shown, not summed).
             if state.paper_mode:
                 continue
@@ -276,6 +300,16 @@ def build_digest(range_key: str = "3M") -> dict:
                 row = snaps.iloc[-1]
                 if str(row.get("date", "")).startswith(date.today().isoformat()):
                     day_pnl = _f(row.get("day_pnl"))
+            # Extended-hours P&L: sum of per-position EH moves; 0 outside AH/pre_market window.
+            ah_pnl = 0.0
+            pos = state.positions
+            if (
+                needs_live_prices
+                and pos is not None
+                and len(pos) > 0
+                and "extended_hours_change" in pos.columns
+            ):
+                ah_pnl = _f(pos["extended_hours_change"].fillna(0).sum())
             starting = _f(state.config.get("starting_capital", 50000), 50000)
             # PortfolioState has no .all_time_pnl — compute via transaction replay
             all_time_pnl = _compute_all_time_pnl(state)
@@ -283,12 +317,16 @@ def build_digest(range_key: str = "3M") -> dict:
             bench = bench_symbol(state.config)
             alpha = vs_bench_pct(total_ret, bench, snaps)
             rows.append({"id": p.id, "equity": state.total_equity, "day_pnl": day_pnl,
+                         "extended_hours_pnl": ah_pnl,
                          "total_return_pct": total_ret, "exclude": p.exclude_from_aggregates})
             comp.append({"id": p.id, "name": p.name,
                          "strategy": state.config.get("strategy", {}).get("trading_style", ""),
                          "equity": round(_f(state.total_equity), 2),
                          "day_pct": round(day_pnl / state.total_equity * 100, 2) if state.total_equity else 0.0,
                          "day_pnl": round(day_pnl, 2),
+                         "regular_session_pnl": round(day_pnl, 2),
+                         "extended_hours_pnl": round(ah_pnl, 2),
+                         "session_status": session_status,
                          "total_pct": total_ret, "all_time_pnl": round(all_time_pnl, 2),
                          "vs_bench_pct": alpha, "bench_symbol": bench,
                          "sparkline": spark, "trend": derive_trend(spark, alpha)})
@@ -303,6 +341,7 @@ def build_digest(range_key: str = "3M") -> dict:
             comp.append({"id": p.id, "name": p.name, "error": str(e)})
 
     book = _roll_up_book(rows)
+    book["session_status"] = session_status
     book["curve"] = build_book_curve(snaps_by_pid, range_key)
     book["vs_spy_alltime_pct"] = _book_vs_spy(book["curve"])
     spy_today = _spy_today_move(book["curve"].get("spy", []))

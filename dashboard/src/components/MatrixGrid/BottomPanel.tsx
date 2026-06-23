@@ -23,6 +23,10 @@ function matrixToPosition(mp: MatrixPosition): Position {
     entry_date: mp.entryDate ?? "",
     day_change: mp.dayChangeDollar,
     day_change_pct: mp.day,
+    regular_session_change: mp.regularSessionChangeDollar,
+    regular_session_change_pct: mp.regularSessionChangePct,
+    extended_hours_change: mp.extendedHoursChangeDollar,
+    extended_hours_change_pct: mp.extendedHoursChangePct,
   };
 }
 

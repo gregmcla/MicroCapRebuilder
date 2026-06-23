@@ -58,7 +58,7 @@ _REGIME_CACHE_TTL = 3600  # 1 hour
 # Short TTL cache for position prices so repeated state loads don't hammer the
 # Public.com API. Keyed by portfolio_id.
 
-_price_cache: dict = {}  # portfolio_id -> (fetch_time, prices, failures, prev_closes)
+_price_cache: dict = {}  # portfolio_id -> (fetch_time, prices, failures, prev_closes, today_closes)
 _PRICE_CACHE_TTL = 60    # seconds
 
 from cache_layer import get_logger as _cl_get_logger
@@ -73,7 +73,7 @@ def _fetch_current_prices(
     tickers: list,
     portfolio_id: str,
     bypass_cache: bool = False,
-) -> tuple[dict, list, dict]:
+) -> tuple[dict, list, dict, dict]:
     """
     Fetch current prices for a list of position tickers.
 
@@ -82,21 +82,21 @@ def _fetch_current_prices(
     hammering the API on repeated state loads.
 
     Returns:
-        (price_cache, failures, prev_close_cache)
+        (price_cache, failures, prev_close_cache, today_close_cache)
     """
     global _price_cache
 
     if not tickers:
-        return {}, [], {}
+        return {}, [], {}, {}
 
     now = time.time()
     cached = _price_cache.get(portfolio_id)
     if not bypass_cache and cached:
-        fetch_time, prices, failures, prev_closes = cached
+        fetch_time, prices, failures, prev_closes, today_closes = cached
         age = now - fetch_time
         if age < _PRICE_CACHE_TTL:
             _price_log.hit(portfolio_id or "default", age, count=len(prices))
-            return prices, failures, prev_closes
+            return prices, failures, prev_closes, today_closes
         _price_log.miss(portfolio_id or "default", reason="ttl_expired", age_s=int(age))
     elif not bypass_cache:
         _price_log.miss(portfolio_id or "default", reason="absent")
@@ -112,7 +112,7 @@ def _fetch_current_prices(
         # Always fetch yfinance for prev_closes (needed for day_change) and
         # cross-validate public.com prices — divergence >15% means bad data.
         yf_tickers = list(set(tickers) | set(pub_failures))
-        yf_prices, yf_failures, prev_closes = fetch_prices_batch(yf_tickers)
+        yf_prices, yf_failures, prev_closes, today_closes = fetch_prices_batch(yf_tickers)
         validated: dict = {}
         for ticker in tickers:
             pub = pub_prices.get(ticker)
@@ -131,10 +131,10 @@ def _fetch_current_prices(
         prices = validated
         failures = yf_failures
     else:
-        prices, failures, prev_closes = fetch_prices_batch(tickers)
+        prices, failures, prev_closes, today_closes = fetch_prices_batch(tickers)
 
-    _price_cache[portfolio_id] = (now, prices, failures, prev_closes)
-    return prices, failures, prev_closes
+    _price_cache[portfolio_id] = (now, prices, failures, prev_closes, today_closes)
+    return prices, failures, prev_closes, today_closes
 
 
 def _get_cached_regime_analysis(config: dict = None) -> RegimeAnalysis:
@@ -244,10 +244,10 @@ def load_portfolio_state(fetch_prices: bool = True, portfolio_id: str | None = N
 
     if fetch_prices and not positions.empty:
         tickers = positions["ticker"].tolist()
-        price_cache, price_failures, prev_close_cache = _fetch_current_prices(tickers, portfolio_id)
+        price_cache, price_failures, prev_close_cache, today_close_cache = _fetch_current_prices(tickers, portfolio_id)
 
         # Update positions with fetched prices and day change
-        positions = _update_positions_with_prices(positions, price_cache, prev_close_cache)
+        positions = _update_positions_with_prices(positions, price_cache, prev_close_cache, today_close_cache)
 
         # Track consecutive price fetch failures
         successful = [t for t in tickers if t not in price_failures]
@@ -306,17 +306,33 @@ def _load_csv(path, columns) -> pd.DataFrame:
     return pd.DataFrame(columns=columns)
 
 
-def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, prev_close_cache: dict = None) -> pd.DataFrame:
-    """Update positions DataFrame with fetched prices and recalculate P&L."""
+def _update_positions_with_prices(
+    positions: pd.DataFrame,
+    price_cache: dict,
+    prev_close_cache: dict = None,
+    today_close_cache: dict = None,
+) -> pd.DataFrame:
+    """Update positions DataFrame with fetched prices and recalculate P&L.
+
+    Emits four day-change fields per position:
+      - regular_session_change(_pct): (today_close - prev_close); frozen after 4pm
+      - extended_hours_change(_pct):  (current - today_close); only non-zero after 4pm
+      - day_change(_pct): sum of the two — kept for backwards compatibility
+    """
     df = positions.copy()
     if prev_close_cache is None:
         prev_close_cache = {}
+    if today_close_cache is None:
+        today_close_cache = {}
 
-    # Ensure day_change columns exist
-    if "day_change" not in df.columns:
-        df["day_change"] = 0.0
-    if "day_change_pct" not in df.columns:
-        df["day_change_pct"] = 0.0
+    # Ensure session-split columns exist (new schema, additive)
+    for col in (
+        "day_change", "day_change_pct",
+        "regular_session_change", "regular_session_change_pct",
+        "extended_hours_change", "extended_hours_change_pct",
+    ):
+        if col not in df.columns:
+            df[col] = 0.0
     # Ensure price_high column exists — tracks highest price since entry for trailing stops
     if "price_high" not in df.columns:
         df["price_high"] = df["current_price"]
@@ -349,18 +365,41 @@ def _update_positions_with_prices(positions: pd.DataFrame, price_cache: dict, pr
         # (we didn't own it at yesterday's close, so prev_close is misleading)
         entry_date = str(row.get("entry_date", ""))
         bought_today = entry_date == date.today().isoformat()
+
+        reg_change = 0.0
+        reg_change_pct = 0.0
+        ah_change = 0.0
+        ah_change_pct = 0.0
+
         if bought_today:
-            day_change = (current_price - avg_cost) * shares
-            day_change_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0
-            df.at[idx, "day_change"] = round(day_change, 2)
-            df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
+            # Whole move since entry is "regular session" attributable; no AH split.
+            reg_change = (current_price - avg_cost) * shares
+            reg_change_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0.0
         else:
             prev_close = prev_close_cache.get(ticker)
-            if prev_close and prev_close > 0:
-                day_change = (current_price - prev_close) * shares
-                day_change_pct = ((current_price - prev_close) / prev_close) * 100
-                df.at[idx, "day_change"] = round(day_change, 2)
-                df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
+            today_close = today_close_cache.get(ticker)
+            if today_close and today_close > 0 and prev_close and prev_close > 0:
+                # Have both — full split available.
+                reg_change = (today_close - prev_close) * shares
+                reg_change_pct = ((today_close - prev_close) / prev_close) * 100
+                ah_change = (current_price - today_close) * shares
+                ah_change_pct = ((current_price - today_close) / today_close) * 100
+            elif prev_close and prev_close > 0:
+                # No today_close (yfinance lag) — attribute entire move to regular session.
+                # During the session this is correct; in the post-close lag window it
+                # slightly conflates session + early AH but resolves once yfinance refreshes.
+                reg_change = (current_price - prev_close) * shares
+                reg_change_pct = ((current_price - prev_close) / prev_close) * 100
+
+        day_change = reg_change + ah_change
+        day_change_pct = reg_change_pct + ah_change_pct
+
+        df.at[idx, "regular_session_change"] = round(reg_change, 2)
+        df.at[idx, "regular_session_change_pct"] = round(reg_change_pct, 2)
+        df.at[idx, "extended_hours_change"] = round(ah_change, 2)
+        df.at[idx, "extended_hours_change_pct"] = round(ah_change_pct, 2)
+        df.at[idx, "day_change"] = round(day_change, 2)
+        df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
 
     return df
 
@@ -409,7 +448,7 @@ def flatten_yf_close(df: pd.DataFrame) -> pd.Series:
 
 # ─── Price Fetching ──────────────────────────────────────────────────────────
 
-def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
+def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict, dict]:
     """
     Fetch current and previous close prices for multiple tickers in a single yfinance call.
 
@@ -417,13 +456,16 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
         tickers: List of ticker symbols.
 
     Returns:
-        Tuple of (price_cache dict, failed_tickers list, prev_close_cache dict).
+        Tuple of (price_cache dict, failed_tickers list, prev_close_cache dict, today_close_cache dict).
+        today_close_cache contains the yfinance daily-bar close for today when available
+        (becomes the frozen 4pm regular-session close after market close).
     """
     if not tickers:
-        return {}, [], {}
+        return {}, [], {}, {}
 
     prices = {}
     prev_closes = {}
+    today_closes = {}
     failures = []
 
     def _extract_prices(close_col, ticker, is_series=False):
@@ -478,13 +520,25 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
     try:
         df = _result[0]
         if not df.empty:
-            # Only compute day_change if the market traded today.
-            # yfinance returns daily bars; the last bar's date tells us the last
-            # trading day. If it's not today, markets are closed and "current
-            # price" == yesterday's close — day_change would be yesterday's
-            # gain, not today's (which is 0). So we suppress prev_closes.
+            # Decide whether today counts as a trading day for day_change purposes.
+            # - last_trade_date_is_today: yfinance's last bar is dated today (true
+            #   during session and shortly after close once the bar refreshes).
+            # - today_was_trading_day: it's a US weekday past 9:30am ET. Covers
+            #   the after-close window where yfinance may still be lagging.
+            # On weekends/holidays both flags are False — prev_closes stays empty
+            # so we don't show yesterday's gain as "today".
             last_trade_date = df.index[-1].date()
-            market_open_today = (last_trade_date == date.today())
+            today = date.today()
+            last_trade_date_is_today = (last_trade_date == today)
+            today_was_trading_day = last_trade_date_is_today
+            try:
+                from zoneinfo import ZoneInfo
+                _now_et = datetime.now(ZoneInfo("America/New_York"))
+                if _now_et.weekday() < 5 and (_now_et.hour, _now_et.minute) >= (9, 30):
+                    today_was_trading_day = True
+            except Exception:
+                pass
+
             close_col = df["Close"]
             if isinstance(close_col, pd.Series):
                 # Single ticker - close_col is a Series
@@ -492,8 +546,10 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                     current, prev = _extract_prices(close_col, tickers[0], is_series=True)
                     if current and current > 0:
                         prices[tickers[0]] = current
-                        if market_open_today and prev and prev > 0:
+                        if today_was_trading_day and prev and prev > 0:
                             prev_closes[tickers[0]] = prev
+                        if last_trade_date_is_today and current > 0:
+                            today_closes[tickers[0]] = current
                     else:
                         failures.append(tickers[0])
             else:
@@ -502,8 +558,10 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                     current, prev = _extract_prices(close_col, ticker)
                     if current and current > 0:
                         prices[ticker] = current
-                        if market_open_today and prev and prev > 0:
+                        if today_was_trading_day and prev and prev > 0:
                             prev_closes[ticker] = prev
+                        if last_trade_date_is_today:
+                            today_closes[ticker] = current
                     else:
                         failures.append(ticker)
     except Exception as e:
@@ -527,7 +585,7 @@ def fetch_prices_batch(tickers: list) -> tuple[dict, list, dict]:
                 _diag.warning("price fetch failed for %s: %s", ticker, e)
                 failures.append(ticker)
 
-    return prices, failures, prev_closes
+    return prices, failures, prev_closes, today_closes
 
 
 # ─── Stale Price Tracking ───────────────────────────────────────────────────

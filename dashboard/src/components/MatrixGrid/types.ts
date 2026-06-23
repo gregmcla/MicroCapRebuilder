@@ -33,6 +33,10 @@ export interface MatrixPosition {
   takeProfit?: number;
   entryDate?: string;
   dayChangeDollar?: number;
+  regularSessionChangeDollar?: number;
+  regularSessionChangePct?: number;
+  extendedHoursChangeDollar?: number;
+  extendedHoursChangePct?: number;
   alpha?: number;
 }
 

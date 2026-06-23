@@ -23,6 +23,10 @@ export default function BookHero({ data, range, onRange }:
       `${(i / (arr.length - 1)) * 600},${118 - ((v - min) / span) * 92 - 13}`).join(" ");
   };
   const up = data.day_pnl >= 0;
+  const ahPnl = data.extended_hours_pnl ?? 0;
+  const showAh = (data.session_status === "after_hours" || data.session_status === "pre_market") && Math.abs(ahPnl) >= 0.5;
+  const ahLabel = data.session_status === "pre_market" ? "PRE" : "AH";
+  const ahCls = ahPnl >= 0 ? "grn" : "red";
   return (
     <div className="reg r1">
       <div className="left">
@@ -32,6 +36,11 @@ export default function BookHero({ data, range, onRange }:
           <span className="mono">{up ? "+" : ""}{fmt$(data.day_pnl)}</span>
           <span className="t1">·</span>
           <span className="mono">{up ? "+" : ""}{data.day_pnl_pct}%</span> <span className="t1">today</span>
+          {showAh && (
+            <span className={`mono t1 ${ahCls}`} style={{ marginLeft: 6, opacity: 0.75, fontSize: "0.85em" }} title={`Extended-hours (${ahLabel})`}>
+              ({ahPnl >= 0 ? "+" : ""}{fmt$(ahPnl)} {ahLabel})
+            </span>
+          )}
         </div>
         <div className="chips">
           <div className="chip"><div className="k">Health</div>

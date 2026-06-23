@@ -16,6 +16,8 @@ data/portfolios/*/*.csv
 data/portfolios/*/*.jsonl
 data/portfolios/*/*.json
 !data/portfolios/*/config.json
+# Decision Trace files (per-analyze-cycle JSON + .index.jsonl) — runtime state
+data/portfolios/*/decisions/
 data/pipeline_status/
 data/telegram/
 data/yf_cache/

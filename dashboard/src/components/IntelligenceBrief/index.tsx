@@ -14,6 +14,7 @@ import RiskPulse from "./RiskPulse";
 import FactorIntelligence from "./FactorIntelligence";
 import AuditChat from "./AuditChat";
 import TradesTab from "./TradesTab";
+import DecisionsTab from "./DecisionsTab";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -22,6 +23,8 @@ interface Props {
   portfolioName: string;
   initialTab?: string;
   initialTradeId?: string | null;
+  initialProposalId?: string | null;
+  initialTraceId?: string | null;
   onClose: () => void;
 }
 
@@ -195,9 +198,10 @@ function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function IntelligenceBrief({ portfolioId, portfolioName, initialTab, initialTradeId, onClose }: Props) {
-  const [activeTab, setActiveTab] = useState<"performance" | "risk" | "factors" | "gscott" | "trades">(
-    (initialTab as "performance" | "risk" | "factors" | "gscott" | "trades") ?? "performance"
+export default function IntelligenceBrief({ portfolioId, portfolioName, initialTab, initialTradeId, initialProposalId, initialTraceId, onClose }: Props) {
+  type TabKey = "performance" | "risk" | "factors" | "gscott" | "trades" | "decisions";
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    (initialTab as TabKey) ?? "performance"
   );
   const [closeHover, setCloseHover] = useState(false);
   const { data: state } = usePortfolioState();
@@ -256,6 +260,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
     { key: "factors" as const, label: "FACTORS", dot: null },
     { key: "gscott" as const, label: "GSCOTT", dot: "#7c5cfc" },
     { key: "trades" as const, label: "TRADES", dot: null },
+    { key: "decisions" as const, label: "DECISIONS", dot: "#7c5cfc" },
   ];
 
   return (
@@ -620,6 +625,12 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
               </div>
             ) : activeTab === "trades" ? (
               <TradesTab portfolioId={portfolioId} initialTradeId={initialTradeId ?? null} />
+            ) : activeTab === "decisions" ? (
+              <DecisionsTab
+                portfolioId={portfolioId}
+                initialProposalId={initialProposalId ?? null}
+                initialTraceId={initialTraceId ?? null}
+              />
             ) : null}
           </div>
         </div>

@@ -280,7 +280,18 @@ interface BriefStore {
   briefOpen: boolean;
   briefInitialTab: string;
   briefInitialTradeId: string | null;
-  openBrief: (tab?: string, tradeId?: string | null) => void;
+  // Decision-trace deep-link: pass a proposal_id (pre-execute) or transaction's
+  // source_proposal_id (post-execute). Resolved to a trace_id by the
+  // /by_proposal/{id} endpoint when the DecisionsTab opens.
+  briefInitialProposalId: string | null;
+  // Direct trace_id when known (e.g. activity feed has source_trace_id on the
+  // transaction). Skips the proposal_id lookup hop.
+  briefInitialTraceId: string | null;
+  openBrief: (
+    tab?: string,
+    tradeId?: string | null,
+    opts?: { proposalId?: string | null; traceId?: string | null },
+  ) => void;
   closeBrief: () => void;
 }
 
@@ -288,8 +299,21 @@ export const useBriefStore = create<BriefStore>((set) => ({
   briefOpen: false,
   briefInitialTab: "performance",
   briefInitialTradeId: null,
-  openBrief: (tab = "performance", tradeId = null) =>
-    set({ briefOpen: true, briefInitialTab: tab, briefInitialTradeId: tradeId }),
+  briefInitialProposalId: null,
+  briefInitialTraceId: null,
+  openBrief: (tab = "performance", tradeId = null, opts = {}) =>
+    set({
+      briefOpen: true,
+      briefInitialTab: tab,
+      briefInitialTradeId: tradeId,
+      briefInitialProposalId: opts.proposalId ?? null,
+      briefInitialTraceId: opts.traceId ?? null,
+    }),
   closeBrief: () =>
-    set({ briefOpen: false, briefInitialTradeId: null }),
+    set({
+      briefOpen: false,
+      briefInitialTradeId: null,
+      briefInitialProposalId: null,
+      briefInitialTraceId: null,
+    }),
 }));

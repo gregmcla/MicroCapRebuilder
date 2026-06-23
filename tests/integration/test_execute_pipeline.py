@@ -446,7 +446,12 @@ def test_execute_double_call_race(api_client, seed_portfolio, mock_yfinance, moc
     t1 = threading.Thread(target=_hit)
     t2 = threading.Thread(target=_hit)
     t1.start(); t2.start()
-    t1.join(timeout=15); t2.join(timeout=15)
+    # 45s allows for the first-import latency of `public_quotes` (which calls
+    # the Public.com API at init time and can take ~30s when no network is
+    # available in CI/offline dev environments). The race we actually care
+    # about — one thread wins the lock, one gets 409 — completes in <1s once
+    # the modules are warm.
+    t1.join(timeout=45); t2.join(timeout=45)
 
     assert sorted(statuses) == [200, 409], f"expected one 200 + one 409, got {statuses}"
 

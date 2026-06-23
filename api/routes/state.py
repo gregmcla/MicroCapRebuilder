@@ -167,29 +167,82 @@ def _serialize_state(state):
     transactions = state.transactions
     snapshots = state.snapshots
 
-    # Day P&L from last snapshot — only if markets were open today.
-    # Weekends (weekday >= 5) mean no trading; snapshot day_pnl would be
-    # yesterday's gain mislabeled as today's.
-    day_pnl = 0.0
-    day_pnl_pct = 0.0
+    # Session status drives how we surface today's P&L:
+    #   "regular_hours" — between 9:30 and 16:00 ET on a weekday
+    #   "after_hours"   — 16:00–20:00 ET on a weekday (or weekday pre-market 04:00–09:30)
+    #   "closed"        — weekend/holiday/overnight (no recent session)
     today = date.today()
-    # Market is open Mon–Fri 9:30–16:00 ET; outside those hours zero out stale day P&L
+    session_status = "closed"
     try:
         from zoneinfo import ZoneInfo
         from datetime import datetime as _dt, time as _time
         _now_et = _dt.now(ZoneInfo("America/New_York"))
-        market_open_today = (
-            _now_et.weekday() < 5 and
-            _time(9, 30) <= _now_et.time() <= _time(16, 0)
-        )
+        _is_weekday = _now_et.weekday() < 5
+        _t = _now_et.time()
+        if _is_weekday and _time(9, 30) <= _t <= _time(16, 0):
+            session_status = "regular_hours"
+        elif _is_weekday and (_time(16, 0) < _t <= _time(20, 0)):
+            session_status = "after_hours"
+        elif _is_weekday and _time(4, 0) <= _t < _time(9, 30):
+            session_status = "pre_market"
+        else:
+            session_status = "closed"
     except Exception:
-        market_open_today = today.weekday() < 5  # fallback: weekday only
-    if market_open_today and len(snapshots) >= 1:
+        session_status = "regular_hours" if today.weekday() < 5 else "closed"
+
+    # Day P&L preference order:
+    #   1) Today's snapshot row (frozen regular-session P&L) — best after 16:00.
+    #   2) Sum of position regular_session_change — works during session and if no snapshot yet.
+    # `day_pnl` here means *regular-session* P&L; after-hours is reported separately.
+    regular_session_pnl = 0.0
+    regular_session_pnl_pct = 0.0
+    starting_equity_for_pct = None
+
+    if session_status != "closed" and len(snapshots) >= 1:
         last = snapshots.iloc[-1]
         snapshot_date = str(last.get("date", ""))
         if snapshot_date.startswith(today.isoformat()):
-            day_pnl = float(last.get("day_pnl", 0) or 0)
-            day_pnl_pct = float(last.get("day_pnl_pct", 0) or 0)
+            regular_session_pnl = float(last.get("day_pnl", 0) or 0)
+            regular_session_pnl_pct = float(last.get("day_pnl_pct", 0) or 0)
+            try:
+                _eq = float(last.get("total_equity", 0) or 0)
+                if _eq > 0 and regular_session_pnl != 0:
+                    starting_equity_for_pct = _eq - regular_session_pnl
+            except Exception:
+                pass
+
+    # If we don't have a snapshot-derived figure (intraday before 16:15 cron, or
+    # snapshot is missing), fall back to summing per-position regular_session_change.
+    if regular_session_pnl == 0 and not positions.empty and "regular_session_change" in positions.columns:
+        _rs_sum = float(positions["regular_session_change"].fillna(0).sum())
+        if _rs_sum != 0:
+            regular_session_pnl = round(_rs_sum, 2)
+            # Approximate pct against prior-day equity = today's total - today's regular session move
+            prior_equity = state.total_equity - regular_session_pnl
+            if prior_equity > 0:
+                regular_session_pnl_pct = round((regular_session_pnl / prior_equity) * 100, 2)
+
+    # Extended-hours P&L: sum of after-hours moves on still-held positions.
+    # Only meaningful in after_hours / pre_market windows.
+    extended_hours_pnl = 0.0
+    extended_hours_pnl_pct = 0.0
+    if (
+        session_status in ("after_hours", "pre_market")
+        and not positions.empty
+        and "extended_hours_change" in positions.columns
+    ):
+        _ah_sum = float(positions["extended_hours_change"].fillna(0).sum())
+        extended_hours_pnl = round(_ah_sum, 2)
+        if extended_hours_pnl != 0:
+            base_eq = state.total_equity - extended_hours_pnl
+            if base_eq > 0:
+                extended_hours_pnl_pct = round((extended_hours_pnl / base_eq) * 100, 2)
+
+    # Backward-compat fields: day_pnl is the *regular session* number that the UI
+    # has always rendered as today's headline. AH continues to be additive in
+    # total_equity but is shown separately.
+    day_pnl = regular_session_pnl
+    day_pnl_pct = regular_session_pnl_pct
 
     # Total return + all-time P&L
     starting_capital = float(state.config.get("starting_capital", 50000))
@@ -284,13 +337,20 @@ def _serialize_state(state):
             lambda tid: trade_pnl.get(str(tid), (None, None, None))[2]
         )
 
-    # Zero out stale day_change values in positions when markets are closed.
-    # The CSV retains the last computed day_change (from the last trading session)
-    # which would show as today's gain/loss when markets haven't opened.
-    if not market_open_today and not positions.empty:
+    # On weekends/holidays (session_status == "closed") the CSV's day_change is
+    # stale (last trading session). Zero it out so the UI doesn't show yesterday's
+    # gain as today's. During trading days — including the after-hours and
+    # pre-market windows — we KEEP the values so today's session move stays
+    # visible (which is the whole point of the session-split feature).
+    if session_status == "closed" and not positions.empty:
         positions = positions.copy()
-        positions["day_change"] = 0.0
-        positions["day_change_pct"] = 0.0
+        for _col in (
+            "day_change", "day_change_pct",
+            "regular_session_change", "regular_session_change_pct",
+            "extended_hours_change", "extended_hours_change_pct",
+        ):
+            if _col in positions.columns:
+                positions[_col] = 0.0
 
     # Per-position alpha = position return minus benchmark return since entry_date
     if not positions.empty:
@@ -316,6 +376,11 @@ def _serialize_state(state):
         "price_failures": state.price_failures,
         "day_pnl": day_pnl,
         "day_pnl_pct": day_pnl_pct,
+        "session_status": session_status,
+        "regular_session_pnl": regular_session_pnl,
+        "regular_session_pnl_pct": regular_session_pnl_pct,
+        "extended_hours_pnl": extended_hours_pnl,
+        "extended_hours_pnl_pct": extended_hours_pnl_pct,
         "total_return_pct": total_return_pct,
         "all_time_pnl": round(all_time_pnl, 2),
         "realized_pnl": realized_pnl,
