@@ -7,7 +7,37 @@
 
 ## Current Phase
 
-**Operational — 6 active (live-mode) portfolios. Cron RE-ENABLED. Daily Digest Home shipped 2026-06-01 (branch `feature/daily-digest-home`).**
+**Operational — 7 active live-mode portfolios, all `ai_driven=True`: max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2, max-b, manualbuy. Cron RE-ENABLED. Decision Trace (#9) + After-Hours P&L split shipped 2026-06-22 (commit `bc338bed`).**
+
+---
+
+## Recently Completed (2026-06-22) — Decision Trace (#9) + AH P&L Split
+
+### Decision Trace (Feature #9 from the roadmap)
+Every `/analyze` cycle now emits a structured JSON tree of decisions to `data/portfolios/{id}/decisions/{trace_id}.json` (gitignored), indexed by `.index.jsonl`. The trace captures 8 typed steps: regime_detection → layer1_risk → watchlist_scoring → ai_allocator_prompt → ai_allocator_call → ai_allocator_parse → ai_allocator_validate → result_assemble; an ExecuteStep is appended when execute runs.
+
+**Linkage spine:** every ProposedAction now gets a stable `proposal_id = uuid.uuid4()[:8]` minted at analyze time. Persisted into `.last_analysis.json` and into `transactions.csv` (new `source_proposal_id` + `source_trace_id` columns — additive, `_load_csv` preserves extras). This is what enables click-from-trade → see-the-decision deep-linking.
+
+**API (`api/routes/decisions.py`):** `/recent`, `/{trace_id}`, `/by_proposal/{id}`, `/by_ticker/{ticker}`, `/diff?a=&b=`. Diff highlights regime flips, ≥5pt score changes, prompt-block additions, validation set deltas, count changes.
+
+**UI:** new "DECISIONS" tab in IntelligenceBrief (`dashboard/src/components/IntelligenceBrief/DecisionsTab.tsx`). Recent-cycle rail on the left, typed renderers per step type, prompt + raw Claude response show/hide, diff view picker. Deep-link TRACE buttons added to ActionsTab (every proposed action) and ActivityFeed (every executed transaction in expanded detail). Uses extended `useBriefStore` with `briefInitialProposalId` + `briefInitialTraceId`.
+
+**Verified live on MAX:** analyze produced `max_20260622_185543_f20c.json`, 98KB, 8 expected steps, 8 proposals with unique proposal_ids; `/decisions/by_proposal/5792394c` resolves correctly.
+
+**Tests:** 12 new unit tests in `scripts/tests/test_decision_trace.py`. Full backend suite 338/339 (1 flake in `test_cron_scripts` unrelated, passes alone). TypeScript clean.
+
+**Deferred (per plan):** Telegram deep-links (needs URL state plumbing + auth), mechanical-path instrumentation (dead code), trace replay simulation (#1 territory), decision-quality ML model (needs months of accumulated traces).
+
+**Plan doc:** `docs/superpowers/plans/2026-06-22-decision-trace.md`
+
+### After-Hours P&L Split (same commit)
+Fixed the post-4pm "daily stats reset to zero" bug. Root cause: `state.py` was explicitly zeroing `day_change` outside 9:30–16:00 ET; `portfolio_state.fetch_prices_batch` was also suppressing `prev_closes` when yfinance's last bar wasn't today (which lags in the 4:00–6:00pm window).
+
+**Backend:** `fetch_prices_batch` now returns a 4-tuple including `today_closes` (yfinance daily-bar close = frozen 4pm close after market close). `_update_positions_with_prices` emits `regular_session_change(_pct)` + `extended_hours_change(_pct)` per position; `day_change` preserved as their sum. `prev_closes` gate loosened to "trading-day weekday past 9:30 ET". `api/routes/state.py` emits `session_status` (regular_hours/after_hours/pre_market/closed) + `regular_session_pnl(_pct)` + `extended_hours_pnl(_pct)`. Same split added to `/api/portfolios/overview` and `/api/digest`.
+
+**Frontend:** all live-data surfaces — TopBar, PositionsPanel, PositionDetail, OverviewPage card + AggregateBar, MatrixGrid PortfolioStrip/BottomPanel, Digest BookHero + PortfolioCompare — render regular-session as primary, append `(+$Y AH)` muted in parens during after-hours/pre-market.
+
+**Snapshot history** (MatrixGrid history table, Snapshot type) and tiny visual indicators (ConstellationMap tick, mover lists) left as-is per plan — historical snapshots are regular-session by construction.
 
 ---
 
