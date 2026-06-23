@@ -61,8 +61,18 @@ class AiConsideredEvent(BaseEvent):
     trace_id: str
     proposal_id: Optional[str] = None
     action_type: Optional[str] = None   # BUY / SELL / TRIM / None
-    accepted: Optional[bool] = None
+    accepted: Optional[bool] = None     # Claude's accept flag (always true if it reached validate)
     reasoning_excerpt: str = ""         # first 200 chars when available
+    # Real outcome of the proposal — cross-referenced with the analyze trace's
+    # execute_step. Distinguishes the AI's approval (`accepted`) from what
+    # actually happened (`outcome`). Set at lineage-build time, not by the
+    # analyze pipeline.
+    #   "executed"        — a transaction was written for this proposal_id
+    #   "user_rejected"   — user unchecked the proposal in the dashboard
+    #   "pipeline_dropped"— execute dropped it (cash / size / phantom / bad data)
+    #   "pending"         — analyze cycle hasn't been executed yet
+    outcome: Optional[str] = None
+    drop_reason: Optional[str] = None   # populated when outcome ∈ {user_rejected, pipeline_dropped}
 
 
 @dataclass(kw_only=True)
@@ -255,20 +265,53 @@ def _emit_ai_considered_events(portfolio_id: str, ticker: str) -> list[AiConside
 
         ts = trace.completed_at or trace.started_at
 
+        # Build a lookup of proposal_id → real outcome from the execute step,
+        # if this trace has been executed. Used to enrich AiConsideredEvent.
+        # No execute step → outcome = "pending".
+        outcome_by_pid: dict[str, tuple[str, str]] = {}  # pid -> (outcome, drop_reason)
+        exec_step = getattr(trace, "execute_step", None)
+        if exec_step is not None:
+            for txn in (getattr(exec_step, "transactions_written", None) or []):
+                pid = txn.get("proposal_id")
+                if pid:
+                    outcome_by_pid[pid] = ("executed", "")
+            for d in (getattr(exec_step, "drops", None) or []):
+                pid = d.get("proposal_id")
+                if not pid:
+                    continue
+                dropped_at = d.get("dropped_at", "") or ""
+                if dropped_at == "user_unchecked":
+                    outcome_by_pid[pid] = ("user_rejected", d.get("reason", "") or "")
+                else:
+                    outcome_by_pid[pid] = ("pipeline_dropped", d.get("reason", "") or "")
+
         emitted_for_ticker = False
         if validate_step is not None:
             for v in (validate_step.validations or []):
                 if (v.get("ticker") or "").upper() != ticker:
                     continue
                 emitted_for_ticker = True
+                pid = v.get("proposal_id")
+                if pid and pid in outcome_by_pid:
+                    outcome, drop_reason = outcome_by_pid[pid]
+                elif exec_step is None:
+                    outcome, drop_reason = "pending", ""
+                else:
+                    # Execute happened but this proposal's pid wasn't touched —
+                    # most likely the analysis_result had stale state. Treat as
+                    # pipeline_dropped with an unknown reason rather than lying
+                    # by omission.
+                    outcome, drop_reason = "pipeline_dropped", "not in execute step"
                 out.append(AiConsideredEvent(
                     timestamp=ts,
                     ticker=ticker,
                     trace_id=trace_id,
-                    proposal_id=v.get("proposal_id"),
+                    proposal_id=pid,
                     action_type=v.get("action_type"),
                     accepted=v.get("accepted"),
                     reasoning_excerpt="",   # full reasoning lives in trace; UI deep-links
+                    outcome=outcome,
+                    drop_reason=drop_reason or None,
                 ))
 
         if not emitted_for_ticker and scoring_step is not None:

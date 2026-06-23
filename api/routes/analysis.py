@@ -112,18 +112,36 @@ def execute(
 
         # Cherry-pick filter: only execute the tickers the user selected.
         # Only applies when the caller sends selected_tickers (buys/sells-only modes).
+        # Capture the user-rejected ones BEFORE filtering so execute can record
+        # them as audit drops — without this, unchecked proposals are silently
+        # discarded and the system loses the human override (Greg observed
+        # 2026-06-23 — lineage showed "AI accepted" for trades he had unchecked).
+        user_rejected_proposals: list[dict] = []
         if body and body.selected_tickers is not None:
             selected = set(body.selected_tickers)
-            last_analysis["approved"] = [
-                a for a in last_analysis.get("approved", [])
-                if a.get("original", {}).get("ticker") in selected
-            ]
-            last_analysis["modified"] = [
-                a for a in last_analysis.get("modified", [])
-                if a.get("original", {}).get("ticker") in selected
-            ]
+            for bucket in ("approved", "modified"):
+                kept = []
+                for a in last_analysis.get(bucket, []):
+                    original = a.get("original", {}) or {}
+                    ticker = original.get("ticker")
+                    if ticker in selected:
+                        kept.append(a)
+                    else:
+                        user_rejected_proposals.append({
+                            "ticker": ticker,
+                            "action_type": original.get("action_type"),
+                            "shares": original.get("shares"),
+                            "price": original.get("price"),
+                            "proposal_id": original.get("proposal_id"),
+                            "decision_bucket": bucket,
+                        })
+                last_analysis[bucket] = kept
 
-        result = execute_approved_actions(last_analysis, portfolio_id=portfolio_id)
+        result = execute_approved_actions(
+            last_analysis,
+            portfolio_id=portfolio_id,
+            user_rejected_proposals=user_rejected_proposals,
+        )
         executing_file.unlink(missing_ok=True)
         return serialize(result)
     except Exception as e:

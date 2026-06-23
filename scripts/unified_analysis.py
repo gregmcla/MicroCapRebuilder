@@ -197,7 +197,15 @@ def _run_ai_driven_analysis(
         from decision_trace import WatchlistScoringStep as _WSStep
         # Light per-candidate payload; full factor scores already captured
         # downstream in the prompt + Claude's response.
-        threshold = float(config.get("scoring", {}).get("min_score_threshold", 35.0))
+        # min_score_threshold may be a flat float (e.g. max's 35.0) OR a
+        # regime-conditional dict (e.g. gov-infra's {BULL:40, SIDEWAYS:50, BEAR:60}).
+        # Resolve to a float using the active regime so the trace records what
+        # was actually applied this cycle.
+        _raw_threshold = config.get("scoring", {}).get("min_score_threshold", 35.0)
+        if isinstance(_raw_threshold, dict):
+            threshold = float(_raw_threshold.get(regime.value, 35.0) or 35.0)
+        else:
+            threshold = float(_raw_threshold)
         cand_summary = [
             {"ticker": c["ticker"], "score": c.get("composite_score", 0.0),
              "data_completeness": c.get("data_completeness")}
@@ -1226,9 +1234,23 @@ def _atomic_state_writes(portfolio_id: str | None):
         raise
 
 
-def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) -> dict:
+def execute_approved_actions(
+    analysis_result: dict,
+    portfolio_id: str = None,
+    user_rejected_proposals: list = None,
+) -> dict:
     """
     Execute the approved and modified actions from unified analysis.
+
+    Args:
+        analysis_result: result from run_unified_analysis (must contain
+            approved / modified lists).
+        portfolio_id: target portfolio.
+        user_rejected_proposals: proposals that Claude approved but the user
+            unchecked in the dashboard before clicking EXECUTE. Recorded as
+            audit drops with dropped_at="user_unchecked" so position lineage
+            and the decision trace surface the human override (otherwise the
+            unchecked actions are invisible in every downstream system).
 
     Returns:
         dict with execution results
@@ -1237,7 +1259,10 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     modified = [_normalize_reviewed_action(r) for r in analysis_result.get("modified", [])]
 
     actions_to_execute = approved + modified
-    if not actions_to_execute:
+    user_rejected_proposals = user_rejected_proposals or []
+
+    # No actions to execute AND no rejections to record → genuine no-op.
+    if not actions_to_execute and not user_rejected_proposals:
         return {"executed": 0, "message": "No actions to execute"}
 
     proposed_buys = len([r for r in actions_to_execute if r.original.action_type == "BUY"])
@@ -1246,6 +1271,19 @@ def execute_approved_actions(analysis_result: dict, portfolio_id: str = None) ->
     # available — keeps the execute trace step decisive about where in the
     # pipeline each drop happened. Legacy ticker+reason still supported.
     dropped_actions: list[dict] = []
+
+    # Record user rejections up front — they need to land in the trace even
+    # if execute_approved_actions short-circuits later (e.g. no live prices).
+    for rej in user_rejected_proposals:
+        dropped_actions.append({
+            "ticker": rej.get("ticker"),
+            "reason": f"user_unchecked ({rej.get('action_type') or 'action'})",
+            "proposal_id": rej.get("proposal_id"),
+            "dropped_at": "user_unchecked",
+            "decision_bucket": rej.get("decision_bucket"),
+        })
+    if user_rejected_proposals:
+        print(f"  ❎  {len(user_rejected_proposals)} user-unchecked proposal(s) recorded as audit drops")
 
     # Decision trace continuity: link execute drops/writes back to the analyze trace.
     _trace_id = str(analysis_result.get("trace_id") or "")

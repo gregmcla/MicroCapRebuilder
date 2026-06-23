@@ -113,7 +113,19 @@ function GlyphTooltip({
   const TW = 200;
   let left = anchorRect.left + anchorRect.width / 2 - TW / 2;
   left = Math.max(8, Math.min(left, window.innerWidth - TW - 8));
-  const bottom = window.innerHeight - anchorRect.top + 6;
+
+  // Flip-to-fit: if there's not enough room above the anchor, pop down instead.
+  // PositionPulse renders in the top region of the portfolio view (right below
+  // TopBar), so anchorRect.top is often <200px — the previous "always above"
+  // logic was overflowing above the viewport (which is what Greg screenshotted
+  // 2026-06-23). Choose whichever side has more space.
+  const TOOLTIP_H_ESTIMATE = 220;
+  const spaceAbove = anchorRect.top;
+  const spaceBelow = window.innerHeight - anchorRect.bottom;
+  const popBelow = spaceAbove < TOOLTIP_H_ESTIMATE && spaceBelow > spaceAbove;
+  const positioning = popBelow
+    ? { top: anchorRect.bottom + 6 }
+    : { bottom: window.innerHeight - anchorRect.top + 6 };
 
   const sparkH = 40;
   const sparkPts = pos.sparkline.slice(-60);
@@ -132,7 +144,7 @@ function GlyphTooltip({
     <div
       style={{
         position:   "fixed",
-        bottom,
+        ...positioning,
         left,
         width:      TW,
         background: "rgba(4,6,9,0.97)",
@@ -141,7 +153,9 @@ function GlyphTooltip({
         zIndex:     9999,
         fontFamily: MATRIX_FONT,
         pointerEvents: "none",
-        boxShadow:  `0 -8px 32px rgba(0,0,0,0.6), 0 0 0 1px ${col}22`,
+        boxShadow:  popBelow
+          ? `0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px ${col}22`
+          : `0 -8px 32px rgba(0,0,0,0.6), 0 0 0 1px ${col}22`,
       }}
     >
       {/* Header */}
