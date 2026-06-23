@@ -29,6 +29,8 @@ data/portfolios/*/decisions/
 data/pipeline_status/
 data/telegram/
 data/yf_cache/
+data/social_cache/
+data/sector_mapping.json
 logs/
 reports/
 charts/
