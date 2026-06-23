@@ -140,6 +140,14 @@ function Timeline({ portfolioId, ticker }: { portfolioId: string; ticker: string
     queryFn: () => api.getLineageSummary(portfolioId, ticker),
   });
 
+  // All hooks MUST be called unconditionally — declaring useMemo after an
+  // early return causes "Rendered more hooks than during the previous render"
+  // when the loading state flips (same bug pattern noted in CLAUDE.md gotchas).
+  const groups = useMemo(
+    () => (data ? groupByDate(data.events) : []),
+    [data],
+  );
+
   if (isLoading || !data) {
     return <div style={{ color: "#5a5a78" }}>Loading lineage…</div>;
   }
@@ -153,9 +161,6 @@ function Timeline({ portfolioId, ticker }: { portfolioId: string; ticker: string
       </div>
     );
   }
-
-  // Group by calendar date (UTC-naive, matches the timestamps we emit)
-  const groups = useMemo(() => groupByDate(data.events), [data.events]);
 
   return (
     <div>
