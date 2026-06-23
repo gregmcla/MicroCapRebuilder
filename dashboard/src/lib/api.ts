@@ -35,6 +35,8 @@ import type {
   DecisionDiff,
   LineageResponse,
   LineageSummary,
+  DnaProfile,
+  DnaCluster,
 } from "./types";
 
 const BASE = "/api";
@@ -241,4 +243,13 @@ export const api = {
   },
   getLineageSummary: (pid: string, ticker: string): Promise<LineageSummary> =>
     get<LineageSummary>(`/${pid}/lineage/${ticker}/summary`),
+
+  // DNA Genome (Feature #16)
+  getDnaProfile: (pid: string, window: string = "all"): Promise<DnaProfile> =>
+    get<DnaProfile>(`/${pid}/dna?window=${window}`),
+  getDnaCluster: (
+    mode: "stated" | "measured" = "stated",
+    window: string = "all",
+  ): Promise<DnaCluster> =>
+    get<DnaCluster>(`/dna/cluster?mode=${mode}&window=${window}`),
 };

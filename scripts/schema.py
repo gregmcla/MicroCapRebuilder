@@ -26,6 +26,9 @@ TRANSACTION_COLUMNS = [
     # Decision Trace linkage (Feature #9)
     "source_proposal_id",  # 8-char hex; matches ProposedAction.proposal_id from the analyze cycle that produced this trade
     "source_trace_id",     # full trace_id (portfolio_yyyymmdd_HHMMSS_xxxx); permits direct trace lookup from a transaction row
+    # DNA Genome catalyst-hunting signals (Feature #16); empty on legacy rows until backfilled
+    "heat_at_entry",          # social sentiment classification at buy time: COLD/WARM/HOT/SPIKING
+    "market_cap_at_entry_m",  # market cap in $M at buy time (for micro/small-cap detection)
 ]
 
 # ─── Current Positions Schema ─────────────────────────────────────────────────

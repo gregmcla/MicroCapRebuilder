@@ -20,6 +20,7 @@ import { play } from "../lib/sounds";
 
 const ConstellationMap = lazy(() => import("./ConstellationMap"));
 const PerformanceChart = lazy(() => import("./PerformanceChart"));
+const DnaClusterMap = lazy(() => import("./DnaClusterMap"));
 
 // ---------------------------------------------------------------------------
 // Scan-all types
@@ -50,7 +51,7 @@ interface AnalyzeAllState {
 }
 
 type SortKey = "day_pnl" | "total_return_pct" | "equity" | "deployed_pct" | "name";
-type ViewMode = "grid" | "map" | "chart";
+type ViewMode = "grid" | "map" | "chart" | "dna";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -591,6 +592,7 @@ function ControlsBar({
     { key: "grid",  label: "Grid" },
     { key: "map",   label: "Map" },
     { key: "chart", label: "Chart" },
+    { key: "dna",   label: "DNA" },
   ];
 
   return (
@@ -1517,10 +1519,16 @@ export default function OverviewPage() {
             />
           </Suspense>
         </div>
-      ) : (
+      ) : viewMode === "chart" ? (
         <div key="chart" style={{ flex: 1, overflow: "auto", padding: "16px 20px", animation: "fadeIn 0.15s ease" }}>
           <Suspense fallback={<LoadingPane text="Loading chart…" />}>
             <PerformanceChart portfolios={enriched} height={480} />
+          </Suspense>
+        </div>
+      ) : (
+        <div key="dna" style={{ flex: 1, overflow: "hidden", padding: "16px 20px", display: "flex", flexDirection: "column", animation: "fadeIn 0.15s ease" }}>
+          <Suspense fallback={<LoadingPane text="Loading DNA cluster…" />}>
+            <DnaClusterMap />
           </Suspense>
         </div>
       )}

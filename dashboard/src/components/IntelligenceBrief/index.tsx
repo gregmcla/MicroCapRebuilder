@@ -16,6 +16,7 @@ import AuditChat from "./AuditChat";
 import TradesTab from "./TradesTab";
 import DecisionsTab from "./DecisionsTab";
 import LineageTab from "./LineageTab";
+import DnaTab from "./DnaTab";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -201,7 +202,7 @@ function MiniRiskPulse({ brief }: { brief?: IntelligenceBriefData }) {
 // ── Main Component ───────────────────────────────────────────────────────────
 
 export default function IntelligenceBrief({ portfolioId, portfolioName, initialTab, initialTradeId, initialProposalId, initialTraceId, initialTicker, onClose }: Props) {
-  type TabKey = "performance" | "risk" | "factors" | "gscott" | "trades" | "decisions" | "lineage";
+  type TabKey = "performance" | "risk" | "factors" | "gscott" | "trades" | "decisions" | "lineage" | "dna";
   const [activeTab, setActiveTab] = useState<TabKey>(
     (initialTab as TabKey) ?? "performance"
   );
@@ -264,6 +265,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
     { key: "trades" as const, label: "TRADES", dot: null },
     { key: "decisions" as const, label: "DECISIONS", dot: "#7c5cfc" },
     { key: "lineage" as const, label: "LINEAGE", dot: "#a78bfa" },
+    { key: "dna" as const, label: "DNA", dot: "#fbbf24" },
   ];
 
   return (
@@ -639,6 +641,8 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 portfolioId={portfolioId}
                 initialTicker={initialTicker ?? null}
               />
+            ) : activeTab === "dna" ? (
+              <DnaTab portfolioId={portfolioId} />
             ) : null}
           </div>
         </div>

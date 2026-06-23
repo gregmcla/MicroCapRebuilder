@@ -245,6 +245,61 @@ export interface LineageSummary {
   current_status: "held" | "closed" | "unknown";
 }
 
+// ── DNA Genome (Feature #16) ─────────────────────────────────────────────────
+
+export const DNA_AXES = [
+  "time_horizon",
+  "aggression",
+  "concentration",
+  "regime_sensitivity",
+  "momentum_bias",
+  "quality_bias",
+  "catalyst_hunting",
+  "drawdown_discipline",
+] as const;
+
+export type DnaAxis = typeof DNA_AXES[number];
+
+export interface DnaGenome {
+  time_horizon: number;
+  aggression: number;
+  concentration: number;
+  regime_sensitivity: number;
+  momentum_bias: number;
+  quality_bias: number;
+  catalyst_hunting: number;
+  drawdown_discipline: number;
+  confidence: number;
+  window: string;
+}
+
+export interface DnaProfile {
+  portfolio_id: string;
+  portfolio_name: string;
+  stated: DnaGenome;
+  measured: DnaGenome;
+  drift: Record<DnaAxis, number>;
+  drift_summary: string;
+  axes: readonly DnaAxis[];
+}
+
+export interface DnaClusterPoint {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  genome: DnaGenome;
+}
+
+export interface DnaCluster {
+  mode: "stated" | "measured";
+  window: string;
+  axes: readonly DnaAxis[];
+  portfolios: DnaClusterPoint[];
+  variance_explained: [number, number];
+  axis_loadings: Record<DnaAxis, [number, number]>;
+}
+
 export interface Snapshot {
   date: string;
   cash: number;
