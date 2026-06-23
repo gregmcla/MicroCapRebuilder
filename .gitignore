@@ -31,6 +31,15 @@ data/telegram/
 data/yf_cache/
 data/social_cache/
 data/sector_mapping.json
+# Per-portfolio runtime artifacts: write locks, manual-fix backup dirs, and .bak files
+data/portfolios/*/.write.lock
+data/portfolios/*/.backup-*/
+data/portfolios/*/*.bak
+
+# Test / tooling output
+.coverage
+graphify-out/
+gscott.db
 logs/
 reports/
 charts/
