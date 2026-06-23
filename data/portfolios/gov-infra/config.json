@@ -28,12 +28,12 @@
     },
     "regime_weights": {
       "BULL": {
-        "price_momentum": 0.2276,
-        "earnings_growth": 0.1545,
-        "quality": 0.1545,
-        "volume": 0.1545,
-        "volatility": 0.1545,
-        "value_timing": 0.1545
+        "price_momentum": 0.2368,
+        "earnings_growth": 0.1526,
+        "quality": 0.1526,
+        "volume": 0.1526,
+        "volatility": 0.1526,
+        "value_timing": 0.1526
       },
       "BEAR": {
         "price_momentum": 0.1667,

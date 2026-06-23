@@ -309,6 +309,24 @@
       "starting_capital": 1000000.0,
       "active": true,
       "exclude_from_aggregates": false
+    },
+    "golf-snack-foods": {
+      "id": "golf-snack-foods",
+      "name": "Golf & Snack Foods",
+      "universe": "allcap",
+      "created": "2026-06-02T22:17:46",
+      "starting_capital": 1000000.0,
+      "active": false,
+      "exclude_from_aggregates": false
+    },
+    "manualbuy": {
+      "id": "manualbuy",
+      "name": "ManualBuy",
+      "universe": "allcap",
+      "created": "2026-06-22T17:06:11",
+      "starting_capital": 3500000.0,
+      "active": true,
+      "exclude_from_aggregates": false
     }
   }
 }
