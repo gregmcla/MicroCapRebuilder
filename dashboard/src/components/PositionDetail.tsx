@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
-import { useUIStore, usePortfolioStore } from "../lib/store";
+import { useUIStore, usePortfolioStore, useBriefStore } from "../lib/store";
 import { api } from "../lib/api";
 import CandlestickChart from "./CandlestickChart";
 import CompanyInfoModal from "./CompanyInfoModal";
@@ -223,6 +223,7 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
             ))}
           </div>
           <SellButton pos={pos} />
+          <LineageButton ticker={pos.ticker} />
           <button
             onClick={() => clearSelection(null)}
             className="text-xs rounded transition-colors px-2 py-1"
@@ -272,6 +273,26 @@ export function PositionDetailChart({ pos }: { pos: Position }) {
         <CompanyInfoModal ticker={pos.ticker} onClose={() => setShowCompanyModal(false)} holdingValue={pos.market_value} />
       )}
     </div>
+  );
+}
+
+function LineageButton({ ticker }: { ticker: string }) {
+  const openBrief = useBriefStore((s) => s.openBrief);
+  return (
+    <button
+      onClick={() => openBrief("lineage", null, { ticker })}
+      className="text-xs rounded transition-colors px-2 py-1"
+      style={{
+        color: "var(--accent-bright)",
+        border: "1px solid rgba(124,92,252,0.30)",
+        background: "rgba(124,92,252,0.06)",
+        fontFamily: "'JetBrains Mono', monospace",
+        letterSpacing: "0.06em",
+      }}
+      title="Open this position's lineage timeline (#17)"
+    >
+      LINEAGE
+    </button>
   );
 }
 

@@ -208,6 +208,43 @@ export interface DecisionDiff {
   }>;
 }
 
+// ── Position Lineage (Feature #17) ───────────────────────────────────────────
+
+export type LineageEventKind =
+  | "watchlist_added"
+  | "watchlist_removed"
+  | "scored"
+  | "ai_considered"
+  | "buy"
+  | "sell"
+  | "stop_adjusted"
+  | "post_mortem";
+
+export interface BaseLineageEvent {
+  kind: LineageEventKind;
+  timestamp: string;
+  ticker: string;
+  // Per-variant fields are accessed dynamically — kept permissive for the
+  // tree renderer. Specific variant types below add the concrete fields.
+  [key: string]: unknown;
+}
+
+export interface LineageResponse {
+  ticker: string;
+  portfolio_id: string;
+  events: BaseLineageEvent[];
+}
+
+export interface LineageSummary {
+  ticker: string;
+  first_seen: string | null;
+  first_bought: string | null;
+  last_traded: string | null;
+  total_trades: number;
+  total_pnl: number;
+  current_status: "held" | "closed" | "unknown";
+}
+
 export interface Snapshot {
   date: string;
   cash: number;

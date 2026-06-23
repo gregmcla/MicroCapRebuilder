@@ -913,11 +913,26 @@ def remove_position(state: PortfolioState, ticker: str) -> PortfolioState:
 
 
 def save_positions(state: PortfolioState) -> None:
-    """Persist current positions to CSV."""
+    """Persist current positions to CSV.
+
+    Side effect: emits a "manual" stop/take_profit adjustment event for any
+    delta between the about-to-be-saved positions and the last-known shadow
+    snapshot — catches direct CSV edits (Greg's SPCX adjustment 2026-06-16
+    type scenario) so they show up in the Position Lineage timeline. The
+    detector dedupes against pipeline-emitted adjustments from the last 60s
+    so writes from execute_approved_actions aren't double-counted.
+    """
     from portfolio_lock import portfolio_lock
     positions_file = get_positions_file(state.portfolio_id)
     tmp_file = positions_file.with_name(positions_file.name + ".tmp")
     with portfolio_lock(state.portfolio_id):
+        # Drift detection BEFORE the write so the shadow snapshot reflects
+        # what's about to land. Non-fatal on any failure.
+        try:
+            from risk_adjustments import detect_and_log_drift
+            detect_and_log_drift(state.portfolio_id, state.positions)
+        except Exception as _drift_err:
+            print(f"  [risk_adjustments] drift detector failed (non-fatal): {_drift_err}")
         try:
             state.positions.to_csv(tmp_file, index=False)
             tmp_file.replace(positions_file)

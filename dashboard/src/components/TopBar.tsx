@@ -397,6 +397,7 @@ export default function TopBar({
   const briefInitialTradeId = useBriefStore(s => s.briefInitialTradeId);
   const briefInitialProposalId = useBriefStore(s => s.briefInitialProposalId);
   const briefInitialTraceId = useBriefStore(s => s.briefInitialTraceId);
+  const briefInitialTicker = useBriefStore(s => s.briefInitialTicker);
   const openBrief = useBriefStore(s => s.openBrief);
   const closeBrief = useBriefStore(s => s.closeBrief);
   const isOverviewOrLogs = !state;
@@ -620,6 +621,7 @@ export default function TopBar({
           initialTradeId={briefInitialTradeId}
           initialProposalId={briefInitialProposalId}
           initialTraceId={briefInitialTraceId}
+          initialTicker={briefInitialTicker}
           onClose={closeBrief}
         />
       )}

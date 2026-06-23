@@ -33,6 +33,8 @@ import type {
   DecisionTrace,
   DecisionTraceSummary,
   DecisionDiff,
+  LineageResponse,
+  LineageSummary,
 } from "./types";
 
 const BASE = "/api";
@@ -224,4 +226,19 @@ export const api = {
     get<{ traces: DecisionTraceSummary[] }>(`/${pid}/decisions/by_ticker/${ticker}?limit=${limit}`),
   diffDecisions: (pid: string, a: string, b: string): Promise<DecisionDiff> =>
     get<DecisionDiff>(`/${pid}/decisions/diff?a=${a}&b=${b}`),
+
+  // Position Lineage (Feature #17)
+  getLineage: (
+    pid: string,
+    ticker: string,
+    opts: { from?: string; limit?: number } = {},
+  ): Promise<LineageResponse> => {
+    const params = new URLSearchParams();
+    if (opts.from) params.set("from", opts.from);
+    if (opts.limit) params.set("limit", String(opts.limit));
+    const qs = params.toString();
+    return get<LineageResponse>(`/${pid}/lineage/${ticker}${qs ? `?${qs}` : ""}`);
+  },
+  getLineageSummary: (pid: string, ticker: string): Promise<LineageSummary> =>
+    get<LineageSummary>(`/${pid}/lineage/${ticker}/summary`),
 };

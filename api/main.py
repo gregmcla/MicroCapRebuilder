@@ -29,6 +29,7 @@ from api.routes import trade_reviews as trade_reviews_routes
 from api.routes import cache as cache_routes
 from api.routes import digest as digest_routes
 from api.routes import decisions as decisions_routes
+from api.routes import lineage as lineage_routes
 
 app = FastAPI(title="GScott Trading Cockpit", version="0.1.0")
 
@@ -57,6 +58,7 @@ app.include_router(trade_reviews_routes.router)
 app.include_router(cache_routes.router)
 app.include_router(digest_routes.router)
 app.include_router(decisions_routes.router)
+app.include_router(lineage_routes.router)
 
 
 @app.get("/api/health")

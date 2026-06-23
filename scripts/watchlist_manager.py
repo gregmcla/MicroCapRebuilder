@@ -244,6 +244,19 @@ class WatchlistManager:
                 )
                 entries.append(new_entry)
                 added_count += 1
+                # Emit a watchlist event for the position-lineage timeline.
+                # Non-fatal — never blocks the watchlist mutation.
+                try:
+                    from watchlist_events import record_watchlist_event
+                    record_watchlist_event(
+                        portfolio_id=self.portfolio_id,
+                        ticker=stock.ticker,
+                        kind="added",
+                        reason=f"discovery:{stock.source}" if stock.source else "discovery",
+                        source="discovery",
+                    )
+                except Exception:
+                    pass
 
         self._save_watchlist(entries)
         return added_count
@@ -685,6 +698,7 @@ class WatchlistManager:
 
         new_entries = []
         removed = 0
+        removed_tickers: list[str] = []
         for entry in entries:
             if (
                 entry.status == "ACTIVE"
@@ -693,11 +707,23 @@ class WatchlistManager:
                 and datetime.fromisoformat(entry.added_date).date() <= cutoff
             ):
                 removed += 1
+                removed_tickers.append(entry.ticker)
                 continue
             new_entries.append(entry)
 
         if removed:
             self._save_watchlist(new_entries)
+            try:
+                from watchlist_events import record_many
+                record_many(
+                    portfolio_id=self.portfolio_id,
+                    events=[
+                        {"ticker": t, "type": "removed", "reason": "stale_low_score"}
+                        for t in removed_tickers
+                    ],
+                )
+            except Exception:
+                pass
         return removed
 
     def remove_poor_performers(self, min_trades: int = 3, max_loss_rate: float = 0.75) -> int:
@@ -762,6 +788,16 @@ class WatchlistManager:
                 # Poor performer - remove
                 print(f"  Removing {entry.ticker}: {stats['loss_rate']:.0%} loss rate ({stats['losses']}/{stats['trades']} trades)")
                 removed_count += 1
+                try:
+                    from watchlist_events import record_watchlist_event
+                    record_watchlist_event(
+                        portfolio_id=self.portfolio_id,
+                        ticker=entry.ticker,
+                        kind="removed",
+                        reason=f"poor_performer:{stats['losses']}/{stats['trades']} loss rate {stats['loss_rate']:.0%}",
+                    )
+                except Exception:
+                    pass
                 continue
 
             new_entries.append(entry)
@@ -935,6 +971,18 @@ class WatchlistManager:
         if to_remove:
             new_entries = [e for e in entries if e.ticker not in to_remove]
             self._save_watchlist(new_entries)
+            # Emit watchlist removal events for the position-lineage timeline.
+            try:
+                from watchlist_events import record_many
+                record_many(
+                    portfolio_id=self.portfolio_id,
+                    events=[
+                        {"ticker": t, "type": "removed", "reason": "bucket_overflow"}
+                        for t in to_remove
+                    ],
+                )
+            except Exception:
+                pass
 
         return len(to_remove)
 

@@ -86,6 +86,33 @@ class ScoreStore:
             with open(self._path, "a") as f:
                 f.write("\n".join(new_lines) + "\n")
 
+    def get_ticker_history(self, ticker: str, days: int = 90) -> List[Dict]:
+        """Return per-day score history for a ticker, oldest first.
+
+        Each row: {date, composite, momentum, quality, earnings, volume,
+        volatility, value_timing}. Used by position_lineage to emit ScoredEvents.
+        """
+        if not self._path.exists():
+            return []
+        cutoff = (date.today() - timedelta(days=days)).isoformat() if days else None
+        rows: List[Dict] = []
+        with open(self._path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                if row.get("ticker") != ticker:
+                    continue
+                if cutoff and row.get("date", "") < cutoff:
+                    continue
+                rows.append(row)
+        rows.sort(key=lambda r: r.get("date", ""))
+        return rows
+
     def get_latest_scores(self, max_age_days: int = None) -> Dict[str, float]:
         """Return most recent composite score per ticker.
 

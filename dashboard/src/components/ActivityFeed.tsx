@@ -69,8 +69,8 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
           {quantText.split(" | ")[0]}
         </p>
       )}
-      {hasTrace && (
-        <div style={{ marginTop: "6px" }}>
+      <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
+        {hasTrace && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -91,8 +91,28 @@ function ExpandedDetail({ tx }: { tx: Transaction }) {
           >
             TRACE
           </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            openBrief("lineage", null, { ticker: tx.ticker });
+          }}
+          title="Open this ticker's full position lineage"
+          style={{
+            fontSize: "9px",
+            letterSpacing: "0.06em",
+            padding: "2px 6px",
+            background: "rgba(167,139,250,0.08)",
+            border: "1px solid rgba(167,139,250,0.25)",
+            color: "#a78bfa",
+            borderRadius: 3,
+            cursor: "pointer",
+            fontFamily: "'JetBrains Mono', monospace",
+          }}
+        >
+          LINEAGE
+        </button>
+      </div>
     </div>
   );
 }

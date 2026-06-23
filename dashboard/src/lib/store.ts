@@ -287,10 +287,12 @@ interface BriefStore {
   // Direct trace_id when known (e.g. activity feed has source_trace_id on the
   // transaction). Skips the proposal_id lookup hop.
   briefInitialTraceId: string | null;
+  // Ticker deep-link for Position Lineage (#17) — opens LineageTab on that ticker.
+  briefInitialTicker: string | null;
   openBrief: (
     tab?: string,
     tradeId?: string | null,
-    opts?: { proposalId?: string | null; traceId?: string | null },
+    opts?: { proposalId?: string | null; traceId?: string | null; ticker?: string | null },
   ) => void;
   closeBrief: () => void;
 }
@@ -301,6 +303,7 @@ export const useBriefStore = create<BriefStore>((set) => ({
   briefInitialTradeId: null,
   briefInitialProposalId: null,
   briefInitialTraceId: null,
+  briefInitialTicker: null,
   openBrief: (tab = "performance", tradeId = null, opts = {}) =>
     set({
       briefOpen: true,
@@ -308,6 +311,7 @@ export const useBriefStore = create<BriefStore>((set) => ({
       briefInitialTradeId: tradeId,
       briefInitialProposalId: opts.proposalId ?? null,
       briefInitialTraceId: opts.traceId ?? null,
+      briefInitialTicker: opts.ticker ?? null,
     }),
   closeBrief: () =>
     set({
@@ -315,5 +319,6 @@ export const useBriefStore = create<BriefStore>((set) => ({
       briefInitialTradeId: null,
       briefInitialProposalId: null,
       briefInitialTraceId: null,
+      briefInitialTicker: null,
     }),
 }));
