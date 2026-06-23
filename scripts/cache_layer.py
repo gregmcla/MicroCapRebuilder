@@ -38,8 +38,14 @@ _NY = ZoneInfo("America/New_York")
 class TTL:
     """Named TTLs in seconds, tiered by how fast the underlying data changes."""
 
-    # yfinance bars during US market hours: prices move continuously
-    BARS_INTRADAY = 3_600  # 1 hour
+    # yfinance bars during US market hours.
+    # 4h is a sweet spot: bumped 2026-06-23 because yfinance throttling pushed
+    # the cold-cache scan from ~6min to ~12min. 4h means a SCAN at 10am has a
+    # warm cache for any re-scan through 2pm. The scorer uses 30/60-day
+    # momentum windows where 4h-stale prices are invisible. The EXECUTE path
+    # is unaffected — it has its own live-price fetch via fetch_prices_batch
+    # + Public.com that doesn't depend on BARS_INTRADAY.
+    BARS_INTRADAY = 14_400  # 4 hours
 
     # yfinance bars outside market hours: closes are settled, daily granularity
     BARS_OVERNIGHT = 43_200  # 12 hours

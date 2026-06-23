@@ -75,22 +75,38 @@ from reentry_guard import get_reentry_context
 # ─── Shared Helpers ───────────────────────────────────────────────────────────
 
 def _build_sector_map(state) -> dict:
-    """Build a ticker→sector dict from positions CSV then watchlist (positions win)."""
+    """Build a ticker→sector dict from positions CSV then watchlist.
+
+    Real-sector wins over blank/Unknown regardless of source. Previously,
+    positions.csv always won — meaning a position stamped with `""` or
+    `"Unknown"` at buy time could never be healed even if a later scan
+    populated the watchlist with the correct sector. Now the watchlist
+    fills in any gap left by the positions file.
+    """
+    _BLANK = {"", "nan", "None", "Unknown"}
+
+    def _is_real(s: str) -> bool:
+        return bool(s) and s.strip() not in _BLANK
+
     sector_map: dict = {}
     if not state.positions.empty and "sector" in state.positions.columns:
         for _, pos in state.positions.iterrows():
             s = str(pos.get("sector", "")).strip()
-            if s and s not in ("", "nan", "Unknown"):
+            if _is_real(s):
                 sector_map[pos["ticker"]] = s
     try:
         watchlist_file = get_watchlist_file(state.portfolio_id)
         if watchlist_file.exists():
             with open(watchlist_file) as f:
                 for line in f:
-                    if line.strip():
-                        entry = json.loads(line)
-                        if entry.get("sector") and entry["ticker"] not in sector_map:
-                            sector_map[entry["ticker"]] = entry["sector"]
+                    if not line.strip():
+                        continue
+                    entry = json.loads(line)
+                    t = entry.get("ticker")
+                    s = str(entry.get("sector") or "").strip()
+                    # Fill in any ticker we don't yet have a real sector for
+                    if _is_real(s) and t and not _is_real(sector_map.get(t, "")):
+                        sector_map[t] = s
     except Exception as e:
         _diag.warning("failed to build sector map from watchlist: %s", e)
     return sector_map
@@ -1523,6 +1539,27 @@ def execute_approved_actions(
                 ticker_sector = analysis_result.get("portfolio_context", {}).get(
                     "sector_map", {}
                 ).get(action.ticker, "")
+                # Last-mile fallback: if sector_map returned blank (ticker
+                # wasn't in watchlist — happens on manual buys + "press an
+                # existing winner" presses where the held ticker isn't in
+                # the candidate list), try a fresh yfinance lookup. ~1-3s
+                # per blank-sector buy; rare enough to be tolerable, and
+                # without it the position stays sectorless forever (no
+                # mechanism healed it after this point).
+                if not ticker_sector or ticker_sector in ("Unknown", "nan", "None"):
+                    try:
+                        import yfinance as _yf
+                        _info = _yf.Ticker(action.ticker).info or {}
+                        _resolved = (_info.get("sector") or "").strip()
+                        if _resolved:
+                            ticker_sector = _resolved
+                        elif (_info.get("quoteType") or "").upper() == "ETF":
+                            # ETFs/SPACs don't carry a GICS sector — stamp
+                            # explicitly so the field isn't empty.
+                            ticker_sector = "ETF"
+                    except Exception as _se:
+                        _diag.warning("inline sector lookup failed for %s: %s",
+                                      action.ticker, _se)
                 state = update_position(state, action.ticker, shares, action.price,
                                         tx["stop_loss"], tx["take_profit"],
                                         sector=ticker_sector)
