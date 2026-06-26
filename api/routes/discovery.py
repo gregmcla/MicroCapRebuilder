@@ -150,13 +150,27 @@ def get_watchlist(portfolio_id: str = Depends(validate_portfolio_id)):
     return {"candidates": candidates, "total": len(candidates)}
 
 
+def _watchlist_last_scanned(portfolio_id: str) -> str | None:
+    """Return ISO timestamp of the last completed scan, from watchlist.jsonl mtime."""
+    try:
+        wl = Path(__file__).parent.parent.parent / "data" / "portfolios" / portfolio_id / "watchlist.jsonl"
+        if wl.exists():
+            import time as _time
+            mtime = wl.stat().st_mtime
+            return datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+    except Exception:
+        pass
+    return None
+
+
 @router.get("/scan/status")
 def get_scan_status(portfolio_id: str = Depends(validate_portfolio_id)):
     """Poll the status of the last scan for this portfolio."""
+    last_scanned = _watchlist_last_scanned(portfolio_id)
     with _scan_jobs_lock:
         job = _scan_jobs.get(portfolio_id)
         if not job:
-            return {"status": "idle"}
+            return {"status": "idle", "last_scanned": last_scanned}
         # Snapshot the dict under the lock so the response is internally consistent
         return {
             "status": job["status"],
@@ -164,6 +178,7 @@ def get_scan_status(portfolio_id: str = Depends(validate_portfolio_id)):
             "finished_at": job["finished_at"],
             "result": job["result"],
             "error": job["error"],
+            "last_scanned": last_scanned,
         }
 
 
