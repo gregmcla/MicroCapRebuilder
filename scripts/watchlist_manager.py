@@ -17,13 +17,17 @@ Usage:
 """
 
 import json
+import logging
 import os
 import threading
+import traceback
 from dataclasses import dataclass, asdict, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 import shutil
+
+logger = logging.getLogger(__name__)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
@@ -139,11 +143,16 @@ class WatchlistManager:
         Cross-process lock blocks concurrent writers (cron scan + API scan races)."""
         from portfolio_lock import portfolio_lock
         with portfolio_lock(self.portfolio_id):
-            # Backup existing
+            # Backup existing — per-portfolio path, once a day. The old shared
+            # filename (watchlist_DATE.jsonl, no portfolio_id) let every portfolio
+            # clobber every other portfolio's "safety" backup, and copied on all
+            # ~6 saves per scan. Scope it per portfolio and snapshot once/day.
             if self._watchlist_file.exists():
-                BACKUP_DIR.mkdir(exist_ok=True)
-                backup_path = BACKUP_DIR / f"watchlist_{date.today().isoformat()}.jsonl"
-                shutil.copy(self._watchlist_file, backup_path)
+                backup_dir = BACKUP_DIR / self.portfolio_id
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                backup_path = backup_dir / f"watchlist_{date.today().isoformat()}.jsonl"
+                if not backup_path.exists():
+                    shutil.copy(self._watchlist_file, backup_path)
 
             # Atomic write: write to temp file then rename to avoid partial writes
             tmp_path = self._watchlist_file.with_suffix(".jsonl.tmp")
@@ -419,21 +428,37 @@ class WatchlistManager:
 
         filled = 0
         newly_cached = False
+
+        # Resolve from the global cache first (no network).
+        to_fetch = []
         for entry in batch:
             cached = global_map.get(entry.ticker)
             if cached and cached != "Unknown":
                 entry.sector = cached
                 filled += 1
-                continue
-            sector = self._fetch_sector_with_timeout(entry.ticker, timeout=8.0)
-            if sector and sector != "Unknown":
-                entry.sector = sector
-                global_map[entry.ticker] = sector
-                newly_cached = True
-                filled += 1
-            elif not entry.sector:
-                # Mark as Unknown so we don't churn on it within this run.
-                entry.sector = "Unknown"
+            else:
+                to_fetch.append(entry)
+
+        # Fetch the uncached ones in parallel — bounds wall time to ~one timeout
+        # (~8s) instead of len(batch) x 8s serial (up to 160s on the critical path).
+        # Each worker self-bounds via the daemon-join timeout, so the pool drains
+        # promptly even when yfinance is slow.
+        if to_fetch:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(8, len(to_fetch))) as ex:
+                fetched = list(ex.map(
+                    lambda e: (e, self._fetch_sector_with_timeout(e.ticker, timeout=8.0)),
+                    to_fetch,
+                ))
+            for entry, sector in fetched:
+                if sector and sector != "Unknown":
+                    entry.sector = sector
+                    global_map[entry.ticker] = sector
+                    newly_cached = True
+                    filled += 1
+                elif not entry.sector:
+                    # Mark as Unknown so we don't churn on it within this run.
+                    entry.sector = "Unknown"
 
         if newly_cached and save_sector_mapping is not None:
             try:
@@ -486,7 +511,12 @@ class WatchlistManager:
                 discovered_stocks = discover_stocks(portfolio_id=self.portfolio_id)
                 stats["discovered"] = len(discovered_stocks)
             except Exception as e:
+                # Don't swallow this silently — a throttled/crashed discovery used
+                # to report as a clean "0 discovered" success, hiding the failure.
+                logger.error("Discovery failed for %s: %s\n%s",
+                             self.portfolio_id, e, traceback.format_exc())
                 print(f"Discovery error: {e}")
+                stats["discovery_error"] = str(e)
 
         # Step 3: Load CORE tickers — always preserved regardless of score
         core_tickers = self._load_core_watchlist()
