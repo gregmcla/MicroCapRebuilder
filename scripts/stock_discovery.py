@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from yf_session import cached_download
+from cache_layer import TTL
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -288,10 +289,13 @@ class StockDiscovery:
             print(f"Warning: price data fetch failed for {cache_key}: {e}")
             return None
 
-    # Disk cache for .info data — persists across scan instances (4hr TTL)
+    # Disk cache for .info data — persists across scan instances. Fundamentals
+    # (margins, ROE, earnings growth, P/E) change on a quarterly cadence, so a 4h
+    # TTL re-scraped them ~180x too often and made .info the dominant scan cost.
+    # Live price comes from bars/Public.com, so marketCap staleness here is fine.
     _INFO_DISK_CACHE_DIR = DATA_DIR / "yf_cache"
     _INFO_DISK_CACHE_FILE = _INFO_DISK_CACHE_DIR / "stock_info_cache.pkl"
-    _INFO_DISK_CACHE_TTL = 4 * 3600  # 4 hours
+    _INFO_DISK_CACHE_TTL = TTL.FUNDAMENTALS_QUARTERLY  # 30 days
     _disk_info_cache: Dict[str, tuple] = {}  # ticker -> (info_dict, timestamp)
     _disk_cache_loaded = False
     _disk_cache_lock = threading.Lock()
@@ -410,14 +414,18 @@ class StockDiscovery:
         if not self._passes_price_volume_filter(ticker, df):
             return False
 
-        # Market cap filter — requires info (pre-cached for survivors)
-        market_cap = info.get("marketCap", 0)
-        _min_cap_m = filters.get("min_market_cap_m") or 0
-        min_cap = _min_cap_m * 1e6
-        _max_cap_m = filters.get("max_market_cap_m")
-        max_cap = (_max_cap_m * 1e6) if _max_cap_m is not None else float("inf")
-        if market_cap < min_cap or market_cap > max_cap:
-            return False
+        # Market cap filter — requires info. When marketCap is unknown (info fetch
+        # failed, or the ticker was beyond the .info prewarm cap), SKIP the check
+        # rather than treat it as 0 — otherwise good tickers silently vanish from
+        # scoring. Same permissive philosophy as the fundamental pre-screen below.
+        market_cap = info.get("marketCap")
+        if market_cap:
+            _min_cap_m = filters.get("min_market_cap_m") or 0
+            min_cap = _min_cap_m * 1e6
+            _max_cap_m = filters.get("max_market_cap_m")
+            max_cap = (_max_cap_m * 1e6) if _max_cap_m is not None else float("inf")
+            if market_cap < min_cap or market_cap > max_cap:
+                return False
 
         # Sector filter (for strategy-focused portfolios)
         sector_filter = self.discovery_config.get("sector_filter")
@@ -1105,25 +1113,28 @@ class StockDiscovery:
         _random.shuffle(shuffled)
         self._prewarm_info_cache(shuffled)
 
-        # Phase 4: Score all survivors with full 6-factor model
+        # Phase 4: Score all survivors with the full 6-factor model. Now that bars
+        # are passed in (no per-ticker download), this is CPU-bound pandas work plus
+        # the occasional residual fetch — parallelize across workers and merge
+        # results serially to keep ordering and avoid shared-state races.
         scorer = StockScorer(config=self.config)
+        scorer._get_benchmark_data()  # warm benchmark once so workers don't race the fetch
         candidates = []
         all_scores_for_store: list = []  # ALL scores, not just candidates
+        threshold = self.discovery_config.get("min_discovery_score", 30)
 
-        for ticker in survivors:
+        def _score_one(ticker: str):
             try:
                 info = self._info_cache.get(ticker)
                 df = _get_cached_df(ticker)
                 if not self._passes_filters(ticker, df, info if isinstance(info, dict) else {}):
-                    continue
-                # Reuse the prewarmed 3mo bars (df) so the scorer doesn't re-download
-                # per ticker — the prewarm already holds them in memory.
+                    return None
+                # Reuse the prewarmed 3mo bars (df) so the scorer doesn't re-download.
                 score = scorer.score_stock(ticker, info=info, df=df)
                 if not score:
-                    continue
+                    return None
 
-                # Always record in score store — delta tracking needs full history
-                all_scores_for_store.append({
+                store_row = {
                     "ticker": ticker,
                     "composite": score.composite_score,
                     "momentum": score.price_momentum_score,
@@ -1132,10 +1143,10 @@ class StockDiscovery:
                     "volume": score.volume_score,
                     "volatility": score.volatility_score,
                     "value_timing": score.value_timing_score,
-                })
+                }
 
-                # Only include in candidate list if above threshold
-                if score.composite_score >= self.discovery_config.get("min_discovery_score", 30):
+                candidate = None
+                if score.composite_score >= threshold:
                     sector = ""
                     market_cap_m = (info.get("marketCap", 0) or 0) / 1e6 if isinstance(info, dict) else 0.0
                     if isinstance(info, dict):
@@ -1150,7 +1161,7 @@ class StockDiscovery:
                     if df is not None and "Volume" in df.columns:
                         _vol_mean = df["Volume"].iloc[-20:].mean()
                         avg_volume = int(_vol_mean) if pd.notna(_vol_mean) else 0
-                    candidates.append(DiscoveredStock(
+                    candidate = DiscoveredStock(
                         ticker=ticker,
                         source="SCORE_ALL",
                         discovery_score=score.composite_score,
@@ -1165,9 +1176,20 @@ class StockDiscovery:
                         discovered_date=date.today().isoformat(),
                         notes=f"score_all | momentum={score.price_momentum_score:.0f} "
                               f"value={score.value_timing_score:.0f} quality={score.quality_score:.0f}",
-                    ))
+                    )
+                return store_row, candidate
             except Exception as e:
                 print(f"  Score-all: skip {ticker} ({e})")
+                return None
+
+        with ThreadPoolExecutor(max_workers=8) as _score_pool:
+            for res in _score_pool.map(_score_one, survivors):
+                if res is None:
+                    continue
+                store_row, candidate = res
+                all_scores_for_store.append(store_row)
+                if candidate is not None:
+                    candidates.append(candidate)
 
         candidates.sort(key=lambda x: x.discovery_score, reverse=True)
         total_elapsed = time.time() - scan_start
@@ -1226,10 +1248,11 @@ class StockDiscovery:
         all_candidates = []
         scan_start = time.time()
 
-        # Shuffle before capping so the MAX_UNIVERSE slice is letter-diverse,
-        # not alphabetically biased toward A/B/C tickers.
-        import random as _rand
-        _rand.shuffle(self.scan_universe)
+        # Deterministic order so download chunks are identical across same-day
+        # scans (stable batch cache keys). The universe arrives pre-ordered from
+        # the provider; MAX_UNIVERSE (3000) never bites at real sizes (~1.2k), so
+        # sorting introduces no selection bias.
+        self.scan_universe = sorted(self.scan_universe)
 
         # Cap universe to avoid exceeding the API timeout (~480s).
         # At ~150s per 1000 tickers, 3000 is safe; upstream extended_max already

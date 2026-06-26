@@ -356,18 +356,20 @@ class UniverseProvider:
 
     def get_todays_extended_batch(self) -> List[str]:
         """
-        Get a batch of extended tickers (~1/3 of extended tier).
+        Get ~1/3 of the extended tier as a deterministic daily partition.
 
-        Uses a truly random shuffle each call so back-to-back scans cover
-        different tickers.  Three scans give ~95% universe coverage.
+        Uses a real rotation (slot = day_of_year % 3) over the week-stable extended
+        order rather than a fresh random sample each call. Two consequences:
+          - The same day always yields the same batch, so repeat scans hit warm
+            caches instead of re-downloading a different random third every time.
+          - Three consecutive days cover 100% of the tier (the old random sample
+            averaged only ~70%, despite the "~95%" claim).
         """
         if not self._extended_tickers:
             return []
 
-        shuffled = list(self._extended_tickers)
-        random.shuffle(shuffled)
-        batch_size = len(shuffled) // 3 + 1
-        return shuffled[:batch_size]
+        slot = datetime.now().timetuple().tm_yday % 3
+        return self._extended_tickers[slot::3]
 
     def get_todays_scan_universe(self) -> List[str]:
         """
@@ -393,11 +395,11 @@ class UniverseProvider:
         core_set = set(core)
         extended_filtered = [t for t in extended_batch if t not in core_set]
 
-        # Shuffle so the MAX_UNIVERSE cap in stock_discovery doesn't bias
-        # toward alphabetically-early tickers.
-        combined = core + extended_filtered
-        random.shuffle(combined)
-        return combined
+        # Deterministic order so the download chunks are identical across same-day
+        # scans (stable batch cache keys). The extended pool is already week-seed
+        # shuffled in _finalize_tiers, and the MAX_UNIVERSE cap (3000) never bites
+        # at real universe sizes (~1.2k), so a sort introduces no selection bias.
+        return sorted(core + extended_filtered)
 
     def _get_legacy_universe(self) -> List[str]:
         """Get the legacy hardcoded universe as fallback."""
