@@ -89,7 +89,7 @@ All scripts consume `PortfolioState` — no direct CSV reads/writes for trading 
 - `strategy_health.py` — A-F grading
 - `strategy_pivot.py` — PIVOT recommendations
 - `capital_preservation.py` — capital preservation system
-- `yf_session.py` — DataFrame-level disk cache for yfinance. Tiered TTL via `cache_layer.bars_ttl()` — 1h during US market hours (9:30-16:00 ET), 12h overnight. `YF_CACHE_TTL_SECONDS` env var still honored as a global override. Includes content validation: a cached/downloaded DataFrame whose MultiIndex ticker label diverges from the request is rejected (Fix 19a — caught the HUT-cache-poisoned-with-MNDY-data incident).
+- `yf_session.py` — DataFrame-level disk cache for yfinance. Tiered TTL via `cache_layer.bars_ttl()` — 4h during US market hours (9:30-16:00 ET), 12h overnight. `YF_CACHE_TTL_SECONDS` env var still honored as a global override. Includes content validation: a cached/downloaded DataFrame whose MultiIndex ticker label diverges from the request is rejected (Fix 19a — caught the HUT-cache-poisoned-with-MNDY-data incident). `sweep_stale_cache()` (called at scan start) deletes bars pickles older than the overnight TTL so the per-key files don't accumulate into multi-GB bloat (was 6.3 GB before 2026-06-26).
 - `public_quotes.py` — real-time price wrapper around publicdotcom-py SDK; primary price source in execute + load_portfolio_state; falls back to yfinance (`PUBLIC_API_KEY` env var required)
 - `cache_layer.py` — shared cache utilities (Fix 19): `cache_key(parts)` for canonical hash, `CacheLogger` for structured cache events, `TTL` constants tiered by data volatility (BARS_INTRADAY/OVERNIGHT, UNIVERSE_DAILY, FUNDAMENTALS_QUARTERLY, NEWS_SHORT, SOCIAL_SHORT, AI_EPHEMERAL), `is_market_hours()` helper.
 - `logging_setup.py` — `configure_logging()` + `get_logger(name)` for consistent stdlib logging across cron scripts and API. Wired into `api/main.py` startup (Fix 15).
@@ -258,7 +258,7 @@ SCAN → watchlist_manager.update_watchlist(run_discovery=True)
     → universe_provider: core (daily) + extended (rotating_3day)
     → stock_discovery: score candidates, apply filters
     → Update watchlist.jsonl (add new, remove stale/poor)
-    ~30-50s warm cache, ~2-3min cold cache (mitigated by rotating_3day + 4hr disk cache + Public.com API)
+    ~12s warm cache (since the 2026-06-26 perf overhaul), slower cold/throttled. Scoring reuses the prewarmed 3mo bars (no per-ticker re-download), scoring loop is parallelized, and `.info` is cached 30 days. Deterministic day-seeded rotation keeps same-day re-scans warm.
 ```
 
 ---
@@ -305,7 +305,7 @@ Each portfolio has its own `data/portfolios/{id}/config.json` with:
 
 Three caches dominate the hot path. All use `scripts/cache_layer.py`:
 
-- **yfinance bars** (`yf_session.cached_download`) — pickle files in `data/yf_cache/`, tiered TTL: 1h during US market hours, 12h overnight via `cache_layer.bars_ttl()`. `YF_CACHE_TTL_SECONDS` overrides both for tests/manual stretching. Content validation rejects mismatched-ticker DataFrames before they reach the scorer.
+- **yfinance bars** (`yf_session.cached_download`) — pickle files in `data/yf_cache/`, tiered TTL: 4h during US market hours, 12h overnight via `cache_layer.bars_ttl()`. `YF_CACHE_TTL_SECONDS` overrides both for tests/manual stretching. Content validation rejects mismatched-ticker DataFrames before they reach the scorer. `sweep_stale_cache()` bounds the dir at scan start. NOTE: the batch cache key is the sorted ticker list, so it only reuses across scans when the chunk composition is stable — deterministic rotation (P1.3) keeps it stable same-day. Per-ticker stable keys + persistence (P1.1/P1.2) are still deferred.
 - **Screener results** (`screener_provider.run_screen`) — JSON at `data/portfolios/{id}/screener_cache.{hash}.json`. Hash includes sectors, industries, market_cap_min/max, region. Edit any of those → different hash → guaranteed cache miss. 24h TTL. Old hash files swept after 7 days.
 - **Refinement results** (`screener_provider.maybe_refine_with_claude`) — JSON at `data/portfolios/{id}/refinement_cache.{hash}.json`. Hash includes prompt text + upstream-screener-result fingerprint. Refinement auto-invalidates whenever screener invalidates. 7d TTL.
 
@@ -349,7 +349,7 @@ Three caches dominate the hot path. All use `scripts/cache_layer.py`:
 - `save_snapshot` must filter out today's row before computing day P&L (avoid zeroing on repeat updates)
 - `run_dashboard.sh` uses `wait` not `wait -n` (macOS bash lacks `wait -n`)
 - `day_change` in positions CSV is **total position dollar change** (not per-share). Per-share = `day_change / shares`
-- **Scan timeout:** cold cache scan can still be slow on large allcap universes. Mitigations: rotating_3day extended tier (scans ~1/3 per day), 4hr disk cache, Public.com API for live prices, 500-ticker .info cap in stock_discovery, price pre-filtering eliminates ~80% before heavy work. Typical warm cache scan: 30-50s.
+- **Scan timeout:** mostly resolved by the 2026-06-26 perf overhaul (warm scan ~12s; see "Scan Performance Overhaul" in PROJECT_STATE.md). The dominant cost — `score_stock` re-downloading 3mo bars per ticker — is gone (the prewarmed `df` is now passed in). Remaining slowness is yfinance throttling on cold fetches: repeated scans rate-limit Yahoo, and a cold benchmark/bar fetch then hits the 60s download timeout. A process-wide scan semaphore (`SCAN_CONCURRENCY`, default 1) prevents portfolios from stampeding Yahoo. Mitigations still in place: rotating_3day extended tier, 4h disk cache, Public.com live prices, 500-ticker .info cap, ~80% price pre-filter.
 - API process can be killed by macOS if scan consumes too much memory — restart with `uvicorn api.main:app --host 0.0.0.0 --port 8001`
 - `execute_approved_actions` bug (fixed): must save transactions BEFORE mutating positions
 - **NaN in overview JSON**: pandas uses `NaN` for missing floats; `float(NaN) or 0` still returns `NaN` (NaN is truthy). Use `math.isnan()` check. Overview endpoint uses `_f()` helper to sanitize all floats. Any new cross-portfolio float fields must go through the same helper.
