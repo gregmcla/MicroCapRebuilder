@@ -16,6 +16,7 @@ Usage:
 
 import os
 import logging
+import threading
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,6 +25,34 @@ logger = logging.getLogger(__name__)
 
 _client = None
 _account_id: str | None = None
+
+# The Public.com SDK has no built-in request timeout; a slow/hung auth or quote
+# endpoint blocked an entire scan for ~2.5 min in production. Wrap blocking SDK
+# calls so they can't stall the scan indefinitely.
+_SDK_TIMEOUT_SECONDS = 10
+
+
+def _call_with_timeout(fn, timeout_s: int = _SDK_TIMEOUT_SECONDS):
+    """Run a blocking SDK call with a hard timeout.
+
+    Returns (result, timed_out). On timeout the worker thread is abandoned
+    (daemon) and the caller gets (None, True) so it can fall back.
+    """
+    box: list = [None]
+
+    def _target():
+        try:
+            box[0] = fn()
+        except Exception as e:
+            logger.warning(f"[public_quotes] SDK call failed: {e}")
+
+    t = threading.Thread(target=_target, daemon=True)
+    t.start()
+    t.join(timeout_s)
+    if t.is_alive():
+        logger.warning(f"[public_quotes] SDK call timed out after {timeout_s}s")
+        return None, True
+    return box[0], False
 
 
 def _get_client():
@@ -40,11 +69,13 @@ def _get_client():
         from public_api_sdk import PublicApiClient, ApiKeyAuthConfig
         _client = PublicApiClient(ApiKeyAuthConfig(api_secret_key=api_key))
 
-        # Auto-discover account ID if not set in env
+        # Auto-discover account ID if not set in env (timeout-guarded)
         _account_id = os.getenv("PUBLIC_ACCOUNT_ID")
         if not _account_id:
-            resp = _client.get_accounts()
-            if resp and resp.accounts:
+            resp, timed_out = _call_with_timeout(_client.get_accounts)
+            if timed_out:
+                logger.warning("[public_quotes] account discovery timed out — leaving account unset")
+            elif resp and resp.accounts:
                 _account_id = str(resp.accounts[0].account_id)
                 logger.info(f"[public_quotes] Using account {_account_id}")
 
@@ -77,7 +108,12 @@ def fetch_live_quotes(tickers: list[str]) -> tuple[dict[str, float], list[str]]:
         instruments = [
             OrderInstrument(symbol=t, type=InstrumentType.EQUITY) for t in tickers
         ]
-        quotes = client.get_quotes(instruments, account_id=_account_id)
+        quotes, timed_out = _call_with_timeout(
+            lambda: client.get_quotes(instruments, account_id=_account_id)
+        )
+        if timed_out or quotes is None:
+            # Signal caller to fall back to yfinance/bars rather than hang.
+            return {}, tickers
 
         prices: dict[str, float] = {}
         failures: list[str] = []

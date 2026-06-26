@@ -948,11 +948,20 @@ class StockDiscovery:
         print(f"    Found {len(candidates)} relative volume surges")
         return candidates
 
-    def _prewarm_cache(self, tickers: List[str], chunk_size: int = 200) -> None:
-        """Batch-download price data in chunks to avoid rate limits."""
+    def _prewarm_cache(
+        self,
+        tickers: List[str],
+        chunk_size: int = 200,
+        periods: tuple = ("1y", "3mo"),
+    ) -> None:
+        """Batch-download price data in chunks to avoid rate limits.
+
+        periods: which yfinance periods to fetch. Score-all only needs "3mo";
+        the full ("1y", "3mo") set is kept for the legacy scan path.
+        """
         import time
 
-        for period in ("1y", "3mo"):
+        for period in periods:
             uncached = [t for t in tickers if f"{t}_{period}" not in self._price_cache]
             if not uncached:
                 continue
@@ -961,15 +970,20 @@ class StockDiscovery:
             chunks = [uncached[i:i + chunk_size] for i in range(0, len(uncached), chunk_size)]
             print(f"  Batch downloading {len(uncached)} tickers ({period}) in {len(chunks)} chunk(s)...")
 
+            # Only pause between chunks AFTER one comes back empty/throttled — an
+            # unconditional sleep taxes every healthy scan for no reason.
+            prev_throttled = False
             for chunk_idx, chunk in enumerate(chunks):
-                if chunk_idx > 0:
-                    time.sleep(5)  # Pause between chunks to avoid rate limits
+                if prev_throttled:
+                    time.sleep(5)  # back off only when the previous chunk looked rate-limited
                 try:
                     raw = cached_download(
                         chunk, period=period, progress=False, auto_adjust=True, group_by="ticker"
                     )
                     if raw.empty:
+                        prev_throttled = True
                         continue
+                    prev_throttled = False
                     for ticker in chunk:
                         try:
                             if len(chunk) == 1:
@@ -989,6 +1003,7 @@ class StockDiscovery:
                         except Exception as e:
                             print(f"Warning: failed to cache price data for {ticker}: {e}")
                 except Exception as e:
+                    prev_throttled = True
                     print(f"  Chunk {chunk_idx+1} failed ({period}): {e}")
 
     def _prewarm_info_cache(self, tickers: List[str], max_workers: int = 8) -> None:
@@ -1034,9 +1049,27 @@ class StockDiscovery:
 
         scan_start = time.time()
 
-        # Phase 1: Batch download price data
+        # Bound the disk cache: drop bars files older than the overnight TTL so the
+        # per-key files don't accumulate into multi-GB write-only bloat.
+        try:
+            from yf_session import sweep_stale_cache
+            swept = sweep_stale_cache()
+            if swept:
+                print(f"  Swept {swept} stale bars-cache files")
+        except Exception as e:
+            print(f"  Cache sweep skipped: {e}")
+
+        # Phase 1: Batch download price data. Score-all only consumes 3mo bars
+        # (score_stock uses 3mo; near_52wk_high is 0.0 here), so skip the 1y pull
+        # — it was pure waste and stole the rate budget the 3mo batch needs.
         t0 = time.time()
-        self._prewarm_cache(self.scan_universe)
+        self._prewarm_cache(self.scan_universe, periods=("3mo",))
+        # Safety net: if the 3mo batch was largely throttled, fall back to 1y so
+        # the price/volume filter still has data (1y is a valid superset for it).
+        cov = sum(1 for t in self.scan_universe if f"{t}_3mo" in self._price_cache)
+        if cov < len(self.scan_universe) * 0.5:
+            print(f"  3mo prewarm covered only {cov}/{len(self.scan_universe)} — adding 1y fallback")
+            self._prewarm_cache(self.scan_universe, periods=("1y",))
         print(f"  Price pre-warm done in {time.time() - t0:.1f}s")
 
         # Phase 1b: Public.com live prices
@@ -1083,7 +1116,9 @@ class StockDiscovery:
                 df = _get_cached_df(ticker)
                 if not self._passes_filters(ticker, df, info if isinstance(info, dict) else {}):
                     continue
-                score = scorer.score_stock(ticker, info=info)
+                # Reuse the prewarmed 3mo bars (df) so the scorer doesn't re-download
+                # per ticker — the prewarm already holds them in memory.
+                score = scorer.score_stock(ticker, info=info, df=df)
                 if not score:
                     continue
 

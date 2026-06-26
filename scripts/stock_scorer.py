@@ -727,7 +727,12 @@ class StockScorer:
         atr_pct = (atr / current_price) * 100
         return round(atr_pct, 2)
 
-    def score_stock(self, ticker: str, info: Optional[dict] = None) -> Optional["StockScore"]:
+    def score_stock(
+        self,
+        ticker: str,
+        info: Optional[dict] = None,
+        df: Optional[pd.DataFrame] = None,
+    ) -> Optional["StockScore"]:
         """
         Calculate composite score for a single stock.
 
@@ -735,12 +740,19 @@ class StockScorer:
             ticker: Stock ticker symbol
             info: Optional yfinance .info dict for fundamental scoring.
                   If None, fundamental scores default to 50 (neutral).
+            df: Optional pre-fetched 3mo OHLCV bars. When supplied (e.g. from the
+                discovery prewarm cache) the per-ticker download is skipped — this
+                is the difference between O(N) serial network calls and zero. The
+                prewarm already flattens/dedups columns identically to
+                _fetch_price_data, so a supplied frame is used as-is. Falls back to
+                fetching only when df is missing/empty.
 
         Returns:
             StockScore object or None if price data unavailable.
         """
-        # Fetch extended data for multi-timeframe analysis
-        df = self._fetch_price_data(ticker, period="3mo")
+        # Use caller-provided bars when available; otherwise fetch 3mo.
+        if df is None or df.empty:
+            df = self._fetch_price_data(ticker, period="3mo")
         if df is None or df.empty:
             return None
 
