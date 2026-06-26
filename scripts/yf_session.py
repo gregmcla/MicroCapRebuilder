@@ -5,9 +5,10 @@ DataFrame-level disk cache for yfinance downloads.
 yfinance ≥ 0.2.50 uses curl_cffi internally and rejects custom requests-cache
 sessions. This module caches the *output* DataFrames to disk instead.
 
-- Tiered TTL: 1h during US market hours (9:30-16:00 ET), 12h overnight.
+- Tiered TTL: 4h during US market hours (9:30-16:00 ET), 12h overnight.
   Override globally via YF_CACHE_TTL_SECONDS env var (used by tests + manual
   cache stretching when yfinance is rate-limiting).
+- sweep_stale_cache() bounds the cache dir; call it at scan start.
 - Backend: pickle files in data/yf_cache/
 - Thread-safe: uses file-level locking via a lock dict
 - Defense: content validation rejects MultiIndex DataFrames whose ticker label
