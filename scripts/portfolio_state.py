@@ -370,11 +370,13 @@ def _update_positions_with_prices(
         reg_change_pct = 0.0
         ah_change = 0.0
         ah_change_pct = 0.0
+        has_day_change = False  # only write day-change fields when we can compute them
 
         if bought_today:
             # Whole move since entry is "regular session" attributable; no AH split.
             reg_change = (current_price - avg_cost) * shares
             reg_change_pct = ((current_price - avg_cost) / avg_cost * 100) if avg_cost > 0 else 0.0
+            has_day_change = True
         else:
             prev_close = prev_close_cache.get(ticker)
             today_close = today_close_cache.get(ticker)
@@ -384,22 +386,26 @@ def _update_positions_with_prices(
                 reg_change_pct = ((today_close - prev_close) / prev_close) * 100
                 ah_change = (current_price - today_close) * shares
                 ah_change_pct = ((current_price - today_close) / today_close) * 100
+                has_day_change = True
             elif prev_close and prev_close > 0:
                 # No today_close (yfinance lag) — attribute entire move to regular session.
                 # During the session this is correct; in the post-close lag window it
                 # slightly conflates session + early AH but resolves once yfinance refreshes.
                 reg_change = (current_price - prev_close) * shares
                 reg_change_pct = ((current_price - prev_close) / prev_close) * 100
+                has_day_change = True
+            # else: prev_close unavailable (yfinance throttled) — preserve existing values
+            # on disk rather than overwriting with 0. has_day_change stays False.
 
-        day_change = reg_change + ah_change
-        day_change_pct = reg_change_pct + ah_change_pct
-
-        df.at[idx, "regular_session_change"] = round(reg_change, 2)
-        df.at[idx, "regular_session_change_pct"] = round(reg_change_pct, 2)
-        df.at[idx, "extended_hours_change"] = round(ah_change, 2)
-        df.at[idx, "extended_hours_change_pct"] = round(ah_change_pct, 2)
-        df.at[idx, "day_change"] = round(day_change, 2)
-        df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
+        if has_day_change:
+            day_change = reg_change + ah_change
+            day_change_pct = reg_change_pct + ah_change_pct
+            df.at[idx, "regular_session_change"] = round(reg_change, 2)
+            df.at[idx, "regular_session_change_pct"] = round(reg_change_pct, 2)
+            df.at[idx, "extended_hours_change"] = round(ah_change, 2)
+            df.at[idx, "extended_hours_change_pct"] = round(ah_change_pct, 2)
+            df.at[idx, "day_change"] = round(day_change, 2)
+            df.at[idx, "day_change_pct"] = round(day_change_pct, 2)
 
     return df
 
