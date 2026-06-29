@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launch the GScott Trading Cockpit — FastAPI + React dev server
+# Launch the GScott Trading Cockpit — FastAPI + React dev server + Telegram bot
 # Usage: ./run_dashboard.sh
 
 set -e
@@ -15,8 +15,8 @@ NC='\033[0m'
 cleanup() {
     echo ""
     echo -e "${CYAN}Shutting down...${NC}"
-    kill $API_PID $VITE_PID 2>/dev/null
-    wait $API_PID $VITE_PID 2>/dev/null
+    kill $API_PID $VITE_PID $BOT_PID 2>/dev/null
+    wait $API_PID $VITE_PID $BOT_PID 2>/dev/null
     echo -e "${GREEN}Done.${NC}"
 }
 trap cleanup EXIT INT TERM
@@ -30,6 +30,12 @@ source .venv/bin/activate
 DISABLE_SOCIAL=true uvicorn api.main:app --port 8001 &
 API_PID=$!
 
+# Start Telegram bot
+echo -e "  Telegram:  ${GREEN}bot running (logs → cron/logs/telegram_bot.log)${NC}"
+mkdir -p cron/logs
+DISABLE_SOCIAL=true python3 scripts/telegram_bot.py >> cron/logs/telegram_bot.log 2>&1 &
+BOT_PID=$!
+
 # Start Vite dev server
 echo -e "  Dashboard: ${GREEN}http://localhost:5173${NC}"
 cd dashboard
@@ -42,5 +48,5 @@ echo -e "${CYAN}Keyboard shortcuts: A=analyze  E=execute  R=refresh  1/2/3=tabs$
 echo -e "Press Ctrl+C to stop."
 echo ""
 
-# Wait for both processes (macOS bash lacks wait -n)
-wait $API_PID $VITE_PID
+# Wait for all processes (macOS bash lacks wait -n)
+wait $API_PID $VITE_PID $BOT_PID
