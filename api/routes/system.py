@@ -211,7 +211,7 @@ def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
       date: YYYY-MM-DD (defaults to today)
       regenerate: true to bypass 10-minute in-memory cache
     """
-    from schema import CLAUDE_MODEL
+    _NARRATIVE_MODEL = "claude-sonnet-4-6"
 
     target_date = date or str(_date.today())
 
@@ -243,7 +243,7 @@ def get_system_narrative(date: Optional[str] = None, regenerate: bool = False):
         import anthropic
         client = anthropic.Anthropic(timeout=60.0)
         message = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_NARRATIVE_MODEL,
             max_tokens=1024,
             messages=[{"role": "user", "content": prompt}],
         )

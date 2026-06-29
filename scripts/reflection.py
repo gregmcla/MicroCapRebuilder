@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ai_review import get_ai_client
-from schema import CLAUDE_MODEL
+_REFLECTION_MODEL = "claude-sonnet-4-6"
 
 MAX_OBSERVATIONS_PER_PORTFOLIO = 25
 MAX_SHARED_OBSERVATIONS = 30
@@ -343,7 +343,7 @@ def run_reflection(portfolio_id: str, regime: str,
 
     try:
         response = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_REFLECTION_MODEL,
             max_tokens=MAX_TOKENS,
             messages=[{"role": "user", "content": prompt}],
             timeout=TIMEOUT_SECONDS,

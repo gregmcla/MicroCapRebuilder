@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from cache_layer import TTL, cache_key, get_logger
-from schema import CLAUDE_MODEL
+_SCREENER_MODEL = "claude-sonnet-4-6"
 from yfscreen import create_query, create_payload, get_data
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -404,7 +404,7 @@ def maybe_refine_with_claude(tickers: list, refinement_config: dict, portfolio_i
         )
 
         message = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_SCREENER_MODEL,
             max_tokens=4096,
             messages=[{"role": "user", "content": user_prompt}],
         )

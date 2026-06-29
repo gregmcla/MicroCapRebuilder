@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from schema import CLAUDE_MODEL
+_STRATEGY_MODEL = "claude-sonnet-4-6"
 
 try:
     import anthropic
@@ -121,7 +121,7 @@ def suggest_config_for_dna(strategy_dna: str, starting_capital: float) -> dict:
 
     client = anthropic.Anthropic(api_key=api_key, timeout=300.0)
     response = client.messages.create(
-        model=CLAUDE_MODEL,
+        model=_STRATEGY_MODEL,
         max_tokens=8192,
         system=SUGGEST_CONFIG_PROMPT.format(starting_capital=starting_capital),
         messages=[{"role": "user", "content": f"Strategy DNA:\n{strategy_dna}"}],
