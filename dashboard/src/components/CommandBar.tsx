@@ -175,23 +175,33 @@ export function ScanButton() {
     ? { borderColor: "rgba(248,113,113,0.45)", color: "rgba(248,113,113,0.8)", background: "rgba(248,113,113,0.07)" }
     : {};
 
+  // Show watchlist mtime as "last scanned" — survives API restarts, unlike finished_at.
+  const lastScannedAgo = relTime(lastStatus?.last_scanned);
+
   return (
-    <button
-      onClick={handle}
-      disabled={scanning}
-      className={AMBER_BTN}
-      title={resultText || undefined}
-      style={{ fontSize: "10px", height: "28px", padding: "0 12px", ...errorStyle }}
-    >
-      <span
-        style={{
-          width: "7px", height: "7px", borderRadius: "50%",
-          background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
-          animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
-        }}
-      />
-      {scanning ? "Scanning" : "Scan"}
-    </button>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
+      <button
+        onClick={handle}
+        disabled={scanning}
+        className={AMBER_BTN}
+        title={resultText || undefined}
+        style={{ fontSize: "10px", height: "28px", padding: "0 12px", ...errorStyle }}
+      >
+        <span
+          style={{
+            width: "7px", height: "7px", borderRadius: "50%",
+            background: "currentColor", opacity: scanning ? 1 : 0.6, flexShrink: 0,
+            animation: scanning ? "pulse 1s ease-in-out infinite" : "none",
+          }}
+        />
+        {scanning ? "Scanning" : "Scan"}
+      </button>
+      {lastScannedAgo && (
+        <span style={{ fontSize: "9px", color: "var(--text-0)", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>
+          {lastScannedAgo}
+        </span>
+      )}
+    </div>
   );
 }
 

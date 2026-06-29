@@ -391,7 +391,7 @@ def get_intelligence_brief(portfolio_id: str = Depends(validate_portfolio_id)):
 @router.get("/intelligence-brief/audit")
 def get_audit_brief(regenerate: bool = False, portfolio_id: str = Depends(validate_portfolio_id)):
     """AI-generated Portfolio Audit Brief. Cached 10 min per portfolio."""
-    from schema import CLAUDE_MODEL
+    _INTELLIGENCE_MODEL = "claude-sonnet-4-6"
 
     cache_key = portfolio_id
     if not regenerate and cache_key in _audit_cache:
@@ -415,7 +415,7 @@ def get_audit_brief(regenerate: bool = False, portfolio_id: str = Depends(valida
         import anthropic
         client = anthropic.Anthropic(timeout=90.0)
         message = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_INTELLIGENCE_MODEL,
             max_tokens=1500,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -447,7 +447,7 @@ class ChatRequest(BaseModel):
 @router.post("/intelligence-chat")
 def intelligence_chat(req: ChatRequest, portfolio_id: str = Depends(validate_portfolio_id)):
     """Chat with portfolio context injected as system prompt."""
-    from schema import CLAUDE_MODEL
+    _INTELLIGENCE_MODEL = "claude-sonnet-4-6"
 
     context = _build_audit_context(portfolio_id)
 
@@ -469,7 +469,7 @@ Answer their questions directly and analytically. Be specific — use the number
         import anthropic
         client = anthropic.Anthropic(timeout=60.0)
         message = client.messages.create(
-            model=CLAUDE_MODEL,
+            model=_INTELLIGENCE_MODEL,
             max_tokens=1024,
             system=system_prompt,
             messages=messages,

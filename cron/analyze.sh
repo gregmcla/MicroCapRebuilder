@@ -2,6 +2,11 @@
 # Market-open analyze — AI allocation dry run, sends Telegram proposals for approval
 # Scheduled: 9:35 AM ET, Monday–Friday via crontab
 # Execution is triggered by user tapping APPROVE in Telegram, not this script.
+#
+# NOTE: Mac sleeps at 11:30 PM daily and may not be awake at 9:35 AM. To reliably
+# fire this job, add a scheduled wake (one-time admin command):
+#   sudo pmset repeat wakeorpoweron MTWRF 06:25:00
+# (The 6:25 AM wake also covers this 9:35 AM job if the Mac stays awake between them.)
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,6 +22,19 @@ if [ "$DOW" -ge 6 ]; then
     log "Weekend detected -- skipping"
     exit 0
 fi
+
+# Overlap guard: skip if a prior analyze run is still in progress.
+LOCKDIR="/tmp/mcr_analyze.lock"
+if ! mkdir "$LOCKDIR" 2>/dev/null; then
+    log "Another analyze is already running ($LOCKDIR exists) -- skipping this run"
+    exit 0
+fi
+trap "rmdir '$LOCKDIR' 2>/dev/null || true" EXIT INT TERM
+
+# Keep Mac awake for the duration of this script.
+caffeinate -i &
+CAFF_PID=$!
+trap "kill $CAFF_PID 2>/dev/null || true; rmdir '$LOCKDIR' 2>/dev/null || true" EXIT INT TERM
 
 log "=========================================="
 log "MARKET-OPEN ANALYZE START"
@@ -42,7 +60,8 @@ FAILED=0
 for PORTFOLIO in $PORTFOLIOS; do
     log "Analyzing: $PORTFOLIO"
 
-    # Call the analyze API endpoint — writes .last_analysis.json, returns HTTP 200 on success
+    # Call the analyze API endpoint — writes .last_analysis.json, returns HTTP 200 on success.
+    # --max-time 300 is the per-portfolio timeout.
     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
         -X POST "http://localhost:8001/api/$PORTFOLIO/analyze" \
         --max-time 300 2>>"$LOG")

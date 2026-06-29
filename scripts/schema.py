@@ -85,11 +85,12 @@ class Reason:
 
 
 # ─── AI Model ─────────────────────────────────────────────────────────────────
-CLAUDE_MODEL = "claude-opus-4-7"
+# Used by ai_allocator + ai_review — money-critical paths only.
+# Non-critical paths (screener, reflection, intelligence, narrative) use Sonnet 4.6 directly.
+CLAUDE_MODEL = "claude-opus-4-8"
 
 # ─── Model Experiment ─────────────────────────────────────────────────────────
-# Active comparison: baseline cohort (4.6) vs challenger cohort (4.7).
-# Switched on 2026-04-23; experiment window 4 weeks.
+# Experiment concluded 2026-05-21. Opus 4.8 adopted as primary 2026-06-29.
 MODEL_EXPERIMENT = {
     "baseline_model": "claude-opus-4-6",
     "challenger_model": "claude-opus-4-7",

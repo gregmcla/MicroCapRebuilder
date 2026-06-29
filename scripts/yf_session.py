@@ -5,9 +5,10 @@ DataFrame-level disk cache for yfinance downloads.
 yfinance ≥ 0.2.50 uses curl_cffi internally and rejects custom requests-cache
 sessions. This module caches the *output* DataFrames to disk instead.
 
-- Tiered TTL: 1h during US market hours (9:30-16:00 ET), 12h overnight.
+- Tiered TTL: 4h during US market hours (9:30-16:00 ET), 12h overnight.
   Override globally via YF_CACHE_TTL_SECONDS env var (used by tests + manual
   cache stretching when yfinance is rate-limiting).
+- sweep_stale_cache() bounds the cache dir; call it at scan start.
 - Backend: pickle files in data/yf_cache/
 - Thread-safe: uses file-level locking via a lock dict
 - Defense: content validation rejects MultiIndex DataFrames whose ticker label
@@ -32,7 +33,7 @@ from typing import Union
 import pandas as pd
 import yfinance as yf
 
-from cache_layer import bars_ttl, get_logger
+from cache_layer import TTL, bars_ttl, get_logger
 from logging_setup import get_logger as _get_diag_logger
 
 _diag = _get_diag_logger(__name__)
@@ -56,6 +57,34 @@ def _current_ttl() -> int:
     if _TTL_OVERRIDE is not None:
         return _TTL_OVERRIDE
     return bars_ttl()
+
+
+def sweep_stale_cache(max_age_s: int | None = None) -> int:
+    """Delete bars-cache pickle files older than max_age_s (default: overnight TTL).
+
+    The per-request keys accumulate forever otherwise — production had 18k files /
+    6.3 GB, 92% of them stale. Anything older than the overnight TTL can never be a
+    valid hit, so it's safe to remove. Skips the shared stock_info_cache.pkl.
+    Returns the number of files deleted. Call once at scan start, not per download.
+    """
+    if max_age_s is None:
+        max_age_s = TTL.BARS_OVERNIGHT
+    if not _CACHE_DIR.exists():
+        return 0
+    now = time.time()
+    deleted = 0
+    for f in _CACHE_DIR.glob("*.pkl"):
+        if f.name == "stock_info_cache.pkl":
+            continue
+        try:
+            if now - f.stat().st_mtime > max_age_s:
+                f.unlink(missing_ok=True)
+                deleted += 1
+        except OSError:
+            continue
+    if deleted:
+        _diag.info("swept %d stale bars-cache files (older than %ds)", deleted, max_age_s)
+    return deleted
 
 
 def _get_lock(key: str) -> threading.Lock:

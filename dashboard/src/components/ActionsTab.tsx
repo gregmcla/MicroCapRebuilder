@@ -438,9 +438,12 @@ function PreFlightDashboard({ onAnalyze, lastAnalyzedAt, error }: {
           <p style={{ ...labelStyle, marginBottom: 0 }}>Watchlist Candidates</p>
           <span style={{ fontSize: "9px", color: "var(--text-0)" }}>
             {totalCandidates > 0 ? `${totalCandidates} active` : "—"}
-            {scanStatus?.status === "complete" && scanStatus.finished_at && (
-              <> · {relTime(scanStatus.finished_at)}</>
-            )}
+            {scanStatus?.status === "complete" && scanStatus.finished_at
+              ? <> · {relTime(scanStatus.finished_at)}</>
+              : scanStatus?.last_scanned
+                ? <> · scanned {relTime(scanStatus.last_scanned)}</>
+                : null
+            }
           </span>
         </div>
 

@@ -2,7 +2,9 @@
 """Portfolio management endpoints."""
 
 import json
+import math
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
 
@@ -246,35 +248,27 @@ def get_overview():
     needs_live_prices = session_status in ("after_hours", "pre_market")
 
     portfolios = list_portfolios(active_only=True)
-    summaries = []
-    total_equity = 0.0
-    total_cash = 0.0
-    total_day_pnl = 0.0
-    total_regular_session_pnl = 0.0
-    total_extended_hours_pnl = 0.0
-    total_unrealized_pnl = 0.0
-    total_positions = 0
-    total_all_time_pnl = 0.0
-    total_starting_capital = 0.0
-    all_positions = []  # cross-portfolio position list for top/bottom movers
 
-    for p in portfolios:
+    def _f(v, default=0.0):
+        try:
+            fv = float(v)
+            return default if math.isnan(fv) or math.isinf(fv) else fv
+        except Exception:
+            return default
+
+    def _load_one(p):
+        """Load and summarise a single portfolio. Runs in a thread pool."""
         try:
             state = load_portfolio_state(fetch_prices=needs_live_prices, portfolio_id=p.id)
 
-            # Compute day P&L from snapshots — only if markets were open today.
             snapshots = state.snapshots
             day_pnl = 0.0
-            market_open_today = date.today().weekday() < 5  # Mon=0 … Fri=4
+            market_open_today = date.today().weekday() < 5
             if market_open_today and len(snapshots) >= 1:
                 today_row = snapshots.iloc[-1]
-                snapshot_date = str(today_row.get("date", ""))
-                if snapshot_date.startswith(date.today().isoformat()):
+                if str(today_row.get("date", "")).startswith(date.today().isoformat()):
                     day_pnl = float(today_row.get("day_pnl", 0) or 0)
 
-            # Regular-session P&L = snapshot.day_pnl (frozen at 4:15pm cron).
-            # Extended-hours P&L = sum of per-position EH moves (only meaningful
-            # after 4pm / before 9:30am).
             regular_session_pnl = day_pnl
             extended_hours_pnl = 0.0
             if (
@@ -284,8 +278,6 @@ def get_overview():
             ):
                 extended_hours_pnl = float(state.positions["extended_hours_change"].fillna(0).sum())
 
-            # Total return — same transaction-replay method as state.py
-            # to avoid equity-minus-starting-capital accounting artifacts.
             starting_capital = float(state.config.get("starting_capital", 50000))
             positions = state.positions
             unrealized_pnl = 0.0
@@ -319,19 +311,11 @@ def get_overview():
             if state.total_equity > 0:
                 deployed_pct = round(state.positions_value / state.total_equity * 100, 1)
 
-            # Collect positions for cross-portfolio movers — skip paper-mode and
-            # excluded portfolios so aggregate surfaces only reflect live trading.
+            pos_rows = []
             if len(positions) > 0 and not p.exclude_from_aggregates and not state.paper_mode:
                 for _, pos in positions.iterrows():
                     try:
-                        def _f(v, default=0.0):
-                            import math
-                            try:
-                                fv = float(v)
-                                return default if math.isnan(fv) or math.isinf(fv) else fv
-                            except Exception:
-                                return default
-                        all_positions.append({
+                        pos_rows.append({
                             "portfolio_id": p.id,
                             "portfolio_name": p.name,
                             "ticker": str(pos["ticker"]),
@@ -343,7 +327,6 @@ def get_overview():
                     except Exception:
                         pass
 
-            # Sparkline: last 30 daily equity values from snapshots
             sparkline: list[float] = []
             equity_curve: list[float] = []
             if len(snapshots) >= 2:
@@ -370,22 +353,46 @@ def get_overview():
                 "equity_curve": equity_curve,
                 "exclude_from_aggregates": p.exclude_from_aggregates,
             }
-            # Only accumulate top-level totals for live, non-excluded portfolios.
-            # Paper-mode portfolios still appear as individual cards but don't
-            # contribute to the aggregate equity, P&L, or position counts.
-            if not p.exclude_from_aggregates and not state.paper_mode:
+            contributes = not p.exclude_from_aggregates and not state.paper_mode
+            return summary, pos_rows, state, starting_capital, unrealized_pnl, all_time_pnl, day_pnl, regular_session_pnl, extended_hours_pnl, contributes
+        except Exception as e:
+            return {"id": p.id, "name": p.name, "universe": p.universe, "error": str(e)}, [], None, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, False
+
+    # Fetch all portfolios in parallel — wall-clock time = slowest single portfolio
+    # instead of sum of all, which was causing the 25-30s overview timeout.
+    summaries = []
+    all_positions = []
+    total_equity = 0.0
+    total_cash = 0.0
+    total_day_pnl = 0.0
+    total_regular_session_pnl = 0.0
+    total_extended_hours_pnl = 0.0
+    total_unrealized_pnl = 0.0
+    total_positions = 0
+    total_all_time_pnl = 0.0
+    total_starting_capital = 0.0
+
+    with ThreadPoolExecutor(max_workers=min(len(portfolios), 8)) as pool:
+        futures = {pool.submit(_load_one, p): p for p in portfolios}
+        for fut in as_completed(futures):
+            result = fut.result()
+            summary, pos_rows, state, starting_capital, unrealized_pnl, all_time_pnl, day_pnl, regular_pnl, eh_pnl, contributes = result
+            summaries.append(summary)
+            all_positions.extend(pos_rows)
+            if contributes and state is not None:
                 total_equity += state.total_equity
                 total_cash += state.cash
                 total_day_pnl += day_pnl
-                total_regular_session_pnl += regular_session_pnl
-                total_extended_hours_pnl += extended_hours_pnl
+                total_regular_session_pnl += regular_pnl
+                total_extended_hours_pnl += eh_pnl
                 total_unrealized_pnl += unrealized_pnl
                 total_all_time_pnl += all_time_pnl
                 total_starting_capital += starting_capital
                 total_positions += state.num_positions
-            summaries.append(summary)
-        except Exception as e:
-            summaries.append({"id": p.id, "name": p.name, "universe": p.universe, "error": str(e)})
+
+    # Restore deterministic portfolio ordering (futures complete in arrival order).
+    portfolio_order = {p.id: i for i, p in enumerate(portfolios)}
+    summaries.sort(key=lambda s: portfolio_order.get(s.get("id", ""), 999))
 
     # Sort cross-portfolio positions for top/bottom movers
     valid = [x for x in all_positions if x["pnl_pct"] != 0]

@@ -11,6 +11,27 @@
 
 ---
 
+## Recently Completed (2026-06-26) — Scan Performance Overhaul (Phases 0 + 1)
+
+**Problem:** scans had been timing out (>12 min) for a long time. Deep audit (5 module agents + a live timed run) found the cause empirically, not by guesswork.
+
+**Root causes (measured):** `score_stock` re-downloaded `3mo` bars **per ticker, serially, throttled ~10s each** (`stock_scorer.py:743`), discarding the batch-prewarmed DataFrame already in hand — scoring alone was **375s for 136 tickers**. Compounded by: an unstable batch cache key (universe reshuffled 3×/scan → ~0% cache reuse → 18,452 files / **6.3 GB** of write-only bloat), a 1y prewarm whose data is unused in score-all, an unconditional `sleep(5)`/chunk, a Public.com call with no timeout (**~2.5 min hang**), and a 4h `.info` TTL re-scraping quarterly fundamentals (~44s/scan).
+
+**Result: scans timeout (>720s) → ~12s warm.** Branch `scan-perf-overhaul`, 3 commits, 57/57 integration+cache tests green.
+- **Phase 0** (`75961417`): pass prewarmed `df` into `score_stock` (eliminates the 375s leg; falls back to fetch when missing); `_prewarm_cache` fetches 3mo-only on the score-all path with a 1y safety-net when 3mo is throttled; adaptive inter-chunk sleep; `public_quotes` hard timeout (`_call_with_timeout`); `yf_session.sweep_stale_cache()` bounds the cache dir.
+- **Phase 1a** (`512e26ed`): `.info` disk TTL 4h → `TTL.FUNDAMENTALS_QUARTERLY` (30d) — `.info` prewarm 44s→0.7s; `_passes_filters` skips (not fails) the market-cap check on empty `.info` (was silently dropping good tickers); scoring loop parallelized (ThreadPoolExecutor, benchmark warmed once); deterministic day-seeded extended rotation (`slot = day_of_year % 3`) replacing 3 per-scan random shuffles → stable cache keys + 3-day coverage 70%→100%.
+- **Phase 1b** (`daaa8a56`): process-wide scan semaphore (`SCAN_CONCURRENCY`, default 1) so portfolios don't stampede Yahoo; removed the illusory nested-executor timeout; duplicate-scan guard (thread-liveness); per-portfolio once-a-day watchlist backups (was cross-portfolio clobber + ~6 copies/scan); parallel sector backfill (160s→~8s worst case); discovery exception logged + surfaced in `stats["discovery_error"]` instead of a silent "0 discovered".
+
+**Measured (microcap, 434 tickers):** total 376s → 12.2s; `.info` 44s→0.7s; scoring 375s→~1.4s; warm prewarm 0.1s.
+
+**Deferred** (low value now / higher risk): per-ticker cache keys+persistence (P1.1/P1.2, cold-scan consistency), single-load/save watchlist refactor + fully-async social, per-chunk hard-cancel deadline.
+
+**Remaining — Phase 2 (warm-store redesign):** install `yfscreen` (also fixes the 0-ticker portfolios), consume bulk fundamentals (`screener_provider.py:214` discards them), incremental `ScoreStore` gating, nightly prefetch cron, vectorized panel scoring. Plan: `~/.claude/plans/tender-hatching-abelson.md`.
+
+**Gotcha:** repeated test scans rate-limit yfinance; a cold benchmark/bar fetch then hits the 60s download timeout, so a single scan can read ~60-80s even though warm prewarm is 0.1s. Same ~60s signature appears in `test_analyze_stop_loss_triggered` when bars cache is cold (pre-existing test-hermeticity gap, reproduces with the scan changes reverted).
+
+---
+
 ## Recently Completed (2026-06-22) — Decision Trace (#9) + AH P&L Split
 
 ### Decision Trace (Feature #9 from the roadmap)
@@ -600,6 +621,7 @@ All three: `extended scan_frequency: daily`, `min_score_threshold: {BULL:35, SID
 - `tariff-moat-industrials` finding few candidates — tariff selloff killed momentum signals. Will populate when tape turns.
 - `ai-pickaxe-infrastructure` — semis/AI infra crushed in selloff. Same situation.
 - `pre-earnings-momentum` — no actual earnings-date awareness in scanner; relies on momentum building pre-earnings. Q1 earnings season starts mid-April.
+- **`yfscreen` not installed** → bulk screener path dead; screener-only portfolios (e.g. `gov-infra`) currently scan **0 tickers**, and all fundamentals fall back to per-ticker `.info`. Fixed by Phase 2 P2.1 (install + consume bulk fundamentals). Until then, affected portfolios rely on cached screener results / curated + ETF-fallback universes.
 
 ---
 

@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.2323,
-      "earnings_growth": 0.1535,
-      "quality": 0.1535,
-      "volume": 0.1535,
-      "volatility": 0.1535,
-      "value_timing": 0.1535
+      "price_momentum": 0.2034,
+      "earnings_growth": 0.1512,
+      "quality": 0.1512,
+      "volume": 0.1814,
+      "volatility": 0.1512,
+      "value_timing": 0.1616
     },
     "min_score_threshold": 35.0,
     "momentum": {
@@ -58,28 +58,28 @@
     },
     "regime_weights": {
       "BULL": {
-        "price_momentum": 0.2434,
-        "earnings_growth": 0.1412,
-        "quality": 0.1412,
-        "volume": 0.1412,
-        "volatility": 0.1412,
-        "value_timing": 0.1917
+        "price_momentum": 0.2188,
+        "earnings_growth": 0.1438,
+        "quality": 0.1438,
+        "volume": 0.1438,
+        "volatility": 0.1438,
+        "value_timing": 0.206
       },
       "BEAR": {
-        "price_momentum": 0.2323,
-        "earnings_growth": 0.1535,
-        "quality": 0.1535,
-        "volume": 0.1535,
-        "volatility": 0.1535,
-        "value_timing": 0.1535
+        "price_momentum": 0.2034,
+        "earnings_growth": 0.1512,
+        "quality": 0.1512,
+        "volume": 0.1814,
+        "volatility": 0.1512,
+        "value_timing": 0.1616
       },
       "SIDEWAYS": {
-        "price_momentum": 0.2323,
-        "earnings_growth": 0.1535,
-        "quality": 0.1535,
-        "volume": 0.1535,
-        "volatility": 0.1535,
-        "value_timing": 0.1535
+        "price_momentum": 0.2034,
+        "earnings_growth": 0.1512,
+        "quality": 0.1512,
+        "volume": 0.1814,
+        "volatility": 0.1512,
+        "value_timing": 0.1616
       }
     }
   },

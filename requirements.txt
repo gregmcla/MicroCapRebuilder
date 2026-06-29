@@ -88,3 +88,4 @@ uvicorn==0.40.0
 websockets==15.0.1
 yarl==1.22.0
 yfinance==0.2.65
+yfscreen==0.1.2

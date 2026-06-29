@@ -566,6 +566,7 @@ export interface ScanJobStatus {
   result?: ScanResult | null;
   error?: string | null;
   message?: string;
+  last_scanned?: string | null;
 }
 
 // --- Analysis types ---

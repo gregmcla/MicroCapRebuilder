@@ -6,6 +6,11 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG="$DIR/cron/logs/api_watchdog.log"
 mkdir -p "$(dirname "$LOG")"
 
+# Rotate log when it exceeds 500 KB (keeps one backup).
+if [ -f "$LOG" ] && [ "$(wc -c < "$LOG")" -gt 512000 ]; then
+    mv "$LOG" "${LOG}.1"
+fi
+
 HEALTH=$(curl -s --max-time 5 http://localhost:8001/api/health 2>/dev/null || echo "")
 
 if [[ "$HEALTH" == *'"status":"ok"'* ]]; then
@@ -23,13 +28,15 @@ else
     pkill -f "uvicorn api.main:app" 2>/dev/null || true
     sleep 1
 
+    # Redirect API stdout/stderr to a separate file so it never bloats api_watchdog.log.
+    API_STDOUT="/tmp/mcr_api.log"
     DISABLE_SOCIAL=true nohup uvicorn api.main:app --host 0.0.0.0 --port 8001 \
-        >> "$LOG" 2>&1 &
+        >> "$API_STDOUT" 2>&1 &
 
     sleep 8
     HEALTH=$(curl -s --max-time 5 http://localhost:8001/api/health 2>/dev/null || echo "")
     if [[ "$HEALTH" == *'"status":"ok"'* ]]; then
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] API restarted OK" >> "$LOG"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] API restarted OK (stdout -> $API_STDOUT)" >> "$LOG"
     else
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] API restart FAILED" >> "$LOG"
     fi

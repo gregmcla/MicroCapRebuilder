@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/gregmclaughlin/MicroCapRebuilder/.claude/hooks/verify.sh",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}

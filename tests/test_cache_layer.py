@@ -67,7 +67,10 @@ def test_cache_key_handles_unhashable_objects():
 
 def test_ttl_constants_present_and_ordered():
     """Sanity check on the tier ordering — fundamentals are longest, AI is shortest."""
-    assert TTL.AI_EPHEMERAL < TTL.NEWS_SHORT == TTL.SOCIAL_SHORT == TTL.BARS_INTRADAY
+    # NEWS and SOCIAL share the shortest non-AI tier; intraday bars sit above them
+    # (bumped from 1h to 4h to survive yfinance throttling on cold scans).
+    assert TTL.AI_EPHEMERAL < TTL.NEWS_SHORT == TTL.SOCIAL_SHORT
+    assert TTL.SOCIAL_SHORT < TTL.BARS_INTRADAY
     assert TTL.BARS_INTRADAY < TTL.BARS_OVERNIGHT
     assert TTL.BARS_OVERNIGHT < TTL.UNIVERSE_DAILY
     assert TTL.UNIVERSE_DAILY < TTL.FUNDAMENTALS_QUARTERLY
