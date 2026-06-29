@@ -7,7 +7,40 @@
 
 ## Current Phase
 
-**Operational — 7 active live-mode portfolios, all `ai_driven=True`: max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2, max-b, manualbuy. Cron RE-ENABLED. Decision Trace (#9) + After-Hours P&L split shipped 2026-06-22 (commit `bc338bed`).**
+**Operational — 7 active live-mode portfolios, all `ai_driven=True`: max, asymmetric-catalyst-hunters, gov-infra, unloved-microcap-cash-cows, max2, max-b, manualbuy. Cron RE-ENABLED + hardened. `scan-perf-overhaul` merged to main 2026-06-26.**
+
+---
+
+## Recently Completed (2026-06-26, session 2) — Cron Hardening, Overview Fix, Model Tiers, day_change Fix
+
+### Cron Hardening
+- **`cron/scan.sh`** — atomic `mkdir` overlap guard (POSIX, no `flock` needed on macOS), 180s per-portfolio timeout, weekend DOW check, `caffeinate -i` to prevent Mac sleep mid-run.
+- **`cron/analyze.sh`** — same atomic `mkdir` lock + `caffeinate -i` added.
+- **`cron/api_watchdog.sh`** — 500KB log rotation; redirected restarted API stdout to `/tmp/mcr_api.log` (was leaking all uvicorn output into the watchdog log → 5.5MB bloat).
+- **Mac wake schedule**: user ran `sudo pmset repeat wakeorpoweron MTWRF 06:25:00` — Mac wakes at 6:25 AM weekdays so cron jobs run before market open. Note: cron doesn't catch up missed jobs after wake; `caffeinate` prevents sleep mid-job.
+
+### Overview Endpoint Parallelization
+- **`api/routes/portfolios.py`** — overview endpoint was timing out (25-30s) because it loaded all portfolios serially via `load_portfolio_state(fetch_prices=True)`. Refactored to `ThreadPoolExecutor(max_workers=min(N,8))` with `as_completed`. Result: 7.7s first call, 93ms warm.
+
+### Last-Scanned Timestamp
+- **`api/routes/discovery.py`** — `_watchlist_last_scanned()` reads `watchlist.jsonl` mtime; returned as `last_scanned` ISO string in `/scan/status`.
+- **`dashboard/src/components/CommandBar.tsx`** — SCAN button shows `"Xm ago"` timestamp below it.
+- **`dashboard/src/components/ActionsTab.tsx`** — watchlist header uses `last_scanned` as fallback.
+
+### Model Tier Architecture
+- **Opus 4.8** (`CLAUDE_MODEL` in `schema.py`): money-critical paths only — `ai_allocator` + `ai_review`.
+- **Sonnet 4.6**: analysis/content — `screener_provider`, `reflection`, `strategy_generator`, `intelligence.py`, `system.py`. Each module uses a local `_XYZ_MODEL` constant so global CLAUDE_MODEL bumps don't accidentally hit them.
+- **Haiku 4.5**: ephemeral generation — `trade_reviews` re-analyze (unchanged).
+- Updated `schema.py` CLAUDE_MODEL to `claude-opus-4-8`.
+
+### day_change Zeroing Bug Fix
+- **Root cause**: when yfinance is rate-limited, `prev_close` returns `None` → old code wrote `0.0` to `day_change_pct`, clobbering correct prior values.
+- **Fix**: `has_day_change` flag in `portfolio_state._update_positions_with_prices` — day-change columns only written when `prev_close` is actually available.
+
+### Other
+- **`restart.sh`** — new script: kills old API/bot/Vite and restarts all three.
+- **`run_dashboard.sh`** — now launches Telegram bot as third process.
+- **Branch merged**: `scan-perf-overhaul` → `main` with `--no-ff`, pushed.
 
 ---
 
