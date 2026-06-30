@@ -241,30 +241,6 @@
       "starting_capital": 1000000.0,
       "active": true
     },
-    "quality-smallcap-value": {
-      "id": "quality-smallcap-value",
-      "name": "Quality SmallCap Value",
-      "universe": "smallcap",
-      "created": "2026-04-13T10:47:13",
-      "starting_capital": 1000000.0,
-      "active": false
-    },
-    "deep-value-swinger": {
-      "id": "deep-value-swinger",
-      "name": "Deep Value Swinger",
-      "universe": "largecap",
-      "created": "2026-04-13T16:03:55",
-      "starting_capital": 2000000.0,
-      "active": false
-    },
-    "small-cap-squeeze-momentum": {
-      "id": "small-cap-squeeze-momentum",
-      "name": "Squeezer",
-      "universe": "smallcap",
-      "created": "2026-04-13T16:16:45",
-      "starting_capital": 1000000.0,
-      "active": false
-    },
     "max2": {
       "id": "max2",
       "name": "MAX2",
@@ -283,24 +259,6 @@
       "active": false,
       "exclude_from_aggregates": false
     },
-    "momentum-multi-factor-swing": {
-      "id": "momentum-multi-factor-swing",
-      "name": "Momentum Multi-Factor Swing",
-      "universe": "smallcap",
-      "created": "2026-05-27T16:02:04",
-      "starting_capital": 3000000.0,
-      "active": false,
-      "exclude_from_aggregates": false
-    },
-    "infra-comp": {
-      "id": "infra-comp",
-      "name": "Infra Comp",
-      "universe": "allcap",
-      "created": "2026-05-27T20:08:59",
-      "starting_capital": 3000000.0,
-      "active": false,
-      "exclude_from_aggregates": false
-    },
     "max-b": {
       "id": "max-b",
       "name": "MAX B",
@@ -308,15 +266,6 @@
       "created": "2026-06-01T18:37:29",
       "starting_capital": 1000000.0,
       "active": true,
-      "exclude_from_aggregates": false
-    },
-    "golf-snack-foods": {
-      "id": "golf-snack-foods",
-      "name": "Golf & Snack Foods",
-      "universe": "allcap",
-      "created": "2026-06-02T22:17:46",
-      "starting_capital": 1000000.0,
-      "active": false,
       "exclude_from_aggregates": false
     },
     "manualbuy": {
