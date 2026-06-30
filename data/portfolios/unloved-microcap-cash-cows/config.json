@@ -19,12 +19,12 @@
   "chart_days": 30,
   "scoring": {
     "default_weights": {
-      "price_momentum": 0.147,
-      "earnings_growth": 0.147,
-      "quality": 0.147,
-      "volume": 0.15,
-      "volatility": 0.147,
-      "value_timing": 0.2621
+      "price_momentum": 0.1495,
+      "earnings_growth": 0.1495,
+      "quality": 0.1495,
+      "volume": 0.1525,
+      "volatility": 0.1495,
+      "value_timing": 0.2497
     },
     "regime_weights": {
       "BULL": {
@@ -36,12 +36,12 @@
         "value_timing": 0.1341
       },
       "BEAR": {
-        "price_momentum": 0.147,
-        "earnings_growth": 0.147,
-        "quality": 0.147,
-        "volume": 0.15,
-        "volatility": 0.147,
-        "value_timing": 0.2621
+        "price_momentum": 0.1495,
+        "earnings_growth": 0.1495,
+        "quality": 0.1495,
+        "volume": 0.1525,
+        "volatility": 0.1495,
+        "value_timing": 0.2497
       },
       "SIDEWAYS": {
         "price_momentum": 0.1289,
