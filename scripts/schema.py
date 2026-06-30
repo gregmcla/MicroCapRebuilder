@@ -89,6 +89,16 @@ class Reason:
 # Non-critical paths (screener, reflection, intelligence, narrative) use Sonnet 4.6 directly.
 CLAUDE_MODEL = "claude-opus-4-8"
 
+# Default reasoning effort for the money-critical paths (ai_allocator + ai_review).
+# Opus 4.x reasons via adaptive thinking + output_config.effort (a level, not a token
+# budget): low | medium | high | xhigh | max. Reasoning is ON by default on these two
+# paths — buy/sell allocation and the risk-veto review are exactly where a reasoning
+# pass catches structured errors (e.g. the +5.6% "stop triggered" hallucination).
+# Per-portfolio override via the `ai_effort` config field; set it to "" to disable
+# thinking for that portfolio. Dial this one constant down to "medium" to cut
+# per-cycle latency/cost across all portfolios at once.
+DEFAULT_AI_EFFORT = "high"
+
 # ─── Model Experiment ─────────────────────────────────────────────────────────
 # Experiment concluded 2026-05-21. Opus 4.8 adopted as primary 2026-06-29.
 MODEL_EXPERIMENT = {

@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from enhanced_structures import ProposedAction
 from ai_review import ReviewedAction, ReviewDecision, get_ai_client
 from market_regime import MarketRegime, RegimeAnalysis
-from schema import CLAUDE_MODEL
+from schema import CLAUDE_MODEL, DEFAULT_AI_EFFORT
 from reentry_guard import _format_reentry_block
 from macro_context import get_macro_context
 
@@ -145,11 +145,12 @@ def run_ai_allocation(
 
     model = state.config.get("ai_model", CLAUDE_MODEL)
 
-    # Optional per-portfolio extended thinking — opt-in via the `ai_effort`
-    # config field (off by default, so other portfolios are unaffected). Opus
-    # 4.x controls thinking via adaptive mode + output_config.effort (a level,
-    # not a token budget). Valid levels: low | medium | high | xhigh | max.
-    effort = str(state.config.get("ai_effort", "") or "").lower()
+    # Reasoning effort for this money-critical path. ON by default
+    # (DEFAULT_AI_EFFORT in schema.py); a portfolio opts out by setting
+    # `ai_effort: ""` in its config. Opus 4.x controls thinking via adaptive
+    # mode + output_config.effort (a level, not a token budget). Valid levels:
+    # low | medium | high | xhigh | max.
+    effort = str(state.config.get("ai_effort", DEFAULT_AI_EFFORT) or "").lower()
     create_kwargs = {
         "model": model,
         "max_tokens": 16000,

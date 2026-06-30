@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass
 
-from schema import CLAUDE_MODEL
+from schema import CLAUDE_MODEL, DEFAULT_AI_EFFORT
 from reentry_guard import _format_reentry_block
 
 # Import ProposedAction from centralized data structures
@@ -335,13 +335,34 @@ def _review_batch(client, proposed_actions: list, portfolio_context: dict,
                                  social_signals=social_signals,
                                  info_cache=info_cache)
 
+    # Reasoning effort for this risk-veto path. ON by default
+    # (DEFAULT_AI_EFFORT in schema.py); opt out per portfolio with
+    # `ai_effort: ""` in portfolio_context. Mirrors ai_allocator: adaptive
+    # thinking + output_config.effort, with a raised output ceiling and timeout
+    # so a reasoning pass can't crowd out the JSON or hit the default timeout.
+    effort = str((portfolio_context or {}).get("ai_effort", DEFAULT_AI_EFFORT) or "").lower()
+    create_kwargs = {
+        "model": CLAUDE_MODEL,
+        "max_tokens": 16000,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+    if effort in ("low", "medium", "high", "xhigh", "max"):
+        create_kwargs["thinking"] = {"type": "adaptive"}
+        create_kwargs["output_config"] = {"effort": effort}
+        create_kwargs["max_tokens"] = 32000
+        create_kwargs["timeout"] = 600.0
+
     try:
-        response = client.messages.create(
-            model=CLAUDE_MODEL,
-            max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        response_text = response.content[0].text if response.content else ""
+        response = client.messages.create(**create_kwargs)
+        # Adaptive thinking may prepend thinking block(s) — grab the text block,
+        # not content[0] (which would be a ThinkingBlock when it reasoned).
+        response_text = ""
+        for _b in (response.content or []):
+            if getattr(_b, "type", None) == "text":
+                response_text = _b.text
+                break
+        if not response_text and response.content:
+            response_text = getattr(response.content[0], "text", "") or ""
 
         # Check for empty response
         if not response_text or not response_text.strip():
