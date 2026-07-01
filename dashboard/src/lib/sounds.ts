@@ -9,6 +9,7 @@
  *   play("execute")         → trade confirmed (decisive stamp)
  *   play("scanComplete")    → radar lock acquired (3 converging pings → chord)
  *   play("analyzeComplete") → AI awakening (ascending major arpeggio)
+ *   play("milestone")       → win milestone reached (bright triumphant flourish)
  */
 
 let _ctx: AudioContext | null = null;
@@ -193,6 +194,25 @@ const sounds: Record<string, () => void> = {
     });
     // Shimmer
     tone(ac, 1046.5, resolveT, 0.4, 0.08, "sine");
+  },
+
+  /** MILESTONE — win reached: bright rising triad + sparkle → triumphant chord */
+  milestone() {
+    const ac = ctx();
+    const t = ac.currentTime;
+    // Bright rising triad: G5 → B5 → D6
+    const notes = [783.99, 987.77, 1174.66];
+    notes.forEach((freq, i) => {
+      const at = t + i * 0.07;
+      tone(ac, freq, at, 0.24, 0.15, "sine");
+      tone(ac, freq * 2, at + 0.005, 0.10, 0.04, "sine");
+    });
+    // Sparkle
+    noiseBurst(ac, t + 0.02, 0.05, 0.05, 6000);
+    // Triumphant resolution chord + high shimmer
+    const rt = t + 0.24;
+    [783.99, 987.77, 1174.66, 1567.98].forEach(freq => tone(ac, freq, rt, 0.6, 0.09, "sine"));
+    tone(ac, 2349.32, rt, 0.4, 0.05, "sine");
   },
 };
 
