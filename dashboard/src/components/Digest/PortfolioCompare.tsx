@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type React from "react";
 import type { DigestPortfolio } from "../../lib/types";
+import { MilestoneBadge } from "../ui";
 
 const keyAct = (fn: () => void) => (e: React.KeyboardEvent) => {
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
@@ -55,7 +56,7 @@ export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: Dig
             tabIndex={0}
             onKeyDown={keyAct(() => onSelect(p.id))}>
             <div className="rank">{String(i + 1).padStart(2, "0")}</div>
-            <div><div className="pname">{p.name}</div><div className="pstrat">{p.strategy}</div></div>
+            <div><div className="pname">{p.name}</div><div className="pstrat">{p.strategy}</div><MilestoneBadge returnPct={p.total_pct} style={{ marginTop: 3 }} /></div>
             <div className="num mono">{fmtM(p.equity)}</div>
             <div className={`num ${cls(p.day_pct)}`}>{sgn(p.day_pct)}<span className="subusd">{fmt$(p.day_pnl)}</span>{(() => {
               const ah = p.extended_hours_pnl ?? 0;

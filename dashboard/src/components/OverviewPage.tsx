@@ -11,7 +11,7 @@ import type { PortfolioSummary, CrossPortfolioMover, ReviewedAction } from "../l
 import type { ScanJobStatus } from "../lib/types";
 import type { AnalysisSlots } from "../lib/store";
 import CreatePortfolioModal from "./CreatePortfolioModal";
-import { FlashValue } from "./ui";
+import { FlashValue, MilestoneBadge } from "./ui";
 import {
   EquitySparkline,
   LoadingPane,
@@ -759,6 +759,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
               <span className="font-mono font-semibold tabular-nums" style={{ fontSize: "11px", color: pnlColor(summary.total_return_pct) }}>
                 {fmtPct(summary.total_return_pct)}
               </span>
+              <MilestoneBadge returnPct={summary.total_return_pct ?? 0} />
             </div>
 
             {/* Day P&L — dominant element. Shows regular-session, with after-hours bubble */}

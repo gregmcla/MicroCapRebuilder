@@ -20,6 +20,8 @@ export { default as Toaster } from "./Toaster";
 
 export { FlashValue } from "./FlashValue";
 
+export { MilestoneBadge } from "./MilestoneBadge";
+
 export { Badge, HeatBadge, RegimeBadge, SourceBadge, AiDrivenBadge } from "./Badge";
 export type {
   BadgeProps,
