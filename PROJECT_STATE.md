@@ -11,6 +11,24 @@
 
 ---
 
+## Recently Completed (2026-07-01) — Dashboard UX Overhaul + Build Health (PR #12, branch `dashboard-ux-feedback-flash-a11y`)
+
+Frontend-only UX/quality pass on the dashboard + portfolio views, from a UX audit. **Open PR #12 (not yet merged); no CI on the repo, so "green" = local `npm run build` exit 0.** tsc 0 errors throughout; each step verified via tsc-diff + eslint + `vite build` + dev-server transform (no browser automation available — behavior of new UI not runtime-QA'd).
+
+- **Feedback/toast layer** — new zero-dep `lib/toastStore`+`lib/toast`+`ui/Toaster` (dedupe, reduced-motion-safe). Global `QueryCache`/`MutationCache` `onError` toast every failed query/mutation; `api.ts` now surfaces FastAPI `detail`. **Execute confirms fills** + success toasts on all money paths. De-silenced swallowed catches; IB tabs (main brief, Dna/Lineage/Decisions) no longer stick on "Loading…" (inline error + Retry).
+- **Live value flash** — `useValueFlash`+`ui/FlashValue`: P&L flashes green/red on change (TopBar, MatrixGrid cells, overview cards).
+- **Win-milestone celebration** — `lib/milestones`+`useMilestoneCross`+`ui/MilestoneBadge`: gold chip on books ≥25% all-time; pops + synthesized `milestone` fanfare (`sounds.ts`) on a fresh cross (seeded on mount, no page-load spam).
+- **a11y/motion** — global `:focus-visible` ring; app-wide `prefers-reduced-motion` gate; `aria-label`s on 8 icon-only buttons.
+- **MatrixGrid** — selection ring on click; real empty state; removed invisible chromatic-aberration layer.
+- **Intelligence Brief polish** — tablist/tab + roving-tabindex + arrow-key nav; neutral (was red/danger) close-button hover; expandable warning rail.
+- **Label clarity** — tooltips on Health / vs-SPY / vs-Bench / Trend / regime / Deployed / posture.
+- **Build health** — cleared all **25 pre-existing `tsc` errors** (`npm run build` was red before this) — added `ai_driven` to `PortfolioState`, `take_profit_pct`/`max_positions`/`screener`/`ai_refinement` to `AiConfig`; deleted dead `CenterPane.tsx`; removed unused code; `fontVariantNumeric`→`tabular-nums` class; misc type fixes.
+- **eslint debt** — 64 → 31 problems. Fixed all classic issues (`no-explicit-any` ×12, `no-unused-expressions` ×8, `no-unused-vars` via `_`-ignore config) + `static-components` ×11 (hoisted `Stat`/`SecondaryChip` to module scope). **Remaining 31 (21 err + 10 warn) are aggressive React-Compiler rules** (`set-state-in-effect`, `purity`/Date.now-in-render, `refs`, `exhaustive-deps`, `preserve-manual-memoization`) on working code — **deferred**: need in-browser QA to fix safely (e.g. useQuery migration for the fetch effects), not blind refactors in a live app.
+
+**Deferred / follow-ups:** MatrixGrid micro-cell size-floor (restructures the squarified treemap — needs visual QA); the 31 remaining React-Compiler lint items; merge PR #12 after review.
+
+---
+
 ## Recently Completed (2026-06-26, session 2) — Cron Hardening, Overview Fix, Model Tiers, day_change Fix
 
 ### Cron Hardening
