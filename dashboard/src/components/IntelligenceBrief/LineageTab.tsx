@@ -393,7 +393,7 @@ function EventDetail({ ev }: { ev: BaseLineageEvent }) {
           ) : (
             <>Considered but no action proposed</>
           )}
-          {ev.trace_id && (
+          {!!ev.trace_id && (
             <div style={{ marginTop: "4px", color: "#5a5a78", fontSize: "9px" }}>
               trace {String(ev.trace_id)}
             </div>

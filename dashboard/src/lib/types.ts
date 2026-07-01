@@ -329,6 +329,7 @@ export interface PortfolioState {
   total_equity: number;
   num_positions: number;
   config: Record<string, unknown>;
+  ai_driven?: boolean;
   stale_alerts: string[];
   paper_mode: boolean;
   price_failures: string[];
@@ -641,10 +642,14 @@ export interface AiConfig {
   trading_style?: string;
   scoring_weights?: Record<string, number>;
   stop_loss_pct?: number;
+  take_profit_pct?: number;
   risk_per_trade_pct?: number;
   max_position_pct?: number;
+  max_positions?: number;
   scan_types?: Record<string, boolean>;
   etf_sources?: string[];
+  screener?: Record<string, unknown>;
+  ai_refinement?: Record<string, unknown>;
   strategy_name?: string;
   rationale?: string;
   prompt?: string;

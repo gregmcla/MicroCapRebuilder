@@ -3,7 +3,6 @@
  *  This strip shows: Open P&L | All-Time | Return | Cash | Benchmarks | Regime | Risk | Positions
  */
 
-import { useMemo } from "react";
 import { usePortfolioState } from "../hooks/usePortfolioState";
 import { useRisk } from "../hooks/useRisk";
 

@@ -24,9 +24,10 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
   useEffect(() => {
     if (rawConfig) {
       // strategy_dna may live at top level or nested under strategy
+      const cfg = rawConfig as { strategy_dna?: string; strategy?: { strategy_dna?: string } };
       const d =
-        rawConfig.strategy_dna ??
-        rawConfig.strategy?.strategy_dna ??
+        cfg.strategy_dna ??
+        cfg.strategy?.strategy_dna ??
         "";
       setDna(d);
     }

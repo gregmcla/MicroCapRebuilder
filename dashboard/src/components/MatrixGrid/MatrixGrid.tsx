@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
-import type { MatrixGridProps, MatrixPosition, Transaction, WatchlistCandidate, ScanJobStatus } from "./types";
-import { pc, pbg, fv, MATRIX_FONT } from "./constants";
+import type { MatrixGridProps, MatrixPosition, Transaction, ScanJobStatus } from "./types";
+import { pc, pbg, MATRIX_FONT } from "./constants";
 import Sparkline from "./Sparkline";
 import Waveform from "./Waveform";
 import Reticle from "./Reticle";
@@ -106,8 +106,6 @@ export default function MatrixGrid({
   onPositionClick,
   onBack,
   initialFilter,
-  showEKG = true,
-  showTickerTape = true,
   transactions = [],
   watchlistCandidates = [],
   scanStatus,
