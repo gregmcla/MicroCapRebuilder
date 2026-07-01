@@ -1,6 +1,6 @@
 /** Portfolio Intelligence Brief — redesigned full-screen modal. */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import type { IntelligenceBriefData } from "../../lib/types";
@@ -209,6 +209,8 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
     (initialTab as TabKey) ?? "performance"
   );
   const [closeHover, setCloseHover] = useState(false);
+  const [showAllWarnings, setShowAllWarnings] = useState(false);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const { data: state } = usePortfolioState();
 
   const { data: brief, isLoading, isError, error, refetch } = useQuery({
@@ -269,6 +271,20 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
     { key: "lineage" as const, label: "LINEAGE", dot: "#a78bfa" },
     { key: "dna" as const, label: "DNA", dot: "#fbbf24" },
   ];
+
+  // Roving-tabindex keyboard nav for the tab strip (ArrowLeft/Right/Home/End).
+  const handleTabKey = (e: ReactKeyboardEvent<HTMLButtonElement>, idx: number) => {
+    let next = idx;
+    if (e.key === "ArrowRight") next = (idx + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    const nk = tabs[next].key;
+    setActiveTab(nk);
+    tabRefs.current[nk]?.focus();
+  };
 
   return (
     <>
@@ -441,11 +457,11 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                   width: "28px",
                   height: "28px",
                   borderRadius: "6px",
-                  background: closeHover ? "rgba(248,113,113,0.1)" : "transparent",
+                  background: closeHover ? "rgba(255,255,255,0.08)" : "transparent",
                   border: closeHover
-                    ? "1px solid rgba(248,113,113,0.3)"
+                    ? "1px solid rgba(255,255,255,0.18)"
                     : "1px solid rgba(255,255,255,0.08)",
-                  color: closeHover ? "#f87171" : "#5a5a78",
+                  color: closeHover ? "#e2e2f0" : "#5a5a78",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -472,7 +488,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 flexShrink: 0,
               }}
             >
-              {warnings.slice(0, 3).map((w, i) => {
+              {(showAllWarnings ? warnings : warnings.slice(0, 3)).map((w, i) => {
                 const sc = SEVERITY_COLORS[w.severity] ?? "#60a5fa";
                 return (
                   <div
@@ -523,15 +539,21 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 );
               })}
               {warnings.length > 3 && (
-                <span
+                <button
+                  onClick={() => setShowAllWarnings((v) => !v)}
+                  aria-expanded={showAllWarnings}
                   style={{
+                    alignSelf: "flex-start",
                     fontSize: "10px",
-                    color: "rgba(255,255,255,0.3)",
-                    paddingLeft: "12px",
+                    color: "rgba(255,255,255,0.45)",
+                    background: "transparent",
+                    border: "none",
+                    padding: "2px 12px",
+                    cursor: "pointer",
                   }}
                 >
-                  +{warnings.length - 3} more
-                </span>
+                  {showAllWarnings ? "Show fewer" : `+${warnings.length - 3} more`}
+                </button>
               )}
             </div>
           )}
@@ -539,6 +561,8 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
           {/* ── Tab Strip ──────────────────────────────────────────────── */}
           <div style={{ padding: "0 24px", flexShrink: 0 }}>
             <div
+              role="tablist"
+              aria-label="Intelligence brief sections"
               style={{
                 display: "inline-flex",
                 gap: "2px",
@@ -549,12 +573,17 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
                 margin: "8px 0",
               }}
             >
-              {tabs.map((tab) => {
+              {tabs.map((tab, idx) => {
                 const active = activeTab === tab.key;
                 return (
                   <button
                     key={tab.key}
+                    ref={(el) => { tabRefs.current[tab.key] = el; }}
+                    role="tab"
+                    aria-selected={active}
+                    tabIndex={active ? 0 : -1}
                     onClick={() => setActiveTab(tab.key)}
+                    onKeyDown={(e) => handleTabKey(e, idx)}
                     style={
                       active
                         ? {
