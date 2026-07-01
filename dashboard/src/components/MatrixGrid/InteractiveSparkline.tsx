@@ -56,7 +56,7 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
     // ── Area fill ────────────────────────────────────────────────────────────
     ctx.beginPath();
     for (let i = 0; i < data.length; i++) {
-      i === 0 ? ctx.moveTo(toX(i), toY(data[i])) : ctx.lineTo(toX(i), toY(data[i]));
+      if (i === 0) ctx.moveTo(toX(i), toY(data[i])); else ctx.lineTo(toX(i), toY(data[i]));
     }
     ctx.lineTo(toX(data.length - 1), PAD_T + ch);
     ctx.lineTo(PAD_L, PAD_T + ch);
@@ -78,7 +78,7 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
     ctx.lineCap     = "round";
     ctx.beginPath();
     for (let i = 0; i < data.length; i++) {
-      i === 0 ? ctx.moveTo(toX(i), toY(data[i])) : ctx.lineTo(toX(i), toY(data[i]));
+      if (i === 0) ctx.moveTo(toX(i), toY(data[i])); else ctx.lineTo(toX(i), toY(data[i]));
     }
     ctx.stroke();
     ctx.filter = "none";
@@ -92,7 +92,7 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
     ctx.lineCap     = "round";
     ctx.beginPath();
     for (let i = 0; i < data.length; i++) {
-      i === 0 ? ctx.moveTo(toX(i), toY(data[i])) : ctx.lineTo(toX(i), toY(data[i]));
+      if (i === 0) ctx.moveTo(toX(i), toY(data[i])); else ctx.lineTo(toX(i), toY(data[i]));
     }
     ctx.stroke();
     ctx.restore();
@@ -175,7 +175,8 @@ export default function InteractiveSparkline({ data, color, h = 80, timestamps }
       ctx.strokeStyle = "rgba(255,255,255,0.08)";
       ctx.lineWidth   = 1;
       ctx.beginPath();
-      ctx.roundRect?.(tx, ty, boxW, boxH, 2) ?? ctx.rect(tx, ty, boxW, boxH);
+      ctx.roundRect?.(tx, ty, boxW, boxH, 2);
+      ctx.rect(tx, ty, boxW, boxH);
       ctx.fill();
       ctx.stroke();
 

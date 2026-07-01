@@ -549,7 +549,6 @@ export default function PerformanceChart({ portfolios, height = 340 }: Performan
   );
 
   // drawScars: disabled — filled maroon blocks destroyed the visual; no-op.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const drawScars = useCallback((_ctx: CanvasRenderingContext2D) => { /* no-op */ }, []);
 
   /** Right-side vertical legend sorted by return descending. */

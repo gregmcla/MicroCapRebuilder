@@ -67,7 +67,7 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
 
     // Prepare candle data - convert timestamp to UTCTimestamp (seconds)
     const candleData = data.data.map((d) => ({
-      time: Math.floor(d.time) as any,
+      time: Math.floor(d.time) as unknown as import("lightweight-charts").UTCTimestamp,
       open: d.open,
       high: d.high,
       low: d.low,
@@ -93,7 +93,7 @@ export default function CandlestickChart({ ticker, range, position, height }: Pr
     });
 
     const volumeData = data.data.map((d, i) => ({
-      time: Math.floor(d.time) as any,
+      time: Math.floor(d.time) as unknown as import("lightweight-charts").UTCTimestamp,
       value: d.volume,
       color: candleData[i].close >= candleData[i].open ? '#10B981' : '#EF4444',
     }));

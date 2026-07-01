@@ -907,8 +907,8 @@ export interface DigestData {
   };
   portfolios: DigestPortfolio[];
   recap: {
-    buys: { count: number; deployed: number; items: any[] };
-    exits: { count: number; items: any[] };
+    buys: { count: number; deployed: number; items: unknown[] };
+    exits: { count: number; items: unknown[] };
     swings: { ticker: string; pct: number }[];
     regime: { label: string; risk: number; risk_prev: number };
   };
