@@ -59,8 +59,14 @@ function Rule() {
 interface Props { brief?: IntelligenceBriefData }
 
 export default function FactorIntelligence({ brief }: Props) {
-  const defaultWeights  = (brief?.config as any)?.scoring?.default_weights  ?? {};
-  const regimeWeights   = (brief?.config as any)?.scoring?.regime_weights   ?? {};
+  const scoringCfg = (brief?.config as {
+    scoring?: {
+      default_weights?: Record<string, number>;
+      regime_weights?: Record<string, Record<string, number>>;
+    };
+  })?.scoring;
+  const defaultWeights  = scoringCfg?.default_weights  ?? {};
+  const regimeWeights   = scoringCfg?.regime_weights   ?? {};
   const observations    = brief?.observations ?? [];
   const currentRegime   = (brief?.regime ?? "").toUpperCase();
 
@@ -204,9 +210,9 @@ export default function FactorIntelligence({ brief }: Props) {
             {/* Factor rows */}
             {FACTORS_ORDER.map((f, i) => {
               const fColor = FACTOR_COLORS[f] ?? "#888";
-              const wBull = Number(((regimeWeights.BULL ?? {}) as any)[f] ?? 0);
-              const wBear = Number(((regimeWeights.BEAR ?? {}) as any)[f] ?? 0);
-              const wSide = Number(((regimeWeights.SIDEWAYS ?? {}) as any)[f] ?? 0);
+              const wBull = Number((regimeWeights.BULL ?? {})[f] ?? 0);
+              const wBear = Number((regimeWeights.BEAR ?? {})[f] ?? 0);
+              const wSide = Number((regimeWeights.SIDEWAYS ?? {})[f] ?? 0);
               const entries = [
                 { r: "BULL" as const,     w: wBull },
                 { r: "BEAR" as const,     w: wBear },

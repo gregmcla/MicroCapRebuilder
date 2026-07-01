@@ -183,7 +183,7 @@ export default function EKGStrip({ portfolios }: EKGStripProps) {
           for (let j = 0; j < line.pts.length; j++) {
             const x = w - (line.pts.length - j) * step;
             const y = y0 + line.pts[j] * (laneH * 0.35);
-            j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           }
           ctx.strokeStyle = port.color + "55";
           ctx.lineWidth   = 1;

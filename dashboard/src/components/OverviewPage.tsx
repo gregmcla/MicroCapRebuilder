@@ -100,6 +100,34 @@ function cardGlow(returnPct: number): string {
  * Summarizes all active portfolios at readable size (the top bar keeps the
  * compact Day P&L "today" focus; this gives the all-time totals real estate).
  */
+// Hoisted to module scope (were defined inside their parents — recreated every
+// render, which remounts the subtree and trips react-hooks/static-components).
+function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
+        {label}
+      </p>
+      <p className="font-mono font-bold tabular-nums" style={{ fontSize: "16px", color: color ?? "var(--text-4)", letterSpacing: "-0.01em", lineHeight: 1.1 }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SecondaryChip({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
+      <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
+        {label}
+      </p>
+      <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, color: color ?? "var(--text-2)", lineHeight: 1.2 }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function AggregateStatsBand({
   totalEquity, totalCash, totalStartingCapital, totalAllTimePnl, totalReturnPct, totalRoicPct, totalPositions, portfolioCount,
 }: {
@@ -108,19 +136,6 @@ function AggregateStatsBand({
 }) {
   const deployed = Math.max(0, totalEquity - totalCash);
   const usd = (v: number) => `$${Math.round(v).toLocaleString()}`;
-
-  function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
-          {label}
-        </p>
-        <p className="font-mono font-bold tabular-nums" style={{ fontSize: "16px", color: color ?? "var(--text-4)", letterSpacing: "-0.01em", lineHeight: 1.1 }}>
-          {value}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -168,20 +183,6 @@ function AggregateBar({
 }) {
   const rawCount = useCountUp(totalEquity, 1200, 0);
   const animatedEquity = Number(rawCount).toLocaleString();
-
-  /** Secondary stat — clearly subordinate to the hero numbers */
-  function SecondaryChip({ label, value, color }: { label: string; value: string; color?: string }) {
-    return (
-      <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
-        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>
-          {label}
-        </p>
-        <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, color: color ?? "var(--text-2)", lineHeight: 1.2 }}>
-          {value}
-        </p>
-      </div>
-    );
-  }
 
   const dayColor = pnlColor(totalDayPnl);
   const atColor  = pnlColor(totalAllTimePnl);

@@ -33,7 +33,7 @@ export default function Sparkline({ data, color, w = 48, h = 14 }: SparklineProp
       for (let i = 0; i < Math.floor(rev); i++) {
         const x = i * s;
         const y = h - ((data[i] - mn) / rg) * (h - 2) - 1;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.strokeStyle = color + "33";
       ctx.lineWidth = 3;
@@ -43,7 +43,7 @@ export default function Sparkline({ data, color, w = 48, h = 14 }: SparklineProp
       for (let i = 0; i < Math.floor(rev); i++) {
         const x = i * s;
         const y = h - ((data[i] - mn) / rg) * (h - 2) - 1;
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.strokeStyle = color + "99";
       ctx.lineWidth = 1;
@@ -54,7 +54,7 @@ export default function Sparkline({ data, color, w = 48, h = 14 }: SparklineProp
         for (let i = 0; i < Math.floor(rev); i++) {
           const x = i * s;
           const y = h - ((data[i] - mn) / rg) * (h - 2) - 1;
-          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.lineTo((Math.floor(rev) - 1) * s, h);
         ctx.lineTo(0, h);

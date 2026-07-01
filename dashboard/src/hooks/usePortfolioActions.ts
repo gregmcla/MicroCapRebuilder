@@ -32,7 +32,7 @@ export function usePortfolioActions() {
       .map((p: { id: string; active: boolean }) => p.id);
 
   const nameOf = (id: string): string =>
-    (portfolioList?.portfolios ?? []).find((p: any) => p.id === id)?.name ?? id;
+    (portfolioList?.portfolios ?? []).find((p) => p.id === id)?.name ?? id;
 
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -86,7 +86,7 @@ export function usePortfolioActions() {
         const deadline = Date.now() + 9 * 60 * 1000;
         while (Date.now() < deadline) {
           await sleep(3000);
-          const st: any = await api.scanStatus(id);
+          const st = await api.scanStatus(id);
           if (st.status !== "running") {
             if (st.status === "complete" && st.result) {
               added += (st.result.added ?? 0);
@@ -116,7 +116,7 @@ export function usePortfolioActions() {
       setStatus((s) => (s ? { ...s, current: nameOf(id), done: i } : s));
       setPortfolioAnalysis(id, "full", { status: "running", result: null, error: null });
       try {
-        const result: any = await api.analyze(id);
+        const result = await api.analyze(id);
         // summary.total_proposed is the canonical field; fall back to approved array length
         proposed += (result?.summary?.total_proposed ?? result?.approved?.length ?? 0);
         setPortfolioAnalysis(id, "full", {
