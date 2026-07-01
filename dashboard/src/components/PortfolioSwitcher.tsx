@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePortfolioStore } from "../lib/store";
 import { usePortfolios } from "../hooks/usePortfolios";
 import { api } from "../lib/api";
+import { toast } from "../lib/toast";
 import CreatePortfolioModal from "./CreatePortfolioModal";
 
 
@@ -22,10 +23,11 @@ export default function PortfolioSwitcher() {
 
   const renameMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => api.renamePortfolio(id, name),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
       setRenamingId(null);
+      toast.success("Portfolio renamed", vars.name);
     },
   });
 

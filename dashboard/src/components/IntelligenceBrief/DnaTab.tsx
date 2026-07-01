@@ -8,6 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { DNA_AXES, type DnaAxis } from "../../lib/types";
 import DnaRadar from "./DnaRadar";
+import { PanelLoading, PanelError } from "./PanelState";
+import { errMessage } from "../../lib/toast";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -23,14 +25,17 @@ const AXIS_LABELS: Record<DnaAxis, string> = {
 };
 
 export default function DnaTab({ portfolioId }: { portfolioId: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["dna", portfolioId],
     queryFn: () => api.getDnaProfile(portfolioId, "all"),
     staleTime: 60_000,
   });
 
+  if (isError) {
+    return <PanelError label="Couldn’t load DNA profile" detail={errMessage(error)} onRetry={() => refetch()} />;
+  }
   if (isLoading || !data) {
-    return <div style={{ color: "#5a5a78", padding: "20px", fontFamily: FONT }}>Loading DNA…</div>;
+    return <PanelLoading label="Loading DNA…" />;
   }
 
   // Top 3 drift axes (largest absolute disagreements)

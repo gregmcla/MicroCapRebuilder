@@ -222,6 +222,7 @@ export default function Sidebar() {
       {/* ── Collapse toggle ─────────────────────────────────────────────────── */}
       <button
         onClick={toggleSidebar}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         style={{
           display: "flex",

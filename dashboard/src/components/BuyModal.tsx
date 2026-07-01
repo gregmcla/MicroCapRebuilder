@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { toast } from "../lib/toast";
 import { Modal, Button } from "./ui";
 
 interface QuoteData {
@@ -78,6 +79,7 @@ export default function BuyModal({ onClose }: BuyModalProps) {
       setResult({ message: res.message, success: true });
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       queryClient.invalidateQueries({ queryKey: ["chartData"] });
+      toast.success(`Bought ${numShares.toLocaleString()} ${quote.ticker}`, res.message);
       setTimeout(() => onClose(), 2000);
     } catch (e) {
       setResult({ message: e instanceof Error ? e.message : "Buy failed", success: false });

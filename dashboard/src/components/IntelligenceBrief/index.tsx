@@ -17,6 +17,8 @@ import TradesTab from "./TradesTab";
 import DecisionsTab from "./DecisionsTab";
 import LineageTab from "./LineageTab";
 import DnaTab from "./DnaTab";
+import { PanelError } from "./PanelState";
+import { errMessage } from "../../lib/toast";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -209,7 +211,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
   const [closeHover, setCloseHover] = useState(false);
   const { data: state } = usePortfolioState();
 
-  const { data: brief, isLoading } = useQuery({
+  const { data: brief, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["intelligence-brief", portfolioId],
     queryFn: () => api.getIntelligenceBrief(portfolioId),
     staleTime: 5 * 60_000,
@@ -432,6 +434,7 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
               {/* Close button */}
               <button
                 onClick={onClose}
+                aria-label="Close intelligence brief"
                 onMouseEnter={() => setCloseHover(true)}
                 onMouseLeave={() => setCloseHover(false)}
                 style={{
@@ -610,6 +613,12 @@ export default function IntelligenceBrief({ portfolioId, portfolioName, initialT
           <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {isLoading ? (
               <LoadingState />
+            ) : isError ? (
+              <PanelError
+                label="Couldn’t load the intelligence brief"
+                detail={errMessage(error)}
+                onRetry={() => refetch()}
+              />
             ) : activeTab === "performance" ? (
               <PerformanceTab
                 brief={brief}

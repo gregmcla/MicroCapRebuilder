@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
 import { usePortfolioStore, useUIStore, useBriefStore, useAnalysisStore } from "../lib/store";
 import { api } from "../lib/api";
+import { toast, errMessage } from "../lib/toast";
 import { useMarketIndices } from "../hooks/useMarketIndices";
 import FreshnessIndicator from "./FreshnessIndicator";
 import PortfolioSwitcher from "./PortfolioSwitcher";
@@ -17,7 +18,7 @@ import IntelligenceBrief from "./IntelligenceBrief";
 import GScottLogo from "./GScottLogo";
 import { UpdateButton, ScanButton, AnalyzeExecute } from "./CommandBar";
 import BuyModal from "./BuyModal";
-import { Button } from "./ui";
+import { Button, FlashValue } from "./ui";
 
 // ── Shared ─────────────────────────────────────────────────────────────────────
 
@@ -132,13 +133,14 @@ function PortfolioStats({ state }: { state: PortfolioState | undefined }) {
       >
         ${equity.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </span>
-      <span
+      <FlashValue
+        value={Math.round(regularPnl)}
         className="font-mono tabular-nums font-semibold"
         style={{ fontSize: "11px", color: dayColor }}
         title="Regular-session P&L (9:30–4:00 ET)"
       >
         {sign}${Math.abs(regularPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-      </span>
+      </FlashValue>
       {showAh && (
         <span
           className="font-mono tabular-nums"
@@ -164,9 +166,15 @@ function EmergencyClose({ positions }: { positions: PortfolioState["positions"] 
     setClosing(true);
     setShowConfirm(false);
     try {
-      await api.closeAll(portfolioId);
+      const res = await api.closeAll(portfolioId);
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-    } catch { /* noop */ } finally {
+      toast.success(
+        "Positions closed",
+        res.message ?? `Closed ${res.closed} position${res.closed === 1 ? "" : "s"}`,
+      );
+    } catch (e) {
+      toast.error("Close all failed", errMessage(e));
+    } finally {
       setClosing(false);
     }
   };
@@ -253,9 +261,12 @@ function ModeToggle({ paperMode }: { paperMode: boolean }) {
     setToggling(true);
     setShowConfirm(false);
     try {
-      await api.toggleMode(portfolioId);
+      const res = await api.toggleMode(portfolioId);
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
-    } catch { /* noop */ } finally {
+      toast.success(res.paper_mode ? "Switched to PAPER" : "Switched to LIVE", res.message);
+    } catch (e) {
+      toast.error("Mode switch failed", errMessage(e));
+    } finally {
       setToggling(false);
     }
   };
@@ -472,6 +483,7 @@ export default function TopBar({
       {state && <ModeToggle paperMode={state.paper_mode} />}
       <button
         onClick={toggleTheme}
+        aria-label="Toggle light/dark theme"
         title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
         className="inline-flex items-center justify-center rounded transition-all"
         style={{
@@ -525,6 +537,7 @@ export default function TopBar({
           {!isOverviewOrLogs && (
             <button
               onClick={() => openBrief()}
+              aria-label="Open intelligence brief"
               title="Portfolio Intelligence Brief"
               style={{
                 background: "none",
@@ -551,6 +564,7 @@ export default function TopBar({
           {state?.ai_driven && (
             <button
               onClick={() => setShowSettings(true)}
+              aria-label="Open strategy settings"
               title="Strategy DNA"
               style={{
                 background: "none",

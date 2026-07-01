@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Position } from "../lib/types";
 import { useUIStore, usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { toast } from "../lib/toast";
 import { Modal, Button } from "./ui";
 
 interface SellModalProps {
@@ -43,6 +44,10 @@ export default function SellModal({ pos, onClose }: SellModalProps) {
       setResult({ message: res.message, success: true });
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       queryClient.invalidateQueries({ queryKey: ["chartData"] });
+      toast.success(
+        `Sold ${isAll ? "all " : ""}${numShares.toLocaleString()} ${pos.ticker}`,
+        res.message,
+      );
       setTimeout(() => {
         onClose();
         if (isAll) selectPosition(null);

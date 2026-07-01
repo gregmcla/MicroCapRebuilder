@@ -43,9 +43,11 @@ export default function BookHero({ data, range, onRange }:
           )}
         </div>
         <div className="chips">
-          <div className="chip"><div className="k">Health</div>
+          <div className="chip" title="Positions in the green vs in the red right now">
+            <div className="k">Health</div>
             <div className="v"><span className="grn">{data.health.green}</span><span className="t0"> / </span><span className="red">{data.health.red}</span></div></div>
-          <div className="chip"><div className="k">vs SPY · today</div>
+          <div className="chip" title="Your return today minus the S&P 500's return today (positive = outperforming)">
+            <div className="k">vs SPY · today</div>
             <div className="v acc mono">{data.vs_spy_today_pct >= 0 ? "+" : ""}{data.vs_spy_today_pct}%</div></div>
         </div>
       </div>

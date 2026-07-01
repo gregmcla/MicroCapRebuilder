@@ -12,6 +12,7 @@ import DailyDigest from "./components/Digest/DailyDigest";
 import LogsPage from "./components/LogsPage";
 import PortfolioSummary from "./components/PortfolioSummary";
 import MatrixGrid from "./components/MatrixGrid";
+import { Toaster } from "./components/ui";
 import { buildPortfolioMap, positionToMatrix } from "./components/MatrixGrid/constants";
 import type { MatrixPortfolio } from "./components/MatrixGrid/types";
 import { useOverview } from "./hooks/usePortfolios";
@@ -159,6 +160,9 @@ export default function App() {
           </div>
         </>
       )}
+
+      {/* Global toast notifications */}
+      <Toaster />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePortfolioStore } from "../lib/store";
 import { api } from "../lib/api";
+import { toast } from "../lib/toast";
 import type { SuggestConfigResponse } from "../lib/types";
 
 function slugify(name: string): string {
@@ -236,6 +237,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
       setActivePortfolio(data.portfolio.id);
+      toast.success("Portfolio created", data.portfolio.name);
       onClose();
     },
     onError: (err: Error) => setError(err.message || "Failed to create portfolio"),
@@ -525,6 +527,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                         }}>
                           {s}
                           <button onClick={() => setEditedSectors(editedSectors.filter((x) => x !== s))}
+                            aria-label={`Remove ${s} sector`}
                             style={{
                               background: "none", border: "none", color: "var(--text-1)",
                               cursor: "pointer", fontSize: "10px", padding: 0, lineHeight: 1,
@@ -548,6 +551,7 @@ export default function CreatePortfolioModal({ onClose }: { onClose: () => void 
                         }}>
                           {ind}
                           <button onClick={() => setEditedIndustries(editedIndustries.filter((x) => x !== ind))}
+                            aria-label={`Remove ${ind} industry`}
                             style={{
                               background: "none", border: "none", color: "var(--text-0)",
                               cursor: "pointer", fontSize: "9px", padding: 0, lineHeight: 1,

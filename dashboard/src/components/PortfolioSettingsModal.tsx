@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { toast } from "../lib/toast";
 import { usePortfolioStore } from "../lib/store";
 
 export default function PortfolioSettingsModal({ onClose }: { onClose: () => void }) {
@@ -36,6 +37,7 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
     onSuccess: () => {
       setSaved(true);
       queryClient.invalidateQueries({ queryKey: ["portfolioConfig", portfolioId] });
+      toast.success("Strategy DNA saved");
       setTimeout(() => {
         setSaved(false);
         onClose();
@@ -87,6 +89,7 @@ export default function PortfolioSettingsModal({ onClose }: { onClose: () => voi
           </div>
           <button
             onClick={onClose}
+            aria-label="Close strategy DNA editor"
             style={{
               background: "none",
               border: "none",
