@@ -4,7 +4,7 @@
  *  Right: ANALYZE | EXECUTE | UPDATE | SCAN | LOGS | CLOSE ALL | mode
  */
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PortfolioState } from "../lib/types";
 import { usePortfolioStore, useUIStore, useBriefStore, useAnalysisStore } from "../lib/store";

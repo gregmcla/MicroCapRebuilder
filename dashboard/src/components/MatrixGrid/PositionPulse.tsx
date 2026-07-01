@@ -433,7 +433,7 @@ export default function PositionPulse({
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             {clock ? (
               <>
-                <span style={{ fontSize: 16, fontWeight: 600, color: "#cbd5e1", letterSpacing: "0.02em", fontVariantNumeric: "tabular-nums" }}>
+                <span className="tabular-nums" style={{ fontSize: 16, fontWeight: 600, color: "#cbd5e1", letterSpacing: "0.02em" }}>
                   {clock}
                 </span>
                 <span style={{ fontSize: 9, color: mkt.color, letterSpacing: "0.1em", textTransform: "uppercase" }}>
@@ -450,12 +450,11 @@ export default function PositionPulse({
           {/* ΔDAY */}
           <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
             <span style={{ fontSize: 9, color: "#444", letterSpacing: "0.1em" }}>ΔDAY</span>
-            <span style={{
+            <span className="tabular-nums" style={{
               fontSize:   14,
               fontWeight: 700,
               color:      deltaDay >= 0 ? "#4ade80" : "#f87171",
               letterSpacing: "0.02em",
-              fontVariantNumeric: "tabular-nums",
             }}>
               {deltaDay >= 0 ? "▲" : "▼"} {deltaDay >= 0 ? "+" : ""}${Math.abs(deltaDay).toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </span>

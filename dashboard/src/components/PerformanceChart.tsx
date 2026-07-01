@@ -21,7 +21,6 @@ const CHART_PALETTE = [
   "#e879f9", // fuchsia
 ];
 
-const DD_SCAR_THRESHOLD = 3.0; // minimum peak-to-trough drawdown % to render a scar
 
 const PULSE_DURATION_MS = 1800; // ms for one pulse to travel endpoint → origin
 
@@ -101,35 +100,6 @@ function computeYScale(allCums: number[][], zoneH: number, zoneTop: number = PAD
 }
 
 // ── Drawdown scar helpers ─────────────────────────────────────────────────────
-
-/** Returns running maximum of cum — runMax[i] = max(cum[0..i]). */
-function computeRunningMax(cum: number[]): number[] {
-  if (cum.length === 0) return [];
-  const result: number[] = [];
-  let rmax = cum[0];
-  for (const v of cum) {
-    if (v > rmax) rmax = v;
-    result.push(rmax);
-  }
-  return result;
-}
-
-/** For each day index, returns the series index (si) with the highest cum return, or -1 if no series has data that far. */
-function computeDailyLeaders(seriesArr: SeriesData[], numDays: number): Int8Array {
-  const leaders = new Int8Array(numDays).fill(-1);
-  for (let d = 0; d < numDays; d++) {
-    let bestSi  = -1;
-    let bestVal = -Infinity;
-    for (let si = 0; si < seriesArr.length; si++) {
-      if (d < seriesArr[si].cum.length && seriesArr[si].cum[d] > bestVal) {
-        bestVal = seriesArr[si].cum[d];
-        bestSi  = si;
-      }
-    }
-    leaders[d] = bestSi;
-  }
-  return leaders;
-}
 
 // ── X-axis time label helper ──────────────────────────────────────────────────
 

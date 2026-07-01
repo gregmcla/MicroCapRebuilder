@@ -146,7 +146,7 @@ function AggregateStatsBand({
 
 function AggregateBar({
   totalEquity, totalCash, totalDayPnl, totalExtendedHoursPnl, sessionStatus,
-  totalAllTimePnl, totalReturnPct, totalPositions, portfolioCount,
+  totalAllTimePnl, totalReturnPct, totalPositions,
   portfoliosUp, portfoliosDown, deployedPct,
   onNewPortfolio, onUpdateAll, updatingAll, updateResult, onScanAll, scanAllRunning, scanAllLabel,
   onAnalyzeAll, analyzeAllRunning, analyzeAllLabel,
@@ -661,7 +661,7 @@ function ControlsBar({
 // Portfolio card
 // ---------------------------------------------------------------------------
 
-function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
+function PortfolioCard({ summary, scanResult, topHoldings }: {
   summary: PortfolioSummary;
   totalEquity: number;
   scanResult?: ScanAllPortfolioResult;

@@ -20,9 +20,6 @@ function SectionHeader({ label, color }: { label: string; color?: string }) {
   );
 }
 
-function formatFactor(name: string): string {
-  return name.replace(/_/g, " ");
-}
 
 interface Props { brief?: IntelligenceBriefData }
 

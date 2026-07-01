@@ -251,14 +251,14 @@ function drawWaveform(
   canvasH: number,
   hoveredKey: string | null,
   selectedKey: string | null,
-  selectedPortfolioId: string | null,
+  _selectedPortfolioId: string | null,
 ): void {
   // Background
   ctx.fillStyle = C_BG;
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   for (const lane of lanes) {
-    const { laneY, laneH, baselineY, bars, maxAbsPnl, clipped, isCollapsed, isExpanded, barW } = lane;
+    const { laneY, laneH, baselineY, bars, maxAbsPnl, clipped, isCollapsed, isExpanded } = lane;
 
     // ── Collapsed lane: just a header row ─────────────────────────────────
     if (isCollapsed) {
@@ -672,7 +672,7 @@ function Tooltip({
 function computeCanvasH(
   numPorts: number,
   containerH: number,
-  selectedPortfolioId: string | null,
+  _selectedPortfolioId: string | null,
   hasMatchingSelection: boolean,
 ): number {
   if (numPorts <= 0) return Math.max(containerH, 400);
@@ -697,8 +697,8 @@ export default function ConstellationMap({ positions, portfolios, onPositionClic
   const rafRef         = useRef<number>(0);
 
   const [hoveredBar, setHoveredBar]               = useState<HoveredBar | null>(null);
-  const [selectedKey, setSelectedKey]             = useState<string | null>(null);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [, setSelectedKey]             = useState<string | null>(null);
+  const [, setSelectedPortfolioId] = useState<string | null>(null);
 
   const hoveredKeyRef         = useRef<string | null>(null);
   const selectedKeyRef        = useRef<string | null>(null);
