@@ -44,7 +44,7 @@ export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: Dig
         <div className="gridtoggle" onClick={onGrid}
           role="button" tabIndex={0} onKeyDown={keyAct(onGrid)}>▦ Grid view</div>
       </div>
-      <div className="colhdr"><div>#</div><div>Portfolio</div><div>Equity</div><div>Today</div><div>Total</div><div>vs Bench</div><div style={{ textAlign: "right" }}>30d</div><div>Trend</div></div>
+      <div className="colhdr"><div>#</div><div>Portfolio</div><div>Equity</div><div>Today</div><div>Total</div><div title="All-time return vs this portfolio's benchmark">vs Bench</div><div style={{ textAlign: "right" }}>30d</div><div title="Recent momentum vs benchmark: ahead / fading / flat">Trend</div></div>
       {sorted.map((p, i) => {
         const pill = p.trend === "ahead" ? "up" : p.trend === "fading" ? "dn" : "fl";
         const w = Math.min(44, Math.abs(p.vs_bench_pct));
@@ -75,7 +75,10 @@ export default function PortfolioCompare({ rows, onGrid, onSelect }: { rows: Dig
                 : { right: "50%", left: `${50 - w}%`, background: "var(--red)" }} /></span></div>
             <svg className="spark" viewBox="0 0 84 26"><polyline points={sparkPts(p.sparkline)} fill="none"
               stroke={p.trend === "fading" ? "var(--red)" : p.trend === "flat" ? "rgba(255,255,255,.4)" : "var(--green)"} strokeWidth="2" strokeLinecap="round" /></svg>
-            <span className={`pill ${pill}`}>{p.trend}</span>
+            <span
+              className={`pill ${pill}`}
+              title={p.trend === "ahead" ? "Beating its benchmark recently" : p.trend === "fading" ? "Lagging its benchmark recently" : "Roughly tracking its benchmark"}
+            >{p.trend}</span>
           </div>
         );
       })}

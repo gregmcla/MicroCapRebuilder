@@ -236,6 +236,16 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Global keyboard focus ring (accessibility) ──
+   Low-specificity (:where) so components can still opt out, but keyboard users
+   get a visible focus path everywhere by default. Mouse clicks don't trigger
+   :focus-visible, so this stays invisible for pointer users. */
+:where(a, button, input, select, textarea, summary, [tabindex], [role="button"], [role="tab"]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -267,4 +277,45 @@ html, body, #root {
 /* ── Slide animations ── */
 .position-detail-slide {
   animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Value flash — "live ticker" cue on P&L changes (reduced-motion safe) ── */
+@keyframes flashUp {
+  0%   { background: rgba(52,211,153,0.30); }
+  100% { background: transparent; }
+}
+@keyframes flashDown {
+  0%   { background: rgba(248,113,113,0.30); }
+  100% { background: transparent; }
+}
+.flash-up   { animation: flashUp 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.flash-down { animation: flashDown 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .flash-up, .flash-down { animation: none; }
+}
+
+/* ── Toast enter animation (reduced-motion safe) ── */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: none; }
+}
+.gscott-toast {
+  animation: toastIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gscott-toast { animation: none; }
+}
+
+/* ── Respect prefers-reduced-motion app-wide ──
+   Neutralizes every CSS animation/transition (including inline-styled ones and
+   the staggered .anim/.dN cascade, pulses, card-hover, slide-ins) for users who
+   ask for reduced motion. JS/canvas loops are gated separately in their
+   components. Kept last so its !important wins. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

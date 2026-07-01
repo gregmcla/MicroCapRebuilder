@@ -12,6 +12,7 @@ import { WatchlistPanel } from "./WatchlistPanel";
 import BackgroundCanvas from "./BackgroundCanvas";
 import PositionPulse from "./PositionPulse";
 import ActionsTab from "../ActionsTab";
+import { FlashValue } from "../ui";
 import { useAnalysisStore, useBriefStore } from "../../lib/store";
 import { parseTradeRationale, tradeExplanation } from "../../lib/tradeUtils";
 import type { Snapshot } from "../../lib/types";
@@ -339,7 +340,6 @@ export default function MatrixGrid({
         .matrix-cell:hover { background: linear-gradient(to bottom, #1e4a2e, #163826) !important; opacity: 1 !important; }
         .matrix-cell:hover .matrix-tk { color:#fff !important; text-shadow:0 0 10px rgba(74,222,128,0.5); }
         .matrix-cell:hover .matrix-ret { opacity:1 !important; }
-        .matrix-cell:hover .matrix-chroma { opacity:1 !important; }
         .matrix-sb:hover { color:#4ade80 !important; }
         .matrix-fb:hover { border-color:rgba(74,222,128,0.2) !important; color:#888 !important; }
         ::-webkit-scrollbar{width:3px}
@@ -599,10 +599,27 @@ export default function MatrixGrid({
               transition: "transform 0.1s ease-out",
             }}
           >
+            {sorted.length === 0 && (
+              <div style={{
+                position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                alignItems: "center", justifyContent: "center", gap: 8, textAlign: "center",
+                color: "#5a5a70", fontFamily: MATRIX_FONT, pointerEvents: "none",
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "0.08em", color: "#8a8aa0" }}>
+                  NO POSITIONS
+                </div>
+                <div style={{ fontSize: 11, maxWidth: 320, lineHeight: 1.5 }}>
+                  This portfolio holds nothing yet. Use{" "}
+                  <span style={{ color: "#4ade80" }}>+ BUY</span> or run{" "}
+                  <span style={{ color: "var(--accent)" }}>ANALYZE</span> to add positions.
+                </div>
+              </div>
+            )}
             {treemapRects.length > 0 && sorted.map((pos, i) => {
               const rect = treemapRects[i];
               if (!rect || rect.w < 1 || rect.h < 1) return null;
               const isHov    = hovIdx === i;
+              const isSelected = selectedPos?.ticker === pos.ticker && selectedPos?.portfolioId === pos.portfolioId;
               const isAtRisk = atRiskSet.has(i);
               const barW     = (pos.value / maxVal) * 100;
               const tiny  = rect.w < 85  || rect.h < 58;
@@ -633,10 +650,13 @@ export default function MatrixGrid({
                     position: "absolute",
                     left: rect.x, top: rect.y, width: rect.w, height: rect.h,
                     boxSizing: "border-box",
+                    zIndex: isSelected ? 3 : undefined,
                     background: pbg(sortBy === "day" ? pos.day : pos.perf),
-                    boxShadow: isAtRisk
-                      ? `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(248,113,113,0.25)`
-                      : `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
+                    boxShadow: isSelected
+                      ? `inset 0 0 0 2px ${pos.portfolioColor}, 0 0 18px ${pos.portfolioColor}66, inset 0 1px 0 rgba(255,255,255,0.08)`
+                      : isAtRisk
+                        ? `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(248,113,113,0.25)`
+                        : `inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02)`,
                     padding: micro ? "3px 4px 2px" : tiny ? "5px 6px 4px" : "9px 9px 6px",
                     cursor: "crosshair",
                     overflow: "hidden",
@@ -645,19 +665,9 @@ export default function MatrixGrid({
                       ? "border-color 0.15s, background 0.15s, left 0.35s ease-out, top 0.35s ease-out, width 0.35s ease-out, height 0.35s ease-out"
                       : "opacity 0.3s",
                     transitionDelay: mounted ? "0ms" : `${Math.min(i * 10, 800)}ms`,
-                    borderLeft: `2px solid ${isAtRisk ? "#f87171" : pos.portfolioColor}${isHov ? "cc" : "44"}`,
+                    borderLeft: `2px solid ${isAtRisk ? "#f87171" : pos.portfolioColor}${isSelected || isHov ? "cc" : "44"}`,
                   }}
                 >
-                  {/* Chromatic aberration on hover */}
-                  <div className="matrix-chroma" style={{
-                    position: "absolute", inset: 0, pointerEvents: "none",
-                    opacity: isHov ? 1 : 0, transition: "opacity 0.1s",
-                    mixBlendMode: "screen" as const,
-                  }}>
-                    <div style={{ position: "absolute", inset: 0, background: "rgba(255,0,0,0.015)", transform: "translate(-1px,0)" }} />
-                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,255,0.015)", transform: "translate(1px,0)" }} />
-                  </div>
-
                   {/* Reticles on hover */}
                   <div className="matrix-ret" style={{ position: "absolute", inset: 0, opacity: isHov ? 1 : 0, transition: "opacity 0.12s", pointerEvents: "none" }}>
                     <Reticle color="#4ade80" s={5} />
@@ -694,11 +704,14 @@ export default function MatrixGrid({
                     }}>
                       {pos.ticker}
                     </span>
-                    <span style={{ fontSize: micro ? 9 : tiny ? 9 : large ? 14 : 11, fontWeight: 700, color: sortBy === "day" ? pc(pos.day) : pc(pos.perf), flexShrink: 0, marginLeft: 2 }}>
+                    <FlashValue
+                      value={Number((sortBy === "day" ? pos.day : pos.perf).toFixed(sortBy === "day" ? 2 : 1))}
+                      style={{ fontSize: micro ? 9 : tiny ? 9 : large ? 14 : 11, fontWeight: 700, color: sortBy === "day" ? pc(pos.day) : pc(pos.perf), flexShrink: 0, marginLeft: 2 }}
+                    >
                       {sortBy === "day"
                         ? `${pos.day > 0 ? "+" : ""}${pos.day.toFixed(2)}%`
                         : `${pos.perf > 0 ? "+" : ""}${pos.perf.toFixed(1)}%`}
-                    </span>
+                    </FlashValue>
                   </div>
 
                   {/* Row 2 (large only): Price + day change */}

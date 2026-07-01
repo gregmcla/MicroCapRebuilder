@@ -11,6 +11,8 @@ import { api } from "../../lib/api";
 import { useBriefStore } from "../../lib/store";
 import { usePortfolioState } from "../../hooks/usePortfolioState";
 import type { BaseLineageEvent, LineageEventKind } from "../../lib/types";
+import { PanelLoading, PanelError } from "./PanelState";
+import { errMessage } from "../../lib/toast";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -131,7 +133,7 @@ export default function LineageTab({ portfolioId, initialTicker = null }: Props)
 // ─── Timeline ────────────────────────────────────────────────────────────────
 
 function Timeline({ portfolioId, ticker }: { portfolioId: string; ticker: string }) {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["lineage", portfolioId, ticker],
     queryFn: () => api.getLineage(portfolioId, ticker, { limit: 200 }),
   });
@@ -148,8 +150,11 @@ function Timeline({ portfolioId, ticker }: { portfolioId: string; ticker: string
     [data],
   );
 
+  if (isError) {
+    return <PanelError label={`Couldn’t load lineage for ${ticker}`} detail={errMessage(error)} onRetry={() => refetch()} />;
+  }
   if (isLoading || !data) {
-    return <div style={{ color: "#5a5a78" }}>Loading lineage…</div>;
+    return <PanelLoading label="Loading lineage…" />;
   }
 
   if (data.events.length === 0) {

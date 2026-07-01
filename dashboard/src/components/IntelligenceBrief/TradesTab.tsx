@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { toast } from "../../lib/toast";
 import type { ClosedTrade } from "../../lib/types";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
@@ -329,7 +330,11 @@ function TradeDetail({ trade, portfolioId }: { trade: ClosedTrade; portfolioId: 
 
   const analyzeMutation = useMutation({
     mutationFn: () => api.analyzeTradeReview(portfolioId, trade.trade_id),
-    onSuccess: (data) => { setReanalyzed(data.narrative); setAnalyzeError(null); },
+    onSuccess: (data) => {
+      setReanalyzed(data.narrative);
+      setAnalyzeError(null);
+      toast.success("Trade re-analyzed", trade.ticker);
+    },
     onError: () => setAnalyzeError("Analysis failed — try again"),
   });
 

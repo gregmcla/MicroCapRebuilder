@@ -14,6 +14,8 @@ import type {
   DecisionStep,
   DecisionDiff,
 } from "../../lib/types";
+import { PanelLoading, PanelError } from "./PanelState";
+import { errMessage } from "../../lib/toast";
 
 const FONT = "'JetBrains Mono', 'SF Mono', monospace";
 
@@ -182,7 +184,7 @@ function DetailView({
   onPickDiff: (id: string) => void;
   highlightProposalId: string | null;
 }) {
-  const { data: trace, isLoading } = useQuery({
+  const { data: trace, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["decision-trace", portfolioId, traceId],
     queryFn: () => api.getDecisionTrace(portfolioId, traceId),
   });
@@ -192,8 +194,11 @@ function DetailView({
     [recentTraces, traceId],
   );
 
+  if (isError) {
+    return <PanelError label="Couldn’t load decision trace" detail={errMessage(error)} onRetry={() => refetch()} />;
+  }
   if (isLoading || !trace) {
-    return <div style={{ color: "#5a5a78" }}>Loading trace…</div>;
+    return <PanelLoading label="Loading trace…" />;
   }
 
   return (

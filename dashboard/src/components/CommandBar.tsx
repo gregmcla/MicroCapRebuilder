@@ -6,6 +6,7 @@ import { useAnalysisStore, useFreshnessStore, usePortfolioStore } from "../lib/s
 import type { ScanResult } from "../lib/types";
 import { api } from "../lib/api";
 import { play } from "../lib/sounds";
+import { toast, errMessage } from "../lib/toast";
 
 // ---------------------------------------------------------------------------
 // Shared styles
@@ -50,9 +51,11 @@ export function UpdateButton() {
       setResult(`${res.num_positions} updated`);
       queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
       queryClient.invalidateQueries({ queryKey: ["chartData"] });
+      toast.success("Prices updated", `${res.num_positions} position${res.num_positions === 1 ? "" : "s"}`);
       setTimeout(() => setResult(null), 3000);
-    } catch {
+    } catch (e) {
       setResult("Failed");
+      toast.error("Price update failed", errMessage(e));
       setTimeout(() => setResult(null), 4000);
     } finally {
       setUpdating(false);
@@ -138,6 +141,7 @@ export function ScanButton() {
     } catch (e) {
       setScanning(false);
       setScanError(e instanceof Error ? e.message : "Failed");
+      toast.error("Scan failed to start", errMessage(e));
       return;
     }
     const start = Date.now();
@@ -150,13 +154,18 @@ export function ScanButton() {
           refetchStatus();
           queryClient.invalidateQueries({ queryKey: ["portfolioState"] });
           queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+          toast.success("Scan complete", fmtScanResult(s.result, s.finished_at));
         } else if (s.status === "error") {
           stop(); setScanning(false);
           refetchStatus();
+          toast.error("Scan failed", s.error ?? undefined);
         } else if (s.status === "idle" || Date.now() - start > 10 * 60 * 1000) {
           stop(); setScanning(false);
         }
-      } catch { /* keep polling */ }
+      } catch (e) {
+        // Transient poll error — keep polling, but don't swallow it entirely.
+        console.warn("[scan] status poll failed, will retry:", errMessage(e));
+      }
     }, 10_000);
   };
 

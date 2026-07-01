@@ -5,11 +5,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOverview, usePortfolios } from "../hooks/usePortfolios";
 import { usePortfolioStore, useAnalysisStore } from "../lib/store";
 import { api } from "../lib/api";
+import { toast, errMessage } from "../lib/toast";
 import { useCountUp } from "../hooks/useCountUp";
 import type { PortfolioSummary, CrossPortfolioMover, ReviewedAction } from "../lib/types";
 import type { ScanJobStatus } from "../lib/types";
 import type { AnalysisSlots } from "../lib/store";
 import CreatePortfolioModal from "./CreatePortfolioModal";
+import { FlashValue } from "./ui";
 import {
   EquitySparkline,
   LoadingPane,
@@ -254,7 +256,7 @@ function AggregateBar({
 
       {/* Deployed % */}
       <div className="shrink-0" style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "1px" }}>
-        <p style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Deployed</p>
+        <p title="Share of capital currently invested in positions (the rest is cash)" style={{ fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-0)", lineHeight: 1 }}>Deployed</p>
         <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
           <p className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 500, color: "var(--text-2)", lineHeight: 1.2 }}>
             {deployedPct.toFixed(0)}%
@@ -676,6 +678,7 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
       queryClient.invalidateQueries({ queryKey: ["portfolios"] });
       queryClient.invalidateQueries({ queryKey: ["overview"] });
       setConfirmDelete(false);
+      toast.success("Portfolio deleted", summary.name);
     },
   });
 
@@ -775,12 +778,12 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
                   ? "rgba(248,113,113,0.06)"
                   : "transparent",
             }}>
-              <span className="font-mono tabular-nums" style={{
+              <FlashValue value={Math.round(regPnl)} className="font-mono tabular-nums" style={{
                 fontSize: "15px", fontWeight: 800, letterSpacing: "-0.01em",
                 color: pnlColor(regPnl),
               }}>
                 {fmt$(regPnl)}
-              </span>
+              </FlashValue>
               <span className="font-mono tabular-nums" style={{ fontSize: "11px", fontWeight: 600, color: pnlColor(regPnl), opacity: 0.80 }}>
                 {regPnl !== 0 && summary.equity > 0
                   ? fmtPct((regPnl / summary.equity) * 100)
@@ -863,11 +866,12 @@ function PortfolioCard({ summary, totalEquity, scanResult, topHoldings }: {
                   ? "rgba(52,211,153,0.08)"
                   : "rgba(251,191,36,0.08)",
             }}
+            title={`Market regime: ${summary.regime ?? "unknown"} — sets how aggressively the strategy trades`}
           >{summary.regime ?? "—"}</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.num_positions}p</span>
+          <span className="tabular-nums" title="Open positions">{summary.num_positions}p</span>
           <span style={{ color: "var(--border-2)" }}>·</span>
-          <span className="tabular-nums">{summary.deployed_pct.toFixed(0)}%</span>
+          <span className="tabular-nums" title="Capital deployed (invested vs cash)">{summary.deployed_pct.toFixed(0)}%</span>
           <div style={{ flex: 1, height: "2px", borderRadius: "1px", background: "var(--surface-3)", overflow: "hidden", margin: "0 3px" }}>
             <div style={{
               height: "100%", borderRadius: "1px",
@@ -1119,16 +1123,27 @@ export default function OverviewPage() {
     const withTimeout = (p: Promise<unknown>, ms: number) =>
       Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
+    let failed = 0;
     try {
       await Promise.allSettled(
         ids.map((pid) =>
           withTimeout(api.updatePrices(pid), 30_000)
             .then(() => { doneRef.current += 1; setUpdateResult(`${doneRef.current} / ${ids.length}`); })
-            .catch(() => { doneRef.current += 1; setUpdateResult(`${doneRef.current} / ${ids.length}`); })
+            .catch((e) => {
+              failed += 1;
+              doneRef.current += 1;
+              setUpdateResult(`${doneRef.current} / ${ids.length}`);
+              console.warn(`[updateAll] ${pid} failed:`, errMessage(e));
+            })
         )
       );
       queryClient.invalidateQueries({ queryKey: ["overview"] });
       setUpdateResult(`${ids.length} updated`);
+      if (failed > 0) {
+        toast.warning("Prices updated with errors", `${ids.length - failed} of ${ids.length} portfolios updated · ${failed} failed`);
+      } else {
+        toast.success("Prices updated", `${ids.length} portfolio${ids.length === 1 ? "" : "s"}`);
+      }
       setTimeout(() => setUpdateResult(null), 3000);
     } finally {
       setUpdatingAll(false);

@@ -209,7 +209,8 @@ export default function AuditChat({ portfolioId }: Props) {
     try {
       const res = await api.postIntelligenceChat(portfolioId, [...messages, userMsg]);
       setMessages(prev => [...prev, { role: "assistant", content: res.reply }]);
-    } catch {
+    } catch (e) {
+      console.error("[AuditChat] chat request failed:", e);
       setMessages(prev => [...prev, { role: "assistant", content: "Error connecting to GScott. Try again." }]);
     } finally {
       setSending(false);

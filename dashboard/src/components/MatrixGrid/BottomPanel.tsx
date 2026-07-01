@@ -66,10 +66,10 @@ export default function BottomPanel({ pos, onClose, portfolioId, watchlistCandid
     const pid = portfolioId ?? pos.portfolioId;
     api.getTickerInfo(pid, pos.ticker)
       .then(setInfo)
-      .catch(() => setInfo(null));
+      .catch((e) => { console.warn(`[BottomPanel] ticker info for ${pos.ticker} failed:`, e); setInfo(null); });
     api.getChartData(pos.ticker, "3M")
       .then(d => setChartPts(d.data ?? []))
-      .catch(() => setChartPts([]));
+      .catch((e) => { console.warn(`[BottomPanel] chart for ${pos.ticker} failed:`, e); setChartPts([]); });
   }, [pos?.ticker, pos?.portfolioId, portfolioId]);
 
   if (!pos) return null;

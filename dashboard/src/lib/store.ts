@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { AnalysisResult, Position } from "./types";
 import { api } from "./api";
+import { toast, errMessage } from "./toast";
 
 // --- Portfolio Store ---
 
@@ -184,11 +185,17 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => {
           error: null,
           analyzedAt: new Date().toLocaleTimeString(),
         });
+        const s = result.summary;
+        toast.info(
+          "Analysis complete",
+          `${s.total_proposed} proposed · ${s.approved} approved${s.vetoed ? ` · ${s.vetoed} vetoed` : ""}`,
+        );
       } catch (e) {
         writeSlot(portfolioId, mode, {
           status: "error",
           error: e instanceof Error ? e.message : "Analysis failed",
         });
+        toast.error("Analysis failed", errMessage(e));
       }
     },
 
@@ -197,19 +204,29 @@ export const useAnalysisStore = create<AnalysisStore>((set, get) => {
       if (portfolioId === "overview") return;
       const slot = get().portfolioAnalyses[portfolioId]?.[mode];
       if (!slot?.result?.summary.can_execute) return;
+      const count =
+        selectedTickers?.length ??
+        (slot.result.approved.length + slot.result.modified.length);
       writeSlot(portfolioId, mode, { status: "executing", error: null });
       try {
-        await api.execute(portfolioId, mode, selectedTickers);
+        const res = (await api.execute(portfolioId, mode, selectedTickers)) as {
+          message?: string;
+          executed?: number;
+        };
         writeSlot(portfolioId, mode, {
           status: "executed",
           result: null,
           analyzedAt: null,
         });
+        const n = res.executed ?? count;
+        const detail = res.message ?? `${n} order${n === 1 ? "" : "s"} executed`;
+        toast.success("Trades executed", detail);
       } catch (e) {
         writeSlot(portfolioId, mode, {
           status: "error",
           error: e instanceof Error ? e.message : "Execution failed",
         });
+        toast.error("Execution failed", errMessage(e));
       }
     },
 

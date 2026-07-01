@@ -17,7 +17,7 @@ export default function SinceYesterdayStrip({ recap }: { recap: DigestData["reca
           <div className="d"><span className="mono">{swing}</span></div></div>
         <div className="tlnode"><div className="dot"><span className="d-out" /></div>
           <div className="h">Regime steady</div>
-          <div className="d"><span className="acc">{recap.regime.label}</span>
+          <div className="d" title="Market regime and the strategy's current risk score (lower = more cautious)"><span className="acc">{recap.regime.label}</span>
             {recap.regime.risk > 0 && <> · risk <span className="mono">{recap.regime.risk}</span>{recap.regime.risk_prev > 0 && <>, down from <span className="mono">{recap.regime.risk_prev}</span></>}</>}</div></div>
       </div>
     </div>

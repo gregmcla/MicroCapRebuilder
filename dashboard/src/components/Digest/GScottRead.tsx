@@ -50,7 +50,7 @@ export default function GScottRead({ n, onRefresh, refreshing, topMovers = [], b
           </div>
           <div className="vr" />
           <div className="rail">
-            <div className="posture">{n.posture_label}</div>
+            <div className="posture" title="How aggressively GScott is positioned right now, on a Defensive → Neutral → Aggressive scale">{n.posture_label}</div>
             <div className="gauge">
               <div className="grow"><span>Defensive</span><span>Neutral</span><span>Aggressive</span></div>
               <div className="gtrack"><div className="gthumb" style={{ left: `${Math.round(n.posture * 100)}%` }} /></div>

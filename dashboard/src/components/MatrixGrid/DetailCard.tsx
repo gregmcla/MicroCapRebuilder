@@ -34,10 +34,10 @@ export default function DetailCard({ pos, onClose, portfolioId, watchlistCandida
     const pid = portfolioId ?? pos.portfolioId;
     api.getTickerInfo(pid, pos.ticker)
       .then(setInfo)
-      .catch(() => setInfo(null));
+      .catch((e) => { console.warn(`[DetailCard] ticker info for ${pos.ticker} failed:`, e); setInfo(null); });
     api.getPositionRationale(pid, pos.ticker)
       .then(r => setRationale(Object.keys(r).length > 0 ? r as TradeRationale : null))
-      .catch(() => setRationale(null));
+      .catch((e) => { console.warn(`[DetailCard] rationale for ${pos.ticker} failed:`, e); setRationale(null); });
   }, [pos?.ticker, pos?.portfolioId, portfolioId]);
 
   if (!pos) return null;
